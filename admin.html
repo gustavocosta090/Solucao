@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Gerenciar Usuários</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6fa; color: #222; }
+
+  .topbar {
+    background: linear-gradient(135deg, #1a1a2e, #0f3460);
+    color: white;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .topbar h1 { font-size: 18px; font-weight: 700; }
+  .topbar-links a {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    font-size: 13px;
+    margin-left: 16px;
+  }
+  .topbar-links a:hover { color: white; }
+
+  .container { max-width: 900px; margin: 32px auto; padding: 0 20px; }
+
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    margin-bottom: 28px;
+  }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1/-1; }
+  label { font-size: 13px; font-weight: 600; color: #555; }
+  input, select {
+    padding: 10px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: white;
+  }
+  input:focus, select:focus { border-color: #0f3460; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #0f3460, #e94560);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    margin-top: 16px;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .alert-success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  .alert-error { background: #fff0f0; border: 1px solid #fca5a5; color: #991b1b; }
+
+  /* Tabela de usuários */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f4f6fa; padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e0e0e0; }
+  td { padding: 12px 14px; border-bottom: 1px solid #f0f0f0; }
+  tr:hover td { background: #fafafa; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .badge-tecnico { background: #dbeafe; color: #1d4ed8; }
+  .badge-supervisor { background: #fef3c7; color: #92400e; }
+  .badge-coordenador { background: #fce7f3; color: #9d174d; }
+  .badge-agendamento { background: #d1fae5; color: #065f46; }
+  .badge-sem-conta { background: #f3f4f6; color: #6b7280; }
+
+  .btn-sm {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.15s;
+  }
+  .btn-reset { color: #0f3460; border-color: #0f3460; background: white; }
+  .btn-reset:hover { background: #0f3460; color: white; }
+  .btn-danger { color: #dc2626; border-color: #dc2626; background: white; }
+  .btn-danger:hover { background: #dc2626; color: white; }
+
+  .senha-nota {
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #92400e;
+    margin-top: 12px;
+  }
+
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 12px;
+    padding: 28px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-secondary { background: #f3f4f6; color: #374151; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⚙️ Painel Admin — Usuários</h1>
+  <div class="topbar-links">
+    <a href="obras.html">📋 Obras</a>
+    <a href="agenda.html">📅 Agenda</a>
+    <a href="supervisor.html">👷 Supervisor</a>
+    <a href="#" onclick="logout()">🚪 Sair</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Criar novo usuário -->
+  <div class="card">
+    <div class="section-title">➕ Criar Conta para Técnico</div>
+
+    <div id="alertSuccess" class="alert alert-success"></div>
+    <div id="alertError" class="alert alert-error"></div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Técnico *</label>
+        <select id="selectTecnico">
+          <option value="">Selecione o técnico...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Role / Perfil *</label>
+        <select id="selectRole">
+          <option value="tecnico">Técnico</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="coordenador">Coordenador</option>
+          <option value="agendamento">Agendamento</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>E-mail *</label>
+        <input type="email" id="novoEmail" placeholder="tecnico@empresa.com">
+      </div>
+      <div class="form-group">
+        <label>Senha inicial *</label>
+        <input type="text" id="novaSenha" placeholder="Mínimo 6 caracteres">
+      </div>
+    </div>
+
+    <div class="senha-nota">
+      ⚠️ <strong>Atenção:</strong> Anote a senha e passe para o técnico. Após o primeiro login, ele poderá alterá-la (funcionalidade futura). O técnico deve guardar sua senha.
+    </div>
+
+    <button class="btn-primary" onclick="criarUsuario()">
+      Criar Conta
+    </button>
+  </div>
+
+  <!-- Lista de técnicos e status de conta -->
+  <div class="card">
+    <div class="section-title">👥 Técnicos e Status de Acesso</div>
+    <div id="loadingTabela" style="text-align:center; color:#666; padding:20px;">Carregando...</div>
+    <div id="tabelaContainer" style="display:none; overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Equipe(s)</th>
+            <th>Perfil</th>
+            <th>E-mail</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de reset de senha -->
+<div class="modal-overlay" id="modalReset">
+  <div class="modal">
+    <h3>🔑 Redefinir Senha</h3>
+    <div class="form-group">
+      <label>Nova senha para <span id="resetNome"></span></label>
+      <input type="text" id="resetSenha" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-primary" onclick="confirmarReset()" style="margin-top:0;">Redefinir</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ⚠️ ATENÇÃO: Esta key só deve ser usada em ambiente local/admin controlado
+// Para produção, use uma Edge Function no Supabase para operações admin
+const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
+
+// SERVICE ROLE KEY — necessária para criar usuários via API admin
+// Cole aqui a service_role key do seu projeto Supabase (Settings > API)
+const SUPABASE_SERVICE_KEY = 'COLE_SUA_SERVICE_ROLE_KEY_AQUI';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let tecnicos = [];
+let resetUserId = null;
+
+// Verificar autenticação
+(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const { data: eu } = await supabase.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
+  if (!eu || eu.role !== 'coordenador') {
+    alert('Acesso restrito ao coordenador.');
+    window.location.href = 'obras.html';
+    return;
+  }
+
+  await carregarDados();
+})();
+
+async function carregarDados() {
+  const { data } = await supabase
+    .from('tecnicos')
+    .select('id, nome, role, email, auth_user_id, tecnico_equipes(equipes(nome))')
+    .order('nome');
+
+  tecnicos = data || [];
+
+  // Preencher select de técnicos sem conta
+  const select = document.getElementById('selectTecnico');
+  select.innerHTML = '<option value="">Selecione o técnico...</option>';
+  tecnicos.filter(t => !t.auth_user_id).forEach(t => {
+    select.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
+  });
+
+  // Preencher tabela
+  const tbody = document.getElementById('tabelaBody');
+  tbody.innerHTML = '';
+  tecnicos.forEach(t => {
+    const equipes = t.tecnico_equipes?.map(te => te.equipes?.nome).filter(Boolean).join(', ') || '—';
+    const badgeRole = `<span class="badge badge-${t.role || 'tecnico'}">${t.role || 'técnico'}</span>`;
+    const status = t.auth_user_id
+      ? '<span style="color:#16a34a;font-weight:600;">✅ Ativo</span>'
+      : '<span class="badge badge-sem-conta">Sem conta</span>';
+
+    const acoes = t.auth_user_id
+      ? `<button class="btn-sm btn-reset" onclick="abrirReset('${t.auth_user_id}', '${t.nome.replace(/'/g,'\\\'')}')" title="Redefinir senha">🔑 Senha</button>`
+      : `<span style="color:#9ca3af;font-size:12px;">—</span>`;
+
+    tbody.innerHTML += `
+      <tr>
+        <td><strong>${t.nome}</strong></td>
+        <td style="color:#666;font-size:13px;">${equipes}</td>
+        <td>${badgeRole}</td>
+        <td style="color:#666;font-size:13px;">${t.email || '—'}</td>
+        <td>${status}</td>
+        <td>${acoes}</td>
+      </tr>`;
+  });
+
+  document.getElementById('loadingTabela').style.display = 'none';
+  document.getElementById('tabelaContainer').style.display = 'block';
+}
+
+async function criarUsuario() {
+  const tecnicoId = document.getElementById('selectTecnico').value;
+  const role = document.getElementById('selectRole').value;
+  const email = document.getElementById('novoEmail').value.trim();
+  const senha = document.getElementById('novaSenha').value;
+
+  if (!tecnicoId || !email || !senha) {
+    mostrarErro('Preencha todos os campos obrigatórios.');
+    return;
+  }
+  if (senha.length < 6) {
+    mostrarErro('A senha deve ter pelo menos 6 caracteres.');
+    return;
+  }
+
+  // Criar usuário via Supabase Admin API
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+      },
+      body: JSON.stringify({
+        email,
+        password: senha,
+        email_confirm: true // Pular confirmação de e-mail
+      })
+    });
+
+    const userData = await resp.json();
+    if (!resp.ok) {
+      mostrarErro('Erro ao criar usuário: ' + (userData.msg || userData.message || 'Erro desconhecido'));
+      return;
+    }
+
+    const newUserId = userData.id;
+
+    // Vincular ao técnico
+    const { error: updateError } = await supabase
+      .from('tecnicos')
+      .update({ auth_user_id: newUserId, email, role })
+      .eq('id', tecnicoId);
+
+    if (updateError) {
+      mostrarErro('Usuário criado mas erro ao vincular: ' + updateError.message);
+      return;
+    }
+
+    mostrarSucesso(`✅ Conta criada com sucesso! E-mail: ${email} | Senha: ${senha}`);
+    document.getElementById('novoEmail').value = '';
+    document.getElementById('novaSenha').value = '';
+    await carregarDados();
+
+  } catch (err) {
+    mostrarErro('Erro de conexão. Verifique a service_role key.');
+  }
+}
+
+function abrirReset(userId, nome) {
+  resetUserId = userId;
+  document.getElementById('resetNome').textContent = nome;
+  document.getElementById('resetSenha').value = '';
+  document.getElementById('modalReset').classList.add('open');
+}
+
+function fecharModal() {
+  document.getElementById('modalReset').classList.remove('open');
+  resetUserId = null;
+}
+
+async function confirmarReset() {
+  const novaSenha = document.getElementById('resetSenha').value;
+  if (novaSenha.length < 6) { alert('Senha muito curta.'); return; }
+
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${resetUserId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+      },
+      body: JSON.stringify({ password: novaSenha })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      alert('Erro: ' + (err.msg || 'Não foi possível redefinir a senha.'));
+      return;
+    }
+
+    alert(`✅ Senha redefinida! Nova senha: ${novaSenha}`);
+    fecharModal();
+  } catch (err) {
+    alert('Erro de conexão.');
+  }
+}
+
+function mostrarSucesso(msg) {
+  const el = document.getElementById('alertSuccess');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('alertError').style.display = 'none';
+  setTimeout(() => el.style.display = 'none', 8000);
+}
+
+function mostrarErro(msg) {
+  const el = document.getElementById('alertError');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('alertSuccess').style.display = 'none';
+}
+
+async function logout() {
+  await supabase.auth.signOut();
+  window.location.href = 'login.html';
+}
+</script>
+</body>
+</html>

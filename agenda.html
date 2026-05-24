@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solução Técnica — Agenda</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+
+    /* ── Header ── */
+    header{background:#1a1d2e;border-bottom:1px solid #2d3148;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    header h1{font-size:1.2rem;font-weight:700;color:#fff}
+    nav{display:flex;gap:6px}
+    nav a{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;text-decoration:none;transition:all .2s}
+    nav a:hover,nav a.ativo{background:#3b5bdb;color:#fff}
+    .btn-logout{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;background:none;border:none;cursor:pointer;transition:all .2s}
+    .btn-logout:hover{background:#7f1d1d;color:#fca5a5}
+    .btn-excluir{padding:9px 20px;background:#7f1d1d;border:none;border-radius:8px;color:#fca5a5;font-weight:600;cursor:pointer;font-size:0.85rem;margin-right:auto}
+    .btn-excluir:hover{background:#991b1b}
+
+    /* ── Controles ── */
+    .controles{max-width:1400px;margin:20px auto 0;padding:0 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+    .semana-nav{display:flex;align-items:center;gap:12px}
+    .semana-nav button{background:#1a1d2e;border:1px solid #2d3148;color:#e2e8f0;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:1rem;transition:all .2s}
+    .semana-nav button:hover{background:#3b5bdb;border-color:#3b5bdb}
+    .semana-nav span{font-size:0.95rem;font-weight:600;color:#fff;min-width:220px;text-align:center}
+    .filtros{display:flex;gap:8px;flex-wrap:wrap}
+    .filtro-btn{padding:6px 14px;border-radius:999px;border:1px solid #2d3148;background:#1a1d2e;color:#9ba3cc;font-size:0.78rem;cursor:pointer;transition:all .2s}
+    .filtro-btn:hover,.filtro-btn.ativo{background:#3b5bdb;border-color:#3b5bdb;color:#fff}
+    .btn-novo{padding:8px 18px;background:#3b5bdb;border:none;border-radius:8px;color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer;transition:background .2s}
+    .btn-novo:hover{background:#2f4ac7}
+
+    /* ── Grade semanal ── */
+    .grade{max-width:1400px;margin:16px auto 40px;padding:0 16px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+
+    .coluna{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+    .coluna-header{padding:10px 14px;background:#12152a;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:center}
+    .coluna-header .dia-nome{font-size:0.78rem;font-weight:700;color:#7c85b0;text-transform:uppercase;letter-spacing:.06em}
+    .coluna-header .dia-data{font-size:1rem;font-weight:700;color:#fff}
+    .coluna-header .dia-data.hoje{color:#3b5bdb}
+    .btn-add{background:none;border:1px solid #2d3148;color:#7c85b0;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:1rem;line-height:1;transition:all .2s;display:flex;align-items:center;justify-content:center}
+    .btn-add:hover{background:#3b5bdb;border-color:#3b5bdb;color:#fff}
+
+    .coluna-body{padding:10px;display:flex;flex-direction:column;gap:8px;flex:1}
+    .coluna-vazia{text-align:center;padding:20px 8px;color:#3a4070;font-size:0.78rem}
+
+    /* ── Cards de agendamento ── */
+    .card-ag{border-radius:8px;padding:10px 12px;border-left:3px solid;cursor:pointer;transition:opacity .2s;font-size:0.78rem;line-height:1.5}
+    .card-ag:hover{opacity:.85}
+
+    .card-confirmado  {background:#1a2a1a;border-color:#22c55e;color:#d1fae5}
+    .card-nao_confirmado{background:#2a2500;border-color:#eab308;color:#fef9c3}
+    .card-viagem      {background:#1a2a1a;border-color:#4ade80;color:#d1fae5}
+    .card-cuiaba      {background:#1a233a;border-color:#60a5fa;color:#dbeafe}
+
+    .card-ag .ag-tecs{font-weight:700;color:#fff;margin-bottom:4px}
+    .card-ag .ag-cliente{font-weight:600;margin-bottom:2px}
+    .card-ag .ag-detalhe{color:inherit;opacity:.8;font-size:0.73rem}
+    .card-ag .ag-badge{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;letter-spacing:.04em}
+    .badge-confirmado    {background:#166534;color:#bbf7d0}
+    .badge-nao_confirmado{background:#713f12;color:#fef08a}
+    .badge-viagem        {background:#14532d;color:#86efac}
+    .badge-cuiaba        {background:#1e3a5f;color:#93c5fd}
+
+    /* ── Spinner ── */
+    .spinner-wrap{grid-column:1/-1;text-align:center;padding:60px;color:#4a5080}
+    .spinner{width:32px;height:32px;border:3px solid #2d3148;border-top-color:#3b5bdb;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ── Modal ── */
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;padding:16px}
+    .overlay.aberto{display:flex}
+    .modal{background:#1a1d2e;border:1px solid #2d3148;border-radius:16px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+    .modal h2{font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:20px}
+    .form-group{margin-bottom:14px}
+    .form-group label{display:block;font-size:0.78rem;color:#7c85b0;margin-bottom:5px;font-weight:600}
+    .form-group input,.form-group select,.form-group textarea{
+      width:100%;background:#12152a;border:1px solid #2d3148;border-radius:8px;
+      padding:9px 12px;color:#e2e8f0;font-size:0.85rem;outline:none;transition:border .2s}
+    .form-group input:focus,.form-group select,.form-group select:focus,
+    .form-group textarea:focus{border-color:#3b5bdb}
+    .form-group select option{background:#1a1d2e}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+    .btn-cancelar{padding:9px 20px;background:transparent;border:1px solid #2d3148;border-radius:8px;color:#9ba3cc;cursor:pointer;font-size:0.85rem}
+    .btn-salvar{padding:9px 20px;background:#3b5bdb;border:none;border-radius:8px;color:#fff;font-weight:600;cursor:pointer;font-size:0.85rem}
+    .btn-salvar:disabled{opacity:.5;cursor:not-allowed}
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Solução Técnica</h1>
+  <nav>
+    <a href="obras.html">Obras</a>
+    <a href="agenda.html" class="ativo">Agenda</a>
+    <a href="os.html">OS</a>
+    <button class="btn-logout" onclick="logout()">↩ Sair</button>
+  </nav>
+</header>
+
+<!-- Controles -->
+<div class="controles">
+  <div class="semana-nav">
+    <button onclick="mudarSemana(-1)">&#8592;</button>
+    <span id="periodo-label">—</span>
+    <button onclick="mudarSemana(1)">&#8594;</button>
+  </div>
+  <div class="filtros">
+    <button class="filtro-btn ativo" data-equipe="todas">Todas equipes</button>
+    <button class="filtro-btn" data-equipe="1">Cabeamento</button>
+    <button class="filtro-btn" data-equipe="2">Elétrica</button>
+    <button class="filtro-btn" data-equipe="3">Áudio e Vídeo</button>
+    <button class="filtro-btn" data-equipe="4">Automação</button>
+  </div>
+  <button class="btn-novo" onclick="abrirModal()">+ Novo agendamento</button>
+</div>
+
+<!-- Grade semanal -->
+<div class="grade" id="grade">
+  <div class="spinner-wrap"><div class="spinner"></div><p>Carregando agenda...</p></div>
+</div>
+
+<!-- Modal novo agendamento -->
+<div class="overlay" id="overlay" onclick="fecharModalFora(event)">
+  <div class="modal">
+    <h2>📅 Novo Agendamento</h2>
+
+    <div class="form-group">
+      <label>Obra / Cliente</label>
+      <select id="f-obra"><option value="">Selecione a obra...</option></select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Técnico principal</label>
+        <select id="f-tecnico"><option value="">Selecione...</option></select>
+      </div>
+      <div class="form-group">
+        <label>Auxiliar (opcional)</label>
+        <select id="f-auxiliar"><option value="">Nenhum</option></select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" id="f-data"/>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="confirmado">✅ Confirmado</option>
+          <option value="nao_confirmado">🟡 Não confirmado</option>
+          <option value="viagem">🟢 Viagem</option>
+          <option value="cuiaba">🔵 Cuiabá</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Hora início</label>
+        <input type="time" id="f-inicio"/>
+      </div>
+      <div class="form-group">
+        <label>Hora fim</label>
+        <input type="time" id="f-fim"/>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Veículo (placa)</label>
+      <input type="text" id="f-veiculo" placeholder="Ex: STRADA-TYR7C97"/>
+    </div>
+
+    <div class="form-group">
+      <label>Serviço a realizar</label>
+      <textarea id="f-servico" rows="3" placeholder="Descreva o serviço..."></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-excluir" id="btn-excluir" onclick="excluirAgendamento()" style="display:none">🗑 Excluir</button>
+      <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-salvar" id="btn-salvar" onclick="salvarAgendamento()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase;
+const db = createClient(
+  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
+);
+
+// ── Estado ──────────────────────────────────────────────────
+let semanaOffset = 0;
+let filtroEquipe = 'todas';
+let agendamentos = [];
+let obras        = [];
+let tecnicos     = [];
+let tecnicoEquipes = [];
+let agEditandoId = null;
+
+const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta'];
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+const STATUS_LABEL = {
+  confirmado:     '✅ Confirmado',
+  nao_confirmado: '🟡 Não confirmado',
+  viagem:         '🟢 Viagem',
+  cuiaba:         '🔵 Cuiabá',
+};
+
+// ── Auth check ──────────────────────────────────────────────
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  await Promise.all([carregarObras(), carregarTecnicos()]);
+  preencherModal();
+  await carregarAgenda();
+}
+
+async function logout() {
+  await db.auth.signOut();
+  window.location.href = 'login.html';
+}
+
+// ── Datas da semana ─────────────────────────────────────────
+function getSegunda(offset = 0) {
+  const hoje = new Date();
+  const dia  = hoje.getDay() || 7;
+  const seg  = new Date(hoje);
+  seg.setDate(hoje.getDate() - dia + 1 + offset * 7);
+  seg.setHours(0,0,0,0);
+  return seg;
+}
+
+function diasDaSemana(offset) {
+  const seg = getSegunda(offset);
+  return Array.from({length:5}, (_,i) => {
+    const d = new Date(seg);
+    d.setDate(seg.getDate() + i);
+    return d;
+  });
+}
+
+function fmtISO(d) { return d.toISOString().split('T')[0]; }
+function fmtBR(d) { return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; }
+function isHoje(d) {
+  const h = new Date();
+  return d.getDate()===h.getDate() && d.getMonth()===h.getMonth() && d.getFullYear()===h.getFullYear();
+}
+
+// ── Carregar dados ──────────────────────────────────────────
+async function carregarObras() {
+  const { data } = await db.from('obras').select('id, nome_cliente, endereco').order('nome_cliente');
+  obras = data || [];
+}
+
+async function carregarTecnicos() {
+  const { data: t } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
+  const { data: te } = await db.from('tecnico_equipes').select('tecnico_id, equipe_id');
+  tecnicos       = t  || [];
+  tecnicoEquipes = te || [];
+}
+
+async function carregarAgenda() {
+  const dias  = diasDaSemana(semanaOffset);
+  const ini   = fmtISO(dias[0]);
+  const fim   = fmtISO(dias[4]);
+
+  document.getElementById('periodo-label').textContent =
+    `${DIAS[0]}, ${fmtBR(dias[0])} — ${DIAS[4]}, ${fmtBR(dias[4])}`;
+
+  const { data, error } = await db
+    .from('agendamentos')
+    .select(`*, obras(nome_cliente, endereco), tecnico:tecnicos!agendamentos_tecnico_id_fkey(id,nome), auxiliar:tecnicos!agendamentos_auxiliar_id_fkey(id,nome)`)
+    .gte('data', ini)
+    .lte('data', fim)
+    .order('hora_inicio');
+
+  if (error) {
+    document.getElementById('grade').innerHTML =
+      `<div class="spinner-wrap"><p style="color:#f87171">Erro: ${error.message}</p></div>`;
+    return;
+  }
+
+  agendamentos = data || [];
+  renderGrade(dias);
+}
+
+// ── Filtro por equipe ───────────────────────────────────────
+function tecnicosDaEquipe(equipeId) {
+  return tecnicoEquipes.filter(te => te.equipe_id === equipeId).map(te => te.tecnico_id);
+}
+
+function agendamentosVisiveis() {
+  if (filtroEquipe === 'todas') return agendamentos;
+  const ids = tecnicosDaEquipe(parseInt(filtroEquipe));
+  return agendamentos.filter(ag => ids.includes(ag.tecnico_id) || ids.includes(ag.auxiliar_id));
+}
+
+// ── Renderizar grade ────────────────────────────────────────
+function renderGrade(dias) {
+  const visíveis = agendamentosVisiveis();
+  const grade = document.getElementById('grade');
+
+  grade.innerHTML = dias.map((dia, i) => {
+    const dataStr = fmtISO(dia);
+    const ags = visíveis.filter(ag => ag.data === dataStr);
+
+    const cards = ags.length
+      ? ags.map(cardHTML).join('')
+      : `<div class="coluna-vazia">Sem agendamentos</div>`;
+
+    return `
+      <div class="coluna">
+        <div class="coluna-header">
+          <div>
+            <div class="dia-nome">${DIAS[i]}</div>
+            <div class="dia-data ${isHoje(dia)?'hoje':''}">${fmtBR(dia)}</div>
+          </div>
+          <button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento">+</button>
+        </div>
+        <div class="coluna-body">${cards}</div>
+      </div>`;
+  }).join('');
+}
+
+// ── Card de agendamento ─────────────────────────────────────
+function cardHTML(ag) {
+  const status = ag.status || 'confirmado';
+
+  let primario = ag.tecnico?.nome || '—';
+  let secundario = ag.auxiliar?.nome || null;
+
+  if (filtroEquipe !== 'todas' && ag.auxiliar_id) {
+    const ids = tecnicosDaEquipe(parseInt(filtroEquipe));
+    const tecNaEquipe = ids.includes(ag.tecnico_id);
+    const auxNaEquipe = ids.includes(ag.auxiliar_id);
+    if (auxNaEquipe && !tecNaEquipe) {
+      primario   = ag.auxiliar?.nome || '—';
+      secundario = ag.tecnico?.nome  || null;
+    }
+  }
+
+  const tecs    = secundario ? `${primario} e (${secundario})` : primario;
+  const cliente = ag.obras?.nome_cliente || '—';
+  const end     = ag.obras?.endereco || '';
+  const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
+
+  return `
+    <div class="card-ag card-${status}" onclick="editarAgendamento(${ag.id})" title="Clique para editar">
+      <div class="ag-tecs">${hora ? hora+' · ' : ''}${tecs}</div>
+      <div class="ag-cliente">${cliente}</div>
+      ${end ? `<div class="ag-detalhe">📍 ${end}</div>` : ''}
+      ${ag.servico ? `<div class="ag-detalhe">🔧 ${ag.servico}</div>` : ''}
+      ${ag.veiculo ? `<div class="ag-detalhe">🚗 ${ag.veiculo}</div>` : ''}
+      <span class="ag-badge badge-${status}">${STATUS_LABEL[status]||status}</span>
+    </div>`;
+}
+
+// ── Navegação de semana ─────────────────────────────────────
+function mudarSemana(delta) {
+  semanaOffset += delta;
+  carregarAgenda();
+}
+
+// ── Modal ───────────────────────────────────────────────────
+function preencherModal() {
+  const selObra = document.getElementById('f-obra');
+  obras.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.id; opt.textContent = o.nome_cliente;
+    selObra.appendChild(opt);
+  });
+
+  ['f-tecnico','f-auxiliar'].forEach(id => {
+    const sel = document.getElementById(id);
+    tecnicos.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id; opt.textContent = `${t.nome} (${t.funcao})`;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+function abrirModal(data = '') {
+  agEditandoId = null;
+  document.querySelector('.modal h2').textContent = '📅 Novo Agendamento';
+  document.getElementById('f-obra').value     = '';
+  document.getElementById('f-tecnico').value  = '';
+  document.getElementById('f-auxiliar').value = '';
+  document.getElementById('f-status').value   = 'confirmado';
+  document.getElementById('f-inicio').value   = '';
+  document.getElementById('f-fim').value      = '';
+  document.getElementById('f-veiculo').value  = '';
+  document.getElementById('f-servico').value  = '';
+  document.getElementById('f-data').value     = data || fmtISO(new Date());
+  document.getElementById('btn-excluir').style.display = 'none';
+  document.getElementById('overlay').classList.add('aberto');
+}
+
+function editarAgendamento(id) {
+  const ag = agendamentos.find(a => a.id === id);
+  if (!ag) return;
+  agEditandoId = id;
+  document.querySelector('.modal h2').textContent = '✏️ Editar Agendamento';
+  document.getElementById('f-obra').value     = ag.obra_id     || '';
+  document.getElementById('f-tecnico').value  = ag.tecnico_id  || '';
+  document.getElementById('f-auxiliar').value = ag.auxiliar_id || '';
+  document.getElementById('f-data').value     = ag.data        || '';
+  document.getElementById('f-status').value   = ag.status      || 'confirmado';
+  document.getElementById('f-inicio').value   = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
+  document.getElementById('f-fim').value      = ag.hora_fim    ? ag.hora_fim.slice(0,5)    : '';
+  document.getElementById('f-veiculo').value  = ag.veiculo     || '';
+  document.getElementById('f-servico').value  = ag.servico     || '';
+  document.getElementById('btn-excluir').style.display = 'block';
+  document.getElementById('overlay').classList.add('aberto');
+}
+
+function fecharModal() {
+  document.getElementById('overlay').classList.remove('aberto');
+  agEditandoId = null;
+}
+
+function fecharModalFora(e) {
+  if (e.target === document.getElementById('overlay')) fecharModal();
+}
+
+async function salvarAgendamento() {
+  const btn = document.getElementById('btn-salvar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  const obraId  = document.getElementById('f-obra').value;
+  const tecId   = document.getElementById('f-tecnico').value;
+  const auxId   = document.getElementById('f-auxiliar').value;
+  const data    = document.getElementById('f-data').value;
+  const status  = document.getElementById('f-status').value;
+  const inicio  = document.getElementById('f-inicio').value;
+  const fim     = document.getElementById('f-fim').value;
+  const veiculo = document.getElementById('f-veiculo').value;
+  const servico = document.getElementById('f-servico').value;
+
+  if (!obraId || !tecId || !data) {
+    alert('Preencha obra, técnico e data!');
+    btn.disabled = false; btn.textContent = 'Salvar';
+    return;
+  }
+
+  const payload = {
+    obra_id:     parseInt(obraId),
+    tecnico_id:  parseInt(tecId),
+    auxiliar_id: auxId   ? parseInt(auxId) : null,
+    data, status,
+    hora_inicio: inicio  || null,
+    hora_fim:    fim     || null,
+    veiculo:     veiculo || null,
+    servico:     servico || null,
+  };
+
+  let error;
+  if (agEditandoId) {
+    ({ error } = await db.from('agendamentos').update(payload).eq('id', agEditandoId));
+  } else {
+    ({ error } = await db.from('agendamentos').insert(payload));
+  }
+
+  if (error) {
+    alert('Erro ao salvar: ' + error.message);
+  } else {
+    fecharModal();
+    await carregarAgenda();
+  }
+  btn.disabled = false; btn.textContent = 'Salvar';
+}
+
+async function excluirAgendamento() {
+  if (!agEditandoId) return;
+  if (!confirm('Tem certeza que quer excluir este agendamento?')) return;
+  const { error } = await db.from('agendamentos').delete().eq('id', agEditandoId);
+  if (error) { alert('Erro ao excluir: ' + error.message); return; }
+  fecharModal();
+  await carregarAgenda();
+}
+
+// ── Filtros de equipe ───────────────────────────────────────
+document.querySelectorAll('.filtro-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    filtroEquipe = btn.dataset.equipe;
+    renderGrade(diasDaSemana(semanaOffset));
+  });
+});
+
+// ── Iniciar ─────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

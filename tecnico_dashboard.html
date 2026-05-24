@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minhas Ordens de Serviço</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6fa; color: #222; }
+  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: white; }
+
+  .header {
+    background: linear-gradient(135deg, #1a1a2e, #0f3460);
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header h1 { font-size: 17px; font-weight: 700; flex: 1; }
+  .header-sub { font-size: 12px; opacity: 0.7; }
+  .btn-back {
+    background: rgba(255,255,255,0.15);
+    border: none; color: white;
+    padding: 6px 10px; border-radius: 8px;
+    cursor: pointer; font-size: 16px;
+  }
+  .btn-back:hover { background: rgba(255,255,255,0.25); }
+  .btn-nova {
+    background: #e94560;
+    border: none; color: white;
+    padding: 7px 13px; border-radius: 8px;
+    cursor: pointer; font-size: 13px; font-weight: 700;
+  }
+
+  /* Stats */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .stat-item {
+    padding: 14px 12px;
+    text-align: center;
+    border-right: 1px solid #e0e0e0;
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-num { font-size: 22px; font-weight: 700; color: #0f3460; }
+  .stat-label { font-size: 11px; color: #888; margin-top: 2px; }
+
+  /* Filtros */
+  .filtros {
+    padding: 12px 16px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    border-bottom: 1px solid #e8e8e8;
+    -webkit-overflow-scrolling: touch;
+  }
+  .filtros::-webkit-scrollbar { display: none; }
+  .chip {
+    white-space: nowrap;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1.5px solid #e0e0e0;
+    background: white;
+    cursor: pointer;
+    color: #555;
+    transition: all 0.15s;
+  }
+  .chip.active { background: #0f3460; color: white; border-color: #0f3460; }
+  .chip:hover { border-color: #0f3460; }
+
+  /* Input de busca de data */
+  .date-filter {
+    padding: 10px 16px;
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid #e8e8e8;
+    background: #fafafa;
+  }
+  .date-filter input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+    background: white;
+  }
+  .date-filter input:focus { border-color: #0f3460; }
+  .date-filter label { font-size: 12px; color: #888; align-self: center; }
+
+  /* Lista de OSs */
+  .os-lista { padding: 12px 16px; }
+  .os-card {
+    border: 1.5px solid #e8e8e8;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .os-card:hover { border-color: #0f3460; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .os-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+  .os-obra { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+  .os-data { font-size: 12px; color: #888; }
+  .os-tipo { font-size: 12px; color: #666; margin-bottom: 6px; }
+  .os-desc {
+    font-size: 13px;
+    color: #555;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    margin-bottom: 8px;
+  }
+  .os-footer { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+  .badge-status {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge-pendente    { background: #fef3c7; color: #92400e; }
+  .badge-aprovada    { background: #d1fae5; color: #065f46; }
+  .badge-reprovada   { background: #fee2e2; color: #991b1b; }
+  .badge-concluido   { background: #eff6ff; color: #1d4ed8; }
+  .badge-parcial     { background: #fff7ed; color: #c2410c; }
+
+  .fotos-count {
+    font-size: 11px;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .empty { text-align: center; padding: 48px 24px; color: #999; }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty p { font-size: 14px; }
+
+  .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: #888; gap: 12px; }
+  .spinner { width: 28px; height: 28px; border: 3px solid #e0e0e0; border-top-color: #0f3460; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Modal detalhe OS */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    align-items: flex-end;
+    z-index: 1000;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 16px 16px 0 0;
+    padding: 24px 20px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: #ddd; border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+
+  .detail-row { margin-bottom: 14px; }
+  .detail-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #999; letter-spacing: 0.5px; margin-bottom: 3px; }
+  .detail-value { font-size: 14px; color: #222; }
+
+  .fotos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+  .foto-item { aspect-ratio: 1; border-radius: 8px; overflow: hidden; cursor: pointer; }
+  .foto-item img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* Lightbox */
+  .lightbox {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 95%; max-height: 90vh; border-radius: 8px; }
+  .lightbox-close {
+    position: absolute; top: 16px; right: 20px;
+    color: white; font-size: 28px; cursor: pointer; background: none; border: none;
+  }
+
+  .obs-supervisor {
+    background: #fff7ed;
+    border: 1px solid #fbbf24;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #92400e;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <button class="btn-back" onclick="window.location.href='os.html'">←</button>
+    <div style="flex:1">
+      <div class="header-sub">Histórico</div>
+      <h1>Minhas OSs</h1>
+    </div>
+    <button class="btn-nova" onclick="window.location.href='os.html'">➕ Nova OS</button>
+  </div>
+
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-item"><div class="stat-num" id="statTotal">—</div><div class="stat-label">Total</div></div>
+    <div class="stat-item"><div class="stat-num" id="statAprovadas">—</div><div class="stat-label">Aprovadas</div></div>
+    <div class="stat-item"><div class="stat-num" id="statPendentes">—</div><div class="stat-label">Pendentes</div></div>
+  </div>
+
+  <div class="filtros" id="filtros">
+    <div class="chip active" onclick="setFiltro('todos', this)">Todas</div>
+    <div class="chip" onclick="setFiltro('pendente', this)">⏳ Pendentes</div>
+    <div class="chip" onclick="setFiltro('aprovada', this)">✅ Aprovadas</div>
+    <div class="chip" onclick="setFiltro('reprovada', this)">❌ Reprovadas</div>
+  </div>
+
+  <div class="date-filter">
+    <label>De:</label>
+    <input type="date" id="dataInicio" onchange="filtrar()">
+    <label>Até:</label>
+    <input type="date" id="dataFim" onchange="filtrar()">
+  </div>
+
+  <div class="os-lista" id="osLista">
+    <div class="loading"><div class="spinner"></div> Carregando...</div>
+  </div>
+</div>
+
+<!-- Modal detalhe -->
+<div class="modal-overlay" id="modalOS">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalOSTitulo"></div>
+    <div id="modalOSConteudo"></div>
+    <button onclick="fecharModal()" style="width:100%;padding:14px;background:#f3f4f6;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:16px;">Fechar</button>
+  </div>
+</div>
+
+<!-- Lightbox fotos -->
+<div class="lightbox" id="lightbox" onclick="fecharLightbox()">
+  <button class="lightbox-close" onclick="fecharLightbox()">✕</button>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let todasOSs = [];
+let filtroStatus = 'todos';
+let tecnicoAtual = null;
+
+(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const { data: tec } = await supabase
+    .from('tecnicos')
+    .select('id, nome, role')
+    .eq('auth_user_id', session.user.id)
+    .single();
+
+  if (!tec) { window.location.href = 'login.html'; return; }
+  if (tec.role !== 'tecnico') { window.location.href = 'supervisor.html'; return; }
+
+  tecnicoAtual = tec;
+
+  // Datas padrão: últimos 90 dias
+  const hoje = new Date();
+  const inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 90);
+  document.getElementById('dataInicio').value = inicio.toISOString().split('T')[0];
+  document.getElementById('dataFim').value = hoje.toISOString().split('T')[0];
+
+  await carregarOSs();
+})();
+
+async function carregarOSs() {
+  const { data, error } = await supabase
+    .from('ordens_de_servico')
+    .select('*, obras(nome_cliente, endereco), tecnicos!ordens_de_servico_tecnico_id_fkey(nome)')
+    .eq('tecnico_id', tecnicoAtual.id)
+    .order('data_servico', { ascending: false });
+
+  if (error) { console.error(error); return; }
+  todasOSs = data || [];
+
+  // Stats
+  document.getElementById('statTotal').textContent = todasOSs.length;
+  document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'aprovada').length;
+  document.getElementById('statPendentes').textContent = todasOSs.filter(o => o.status_aprovacao === 'pendente').length;
+
+  filtrar();
+}
+
+function setFiltro(status, el) {
+  filtroStatus = status;
+  document.querySelectorAll('.filtros .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  filtrar();
+}
+
+function filtrar() {
+  const dataInicio = document.getElementById('dataInicio').value;
+  const dataFim = document.getElementById('dataFim').value;
+
+  let filtradas = todasOSs.filter(o => {
+    const matchStatus = filtroStatus === 'todos' || o.status_aprovacao === filtroStatus;
+    const matchInicio = !dataInicio || o.data_servico >= dataInicio;
+    const matchFim = !dataFim || o.data_servico <= dataFim;
+    return matchStatus && matchInicio && matchFim;
+  });
+
+  renderLista(filtradas);
+}
+
+function renderLista(lista) {
+  const container = document.getElementById('osLista');
+  if (lista.length === 0) {
+    container.innerHTML = `<div class="empty"><div class="icon">📋</div><p>Nenhuma OS encontrada</p></div>`;
+    return;
+  }
+
+  container.innerHTML = lista.map(os => {
+    const data = new Date(os.data_servico + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
+    const nFotos = os.fotos_urls?.length || 0;
+    const statusLabel = { pendente: '⏳ Aguardando', aprovada: '✅ Aprovada', reprovada: '❌ Reprovada' }[os.status_aprovacao] || '';
+    const servicoLabel = { concluido: 'Concluído', parcial: 'Parcial', aguardando_material: 'Aguard. Material' }[os.status_servico] || '';
+
+    return `
+    <div class="os-card" onclick="verDetalhe(${os.id})">
+      <div class="os-header">
+        <div class="os-obra">${os.obras?.nome_cliente || 'Obra'}</div>
+        <div class="os-data">${data}</div>
+      </div>
+      ${os.tipo_servico ? `<div class="os-tipo">🔧 ${os.tipo_servico.replace(/_/g,' ')}</div>` : ''}
+      <div class="os-desc">${os.descricao_servicos || ''}</div>
+      <div class="os-footer">
+        <span class="badge-status badge-${os.status_aprovacao}">${statusLabel}</span>
+        ${servicoLabel ? `<span class="badge-status badge-${os.status_servico}">${servicoLabel}</span>` : ''}
+        ${nFotos > 0 ? `<span class="fotos-count">📸 ${nFotos}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function verDetalhe(id) {
+  const os = todasOSs.find(o => o.id === id);
+  if (!os) return;
+
+  const data = new Date(os.data_servico + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const statusLabel = { pendente: '⏳ Aguardando aprovação', aprovada: '✅ Aprovada', reprovada: '❌ Reprovada' }[os.status_aprovacao] || '';
+
+  let html = `
+    <div class="detail-row">
+      <div class="detail-label">Obra</div>
+      <div class="detail-value">${os.obras?.nome_cliente || '—'}</div>
+      ${os.obras?.endereco ? `<div style="font-size:12px;color:#888;margin-top:2px;">📍 ${os.obras.endereco}</div>` : ''}
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Data</div>
+      <div class="detail-value">${data}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Status de aprovação</div>
+      <div class="detail-value"><span class="badge-status badge-${os.status_aprovacao}">${statusLabel}</span></div>
+    </div>
+    ${os.observacao_supervisor ? `<div class="obs-supervisor">💬 Supervisor: "${os.observacao_supervisor}"</div>` : ''}
+    ${os.tipo_servico ? `<div class="detail-row"><div class="detail-label">Tipo de serviço</div><div class="detail-value">${os.tipo_servico.replace(/_/g,' ')}</div></div>` : ''}
+    <div class="detail-row">
+      <div class="detail-label">Descrição dos serviços</div>
+      <div class="detail-value">${os.descricao_servicos || '—'}</div>
+    </div>
+    ${os.materiais_utilizados ? `<div class="detail-row"><div class="detail-label">Materiais utilizados</div><div class="detail-value">${os.materiais_utilizados}</div></div>` : ''}
+    ${os.pendencias ? `<div class="detail-row"><div class="detail-label">Pendências</div><div class="detail-value">${os.pendencias}</div></div>` : ''}
+    ${os.observacoes ? `<div class="detail-row"><div class="detail-label">Observações</div><div class="detail-value">${os.observacoes}</div></div>` : ''}
+    ${os.veiculo ? `<div class="detail-row"><div class="detail-label">Veículo / KM</div><div class="detail-value">${os.veiculo}${os.km_percorrido ? ' · ' + os.km_percorrido + ' km' : ''}</div></div>` : ''}
+  `;
+
+  // Fotos
+  if (os.fotos_urls && os.fotos_urls.length > 0) {
+    html += `<div class="detail-row">
+      <div class="detail-label">Fotos (${os.fotos_urls.length})</div>
+      <div class="fotos-grid">
+        ${os.fotos_urls.map(url => `
+          <div class="foto-item" onclick="abrirLightbox('${url}')">
+            <img src="${url}" alt="foto OS" loading="lazy">
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('modalOSTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
+  document.getElementById('modalOSConteudo').innerHTML = html;
+  document.getElementById('modalOS').classList.add('open');
+}
+
+function fecharModal() {
+  document.getElementById('modalOS').classList.remove('open');
+}
+
+function abrirLightbox(url) {
+  document.getElementById('lightboxImg').src = url;
+  document.getElementById('lightbox').classList.add('open');
+}
+function fecharLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+
+// Fechar modal clicando fora
+document.getElementById('modalOS').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOS')) fecharModal();
+});
+</script>
+</body>
+</html>

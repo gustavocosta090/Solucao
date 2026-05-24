@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solução Técnica — Obras</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #1a1d2e;
+      border-bottom: 1px solid #2d3148;
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    header h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    header span {
+      font-size: 0.85rem;
+      color: #7c85b0;
+    }
+    nav { display: flex; gap: 6px; align-items: center; }
+    nav a { padding: 6px 14px; border-radius: 8px; font-size: 0.82rem; color: #9ba3cc; text-decoration: none; transition: all .2s; }
+    nav a:hover, nav a.ativo { background: #3b5bdb; color: #fff; }
+    .btn-logout { padding: 6px 14px; border-radius: 8px; font-size: 0.82rem; color: #9ba3cc; background: none; border: none; cursor: pointer; transition: all .2s; }
+    .btn-logout:hover { background: #7f1d1d; color: #fca5a5; }
+
+    /* ── Contêiner principal ── */
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* ── Barra de filtros + botão nova obra ── */
+    .filtros-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+    .filtros {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+    .filtro-btn {
+      padding: 6px 16px;
+      border-radius: 999px;
+      border: 1px solid #2d3148;
+      background: #1a1d2e;
+      color: #9ba3cc;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filtro-btn:hover,
+    .filtro-btn.ativo {
+      background: #3b5bdb;
+      border-color: #3b5bdb;
+      color: #fff;
+    }
+    .btn-nova-obra {
+      padding: 8px 18px;
+      background: #3b5bdb;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .2s;
+    }
+    .btn-nova-obra:hover { background: #2f4ac7; }
+
+    /* ── Contador ── */
+    .contador {
+      font-size: 0.85rem;
+      color: #7c85b0;
+      margin-bottom: 20px;
+    }
+    .contador strong { color: #e2e8f0; }
+
+    /* ── Grid de cards ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 18px;
+    }
+
+    /* ── Card de obra ── */
+    .card {
+      background: #1a1d2e;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 20px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .card:hover {
+      border-color: #3b5bdb;
+      transform: translateY(-2px);
+    }
+    .card-topo {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .card-cliente {
+      font-weight: 700;
+      font-size: 1rem;
+      color: #fff;
+      line-height: 1.3;
+    }
+    .card-id {
+      font-size: 0.75rem;
+      color: #4a5080;
+      margin-top: 2px;
+    }
+    .card-info {
+      font-size: 0.82rem;
+      color: #7c85b0;
+      margin-bottom: 6px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .card-info svg { flex-shrink: 0; }
+
+    .card-footer {
+      margin-top: 16px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Badges ── */
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .badge-projeto_iniciado  { background: #1e3a5f; color: #74b0f4; }
+    .badge-cabeamento        { background: #3d2600; color: #f59e0b; }
+    .badge-eletrica          { background: #3b2800; color: #fbbf24; }
+    .badge-audio_video       { background: #2d1f5e; color: #a78bfa; }
+    .badge-automacao         { background: #1a3a2a; color: #34d399; }
+    .badge-em_finalizacao    { background: #0f3030; color: #2dd4bf; }
+
+    .badge-compra {
+      background: #1a2a1a;
+      color: #86efac;
+      border: 1px solid #166534;
+    }
+
+    /* ── Estado de loading / erro ── */
+    .estado {
+      text-align: center;
+      padding: 80px 20px;
+      color: #4a5080;
+    }
+    .estado p { margin-top: 12px; font-size: 0.9rem; }
+
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #2d3148;
+      border-top-color: #3b5bdb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .erro-box {
+      background: #2d1010;
+      border: 1px solid #7f1d1d;
+      border-radius: 10px;
+      padding: 20px;
+      max-width: 480px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .erro-box h3 { color: #f87171; margin-bottom: 8px; }
+    .erro-box code { font-size: 0.78rem; color: #fca5a5; word-break: break-all; }
+    .erro-box .dica {
+      margin-top: 14px;
+      font-size: 0.82rem;
+      color: #9b9b9b;
+      line-height: 1.6;
+    }
+
+    /* ── Modal Nova Obra ── */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
+    .overlay.aberto { display: flex; }
+    .modal { background: #1a1d2e; border: 1px solid #2d3148; border-radius: 16px; padding: 28px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+    .modal h2 { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.78rem; color: #7c85b0; margin-bottom: 5px; font-weight: 600; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; background: #12152a; border: 1px solid #2d3148; border-radius: 8px;
+      padding: 9px 12px; color: #e2e8f0; font-size: 0.85rem; outline: none; transition: border .2s; font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #3b5bdb; }
+    .form-group select option { background: #1a1d2e; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .btn-cancelar { padding: 9px 20px; background: transparent; border: 1px solid #2d3148; border-radius: 8px; color: #9ba3cc; cursor: pointer; font-size: 0.85rem; }
+    .btn-cancelar:hover { border-color: #4a5080; }
+    .btn-salvar { padding: 9px 20px; background: #3b5bdb; border: none; border-radius: 8px; color: #fff; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+    .btn-salvar:hover { background: #2f4ac7; }
+    .btn-salvar:disabled { opacity: .5; cursor: not-allowed; }
+
+    .alert-sucesso {
+      background: #14532d; border: 1px solid #22c55e; border-radius: 8px;
+      padding: 10px 14px; font-size: 0.82rem; color: #86efac; margin-bottom: 14px; display: none;
+    }
+    .alert-erro {
+      background: #2d1010; border: 1px solid #f87171; border-radius: 8px;
+      padding: 10px 14px; font-size: 0.82rem; color: #fca5a5; margin-bottom: 14px; display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Solução Técnica</h1>
+  <nav>
+    <a href="obras.html" class="ativo">Obras</a>
+    <a href="agenda.html">Agenda</a>
+    <a href="os.html">OS</a>
+    <button class="btn-logout" onclick="logout()">↩ Sair</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- Filtros + botão nova obra -->
+  <div class="filtros-bar">
+    <div class="filtros">
+      <button class="filtro-btn ativo" data-fase="todas">Todas</button>
+      <button class="filtro-btn" data-fase="projeto_iniciado">Projeto Iniciado</button>
+      <button class="filtro-btn" data-fase="cabeamento">Cabeamento</button>
+      <button class="filtro-btn" data-fase="eletrica">Elétrica</button>
+      <button class="filtro-btn" data-fase="audio_video">Áudio e Vídeo</button>
+      <button class="filtro-btn" data-fase="automacao">Automação</button>
+      <button class="filtro-btn" data-fase="em_finalizacao">Em Finalização</button>
+    </div>
+    <button class="btn-nova-obra" onclick="abrirModal()">+ Nova Obra</button>
+  </div>
+
+  <div class="contador" id="contador"></div>
+
+  <!-- Conteúdo dinâmico -->
+  <div id="conteudo">
+    <div class="estado">
+      <div class="spinner"></div>
+      <p>Carregando obras...</p>
+    </div>
+  </div>
+
+</main>
+
+<!-- Modal Nova Obra -->
+<div class="overlay" id="overlay" onclick="fecharModalFora(event)">
+  <div class="modal">
+    <h2>🏗️ Nova Obra</h2>
+
+    <div class="alert-sucesso" id="alertSucesso"></div>
+    <div class="alert-erro" id="alertErro"></div>
+
+    <div class="form-group">
+      <label>Nome do Cliente *</label>
+      <input type="text" id="f-cliente" placeholder="Ex: João Silva">
+    </div>
+
+    <div class="form-group">
+      <label>Endereço da Obra</label>
+      <input type="text" id="f-endereco" placeholder="Rua, número, bairro, cidade">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Arquiteto Responsável</label>
+        <input type="text" id="f-arquiteto" placeholder="Nome do arquiteto">
+      </div>
+      <div class="form-group">
+        <label>Consultor</label>
+        <select id="f-consultor">
+          <option value="">Selecione...</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Fase Atual</label>
+        <select id="f-fase">
+          <option value="nao_iniciado">Não Iniciado</option>
+          <option value="projeto_iniciado">Projeto Iniciado</option>
+          <option value="projeto_concluido">Projeto Concluído</option>
+          <option value="cabeamento">Cabeamento</option>
+          <option value="eletrica">Elétrica</option>
+          <option value="audio_video">Áudio e Vídeo</option>
+          <option value="automacao">Automação</option>
+          <option value="em_finalizacao">Em Finalização</option>
+          <option value="entrega_comercial">Entrega Comercial</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status de Compra</label>
+        <input type="text" id="f-status-compra" placeholder="Ex: Ativo, Pausado...">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Código Shankya</label>
+      <input type="text" id="f-shankya" placeholder="Ex: SHK-001">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-salvar" id="btn-salvar" onclick="salvarObra()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const { createClient } = supabase;
+  const db = createClient(
+    'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
+  );
+
+  const FASES = {
+    projeto_iniciado: { label: 'Projeto Iniciado', prazo: '> 180 dias' },
+    cabeamento:       { label: 'Cabeamento',        prazo: '~120 dias'  },
+    eletrica:         { label: 'Elétrica',           prazo: 'Imediato'   },
+    audio_video:      { label: 'Áudio e Vídeo',     prazo: 'Imediato'   },
+    automacao:        { label: 'Automação',          prazo: 'Imediato'   },
+    em_finalizacao:   { label: 'Em Finalização',    prazo: '—'          },
+  };
+
+  let todasObras = [];
+  let faseFiltro = 'todas';
+
+  // ── Auth check ──────────────────────────────────────────────
+  async function init() {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) { window.location.href = 'login.html'; return; }
+
+    await Promise.all([carregarObras(), carregarConsultores()]);
+  }
+
+  // ── Carregar consultores para o modal ───────────────────────
+  async function carregarConsultores() {
+    const { data } = await db.from('consultores').select('id, nome').order('nome');
+    const sel = document.getElementById('f-consultor');
+    (data || []).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id; opt.textContent = c.nome;
+      sel.appendChild(opt);
+    });
+  }
+
+  // ── Buscar obras do banco ───────────────────────────────────
+  async function carregarObras() {
+    const { data, error } = await db
+      .from('obras')
+      .select('*, consultores(nome)')
+      .order('criado_em', { ascending: false });
+
+    if (error) { mostrarErro(error); return; }
+    todasObras = data;
+    renderizar();
+  }
+
+  // ── Renderizar cards ────────────────────────────────────────
+  function renderizar() {
+    const obras = faseFiltro === 'todas'
+      ? todasObras
+      : todasObras.filter(o => o.fase_atual === faseFiltro);
+
+    const contador = document.getElementById('contador');
+    contador.innerHTML = `Exibindo <strong>${obras.length}</strong> obra${obras.length !== 1 ? 's' : ''}`;
+
+    const conteudo = document.getElementById('conteudo');
+
+    if (obras.length === 0) {
+      conteudo.innerHTML = `
+        <div class="estado">
+          <p>Nenhuma obra encontrada para este filtro.</p>
+        </div>`;
+      return;
+    }
+
+    conteudo.innerHTML = `<div class="grid">${obras.map(cardHTML).join('')}</div>`;
+  }
+
+  // ── HTML de um card ─────────────────────────────────────────
+  function cardHTML(obra) {
+    const fase = FASES[obra.fase_atual] || { label: obra.fase_atual, prazo: '' };
+    const consultor = obra.consultores?.nome ?? '—';
+    const status = obra.status_compra ?? fase.prazo;
+
+    return `
+      <div class="card">
+        <div class="card-topo">
+          <div>
+            <div class="card-cliente">${obra.nome_cliente}</div>
+            <div class="card-id">#${String(obra.id).padStart(3,'0')}</div>
+          </div>
+        </div>
+
+        <div class="card-info">
+          📍 ${obra.endereco || '—'}
+        </div>
+        <div class="card-info">
+          🏛️ Arq: ${obra.arquiteto_responsavel ?? '—'}
+        </div>
+        <div class="card-info">
+          👔 Consultor: ${consultor}
+        </div>
+
+        <div class="card-footer">
+          <span class="badge badge-${obra.fase_atual}">${fase.label}</span>
+          <span class="badge badge-compra">🛒 ${status}</span>
+        </div>
+      </div>`;
+  }
+
+  // ── Mostrar erro amigável ───────────────────────────────────
+  function mostrarErro(error) {
+    document.getElementById('conteudo').innerHTML = `
+      <div class="estado">
+        <div class="erro-box">
+          <h3>⚠️ Erro ao carregar obras</h3>
+          <code>${error.message}</code>
+          <div class="dica">
+            <strong>Solução mais comum:</strong> o Supabase bloqueia acesso público por padrão.<br><br>
+            No Supabase, vá em <strong>Table Editor → obras</strong>, clique nos três pontinhos
+            e desative o <strong>Row Level Security (RLS)</strong> — ou me avisa que eu
+            te explico como criar uma política de acesso.
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── Filtros ─────────────────────────────────────────────────
+  document.querySelectorAll('.filtro-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
+      btn.classList.add('ativo');
+      faseFiltro = btn.dataset.fase;
+      renderizar();
+    });
+  });
+
+  // ── Modal Nova Obra ─────────────────────────────────────────
+  function abrirModal() {
+    document.getElementById('f-cliente').value      = '';
+    document.getElementById('f-endereco').value     = '';
+    document.getElementById('f-arquiteto').value    = '';
+    document.getElementById('f-consultor').value    = '';
+    document.getElementById('f-fase').value         = 'nao_iniciado';
+    document.getElementById('f-status-compra').value= '';
+    document.getElementById('f-shankya').value      = '';
+    document.getElementById('alertSucesso').style.display = 'none';
+    document.getElementById('alertErro').style.display    = 'none';
+    document.getElementById('overlay').classList.add('aberto');
+  }
+
+  function fecharModal() {
+    document.getElementById('overlay').classList.remove('aberto');
+  }
+
+  function fecharModalFora(e) {
+    if (e.target === document.getElementById('overlay')) fecharModal();
+  }
+
+  async function salvarObra() {
+    const cliente = document.getElementById('f-cliente').value.trim();
+    if (!cliente) {
+      mostrarErroModal('O nome do cliente é obrigatório.');
+      return;
+    }
+
+    const btn = document.getElementById('btn-salvar');
+    btn.disabled = true; btn.textContent = 'Salvando...';
+
+    const payload = {
+      nome_cliente:          cliente,
+      endereco:              document.getElementById('f-endereco').value.trim()      || null,
+      arquiteto_responsavel: document.getElementById('f-arquiteto').value.trim()    || null,
+      consultor_id:          document.getElementById('f-consultor').value            || null,
+      fase_atual:            document.getElementById('f-fase').value,
+      status_compra:         document.getElementById('f-status-compra').value.trim()|| null,
+      cod_shankya:           document.getElementById('f-shankya').value.trim()      || null,
+    };
+
+    const { data, error } = await db
+      .from('obras')
+      .insert(payload)
+      .select('*, consultores(nome)')
+      .single();
+
+    btn.disabled = false; btn.textContent = 'Salvar';
+
+    if (error) {
+      mostrarErroModal('Erro ao salvar: ' + error.message);
+      return;
+    }
+
+    // Adicionar no topo da lista
+    todasObras.unshift(data);
+    renderizar();
+
+    document.getElementById('alertSucesso').textContent = `✅ Obra "${data.nome_cliente}" criada com sucesso!`;
+    document.getElementById('alertSucesso').style.display = 'block';
+    document.getElementById('alertErro').style.display = 'none';
+
+    setTimeout(() => fecharModal(), 1800);
+  }
+
+  function mostrarErroModal(msg) {
+    document.getElementById('alertErro').textContent = msg;
+    document.getElementById('alertErro').style.display = 'block';
+    document.getElementById('alertSucesso').style.display = 'none';
+  }
+
+  async function logout() {
+    await db.auth.signOut();
+    window.location.href = 'login.html';
+  }
+
+  // ── Iniciar ─────────────────────────────────────────────────
+  init();
+</script>
+
+</body>
+</html>

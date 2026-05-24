@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Sistema de Gestão de Obras</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .logo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .logo-icon {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #0f3460, #e94560);
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+  .logo h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+  .logo p {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 6px;
+  }
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 15px;
+    transition: border-color 0.2s;
+    margin-bottom: 18px;
+    outline: none;
+  }
+  input:focus { border-color: #0f3460; }
+  .btn-login {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #0f3460, #e94560);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    letter-spacing: 0.5px;
+  }
+  .btn-login:hover { opacity: 0.92; }
+  .btn-login:active { transform: scale(0.98); }
+  .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+  .error {
+    background: #fff0f0;
+    border: 1px solid #ffcccc;
+    color: #cc0000;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .loading-msg {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin-top: 16px;
+    display: none;
+  }
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ddd;
+    border-top-color: #0f3460;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .version { text-align: center; color: #bbb; font-size: 11px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🏗️</div>
+    <h1>Gestão de Obras</h1>
+    <p>Automação Residencial</p>
+  </div>
+
+  <div id="errorMsg" class="error"></div>
+
+  <form id="loginForm">
+    <label for="email">E-mail</label>
+    <input type="email" id="email" placeholder="seu@email.com" required autocomplete="email">
+
+    <label for="senha">Senha</label>
+    <input type="password" id="senha" placeholder="••••••••" required autocomplete="current-password">
+
+    <button type="submit" class="btn-login" id="btnLogin">Entrar</button>
+  </form>
+
+  <div class="loading-msg" id="loadingMsg">
+    <span class="spinner"></span> Verificando credenciais...
+  </div>
+
+  <div class="version">v1.0 · Sistema interno</div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Se já estiver logado, redirecionar
+(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) await redirecionarUsuario();
+})();
+
+async function redirecionarUsuario() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: tecnico } = await supabase
+    .from('tecnicos')
+    .select('role')
+    .eq('auth_user_id', user.id)
+    .single();
+
+  const role = tecnico?.role || 'tecnico';
+  localStorage.setItem('userRole', role);
+  localStorage.setItem('userId', user.id);
+
+  if (role === 'tecnico') {
+    window.location.href = 'os.html';
+  } else if (role === 'supervisor' || role === 'coordenador') {
+    window.location.href = 'supervisor.html';
+  } else if (role === 'agendamento') {
+    window.location.href = 'agenda.html';
+  } else {
+    window.location.href = 'obras.html';
+  }
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const email = document.getElementById('email').value.trim();
+  const senha = document.getElementById('senha').value;
+  const btnLogin = document.getElementById('btnLogin');
+  const errorMsg = document.getElementById('errorMsg');
+  const loadingMsg = document.getElementById('loadingMsg');
+
+  errorMsg.style.display = 'none';
+  btnLogin.disabled = true;
+  btnLogin.textContent = 'Entrando...';
+  loadingMsg.style.display = 'block';
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+
+    if (error) {
+      let msg = 'E-mail ou senha incorretos.';
+      if (error.message.includes('Email not confirmed')) msg = 'Confirme seu e-mail antes de acessar.';
+      if (error.message.includes('Invalid login')) msg = 'E-mail ou senha incorretos.';
+      errorMsg.textContent = msg;
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    await redirecionarUsuario();
+
+  } catch (err) {
+    errorMsg.textContent = 'Erro de conexão. Tente novamente.';
+    errorMsg.style.display = 'block';
+  } finally {
+    btnLogin.disabled = false;
+    btnLogin.textContent = 'Entrar';
+    loadingMsg.style.display = 'none';
+  }
+});
+</script>
+</body>
+</html>

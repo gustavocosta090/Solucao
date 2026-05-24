@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supervisor — Ordens de Serviço</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- SheetJS para exportar Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6fa; color: #222; }
+
+  .topbar {
+    background: linear-gradient(135deg, #1a1a2e, #0f3460);
+    color: white;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar h1 { font-size: 18px; font-weight: 700; flex: 1; }
+  .topbar-links { display: flex; gap: 12px; align-items: center; }
+  .topbar-links a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; white-space: nowrap; }
+  .topbar-links a:hover { color: white; }
+
+  /* Stats */
+  .stats-row {
+    display: flex;
+    gap: 16px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px 20px;
+    min-width: 130px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-top: 3px solid;
+  }
+  .stat-num { font-size: 28px; font-weight: 700; }
+  .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+
+  /* Filtros */
+  .filtros-bar {
+    background: white;
+    padding: 16px 24px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #e0e0e0;
+    border-top: 1px solid #e0e0e0;
+  }
+  .filtros-bar select, .filtros-bar input {
+    padding: 9px 12px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 13px;
+    background: white;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .filtros-bar select:focus, .filtros-bar input:focus { border-color: #0f3460; }
+  .filtros-bar input[type="date"] { width: 140px; }
+
+  .btn-exportar {
+    margin-left: auto;
+    background: #166534;
+    color: white;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+  }
+  .btn-exportar:hover { opacity: 0.9; }
+
+  /* Tabela */
+  .container { padding: 20px 24px; }
+  .table-wrap { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead { background: #f8fafc; }
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e8e8e8;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  th:hover { background: #f0f0f0; }
+  th .sort-icon { margin-left: 4px; opacity: 0.4; }
+  th.sorted .sort-icon { opacity: 1; color: #0f3460; }
+  td { padding: 13px 16px; border-bottom: 1px solid #f4f4f4; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .badge-pendente   { background: #fef3c7; color: #92400e; }
+  .badge-aprovada   { background: #d1fae5; color: #065f46; }
+  .badge-reprovada  { background: #fee2e2; color: #991b1b; }
+
+  .btn-ver { background: #eff6ff; color: #1d4ed8; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .btn-ver:hover { background: #dbeafe; }
+  .btn-aprovar { background: #d1fae5; color: #065f46; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; margin-right: 4px; }
+  .btn-aprovar:hover { background: #a7f3d0; }
+  .btn-reprovar { background: #fee2e2; color: #991b1b; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .btn-reprovar:hover { background: #fecaca; }
+
+  .empty { text-align: center; padding: 60px 24px; color: #999; }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; }
+
+  .loading { text-align: center; padding: 40px; color: #666; }
+  .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #e0e0e0; border-top-color: #0f3460; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Paginação */
+  .paginacao {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px;
+    border-top: 1px solid #f0f0f0;
+  }
+  .btn-pag {
+    padding: 6px 12px;
+    border: 1.5px solid #e0e0e0;
+    background: white;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-pag:hover, .btn-pag.active { background: #0f3460; color: white; border-color: #0f3460; }
+  .btn-pag:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pag-info { font-size: 13px; color: #888; }
+
+  /* ===== MODAL DETALHE OS ===== */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 14px;
+    width: 100%;
+    max-width: 680px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 2;
+  }
+  .modal-header h2 { font-size: 17px; font-weight: 700; }
+  .btn-fechar { background: none; border: none; font-size: 22px; cursor: pointer; color: #999; }
+  .btn-fechar:hover { color: #333; }
+  .modal-body { padding: 20px 24px; }
+
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .detail-item label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #999; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }
+  .detail-item span { font-size: 14px; color: #222; }
+  .detail-item.full { grid-column: 1/-1; }
+
+  .fotos-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+  .foto-item { aspect-ratio: 1; border-radius: 8px; overflow: hidden; cursor: pointer; }
+  .foto-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }
+  .foto-item:hover img { transform: scale(1.05); }
+
+  /* Aprovação */
+  .aprovacao-box {
+    background: #f8fafc;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .aprovacao-box h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #444; }
+  .aprovacao-box textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    resize: vertical;
+    min-height: 70px;
+    font-family: inherit;
+    margin-bottom: 12px;
+  }
+  .aprovacao-box textarea:focus { border-color: #0f3460; }
+  .aprovacao-btns { display: flex; gap: 10px; }
+  .btn-aprovar-lg {
+    flex: 1;
+    padding: 12px;
+    background: #166534;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-aprovar-lg:hover { opacity: 0.9; }
+  .btn-reprovar-lg {
+    flex: 1;
+    padding: 12px;
+    background: white;
+    color: #991b1b;
+    border: 2px solid #dc2626;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-reprovar-lg:hover { background: #dc2626; color: white; }
+
+  .already-approved {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .already-approved.aprovada { background: #d1fae5; color: #065f46; }
+  .already-approved.reprovada { background: #fee2e2; color: #991b1b; }
+
+  /* Lightbox */
+  .lightbox {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 95%; max-height: 90vh; border-radius: 8px; }
+  .lightbox-close { position: absolute; top: 16px; right: 20px; color: white; font-size: 28px; cursor: pointer; background: none; border: none; }
+  .lightbox-nav {
+    position: absolute;
+    top: 50%; transform: translateY(-50%);
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    font-size: 28px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .lightbox-nav:hover { background: rgba(255,255,255,0.35); }
+  #btnLbPrev { left: 12px; }
+  #btnLbNext { right: 12px; }
+
+  /* Modal reprovação */
+  .modal-reprov {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal-reprov h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+
+  @media (max-width: 768px) {
+    .filtros-bar { gap: 6px; }
+    .filtros-bar select, .filtros-bar input { font-size: 12px; padding: 8px 10px; }
+    table { font-size: 12px; }
+    td, th { padding: 10px 10px; }
+    .fotos-grid { grid-template-columns: repeat(3, 1fr); }
+    .detail-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>📋 Supervisor — Ordens de Serviço</h1>
+  <div class="topbar-links">
+    <a href="obras.html">🏗️ Obras</a>
+    <a href="agenda.html">📅 Agenda</a>
+    <a href="admin.html">⚙️ Admin</a>
+    <a href="#" onclick="logout()">🚪 Sair</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row" id="statsRow">
+  <div class="stat-card" style="border-color:#6b7280;">
+    <div class="stat-num" id="sTot">—</div>
+    <div class="stat-label">Total de OSs</div>
+  </div>
+  <div class="stat-card" style="border-color:#f59e0b;">
+    <div class="stat-num" id="sPend">—</div>
+    <div class="stat-label">Pendentes</div>
+  </div>
+  <div class="stat-card" style="border-color:#16a34a;">
+    <div class="stat-num" id="sAprov">—</div>
+    <div class="stat-label">Aprovadas</div>
+  </div>
+  <div class="stat-card" style="border-color:#dc2626;">
+    <div class="stat-num" id="sReprov">—</div>
+    <div class="stat-label">Reprovadas</div>
+  </div>
+  <div class="stat-card" style="border-color:#0f3460;">
+    <div class="stat-num" id="sFotos">—</div>
+    <div class="stat-label">Com fotos</div>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="filtros-bar">
+  <select id="fTecnico" onchange="filtrar()">
+    <option value="">Todos os técnicos</option>
+  </select>
+  <select id="fStatus" onchange="filtrar()">
+    <option value="">Todos os status</option>
+    <option value="pendente">⏳ Pendente</option>
+    <option value="aprovada">✅ Aprovada</option>
+    <option value="reprovada">❌ Reprovada</option>
+  </select>
+  <input type="date" id="fDataInicio" onchange="filtrar()" title="Data início">
+  <input type="date" id="fDataFim" onchange="filtrar()" title="Data fim">
+  <input type="text" id="fBusca" placeholder="🔍 Buscar obra ou técnico..." onInput="filtrar()" style="flex:1;min-width:180px;">
+  <button class="btn-exportar" onclick="exportarExcel()">📊 Exportar Excel</button>
+</div>
+
+<div class="container">
+  <div class="table-wrap">
+    <div id="loadingEl" class="loading"><span class="spinner"></span> Carregando ordens de serviço...</div>
+    <div id="tabelaEl" style="display:none;">
+      <table id="tabelaOS">
+        <thead>
+          <tr>
+            <th onclick="ordenar('data_servico')">Data <span class="sort-icon">↕</span></th>
+            <th onclick="ordenar('tecnico')">Técnico <span class="sort-icon">↕</span></th>
+            <th onclick="ordenar('obra')">Obra <span class="sort-icon">↕</span></th>
+            <th>Tipo</th>
+            <th onclick="ordenar('status_servico')">Status</th>
+            <th onclick="ordenar('status_aprovacao')">Aprovação</th>
+            <th>Fotos</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="paginacao" id="paginacao"></div>
+    </div>
+    <div id="emptyEl" class="empty" style="display:none;">
+      <div class="icon">📋</div>
+      <p>Nenhuma OS encontrada com os filtros selecionados.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Modal detalhe OS -->
+<div class="modal-overlay" id="modalOS">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitulo">OS</h2>
+      <button class="btn-fechar" onclick="fecharModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Lightbox fotos -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="fecharLightbox()">✕</button>
+  <button class="lightbox-nav" id="btnLbPrev" onclick="navLightbox(-1)">‹</button>
+  <img id="lightboxImg" src="" alt="">
+  <button class="lightbox-nav" id="btnLbNext" onclick="navLightbox(1)">›</button>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let todasOSs = [];
+let filtradas = [];
+let currentPage = 1;
+const PER_PAGE = 25;
+let sortField = 'data_servico';
+let sortDir = 'desc';
+let lbFotos = [];
+let lbIdx = 0;
+let osSendoVisualizada = null;
+
+// Init
+(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const { data: eu } = await supabase
+    .from('tecnicos')
+    .select('role, nome')
+    .eq('auth_user_id', session.user.id)
+    .single();
+
+  if (!eu || !['supervisor', 'coordenador', 'agendamento'].includes(eu.role)) {
+    alert('Acesso não autorizado.');
+    window.location.href = 'os.html';
+    return;
+  }
+
+  // Datas padrão (último mês)
+  const hoje = new Date();
+  const ini = new Date(hoje); ini.setDate(ini.getDate() - 30);
+  document.getElementById('fDataInicio').value = ini.toISOString().split('T')[0];
+  document.getElementById('fDataFim').value = hoje.toISOString().split('T')[0];
+
+  await Promise.all([carregarOSs(), carregarTecnicos()]);
+})();
+
+async function carregarTecnicos() {
+  const { data } = await supabase.from('tecnicos').select('id, nome').order('nome');
+  const sel = document.getElementById('fTecnico');
+  (data || []).forEach(t => {
+    sel.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
+  });
+}
+
+async function carregarOSs() {
+  const { data, error } = await supabase
+    .from('ordens_de_servico')
+    .select(`
+      *,
+      obras(nome_cliente, endereco),
+      tecnicos!ordens_de_servico_tecnico_id_fkey(id, nome)
+    `)
+    .order('data_servico', { ascending: false });
+
+  if (error) { console.error(error); return; }
+  todasOSs = data || [];
+
+  // Stats
+  document.getElementById('sTot').textContent = todasOSs.length;
+  document.getElementById('sPend').textContent = todasOSs.filter(o => o.status_aprovacao === 'pendente').length;
+  document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'aprovada').length;
+  document.getElementById('sReprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'reprovada').length;
+  document.getElementById('sFotos').textContent = todasOSs.filter(o => o.fotos_urls?.length > 0).length;
+
+  document.getElementById('loadingEl').style.display = 'none';
+  document.getElementById('tabelaEl').style.display = 'block';
+
+  filtrar();
+}
+
+function filtrar() {
+  const fTec = document.getElementById('fTecnico').value;
+  const fSt = document.getElementById('fStatus').value;
+  const fDi = document.getElementById('fDataInicio').value;
+  const fDf = document.getElementById('fDataFim').value;
+  const fBusca = document.getElementById('fBusca').value.toLowerCase();
+
+  filtradas = todasOSs.filter(o => {
+    const matchTec = !fTec || String(o.tecnicos?.id) === fTec;
+    const matchSt = !fSt || o.status_aprovacao === fSt;
+    const matchDi = !fDi || o.data_servico >= fDi;
+    const matchDf = !fDf || o.data_servico <= fDf;
+    const matchBusca = !fBusca ||
+      (o.obras?.nome_cliente || '').toLowerCase().includes(fBusca) ||
+      (o.tecnicos?.nome || '').toLowerCase().includes(fBusca);
+    return matchTec && matchSt && matchDi && matchDf && matchBusca;
+  });
+
+  // Ordenar
+  filtradas.sort((a, b) => {
+    let va, vb;
+    if (sortField === 'data_servico') { va = a.data_servico; vb = b.data_servico; }
+    else if (sortField === 'tecnico') { va = a.tecnicos?.nome || ''; vb = b.tecnicos?.nome || ''; }
+    else if (sortField === 'obra') { va = a.obras?.nome_cliente || ''; vb = b.obras?.nome_cliente || ''; }
+    else { va = a[sortField] || ''; vb = b[sortField] || ''; }
+    return sortDir === 'asc' ? va > vb ? 1 : -1 : va < vb ? 1 : -1;
+  });
+
+  currentPage = 1;
+  renderTabela();
+}
+
+function ordenar(field) {
+  if (sortField === field) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortField = field; sortDir = 'desc'; }
+
+  document.querySelectorAll('th').forEach(th => th.classList.remove('sorted'));
+  filtrar();
+}
+
+function renderTabela() {
+  const start = (currentPage - 1) * PER_PAGE;
+  const pagina = filtradas.slice(start, start + PER_PAGE);
+
+  if (filtradas.length === 0) {
+    document.getElementById('tabelaEl').style.display = 'none';
+    document.getElementById('emptyEl').style.display = 'block';
+    return;
+  }
+  document.getElementById('tabelaEl').style.display = 'block';
+  document.getElementById('emptyEl').style.display = 'none';
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = pagina.map(o => {
+    const data = new Date(o.data_servico + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+    const statusBadge = { pendente: '<span class="badge badge-pendente">⏳ Pendente</span>', aprovada: '<span class="badge badge-aprovada">✅ Aprovada</span>', reprovada: '<span class="badge badge-reprovada">❌ Reprovada</span>' }[o.status_aprovacao] || '';
+    const nFotos = o.fotos_urls?.length || 0;
+    const servicoLabel = o.status_servico === 'concluido' ? 'Concluído' : o.status_servico === 'parcial' ? 'Parcial' : 'Ag. Material';
+
+    const botoesAprov = o.status_aprovacao === 'pendente'
+      ? `<button class="btn-aprovar" onclick="event.stopPropagation();aprovarOS(${o.id}, event)">✅</button>
+         <button class="btn-reprovar" onclick="event.stopPropagation();pedirReprovacao(${o.id})">❌</button>`
+      : '';
+
+    return `
+    <tr>
+      <td>${data}</td>
+      <td>${o.tecnicos?.nome || '—'}</td>
+      <td title="${o.obras?.endereco || ''}">${o.obras?.nome_cliente || '—'}</td>
+      <td style="font-size:12px;color:#666;">${(o.tipo_servico || '').replace(/_/g,' ')}</td>
+      <td><span style="font-size:12px;">${servicoLabel}</span></td>
+      <td>${statusBadge}</td>
+      <td style="text-align:center;">${nFotos > 0 ? `📸 ${nFotos}` : '—'}</td>
+      <td style="white-space:nowrap;">
+        ${botoesAprov}
+        <button class="btn-ver" onclick="verOS(${o.id})">Ver</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Paginação
+  const totalPages = Math.ceil(filtradas.length / PER_PAGE);
+  const pag = document.getElementById('paginacao');
+  if (totalPages <= 1) { pag.innerHTML = `<span class="pag-info">${filtradas.length} OS encontradas</span>`; return; }
+
+  let html = `<button class="btn-pag" onclick="irPagina(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 2) {
+      html += `<button class="btn-pag ${i===currentPage?'active':''}" onclick="irPagina(${i})">${i}</button>`;
+    } else if (Math.abs(i - currentPage) === 3) {
+      html += `<span>…</span>`;
+    }
+  }
+  html += `<button class="btn-pag" onclick="irPagina(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  html += `<span class="pag-info">${filtradas.length} OS</span>`;
+  pag.innerHTML = html;
+}
+
+function irPagina(p) {
+  const total = Math.ceil(filtradas.length / PER_PAGE);
+  if (p < 1 || p > total) return;
+  currentPage = p;
+  renderTabela();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== VER OS =====
+function verOS(id) {
+  const os = todasOSs.find(o => o.id === id);
+  if (!os) return;
+  osSendoVisualizada = os;
+
+  const data = new Date(os.data_servico + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const statusLabel = { pendente: '⏳ Aguardando aprovação', aprovada: '✅ Aprovada', reprovada: '❌ Reprovada' }[os.status_aprovacao] || '';
+
+  let html = `
+  <div class="detail-grid">
+    <div class="detail-item">
+      <label>Técnico</label>
+      <span>${os.tecnicos?.nome || '—'}</span>
+    </div>
+    <div class="detail-item">
+      <label>Data do serviço</label>
+      <span>${data}</span>
+    </div>
+    <div class="detail-item full">
+      <label>Obra</label>
+      <span><strong>${os.obras?.nome_cliente || '—'}</strong>${os.obras?.endereco ? `<br><small style="color:#888;">📍 ${os.obras.endereco}</small>` : ''}</span>
+    </div>
+    <div class="detail-item">
+      <label>Status de aprovação</label>
+      <span><span class="badge badge-${os.status_aprovacao}">${statusLabel}</span></span>
+    </div>
+    <div class="detail-item">
+      <label>Status do serviço</label>
+      <span>${os.status_servico === 'concluido' ? 'Concluído' : os.status_servico === 'parcial' ? 'Parcial' : 'Aguardando material'}</span>
+    </div>
+    ${os.tipo_servico ? `<div class="detail-item"><label>Tipo de serviço</label><span>${os.tipo_servico.replace(/_/g,' ')}</span></div>` : ''}
+    ${os.nome_cliente_local ? `<div class="detail-item"><label>Responsável no local</label><span>${os.nome_cliente_local}</span></div>` : ''}
+    ${os.veiculo ? `<div class="detail-item"><label>Veículo / KM</label><span>${os.veiculo}${os.km_percorrido ? ' · ' + os.km_percorrido + ' km' : ''}</span></div>` : ''}
+    <div class="detail-item full">
+      <label>Descrição dos serviços</label>
+      <span style="white-space:pre-line;">${os.descricao_servicos || '—'}</span>
+    </div>
+    ${os.materiais_utilizados ? `<div class="detail-item full"><label>Materiais utilizados</label><span style="white-space:pre-line;">${os.materiais_utilizados}</span></div>` : ''}
+    ${os.pendencias ? `<div class="detail-item full"><label>Pendências</label><span style="white-space:pre-line;">${os.pendencias}</span></div>` : ''}
+    ${os.observacoes ? `<div class="detail-item full"><label>Observações</label><span style="white-space:pre-line;">${os.observacoes}</span></div>` : ''}
+    ${os.observacao_supervisor ? `<div class="detail-item full"><label>Observação do supervisor</label><span style="color:#92400e;background:#fff7ed;padding:8px;border-radius:6px;display:block;">${os.observacao_supervisor}</span></div>` : ''}
+  </div>`;
+
+  // Fotos
+  if (os.fotos_urls && os.fotos_urls.length > 0) {
+    html += `
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.5px;margin-bottom:8px;">Fotos (${os.fotos_urls.length})</div>
+      <div class="fotos-grid">
+        ${os.fotos_urls.map((url, i) => `
+          <div class="foto-item" onclick="abrirLightbox(${i}, ${JSON.stringify(os.fotos_urls).replace(/</g,'\\u003c')})">
+            <img src="${url}" alt="foto ${i+1}" loading="lazy">
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Aprovação
+  if (os.status_aprovacao === 'pendente') {
+    html += `
+    <div class="aprovacao-box">
+      <h3>✏️ Aprovar / Reprovar esta OS</h3>
+      <textarea id="obsModalSup" placeholder="Observação para o técnico (opcional)..."></textarea>
+      <div class="aprovacao-btns">
+        <button class="btn-reprovar-lg" onclick="pedirReprovacaoModal()">❌ Reprovar</button>
+        <button class="btn-aprovar-lg" onclick="aprovarOSModal()">✅ Aprovar</button>
+      </div>
+    </div>`;
+  } else {
+    const cl = os.status_aprovacao;
+    const lbl = cl === 'aprovada' ? '✅ Esta OS já foi aprovada.' : '❌ Esta OS foi reprovada.';
+    html += `<div class="already-approved ${cl}">${lbl}</div>`;
+  }
+
+  document.getElementById('modalTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalOS').classList.add('open');
+}
+
+function fecharModal() { document.getElementById('modalOS').classList.remove('open'); }
+
+// ===== APROVAÇÃO =====
+async function aprovarOS(id, e) {
+  if (!confirm('Aprovar esta OS?')) return;
+  await mudarStatusOS(id, 'aprovada', '');
+}
+
+async function aprovarOSModal() {
+  if (!osSendoVisualizada) return;
+  const obs = document.getElementById('obsModalSup')?.value || '';
+  await mudarStatusOS(osSendoVisualizada.id, 'aprovada', obs);
+  fecharModal();
+}
+
+function pedirReprovacao(id) {
+  const obs = prompt('Motivo da reprovação (obrigatório):');
+  if (obs === null) return;
+  if (!obs.trim()) { alert('Informe o motivo.'); return; }
+  mudarStatusOS(id, 'reprovada', obs);
+}
+
+function pedirReprovacaoModal() {
+  if (!osSendoVisualizada) return;
+  const obs = document.getElementById('obsModalSup')?.value || '';
+  if (!obs.trim()) { alert('Informe o motivo da reprovação no campo de observação.'); return; }
+  mudarStatusOS(osSendoVisualizada.id, 'reprovada', obs);
+  fecharModal();
+}
+
+async function mudarStatusOS(id, status, obs) {
+  const { error } = await supabase
+    .from('ordens_de_servico')
+    .update({
+      status_aprovacao: status,
+      observacao_supervisor: obs || null,
+      aprovado_em: new Date().toISOString()
+    })
+    .eq('id', id);
+
+  if (error) { alert('Erro: ' + error.message); return; }
+
+  // Atualizar local
+  const os = todasOSs.find(o => o.id === id);
+  if (os) { os.status_aprovacao = status; os.observacao_supervisor = obs; }
+
+  // Re-render stats
+  document.getElementById('sPend').textContent = todasOSs.filter(o => o.status_aprovacao === 'pendente').length;
+  document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'aprovada').length;
+  document.getElementById('sReprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'reprovada').length;
+
+  filtrar();
+}
+
+// ===== LIGHTBOX =====
+function abrirLightbox(idx, fotos) {
+  lbFotos = fotos;
+  lbIdx = idx;
+  document.getElementById('lightboxImg').src = fotos[idx];
+  document.getElementById('lightbox').classList.add('open');
+  document.getElementById('btnLbPrev').style.display = fotos.length > 1 ? '' : 'none';
+  document.getElementById('btnLbNext').style.display = fotos.length > 1 ? '' : 'none';
+}
+function fecharLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+function navLightbox(dir) {
+  lbIdx = (lbIdx + dir + lbFotos.length) % lbFotos.length;
+  document.getElementById('lightboxImg').src = lbFotos[lbIdx];
+}
+document.getElementById('lightbox').addEventListener('click', e => {
+  if (e.target === document.getElementById('lightbox')) fecharLightbox();
+});
+
+// ===== EXPORTAR EXCEL =====
+function exportarExcel() {
+  if (filtradas.length === 0) { alert('Nenhuma OS para exportar.'); return; }
+
+  const rows = filtradas.map(o => ({
+    'Data': o.data_servico,
+    'Técnico': o.tecnicos?.nome || '',
+    'Obra': o.obras?.nome_cliente || '',
+    'Endereço': o.obras?.endereco || '',
+    'Tipo de serviço': (o.tipo_servico || '').replace(/_/g,' '),
+    'Status serviço': o.status_servico || '',
+    'Status aprovação': o.status_aprovacao || '',
+    'Descrição': o.descricao_servicos || '',
+    'Materiais': o.materiais_utilizados || '',
+    'Pendências': o.pendencias || '',
+    'Observações': o.observacoes || '',
+    'Obs. Supervisor': o.observacao_supervisor || '',
+    'Veículo': o.veiculo || '',
+    'KM': o.km_percorrido || '',
+    'Qtd Fotos': o.fotos_urls?.length || 0,
+    'ID': o.id,
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Ordens de Serviço');
+
+  // Auto-largura colunas
+  const colWidths = Object.keys(rows[0]).map(key => ({
+    wch: Math.max(key.length, ...rows.map(r => String(r[key] || '').length).slice(0, 20))
+  }));
+  ws['!cols'] = colWidths;
+
+  const hoje = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `ordens_de_servico_${hoje}.xlsx`);
+}
+
+// Fechar modal fora
+document.getElementById('modalOS').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOS')) fecharModal();
+});
+
+async function logout() {
+  await supabase.auth.signOut();
+  window.location.href = 'login.html';
+}
+</script>
+</body>
+</html>

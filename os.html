@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solução Técnica — OS</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+
+    header{background:#1a1d2e;border-bottom:1px solid #2d3148;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    header h1{font-size:1.2rem;font-weight:700;color:#fff}
+    nav{display:flex;gap:6px}
+    nav a{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;text-decoration:none;transition:all .2s}
+    nav a:hover,nav a.ativo{background:#3b5bdb;color:#fff}
+    .btn-logout{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;background:none;border:none;cursor:pointer;transition:all .2s}
+    .btn-logout:hover{background:#7f1d1d;color:#fca5a5}
+
+    .tela{display:none;max-width:620px;margin:0 auto;padding:32px 16px}
+    .tela.ativa{display:block}
+
+    /* ── Tela 1: Identificação via auth ── */
+    .login-box{background:#1a1d2e;border:1px solid #2d3148;border-radius:16px;padding:36px 28px;text-align:center}
+    .login-box .icone{font-size:3rem;margin-bottom:16px}
+    .login-box h2{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:6px}
+    .login-box p{color:#7c85b0;font-size:0.85rem;margin-bottom:24px}
+    .spinner-inline{width:28px;height:28px;border:3px solid #2d3148;border-top-color:#3b5bdb;border-radius:50%;animation:spin .8s linear infinite;margin:16px auto}
+
+    .btn-primario{width:100%;padding:12px;background:#3b5bdb;border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;transition:background .2s}
+    .btn-primario:hover{background:#2f4ac7}
+    .btn-primario:disabled{opacity:.5;cursor:not-allowed}
+
+    /* ── Tela 2: Lista de OS ── */
+    .tela-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+    .tela-header h2{font-size:1.1rem;font-weight:700;color:#fff}
+    .btn-secundario{padding:8px 16px;background:#1a1d2e;border:1px solid #2d3148;border-radius:8px;color:#e2e8f0;font-size:0.82rem;cursor:pointer;transition:all .2s}
+    .btn-secundario:hover{border-color:#3b5bdb;color:#3b5bdb}
+    .btn-novo-os{padding:8px 16px;background:#3b5bdb;border:none;border-radius:8px;color:#fff;font-size:0.82rem;font-weight:600;cursor:pointer}
+
+    .card-agenda{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;padding:16px 18px;margin-bottom:10px;cursor:pointer;transition:border-color .2s}
+    .card-agenda:hover{border-color:#3b5bdb}
+    .card-agenda .ca-cliente{font-weight:700;color:#fff;font-size:0.95rem}
+    .card-agenda .ca-detalhe{font-size:0.78rem;color:#7c85b0;margin-top:4px}
+    .card-agenda .ca-servico{font-size:0.82rem;color:#a0aec0;margin-top:6px}
+    .card-agenda .ca-badge{margin-top:8px}
+
+    .lista-vazia{text-align:center;padding:40px;color:#4a5080;font-size:0.9rem}
+
+    /* ── Tela 3: Formulário OS ── */
+    .os-header{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;padding:16px 18px;margin-bottom:20px}
+    .os-numero{font-size:0.78rem;color:#7c85b0;font-weight:600;letter-spacing:.06em}
+    .os-cliente{font-size:1.1rem;font-weight:700;color:#fff;margin:4px 0}
+    .os-meta{font-size:0.78rem;color:#7c85b0}
+
+    .secao{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;padding:18px;margin-bottom:12px}
+    .secao-titulo{font-size:0.72rem;font-weight:700;color:#7c85b0;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+
+    .form-group{margin-bottom:12px}
+    .form-group label{display:block;font-size:0.78rem;color:#7c85b0;margin-bottom:5px;font-weight:600}
+    .form-group input,.form-group select,.form-group textarea{width:100%;background:#12152a;border:1px solid #2d3148;border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:0.85rem;outline:none;transition:border .2s;font-family:inherit}
+    .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#3b5bdb}
+    .form-group select option{background:#1a1d2e}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+    /* Toggle sim/não */
+    .toggle-group{display:flex;gap:8px;margin-bottom:8px}
+    .toggle-btn{flex:1;padding:8px;border:1px solid #2d3148;border-radius:8px;background:#12152a;color:#7c85b0;cursor:pointer;font-size:0.82rem;font-weight:600;transition:all .2s;text-align:center}
+    .toggle-btn.ativo-sim{background:#14532d;border-color:#22c55e;color:#86efac}
+    .toggle-btn.ativo-nao{background:#1a1d2e;border-color:#3b5bdb;color:#93c5fd}
+    .campo-condicional{display:none;margin-top:8px}
+    .campo-condicional.visivel{display:block}
+
+    /* ── Seção de fotos ── */
+    .upload-area{border:2px dashed #2d3148;border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:#12152a}
+    .upload-area:hover,.upload-area.dragover{border-color:#3b5bdb;background:#1a1d2e}
+    .upload-icone{font-size:2rem;margin-bottom:8px}
+    .upload-texto{font-size:0.82rem;color:#7c85b0}
+    .upload-sub{font-size:0.72rem;color:#4a5080;margin-top:4px}
+    #foto-input{display:none}
+
+    .fotos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+    .foto-thumb{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#1a1d2e}
+    .foto-thumb img{width:100%;height:100%;object-fit:cover}
+    .foto-thumb .remover{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fca5a5;border:none;border-radius:4px;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .foto-thumb .remover:hover{background:#7f1d1d}
+    .foto-uploading{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-size:0.72rem;color:#fff;font-weight:700}
+
+    .btn-enviar{width:100%;padding:14px;background:#3b5bdb;border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:8px;transition:background .2s}
+    .btn-enviar:hover{background:#2f4ac7}
+    .btn-enviar:disabled{opacity:.5;cursor:not-allowed}
+    .btn-voltar{display:flex;align-items:center;gap:6px;background:none;border:none;color:#7c85b0;cursor:pointer;font-size:0.85rem;margin-bottom:20px;padding:0}
+    .btn-voltar:hover{color:#e2e8f0}
+
+    /* Badge status */
+    .badge{padding:3px 9px;border-radius:999px;font-size:0.7rem;font-weight:700}
+    .badge-confirmado{background:#14532d;color:#86efac}
+    .badge-nao_confirmado{background:#713f12;color:#fef08a}
+    .badge-viagem{background:#14532d;color:#4ade80}
+    .badge-cuiaba{background:#1e3a5f;color:#93c5fd}
+
+    /* Sucesso */
+    .sucesso-box{text-align:center;padding:60px 24px}
+    .sucesso-box .icone{font-size:4rem;margin-bottom:16px}
+    .sucesso-box h2{font-size:1.3rem;font-weight:700;color:#22c55e;margin-bottom:8px}
+    .sucesso-box p{color:#7c85b0;margin-bottom:24px}
+
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Solução Técnica</h1>
+  <nav>
+    <a href="obras.html">Obras</a>
+    <a href="agenda.html">Agenda</a>
+    <a href="os.html" class="ativo">OS</a>
+    <button class="btn-logout" onclick="sair()">↩ Sair</button>
+  </nav>
+</header>
+
+<!-- ══ TELA 1: CARREGANDO / IDENTIFICAÇÃO ══ -->
+<div class="tela ativa" id="tela-login">
+  <div class="login-box">
+    <div class="icone">👷</div>
+    <h2>Ordem de Serviço</h2>
+    <p id="login-msg">Verificando autenticação...</p>
+    <div class="spinner-inline" id="login-spinner"></div>
+  </div>
+</div>
+
+<!-- ══ TELA 2: AGENDAMENTOS DO DIA ══ -->
+<div class="tela" id="tela-lista">
+  <div class="tela-header">
+    <div>
+      <h2 id="saudacao">Bom dia!</h2>
+      <div style="font-size:.8rem;color:#7c85b0" id="data-hoje"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secundario" onclick="irHistorico()">📋 Minhas OSs</button>
+      <button class="btn-novo-os" onclick="abrirFormulario(null)">+ OS sem agendamento</button>
+    </div>
+  </div>
+  <div id="lista-agendamentos"></div>
+</div>
+
+<!-- ══ TELA 3: FORMULÁRIO OS ══ -->
+<div class="tela" id="tela-form">
+  <button class="btn-voltar" onclick="voltarLista()">← Voltar</button>
+
+  <div class="os-header" id="os-cabecalho">
+    <div class="os-numero" id="os-numero">Nova OS</div>
+    <div class="os-cliente" id="os-cliente">—</div>
+    <div class="os-meta" id="os-meta">—</div>
+  </div>
+
+  <!-- Identificação -->
+  <div class="secao">
+    <div class="secao-titulo">Identificação</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Auxiliar (opcional)</label>
+        <select id="f-auxiliar"><option value="">Nenhum</option></select>
+      </div>
+      <div class="form-group">
+        <label>Tipo de serviço</label>
+        <select id="f-tipo">
+          <option value="execucao">Execução de projeto</option>
+          <option value="assistencia">Assistência técnica</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Horário início</label>
+        <input type="time" id="f-inicio"/>
+      </div>
+      <div class="form-group">
+        <label>Horário fim</label>
+        <input type="time" id="f-fim"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Serviços -->
+  <div class="secao">
+    <div class="secao-titulo">Serviços</div>
+    <div class="form-group">
+      <label>O que foi realizar</label>
+      <textarea id="f-planejado" rows="2" placeholder="Descreva o serviço planejado..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>O que foi realizado</label>
+      <textarea id="f-realizado" rows="3" placeholder="Descreva o que foi feito..."></textarea>
+    </div>
+  </div>
+
+  <!-- Ocorrências -->
+  <div class="secao">
+    <div class="secao-titulo">Ocorrências</div>
+
+    <div class="form-group">
+      <label>Houve algum problema?</label>
+      <div class="toggle-group">
+        <button class="toggle-btn" id="prob-sim" onclick="toggle('prob','sim')">✅ Sim</button>
+        <button class="toggle-btn ativo-nao" id="prob-nao" onclick="toggle('prob','nao')">❌ Não</button>
+      </div>
+      <div class="campo-condicional" id="campo-prob">
+        <textarea id="f-problema" rows="2" placeholder="Descreva o problema..."></textarea>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Faltou material?</label>
+      <div class="toggle-group">
+        <button class="toggle-btn" id="mat-sim" onclick="toggle('mat','sim')">✅ Sim</button>
+        <button class="toggle-btn ativo-nao" id="mat-nao" onclick="toggle('mat','nao')">❌ Não</button>
+      </div>
+      <div class="campo-condicional" id="campo-mat">
+        <textarea id="f-material" rows="2" placeholder="Liste os materiais que faltaram..."></textarea>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Retornou material?</label>
+      <div class="toggle-group">
+        <button class="toggle-btn" id="ret-sim" onclick="toggle('ret','sim')">✅ Sim</button>
+        <button class="toggle-btn ativo-nao" id="ret-nao" onclick="toggle('ret','nao')">❌ Não</button>
+      </div>
+      <div class="campo-condicional" id="campo-ret">
+        <textarea id="f-retorno" rows="2" placeholder="Liste os materiais retornados..."></textarea>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Retornou equipamento para assistência?</label>
+      <div class="toggle-group">
+        <button class="toggle-btn" id="eqp-sim" onclick="toggle('eqp','sim')">✅ Sim</button>
+        <button class="toggle-btn ativo-nao" id="eqp-nao" onclick="toggle('eqp','nao')">❌ Não</button>
+      </div>
+      <div class="campo-condicional" id="campo-eqp">
+        <textarea id="f-equipamentos" rows="2" placeholder="Liste os equipamentos..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Automação -->
+  <div class="secao">
+    <div class="secao-titulo">Sistema de Automação</div>
+    <div class="form-group">
+      <label>Sistema utilizado</label>
+      <select id="f-automacao">
+        <option value="">Selecione...</option>
+        <option>Absolute / Savant</option>
+        <option>Classic / Savant</option>
+        <option>Piero</option>
+        <option>Embrace</option>
+        <option>Classic</option>
+        <option>Lutron / Savant</option>
+        <option>WOW</option>
+        <option>Sem Automação</option>
+        <option>Outro</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Fotos -->
+  <div class="secao">
+    <div class="secao-titulo">Fotos</div>
+    <div class="upload-area" id="upload-area" onclick="document.getElementById('foto-input').click()">
+      <div class="upload-icone">📷</div>
+      <div class="upload-texto">Toque para adicionar fotos</div>
+      <div class="upload-sub">JPG, PNG ou HEIC · Máx. 10MB por foto</div>
+    </div>
+    <input type="file" id="foto-input" accept="image/*" multiple capture="environment" onchange="adicionarFotos(this.files)">
+    <div class="fotos-grid" id="fotos-grid"></div>
+  </div>
+
+  <!-- Finalização -->
+  <div class="secao">
+    <div class="secao-titulo">Finalização</div>
+    <div class="form-group">
+      <label>Próximas atividades</label>
+      <textarea id="f-proximas" rows="2" placeholder="O que precisa ser feito na próxima visita..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Observações finais</label>
+      <textarea id="f-obs" rows="3" placeholder="Observações gerais..."></textarea>
+    </div>
+  </div>
+
+  <button class="btn-enviar" id="btn-enviar" onclick="enviarOS()">📤 Enviar Ordem de Serviço</button>
+</div>
+
+<!-- ══ TELA 4: SUCESSO ══ -->
+<div class="tela" id="tela-sucesso">
+  <div class="sucesso-box">
+    <div class="icone">✅</div>
+    <h2>OS enviada com sucesso!</h2>
+    <p id="sucesso-msg">A ordem de serviço foi registrada.</p>
+    <button class="btn-primario" style="max-width:280px;margin:0 auto" onclick="novaOS()">Nova OS</button>
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase;
+const db = createClient(
+  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
+);
+
+// ── Estado ───────────────────────────────────────────────────
+let tecnicoLogado = null;
+let agendamentoSelecionado = null;
+let tecnicos = [];
+let fotosSelecionadas = []; // {file, preview, id}
+
+// ── Init via Supabase Auth ───────────────────────────────────
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  // Supervisores/coordenadores → redirecionar
+  const { data: tec } = await db
+    .from('tecnicos')
+    .select('id, nome, funcao, role')
+    .eq('auth_user_id', session.user.id)
+    .single();
+
+  if (!tec) {
+    document.getElementById('login-msg').textContent = 'Técnico não encontrado. Contate o coordenador.';
+    document.getElementById('login-spinner').style.display = 'none';
+    return;
+  }
+
+  if (tec.role && tec.role !== 'tecnico') {
+    window.location.href = 'supervisor.html';
+    return;
+  }
+
+  tecnicoLogado = tec;
+
+  // Carregar lista de técnicos para o auxiliar
+  const { data: todos } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
+  tecnicos = todos || [];
+
+  const aux = document.getElementById('f-auxiliar');
+  tecnicos.filter(t => t.id !== tecnicoLogado.id).forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.id; o.textContent = `${t.nome} (${t.funcao})`;
+    aux.appendChild(o);
+  });
+
+  const h = new Date().getHours();
+  const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  document.getElementById('saudacao').textContent = `${saudacao}, ${tecnicoLogado.nome.split(' ')[0]}! 👋`;
+
+  const hoje = new Date();
+  const DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  document.getElementById('data-hoje').textContent =
+    `${DIAS[hoje.getDay()]}, ${hoje.getDate()} de ${MESES[hoje.getMonth()]} de ${hoje.getFullYear()}`;
+
+  mostrarTela('tela-lista');
+  carregarAgendamentosHoje();
+}
+
+// ── Tela 1 → logout ──────────────────────────────────────────
+async function sair() {
+  await db.auth.signOut();
+  window.location.href = 'login.html';
+}
+
+// ── Agendamentos do dia ──────────────────────────────────────
+async function carregarAgendamentosHoje() {
+  const hoje = new Date().toISOString().split('T')[0];
+  const passado = new Date();
+  passado.setDate(passado.getDate() - 14);
+  const dataInicio = passado.toISOString().split('T')[0];
+
+  const { data, error } = await db
+    .from('agendamentos')
+    .select('*, obras(nome_cliente, endereco)')
+    .gte('data', dataInicio)
+    .or(`tecnico_id.eq.${tecnicoLogado.id},auxiliar_id.eq.${tecnicoLogado.id}`)
+    .order('data', { ascending: true })
+    .order('hora_inicio', { ascending: true });
+
+  const lista = document.getElementById('lista-agendamentos');
+
+  if (error || !data || data.length === 0) {
+    lista.innerHTML = `<div class="lista-vazia">
+      Nenhum agendamento a partir de hoje.<br>
+      <small>Use "+ OS sem agendamento" se necessário.</small>
+    </div>`;
+    return;
+  }
+
+  // Agrupa por data
+  const porData = {};
+  data.forEach(ag => {
+    if (!porData[ag.data]) porData[ag.data] = [];
+    porData[ag.data].push(ag);
+  });
+
+  const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  lista.innerHTML = Object.entries(porData).map(([data, ags]) => {
+    const d = new Date(data + 'T12:00:00');
+    const isHoje    = data === hoje;
+    const isPassado = data < hoje;
+    const labelData = isHoje
+      ? '📅 Hoje'
+      : isPassado
+        ? `⚠️ ${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]} (OS pendente)`
+        : `${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]}`;
+    const corLabel = isHoje ? '#3b5bdb' : isPassado ? '#f59e0b' : '#7c85b0';
+
+    const cards = ags.map(ag => {
+      const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
+      const cliente = ag.obras?.nome_cliente || '—';
+      const end     = ag.obras?.endereco || '';
+      const icon    = {confirmado:'✅',nao_confirmado:'🟡',viagem:'🟢',cuiaba:'🔵'}[ag.status]||'📋';
+      return `
+        <div class="card-agenda" onclick="abrirFormulario(${ag.id})">
+          <div class="ca-cliente">${icon} ${cliente}</div>
+          <div class="ca-detalhe">${hora ? hora+' · ' : ''}${end || 'Endereço não informado'}</div>
+          ${ag.servico ? `<div class="ca-servico">🔧 ${ag.servico}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    return `
+      <div style="font-size:.75rem;font-weight:700;color:${corLabel};text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px">${labelData}</div>
+      ${cards}`;
+  }).join('');
+}
+
+// ── Tela 2 → 3 ───────────────────────────────────────────────
+async function abrirFormulario(agId) {
+  agendamentoSelecionado = null;
+  resetarForm();
+
+  if (agId) {
+    const { data } = await db
+      .from('agendamentos')
+      .select('*, obras(id, nome_cliente, endereco, consultores(nome, id))')
+      .eq('id', agId)
+      .single();
+
+    if (data) {
+      agendamentoSelecionado = data;
+      const obra = data.obras;
+      document.getElementById('os-cliente').textContent = obra?.nome_cliente || '—';
+      document.getElementById('os-meta').textContent =
+        [obra?.endereco, obra?.consultores?.nome ? 'Consultor: '+obra.consultores.nome : '']
+        .filter(Boolean).join(' · ');
+      if (data.servico) document.getElementById('f-planejado').value = data.servico;
+    }
+  } else {
+    document.getElementById('os-cliente').textContent = 'OS sem agendamento';
+    document.getElementById('os-meta').textContent = tecnicoLogado?.nome || '';
+  }
+
+  // Gerar número OS temporário
+  const { count } = await db.from('ordens_de_servico').select('*', {count:'exact',head:true});
+  document.getElementById('os-numero').textContent = `OS-${String((count||0)+1).padStart(4,'0')}`;
+
+  const agora = new Date().toTimeString().slice(0,5);
+  document.getElementById('f-inicio').value = agora;
+
+  mostrarTela('tela-form');
+}
+
+// ── Toggles sim/não ──────────────────────────────────────────
+const toggleState = {prob:'nao', mat:'nao', ret:'nao', eqp:'nao'};
+function toggle(campo, valor) {
+  toggleState[campo] = valor;
+  document.getElementById(`${campo}-sim`).className = 'toggle-btn' + (valor==='sim'?' ativo-sim':'');
+  document.getElementById(`${campo}-nao`).className = 'toggle-btn' + (valor==='nao'?' ativo-nao':'');
+  const cond = document.getElementById(`campo-${campo}`);
+  cond.classList.toggle('visivel', valor==='sim');
+}
+
+function resetarForm() {
+  ['prob','mat','ret','eqp'].forEach(c => toggle(c,'nao'));
+  ['f-planejado','f-realizado','f-problema','f-material','f-retorno','f-equipamentos','f-proximas','f-obs']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-auxiliar').value = '';
+  document.getElementById('f-tipo').value = 'execucao';
+  document.getElementById('f-automacao').value = '';
+  document.getElementById('f-inicio').value = '';
+  document.getElementById('f-fim').value = '';
+  document.getElementById('os-numero').textContent = 'Nova OS';
+  document.getElementById('os-cliente').textContent = '—';
+  document.getElementById('os-meta').textContent = '—';
+  // Reset fotos
+  fotosSelecionadas = [];
+  document.getElementById('fotos-grid').innerHTML = '';
+}
+
+// ── Upload de fotos ──────────────────────────────────────────
+function adicionarFotos(files) {
+  Array.from(files).forEach(file => {
+    if (file.size > 10 * 1024 * 1024) { alert(`${file.name} é maior que 10MB.`); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const entry = { file, preview: e.target.result, id: Date.now() + Math.random() };
+      fotosSelecionadas.push(entry);
+      renderFotos();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderFotos() {
+  document.getElementById('fotos-grid').innerHTML = fotosSelecionadas.map(f => `
+    <div class="foto-thumb" id="thumb-${f.id}">
+      <img src="${f.preview}" alt="foto">
+      <button class="remover" onclick="removerFoto(${f.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+function removerFoto(id) {
+  fotosSelecionadas = fotosSelecionadas.filter(f => f.id !== id);
+  renderFotos();
+}
+
+async function uploadFotos(obraId) {
+  const urls = [];
+  for (let i = 0; i < fotosSelecionadas.length; i++) {
+    const f = fotosSelecionadas[i];
+    const ext = f.file.name.split('.').pop().toLowerCase() || 'jpg';
+    const path = `obras/${obraId}/${Date.now()}_${i}.${ext}`;
+
+    const thumb = document.getElementById(`thumb-${f.id}`);
+    if (thumb) thumb.innerHTML += `<div class="foto-uploading">⬆️ ${i+1}/${fotosSelecionadas.length}</div>`;
+
+    const { error } = await db.storage.from('fotos-os').upload(path, f.file, { contentType: f.file.type });
+    if (!error) {
+      const { data: urlData } = db.storage.from('fotos-os').getPublicUrl(path);
+      urls.push(urlData.publicUrl);
+    }
+  }
+  return urls;
+}
+
+// ── Enviar OS ────────────────────────────────────────────────
+async function enviarOS() {
+  const btn = document.getElementById('btn-enviar');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  try {
+    // Upload de fotos
+    let fotoUrls = [];
+    const obraId = agendamentoSelecionado?.obras?.id || null;
+    if (fotosSelecionadas.length > 0 && obraId) {
+      btn.textContent = `⬆️ Enviando ${fotosSelecionadas.length} foto(s)...`;
+      fotoUrls = await uploadFotos(obraId);
+    }
+
+    const payload = {
+      obra_id:             obraId,
+      tecnico_id:          tecnicoLogado?.id || null,
+      auxiliar_id:         document.getElementById('f-auxiliar').value || null,
+      consultor_id:        agendamentoSelecionado?.obras?.consultores?.id || null,
+      tipo_servico:        document.getElementById('f-tipo').value,
+      horario_inicio:      document.getElementById('f-inicio').value || null,
+      horario_fim:         document.getElementById('f-fim').value || null,
+      servico_planejado:   document.getElementById('f-planejado').value || null,
+      servicos_realizados: document.getElementById('f-realizado').value || null,
+      houve_problema:      toggleState.prob === 'sim',
+      descricao_problema:  toggleState.prob === 'sim' ? document.getElementById('f-problema').value : null,
+      faltou_material:     toggleState.mat  === 'sim',
+      lista_material:      toggleState.mat  === 'sim' ? document.getElementById('f-material').value : null,
+      retornou_material:   toggleState.ret  === 'sim',
+      lista_retorno:       toggleState.ret  === 'sim' ? document.getElementById('f-retorno').value : null,
+      sistema_automacao:   document.getElementById('f-automacao').value || null,
+      retorno_equipamento: toggleState.eqp  === 'sim',
+      lista_equipamentos:  toggleState.eqp  === 'sim' ? document.getElementById('f-equipamentos').value : null,
+      proximas_atividades: document.getElementById('f-proximas').value || null,
+      observacoes:         document.getElementById('f-obs').value || null,
+      fotos_urls:          fotoUrls.length > 0 ? fotoUrls : null,
+      status_aprovacao:    'pendente',
+    };
+
+    btn.textContent = '💾 Salvando...';
+    const { error } = await db.from('ordens_de_servico').insert(payload);
+
+    if (error) { alert('Erro ao enviar OS: ' + error.message); return; }
+
+    const num = document.getElementById('os-numero').textContent;
+    document.getElementById('sucesso-msg').textContent =
+      `${num} registrada com sucesso para ${agendamentoSelecionado?.obras?.nome_cliente || 'o cliente'}.`
+      + (fotoUrls.length > 0 ? ` ${fotoUrls.length} foto(s) anexada(s).` : '');
+    mostrarTela('tela-sucesso');
+
+  } finally {
+    btn.disabled = false; btn.textContent = '📤 Enviar Ordem de Serviço';
+  }
+}
+
+function novaOS() { mostrarTela('tela-lista'); }
+function voltarLista() { mostrarTela('tela-lista'); }
+function irHistorico() { window.location.href = 'tecnico_dashboard.html'; }
+
+function mostrarTela(id) {
+  document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
+  document.getElementById(id).classList.add('ativa');
+  window.scrollTo(0, 0);
+}
+
+// Drag & drop
+const uploadArea = document.getElementById('upload-area');
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => { e.preventDefault(); uploadArea.classList.remove('dragover'); adicionarFotos(e.dataTransfer.files); });
+
+init();
+</script>
+</body>
+</html>
