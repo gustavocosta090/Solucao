@@ -145,19 +145,19 @@
 <script>
 const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Se já estiver logado, redirecionar
 (async () => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await db.auth.getSession();
   if (session) await redirecionarUsuario();
 })();
 
 async function redirecionarUsuario() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await db.auth.getUser();
   if (!user) return;
 
-  const { data: tecnico } = await supabase
+  const { data: tecnico } = await db
     .from('tecnicos')
     .select('role')
     .eq('auth_user_id', user.id)
@@ -193,7 +193,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   loadingMsg.style.display = 'block';
 
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
 
     if (error) {
       let msg = 'E-mail ou senha incorretos.';

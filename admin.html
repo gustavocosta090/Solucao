@@ -256,17 +256,17 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Cole aqui a service_role key do seu projeto Supabase (Settings > API)
 const SUPABASE_SERVICE_KEY = 'COLE_SUA_SERVICE_ROLE_KEY_AQUI';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let tecnicos = [];
 let resetUserId = null;
 
 // Verificar autenticação
 (async () => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
-  const { data: eu } = await supabase.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
+  const { data: eu } = await db.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
   if (!eu || eu.role !== 'coordenador') {
     alert('Acesso restrito ao coordenador.');
     window.location.href = 'obras.html';
@@ -277,7 +277,7 @@ let resetUserId = null;
 })();
 
 async function carregarDados() {
-  const { data } = await supabase
+  const { data } = await db
     .from('tecnicos')
     .select('id, nome, role, email, auth_user_id, tecnico_equipes(equipes(nome))')
     .order('nome');
@@ -360,7 +360,7 @@ async function criarUsuario() {
     const newUserId = userData.id;
 
     // Vincular ao técnico
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from('tecnicos')
       .update({ auth_user_id: newUserId, email, role })
       .eq('id', tecnicoId);
@@ -436,7 +436,7 @@ function mostrarErro(msg) {
 }
 
 async function logout() {
-  await supabase.auth.signOut();
+  await db.auth.signOut();
   window.location.href = 'login.html';
 }
 </script>
