@@ -326,15 +326,24 @@ async function init() {
   }
 
   // Supervisores/coordenadores → redirecionar
-  const { data: tec } = await db
+  const { data: tec, error: tecError } = await db
     .from('tecnicos')
     .select('id, nome, funcao, role')
     .eq('auth_user_id', session.user.id)
     .single();
 
   if (!tec) {
-    document.getElementById('login-msg').textContent = 'Técnico não encontrado. Contate o coordenador.';
-    document.getElementById('login-spinner').style.display = 'none';
+    // Se não encontrou o técnico, verificar se é supervisor/coordenador pelo email
+    // (pode ter sido criado via Auth mas auth_user_id não vinculado ainda)
+    const userEmail = session.user.email || '';
+    const loginMsg = document.getElementById('login-msg');
+    const spinner  = document.getElementById('login-spinner');
+    spinner.style.display = 'none';
+    loginMsg.innerHTML = `
+      Conta não vinculada ao cadastro de técnicos.<br>
+      <small style="color:#7c85b0">Se você é supervisor ou coordenador,
+      <a href="supervisor.html" style="color:#3b5bdb">clique aqui para ir ao painel</a>.
+      Caso seja técnico, contate o coordenador para vincular sua conta.</small>`;
     return;
   }
 
@@ -346,13 +355,17 @@ async function init() {
   tecnicoLogado = tec;
 
   // Carregar lista de técnicos para o auxiliar
-  const { data: todos } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
+  let { data: todos, error: eAux } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
+  if (eAux || !todos) {
+    const { data: todos2 } = await db.from('tecnicos').select('id, nome').order('nome');
+    todos = (todos2 || []).map(x => ({ ...x, funcao: '' }));
+  }
   tecnicos = todos || [];
 
   const aux = document.getElementById('f-auxiliar');
   tecnicos.filter(t => t.id !== tecnicoLogado.id).forEach(t => {
     const o = document.createElement('option');
-    o.value = t.id; o.textContent = `${t.nome} (${t.funcao})`;
+    o.value = t.id; o.textContent = t.funcao ? `${t.nome} (${t.funcao})` : t.nome;
     aux.appendChild(o);
   });
 

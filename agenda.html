@@ -263,7 +263,13 @@ async function carregarObras() {
 }
 
 async function carregarTecnicos() {
-  const { data: t } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
+  // Tenta com funcao primeiro, cai para apenas nome se coluna não existir
+  let { data: t, error: e1 } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
+  if (e1 || !t) {
+    // Fallback sem funcao
+    const { data: t2 } = await db.from('tecnicos').select('id, nome').order('nome');
+    t = (t2 || []).map(x => ({ ...x, funcao: '' }));
+  }
   const { data: te } = await db.from('tecnico_equipes').select('tecnico_id, equipe_id');
   tecnicos       = t  || [];
   tecnicoEquipes = te || [];
