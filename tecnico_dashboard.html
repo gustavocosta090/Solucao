@@ -639,7 +639,8 @@
     <a href="tecnico_dashboard.html" class="ativo">Minhas OSs</a>
   </nav>
   <div class="header-actions">
-    <button class="btn-nova-os">
+    <span id="topbar-greeting" style="font-size:13px;color:var(--text-2);"></span>
+    <button class="btn-nova-os" onclick="window.location.href='os.html'">
       <i data-lucide="plus"></i>
       Nova OS
     </button>
@@ -659,7 +660,7 @@
     </div>
     <div class="stat-card">
       <div class="stat-num verde" id="statAprovadas">—</div>
-      <div class="stat-label">Aprovadas</div>
+      <div class="stat-label">Concluídas</div>
     </div>
     <div class="stat-card">
       <div class="stat-num amarelo" id="statPendentes">—</div>
@@ -674,8 +675,7 @@
       <div class="chips">
         <div class="chip ativo" onclick="setFiltro('todos',this)">Todas</div>
         <div class="chip" onclick="setFiltro('pendente',this)">Pendentes</div>
-        <div class="chip" onclick="setFiltro('aprovado',this)">Aprovadas</div>
-        <div class="chip" onclick="setFiltro('rejeitado',this)">Rejeitadas</div>
+        <div class="chip" onclick="setFiltro('concluida',this)">Concluídas</div>
       </div>
     </div>
     <div class="date-group">
@@ -773,6 +773,13 @@ async function logout() {
 
   tecnicoAtual = tec;
 
+  // Saudação
+  const _h2 = new Date().getHours();
+  const _s2 = _h2 < 12 ? 'Bom dia' : _h2 < 18 ? 'Boa tarde' : 'Boa noite';
+  const _primeiroNome2 = (tec.nome || '').split(' ')[0];
+  const _greet2 = document.getElementById('topbar-greeting');
+  if (_greet2 && _primeiroNome2) _greet2.textContent = `${_s2}, ${_primeiroNome2}`;
+
   const hoje = new Date();
   const inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 90);
   document.getElementById('dataInicio').value = inicio.toISOString().split('T')[0];
@@ -797,7 +804,7 @@ async function carregarOSs() {
   todasOSs = data || [];
 
   document.getElementById('statTotal').textContent     = todasOSs.length;
-  document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'aprovado').length;
+  document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida').length;
   document.getElementById('statPendentes').textContent = todasOSs.filter(o => o.status_aprovacao === 'pendente').length;
 
   filtrar();
@@ -813,13 +820,19 @@ function setFiltro(status, el) {
 function filtrar() {
   const dataInicio = document.getElementById('dataInicio').value;
   const dataFim    = document.getElementById('dataFim').value;
+  const busca      = (document.getElementById('busca').value || '').toLowerCase().trim();
 
   const filtradas = todasOSs.filter(o => {
-    const dataOS = (o.criado_em || '').slice(0, 10);
-    const matchStatus  = filtroStatus === 'todos' || o.status_aprovacao === filtroStatus;
-    const matchInicio  = !dataInicio || dataOS >= dataInicio;
-    const matchFim     = !dataFim    || dataOS <= dataFim;
-    return matchStatus && matchInicio && matchFim;
+    const dataOS   = (o.data_servico || o.criado_em || '').slice(0, 10);
+    const stOS = o.status_aprovacao || 'pendente';
+    // Normalizar: aprovada antiga = concluida, reprovada = pendente
+    const stNorm = stOS === 'aprovada' ? 'concluida' : stOS === 'reprovada' ? 'pendente' : stOS;
+    const matchStatus = filtroStatus === 'todos' || stNorm === filtroStatus;
+    const matchInicio = !dataInicio || dataOS >= dataInicio;
+    const matchFim    = !dataFim    || dataOS <= dataFim;
+    const matchBusca  = !busca || (o.obras?.nome_cliente || '').toLowerCase().includes(busca)
+                               || (o.obras?.endereco || '').toLowerCase().includes(busca);
+    return matchStatus && matchInicio && matchFim && matchBusca;
   });
 
   renderTabela(filtradas);
@@ -834,10 +847,12 @@ function fmtData(iso) {
 function badgeHTML(status) {
   const map = {
     pendente:  '<span class="badge badge-pendente"><i data-lucide="clock"></i>Pendente</span>',
-    aprovado:  '<span class="badge badge-aprovado"><i data-lucide="check"></i>Aprovado</span>',
-    rejeitado: '<span class="badge badge-rejeitado"><i data-lucide="x"></i>Rejeitado</span>',
+    concluida: '<span class="badge badge-aprovada"><i data-lucide="check"></i>Concluída</span>',
+    // retrocompatibilidade com status antigos
+    aprovada:  '<span class="badge badge-aprovada"><i data-lucide="check"></i>Concluída</span>',
+    reprovada: '<span class="badge badge-pendente"><i data-lucide="clock"></i>Pendente</span>',
   };
-  return map[status] || `<span class="badge">${status || '—'}</span>`;
+  return map[status] || '<span class="badge badge-pendente"><i data-lucide="clock"></i>Pendente</span>';
 }
 
 /* ── Tabela (desktop) ── */

@@ -831,6 +831,7 @@
 <!-- Topbar -->
 <header class="topbar">
   <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" style="font-size:13px;color:var(--text-2);margin-left:auto;margin-right:16px;"></span>
   <nav class="topbar-links">
     <a href="obras.html">Obras</a>
     <a href="agenda.html">Agenda</a>
@@ -851,11 +852,7 @@
   </div>
   <div class="stat-card">
     <div class="stat-num" id="sAprov" style="color: var(--primary);">—</div>
-    <div class="stat-label">Aprovadas</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-num" id="sReprov" style="color: var(--red);">—</div>
-    <div class="stat-label">Reprovadas</div>
+    <div class="stat-label">Concluídas</div>
   </div>
   <div class="stat-card">
     <div class="stat-num" id="sFotos" style="color: var(--secondary);">—</div>
@@ -871,8 +868,7 @@
   <select id="fStatus" onchange="filtrar()">
     <option value="">Todos os status</option>
     <option value="pendente">Pendente</option>
-    <option value="aprovada">Aprovada</option>
-    <option value="reprovada">Reprovada</option>
+    <option value="concluida">Concluída</option>
   </select>
   <input type="date" id="fDataInicio" onchange="filtrar()" title="Data início">
   <input type="date" id="fDataFim" onchange="filtrar()" title="Data fim">
@@ -900,8 +896,7 @@
             <th onclick="ordenar('tecnico')">Técnico <span class="sort-icon">↕</span></th>
             <th onclick="ordenar('obra')">Obra <span class="sort-icon">↕</span></th>
             <th>Tipo</th>
-            <th onclick="ordenar('status_servico')">Status</th>
-            <th onclick="ordenar('status_aprovacao')">Aprovação</th>
+            <th onclick="ordenar('status_aprovacao')">Status</th>
             <th>Fotos</th>
             <th>Ações</th>
           </tr>
@@ -969,8 +964,12 @@ let osSendoVisualizada = null;
     return;
   }
 
-  // Sem filtro de data por padrão — mostra todas as OSs
-  // document.getElementById('fDataInicio').value = ...;
+  // Saudação
+  const h = new Date().getHours();
+  const saudacaoTxt = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiroNome = (eu.nome || '').split(' ')[0];
+  const greetEl = document.getElementById('topbar-greeting');
+  if (greetEl && primeiroNome) greetEl.textContent = `${saudacaoTxt}, ${primeiroNome}`;
 
   await Promise.all([carregarOSs(), carregarTecnicos()]);
 })();
@@ -1010,9 +1009,8 @@ async function carregarOSs() {
 
   // Stats
   document.getElementById('sTot').textContent = todasOSs.length;
-  document.getElementById('sPend').textContent = todasOSs.filter(o => o.status_aprovacao === 'pendente').length;
-  document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'aprovada').length;
-  document.getElementById('sReprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'reprovada').length;
+  document.getElementById('sPend').textContent = todasOSs.filter(o => o.status_aprovacao === 'pendente' || !o.status_aprovacao).length;
+  document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida').length;
   document.getElementById('sFotos').textContent = todasOSs.filter(o => o.fotos_urls?.length > 0).length;
 
   document.getElementById('loadingEl').style.display = 'none';
@@ -1030,7 +1028,8 @@ function filtrar() {
 
   filtradas = todasOSs.filter(o => {
     const matchTec = !fTec || String(o.tecnicos?.id) === fTec;
-    const matchSt = !fSt || o.status_aprovacao === fSt;
+    const stOS = o.status_aprovacao || 'pendente';
+    const matchSt = !fSt || stOS === fSt;
     const matchDi = !fDi || !o.data_servico || o.data_servico >= fDi;
     const matchDf = !fDf || !o.data_servico || o.data_servico <= fDf;
     const matchBusca = !fBusca ||
@@ -1078,30 +1077,25 @@ function renderTabela() {
   tbody.innerHTML = pagina.map(o => {
     const dataRef = o.data_servico || (o.criado_em ? o.criado_em.slice(0,10) : null);
     const data = dataRef ? new Date(dataRef + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—';
-    const statusBadge = {
-      pendente: '<span class="badge badge-pendente">Pendente</span>',
-      aprovada: '<span class="badge badge-aprovada">Aprovada</span>',
-      reprovada: '<span class="badge badge-reprovada">Reprovada</span>'
-    }[o.status_aprovacao] || '';
+    const statusBadge = o.status_aprovacao === 'concluida'
+      ? '<span class="badge badge-aprovada">Concluída</span>'
+      : '<span class="badge badge-pendente">Pendente</span>';
     const nFotos = o.fotos_urls?.length || 0;
-    const servicoLabel = o.status_servico === 'concluido' ? 'Concluído' : o.status_servico === 'parcial' ? 'Parcial' : 'Ag. Material';
 
-    const botoesAprov = o.status_aprovacao === 'pendente'
-      ? `<button class="btn-aprovar" onclick="event.stopPropagation();aprovarOS(${o.id}, event)">Aprovar</button>
-         <button class="btn-reprovar" onclick="event.stopPropagation();pedirReprovacao(${o.id})">Reprovar</button>`
-      : '';
+    const btnAcao = o.status_aprovacao === 'pendente'
+      ? `<button class="btn-aprovar" onclick="event.stopPropagation();concluirOS(${o.id})">Concluir</button>`
+      : `<button class="btn-reprovar" onclick="event.stopPropagation();reabrirOS(${o.id})">Reabrir</button>`;
 
     return `
-    <tr>
+    <tr style="cursor:pointer;" onclick="verOS(${o.id})">
       <td>${data}</td>
       <td>${o.tecnicos?.nome || '—'}</td>
       <td title="${o.obras?.endereco || ''}">${o.obras?.nome_cliente || '—'}</td>
       <td class="td-muted">${(o.tipo_servico || '').replace(/_/g,' ')}</td>
-      <td class="td-muted">${servicoLabel}</td>
       <td>${statusBadge}</td>
       <td class="td-center">${nFotos > 0 ? `<span class="fotos-chip"><i data-lucide="image"></i>${nFotos}</span>` : '<span style="color:var(--text-3);">—</span>'}</td>
-      <td style="white-space:nowrap;">
-        ${botoesAprov}
+      <td style="white-space:nowrap;" onclick="event.stopPropagation()">
+        ${btnAcao}
         <button class="btn-ver" onclick="verOS(${o.id})">Ver</button>
       </td>
     </tr>`;
@@ -1143,11 +1137,7 @@ function verOS(id) {
 
   const dataRefModal = os.data_servico || (os.criado_em ? os.criado_em.slice(0,10) : null);
   const data = dataRefModal ? new Date(dataRefModal + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) : '—';
-  const statusLabel = {
-    pendente: 'Aguardando aprovação',
-    aprovada: 'Aprovada',
-    reprovada: 'Reprovada'
-  }[os.status_aprovacao] || '';
+  const statusLabel = os.status_aprovacao === 'concluida' ? 'Concluída' : 'Pendente';
 
   let html = `
   <div class="detail-grid">
@@ -1164,12 +1154,8 @@ function verOS(id) {
       <span><strong>${os.obras?.nome_cliente || '—'}</strong>${os.obras?.endereco ? `<span class="detail-address"><i data-lucide="map-pin"></i>${os.obras.endereco}</span>` : ''}</span>
     </div>
     <div class="detail-item">
-      <label>Status de aprovação</label>
-      <span><span class="badge badge-${os.status_aprovacao}">${statusLabel}</span></span>
-    </div>
-    <div class="detail-item">
-      <label>Status do serviço</label>
-      <span>${os.status_servico === 'concluido' ? 'Concluído' : os.status_servico === 'parcial' ? 'Parcial' : 'Aguardando material'}</span>
+      <label>Status</label>
+      <span><span class="badge badge-${os.status_aprovacao === 'concluida' ? 'aprovada' : 'pendente'}">${statusLabel}</span></span>
     </div>
     ${os.tipo_servico ? `<div class="detail-item"><label>Tipo de serviço</label><span>${os.tipo_servico.replace(/_/g,' ')}</span></div>` : ''}
     ${os.nome_cliente_local ? `<div class="detail-item"><label>Responsável no local</label><span>${os.nome_cliente_local}</span></div>` : ''}
@@ -1198,22 +1184,22 @@ function verOS(id) {
     </div>`;
   }
 
-  // Aprovação
-  if (os.status_aprovacao === 'pendente') {
+  // Ação
+  if (os.status_aprovacao !== 'concluida') {
     html += `
     <div class="aprovacao-box">
-      <h3><i data-lucide="edit-3"></i> Aprovar ou reprovar esta OS</h3>
-      <textarea id="obsModalSup" placeholder="Observação para o técnico (opcional)..."></textarea>
+      <h3><i data-lucide="check-circle"></i> Marcar como concluída</h3>
+      <textarea id="obsModalSup" placeholder="Observação (opcional)..."></textarea>
       <div class="aprovacao-btns">
-        <button class="btn-reprovar-lg" onclick="pedirReprovacaoModal()"><i data-lucide="x-circle"></i> Reprovar</button>
-        <button class="btn-aprovar-lg" onclick="aprovarOSModal()"><i data-lucide="check-circle"></i> Aprovar</button>
+        <button class="btn-aprovar-lg" onclick="concluirOSModal()"><i data-lucide="check-circle"></i> Concluir OS</button>
       </div>
     </div>`;
   } else {
-    const cl = os.status_aprovacao;
-    const icon = cl === 'aprovada' ? 'check-circle' : 'x-circle';
-    const lbl = cl === 'aprovada' ? 'Esta OS já foi aprovada.' : 'Esta OS foi reprovada.';
-    html += `<div class="already-approved ${cl}"><i data-lucide="${icon}"></i>${lbl}</div>`;
+    html += `
+    <div class="already-approved aprovada" style="justify-content:space-between;align-items:center;display:flex;gap:12px;">
+      <span style="display:flex;align-items:center;gap:8px;"><i data-lucide="check-circle"></i> OS concluída.</span>
+      <button class="btn-reprovar" style="flex-shrink:0;" onclick="reabrirOSModal()"><i data-lucide="rotate-ccw"></i> Reabrir</button>
+    </div>`;
   }
 
   document.getElementById('modalTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
@@ -1224,31 +1210,25 @@ function verOS(id) {
 
 function fecharModal() { document.getElementById('modalOS').classList.remove('open'); }
 
-// ===== APROVAÇÃO =====
-async function aprovarOS(id, e) {
-  if (!confirm('Aprovar esta OS?')) return;
-  await mudarStatusOS(id, 'aprovada', '');
+// ===== CONCLUIR / REABRIR =====
+async function concluirOS(id) {
+  await mudarStatusOS(id, 'concluida', '');
 }
 
-async function aprovarOSModal() {
+async function concluirOSModal() {
   if (!osSendoVisualizada) return;
   const obs = document.getElementById('obsModalSup')?.value || '';
-  await mudarStatusOS(osSendoVisualizada.id, 'aprovada', obs);
+  await mudarStatusOS(osSendoVisualizada.id, 'concluida', obs);
   fecharModal();
 }
 
-function pedirReprovacao(id) {
-  const obs = prompt('Motivo da reprovação (obrigatório):');
-  if (obs === null) return;
-  if (!obs.trim()) { alert('Informe o motivo.'); return; }
-  mudarStatusOS(id, 'reprovada', obs);
+async function reabrirOS(id) {
+  await mudarStatusOS(id, 'pendente', '');
 }
 
-function pedirReprovacaoModal() {
+async function reabrirOSModal() {
   if (!osSendoVisualizada) return;
-  const obs = document.getElementById('obsModalSup')?.value || '';
-  if (!obs.trim()) { alert('Informe o motivo da reprovação no campo de observação.'); return; }
-  mudarStatusOS(osSendoVisualizada.id, 'reprovada', obs);
+  await mudarStatusOS(osSendoVisualizada.id, 'pendente', '');
   fecharModal();
 }
 
@@ -1266,12 +1246,11 @@ async function mudarStatusOS(id, status, obs) {
 
   // Atualizar local
   const os = todasOSs.find(o => o.id === id);
-  if (os) { os.status_aprovacao = status; os.observacao_supervisor = obs; }
+  if (os) { os.status_aprovacao = status; os.observacao_supervisor = obs || null; }
 
   // Re-render stats
   document.getElementById('sPend').textContent = todasOSs.filter(o => o.status_aprovacao === 'pendente').length;
-  document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'aprovada').length;
-  document.getElementById('sReprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'reprovada').length;
+  document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida').length;
 
   filtrar();
 }

@@ -601,6 +601,7 @@
     <a href="agenda.html">Agenda</a>
     <a href="os.html">OS</a>
     <div class="nav-divider"></div>
+    <span id="topbar-greeting" style="font-size:13px;color:var(--text-2);"></span>
     <button class="btn-logout" onclick="logout()">
       <i data-lucide="log-out"></i>
       Sair
@@ -744,9 +745,16 @@
     const { data: { session } } = await db.auth.getSession();
     if (!session) { window.location.href = 'login.html'; return; }
 
-    // Buscar role do usuário
-    const { data: eu } = await db.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
+    // Buscar role e nome do usuário
+    const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
     userRole = eu?.role || 'tecnico';
+
+    // Saudação
+    const _h = new Date().getHours();
+    const _s = _h < 12 ? 'Bom dia' : _h < 18 ? 'Boa tarde' : 'Boa noite';
+    const _nome = (eu?.nome || '').split(' ')[0];
+    const _greet = document.getElementById('topbar-greeting');
+    if (_greet && _nome) _greet.textContent = `${_s}, ${_nome}`;
 
     // Técnicos só visualizam — esconder botão Nova Obra
     if (userRole === 'tecnico') {

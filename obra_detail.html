@@ -608,23 +608,34 @@ const FASES = {
 
 const STATUS_LABELS = {
   pendente:  { label: 'Pendente',   cls: 'badge-pend' },
-  aprovada:  { label: 'Aprovada',   cls: 'badge-aprov' },
-  reprovada: { label: 'Reprovada',  cls: 'badge-rejt' },
+  concluida: { label: 'Concluída',  cls: 'badge-aprov' },
+  // retrocompatibilidade
+  aprovada:  { label: 'Concluída',  cls: 'badge-aprov' },
+  reprovada: { label: 'Pendente',   cls: 'badge-pend' },
 };
+
+let osSendoVisualizada = null;
 
 async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
-  const { data: eu } = await db.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
+  const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
   const role = eu?.role || 'tecnico';
   const nav = document.getElementById('nav-links');
+
+  // Saudação
+  const _hd = new Date().getHours();
+  const _sd = _hd < 12 ? 'Bom dia' : _hd < 18 ? 'Boa tarde' : 'Boa noite';
+  const _nd = (eu?.nome || '').split(' ')[0];
+  const greetSpan = `<span style="font-size:13px;color:var(--text-2);">${_nd ? `${_sd}, ${_nd}` : ''}</span>`;
 
   if (role === 'tecnico') {
     nav.innerHTML = `
       <a href="obras.html">Obras</a>
       <a href="os.html">OS</a>
       <div class="nav-divider"></div>
+      ${greetSpan}
       <button class="btn-logout" onclick="logout()"><i data-lucide="log-out"></i> Sair</button>`;
   } else {
     nav.innerHTML = `
@@ -632,6 +643,7 @@ async function init() {
       <a href="agenda.html">Agenda</a>
       <a href="supervisor.html">Supervisor</a>
       <div class="nav-divider"></div>
+      ${greetSpan}
       <button class="btn-logout" onclick="logout()"><i data-lucide="log-out"></i> Sair</button>`;
   }
   lucide.createIcons();
@@ -695,8 +707,8 @@ function renderPagina(obra) {
   const faseClass = obra.fase_atual || 'em_andamento';
 
   const total     = todasOS.length;
-  const aprovadas = todasOS.filter(o => o.status_aprovacao === 'aprovada').length;
-  const pendentes = todasOS.filter(o => o.status_aprovacao === 'pendente').length;
+  const concluidas = todasOS.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
+  const pendentes = todasOS.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
   const nFotos    = todasFotos.length;
 
   document.getElementById('conteudo').innerHTML = `
@@ -736,8 +748,8 @@ function renderPagina(obra) {
         <div class="stat-label">Total de OS</div>
       </div>
       <div class="stat-card">
-        <div class="stat-num" style="color:var(--primary)">${aprovadas}</div>
-        <div class="stat-label">Aprovadas</div>
+        <div class="stat-num" style="color:var(--primary)">${concluidas}</div>
+        <div class="stat-label">Concluídas</div>
       </div>
       <div class="stat-card">
         <div class="stat-num" style="color:#F59E0B">${pendentes}</div>
@@ -756,8 +768,7 @@ function renderPagina(obra) {
     <div class="filtros">
       <button class="filtro-btn ativo" onclick="filtrarOS(this,'todos')">Todas</button>
       <button class="filtro-btn" onclick="filtrarOS(this,'pendente')">Pendentes</button>
-      <button class="filtro-btn" onclick="filtrarOS(this,'aprovada')">Aprovadas</button>
-      <button class="filtro-btn" onclick="filtrarOS(this,'reprovada')">Reprovadas</button>
+      <button class="filtro-btn" onclick="filtrarOS(this,'concluida')">Concluídas</button>
     </div>
     <div id="tabela-os" class="os-table-wrap">${renderTabelaOS(todasOS)}</div>
 
@@ -779,28 +790,31 @@ function renderTabelaOS(lista) {
     </div>`;
 
   const rows = lista.map((os, idx) => {
-    const st = STATUS_LABELS[os.status_aprovacao] || { label: os.status_aprovacao || '—', cls: '' };
+    const stKey = (os.status_aprovacao === 'aprovada') ? 'concluida' : (os.status_aprovacao === 'reprovada') ? 'pendente' : (os.status_aprovacao || 'pendente');
+    const st = STATUS_LABELS[stKey] || { label: stKey, cls: '' };
     const tec = os.tecnicos?.nome || '—';
-    const data = os.criado_em ? new Date(os.criado_em).toLocaleDateString('pt-BR') : '—';
+    const dataRef = os.data_servico || os.criado_em;
+    const data = dataRef ? new Date(dataRef + (dataRef.length === 10 ? 'T12:00' : '')).toLocaleDateString('pt-BR') : '—';
     const nF = (os.fotos_urls || []).length;
 
     const minisFotos = (os.fotos_urls || []).slice(0,3).map((url, fi) =>
       `<img class="foto-mini" src="${url}" alt="foto" onclick="event.stopPropagation();abrirLightboxOS(${idx},${fi})">`
     ).join('');
     const maisTag = nF > 3 ? `<span style="font-size:0.72rem;color:var(--text-3);margin-left:2px">+${nF-3}</span>` : '';
+    const descricao = os.descricao_servicos || os.observacoes || os.atividades_realizadas || '—';
 
-    return `<tr>
+    return `<tr style="cursor:pointer;" onclick="verDetalheOS(${os.id})">
       <td style="color:var(--text-3);font-size:0.75rem;white-space:nowrap">${data}</td>
       <td style="color:var(--text-1);font-weight:600">${tec}</td>
-      <td style="color:var(--text-2);font-size:0.8rem;max-width:260px">${os.observacoes_finais || os.atividades_realizadas || '—'}</td>
+      <td style="color:var(--text-2);font-size:0.8rem;max-width:260px">${descricao.length > 80 ? descricao.slice(0,80)+'…' : descricao}</td>
       <td><span class="badge ${st.cls}">${st.label}</span></td>
-      <td><div class="fotos-mini">${minisFotos}${maisTag}</div></td>
+      <td onclick="event.stopPropagation()"><div class="fotos-mini">${minisFotos}${maisTag}</div></td>
     </tr>`;
   }).join('');
 
   return `<table>
     <thead><tr>
-      <th>Data</th><th>Tecnico</th><th>Observacoes</th><th>Status</th><th>Fotos</th>
+      <th>Data</th><th>Técnico</th><th>Descrição</th><th>Status</th><th>Fotos</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
@@ -820,13 +834,85 @@ function renderGaleria(fotos) {
     </div>`).join('');
 }
 
+function normStatus(s) {
+  if (!s || s === 'reprovada') return 'pendente';
+  if (s === 'aprovada') return 'concluida';
+  return s;
+}
+
 function filtrarOS(btn, status) {
   filtroStatus = status;
   document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
   btn.classList.add('ativo');
-  const filtradas = status === 'todos' ? todasOS : todasOS.filter(o => o.status_aprovacao === status);
+  const filtradas = status === 'todos' ? todasOS : todasOS.filter(o => normStatus(o.status_aprovacao) === status);
   document.getElementById('tabela-os').innerHTML = renderTabelaOS(filtradas);
   lucide.createIcons();
+}
+
+function verDetalheOS(id) {
+  const os = todasOS.find(o => o.id === id);
+  if (!os) return;
+  osSendoVisualizada = os;
+
+  const stKey = normStatus(os.status_aprovacao);
+  const st = STATUS_LABELS[stKey] || { label: stKey, cls: '' };
+  const dataRef = os.data_servico || os.criado_em;
+  const data = dataRef ? new Date(dataRef + (dataRef.length === 10 ? 'T12:00' : '')).toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) : '—';
+  const tec = os.tecnicos?.nome || '—';
+
+  let html = `
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;">
+    <div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Técnico</label><span style="color:var(--text-1);font-weight:600">${tec}</span></div>
+    <div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Data</label><span style="color:var(--text-1)">${data}</span></div>
+    <div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Status</label><span class="badge ${st.cls}">${st.label}</span></div>
+    ${os.tipo_servico ? `<div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Tipo de serviço</label><span style="color:var(--text-2)">${os.tipo_servico.replace(/_/g,' ')}</span></div>` : ''}
+    ${os.nome_cliente_local ? `<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Responsável no local</label><span style="color:var(--text-2)">${os.nome_cliente_local}</span></div>` : ''}
+    ${os.descricao_servicos ? `<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Descrição dos serviços</label><span style="color:var(--text-2);white-space:pre-line">${os.descricao_servicos}</span></div>` : ''}
+    ${os.materiais_utilizados ? `<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Materiais utilizados</label><span style="color:var(--text-2);white-space:pre-line">${os.materiais_utilizados}</span></div>` : ''}
+    ${os.pendencias ? `<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Pendências</label><span style="color:#F59E0B;white-space:pre-line">${os.pendencias}</span></div>` : ''}
+    ${os.observacoes ? `<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Observações</label><span style="color:var(--text-2);white-space:pre-line">${os.observacoes}</span></div>` : ''}
+    ${os.veiculo ? `<div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Veículo / KM</label><span style="color:var(--text-2)">${os.veiculo}${os.km_percorrido ? ' · ' + os.km_percorrido + ' km' : ''}</span></div>` : ''}
+  </div>`;
+
+  if (os.fotos_urls && os.fotos_urls.length > 0) {
+    html += `<div style="margin-top:20px;"><div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Fotos (${os.fotos_urls.length})</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
+      ${os.fotos_urls.map((url, i) => `<img src="${url}" alt="foto ${i+1}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);" onclick="abrirLightboxFromModal(${JSON.stringify(os.fotos_urls)}, ${i})">`).join('')}
+    </div></div>`;
+  }
+
+  // Criar modal simples
+  let modal = document.getElementById('modal-os-detalhe');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-os-detalhe';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);padding:20px;';
+    modal.addEventListener('click', e => { if (e.target === modal) fecharDetalheOS(); });
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;padding:28px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <h3 style="font-size:16px;font-weight:700;color:var(--text-1);">Detalhes da OS</h3>
+        <button onclick="fecharDetalheOS()" style="background:none;border:none;cursor:pointer;color:var(--text-2);display:flex;align-items:center;gap:4px;font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);">Fechar</button>
+      </div>
+      ${html}
+    </div>`;
+  modal.style.display = 'flex';
+  lucide.createIcons();
+}
+
+function fecharDetalheOS() {
+  const modal = document.getElementById('modal-os-detalhe');
+  if (modal) modal.style.display = 'none';
+}
+
+function abrirLightboxFromModal(fotos, idx) {
+  todasFotos = fotos.map(url => ({ url }));
+  lbIndex = idx;
+  document.getElementById('lb-img').src = fotos[idx];
+  document.getElementById('lightbox').classList.add('aberto');
 }
 
 function abrirLightbox(idx) {

@@ -315,7 +315,6 @@
     .card-confirmado   { background: rgba(34,197,94,0.07);   border-color: #22c55e; }
     .card-nao_confirmado { background: rgba(234,179,8,0.07); border-color: #eab308; }
     .card-viagem       { background: rgba(74,222,128,0.07);  border-color: #4ade80; }
-    .card-cuiaba       { background: rgba(96,165,250,0.07);  border-color: #60a5fa; }
 
     .ag-tecs { font-weight: 700; color: var(--text-1); margin-bottom: 3px; }
     .ag-cliente { font-weight: 600; color: var(--text-2); margin-bottom: 2px; }
@@ -335,7 +334,6 @@
     .badge-confirmado     { background: rgba(22,101,52,0.6);  color: #bbf7d0; }
     .badge-nao_confirmado { background: rgba(113,63,18,0.6);  color: #fef08a; }
     .badge-viagem         { background: rgba(20,83,45,0.6);   color: #86efac; }
-    .badge-cuiaba         { background: rgba(30,58,95,0.6);   color: #93c5fd; }
 
     /* ── Spinner ── */
     .spinner-wrap {
@@ -528,6 +526,7 @@
     <a href="agenda.html" class="ativo">Agenda</a>
     <a href="os.html">OS</a>
     <div class="nav-divider"></div>
+    <span id="topbar-greeting" style="font-size:13px;color:var(--text-2);"></span>
     <button class="btn-logout" onclick="logout()">
       <i data-lucide="log-out"></i>
       Sair
@@ -612,9 +611,8 @@
         <label>Status</label>
         <select id="f-status">
           <option value="confirmado">Confirmado</option>
-          <option value="nao_confirmado">Nao confirmado</option>
+          <option value="nao_confirmado">Não confirmado</option>
           <option value="viagem">Viagem</option>
-          <option value="cuiaba">Cuiaba</option>
         </select>
       </div>
     </div>
@@ -675,9 +673,8 @@ const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov'
 
 const STATUS_LABEL = {
   confirmado:     'Confirmado',
-  nao_confirmado: 'Nao confirmado',
+  nao_confirmado: 'Não confirmado',
   viagem:         'Viagem',
-  cuiaba:         'Cuiaba',
 };
 
 let modoVisualizacao = false;
@@ -686,7 +683,15 @@ async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
-  const { data: eu } = await db.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
+  const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
+
+  // Saudação
+  const _ha = new Date().getHours();
+  const _sa = _ha < 12 ? 'Bom dia' : _ha < 18 ? 'Boa tarde' : 'Boa noite';
+  const _na = (eu?.nome || '').split(' ')[0];
+  const _ga = document.getElementById('topbar-greeting');
+  if (_ga && _na) _ga.textContent = `${_sa}, ${_na}`;
+
   if (eu && eu.role === 'tecnico') {
     modoVisualizacao = true;
     const btnNovo = document.querySelector('.btn-novo');

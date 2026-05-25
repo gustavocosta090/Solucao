@@ -608,8 +608,13 @@
 
 <header>
   <span class="header-brand">Solução Técnica</span>
+  <nav id="header-nav" style="display:none;gap:4px;align-items:center;">
+    <a href="obras.html" style="padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;color:#A1A1AA;text-decoration:none;transition:color .15s,background .15s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.color='#A1A1AA';this.style.background='transparent'">Obras</a>
+    <a href="agenda.html" style="padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;color:#A1A1AA;text-decoration:none;transition:color .15s,background .15s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.color='#A1A1AA';this.style.background='transparent'">Agenda</a>
+    <a href="supervisor.html" style="padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;color:#A1A1AA;text-decoration:none;transition:color .15s,background .15s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.color='#A1A1AA';this.style.background='transparent'">OS</a>
+  </nav>
   <div class="header-actions">
-    <button class="btn-outline" onclick="irHistorico()">
+    <button class="btn-outline" id="btn-minhas-os" onclick="irHistorico()">
       <i data-lucide="list"></i>
       Minhas OSs
     </button>
@@ -855,10 +860,13 @@ async function init() {
     return;
   }
 
-  if (tec.role && tec.role !== 'tecnico') {
+  if (tec.role && tec.role !== 'tecnico' && tec.role !== 'auxiliar') {
     window.location.href = 'supervisor.html';
     return;
   }
+
+  // Mostrar nav com links para Obras e Agenda para todos os perfis
+  document.getElementById('header-nav').style.display = 'flex';
 
   tecnicoLogado = tec;
 

@@ -520,6 +520,7 @@
       <a href="supervisor.html"><i data-lucide="users"></i> Supervisor</a>
     </nav>
   </div>
+  <span id="topbar-greeting" style="font-size:13px;color:var(--text-2);margin-right:12px;"></span>
   <button class="btn-logout" onclick="logout()">
     <i data-lucide="log-out"></i>
     Sair
@@ -648,26 +649,19 @@ let resetUserId = null;
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
-  const { data: eu } = await db.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
+  const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
   if (!eu || eu.role !== 'coordenador') {
     alert('Acesso restrito ao coordenador.');
     window.location.href = 'obras.html';
     return;
   }
 
-  // Aviso se service key não foi configurada
-  if (SUPABASE_SERVICE_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY0NjMzMSwiZXhwIjoyMDk1MjIyMzMxfQ.QyzUGOJgrF7YqU6QY6gPzT_jLYbeGV6gE6UTqe2Xrn0') {
-    const aviso = document.createElement('div');
-    aviso.style.cssText = 'background:#fef3c7;border:1px solid #f59e0b;color:#92400e;padding:14px 20px;margin:16px 0;border-radius:8px;font-size:14px;line-height:1.6;';
-    aviso.innerHTML = `<strong>⚠️ Service Key não configurada</strong><br>
-      Para criar usuários, você precisa adicionar a <strong>service_role key</strong> no arquivo <code>admin.html</code>.<br>
-      <strong>Passos:</strong><br>
-      1. Acesse <a href="https://supabase.com/dashboard/project/kxtjqudpnmdqkzqhyhmz/settings/api" target="_blank" style="color:#d97706;">Supabase → Settings → API</a><br>
-      2. Copie a chave <strong>"service_role"</strong> (em "Project API Keys")<br>
-      3. No arquivo <code>admin.html</code>, localize a linha com <code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY0NjMzMSwiZXhwIjoyMDk1MjIyMzMxfQ.QyzUGOJgrF7YqU6QY6gPzT_jLYbeGV6gE6UTqe2Xrn0</code> e substitua pela chave copiada`;
-    const container = document.querySelector('.container');
-    if (container) container.insertBefore(aviso, container.firstChild);
-  }
+  // Saudação
+  const _he = new Date().getHours();
+  const _se = _he < 12 ? 'Bom dia' : _he < 18 ? 'Boa tarde' : 'Boa noite';
+  const _ne = (eu.nome || '').split(' ')[0];
+  const _ge = document.getElementById('topbar-greeting');
+  if (_ge && _ne) _ge.textContent = `${_se}, ${_ne}`;
 
   await carregarDados();
 })();
