@@ -259,6 +259,10 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY0NjMzMSwiZXhwIjoyMDk1MjIyMzMxfQ.QyzUGOJgrF7YqU6QY6gPzT_jLYbeGV6gE6UTqe2Xrn0';
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Cliente admin com service_role — bypassa RLS para operações administrativas
+const dbAdmin = SUPABASE_SERVICE_KEY !== 'COLE_SUA_SERVICE_ROLE_KEY_AQUI'
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+  : null;
 
 let tecnicos = [];
 let resetUserId = null;
@@ -350,6 +354,10 @@ async function criarUsuario() {
     mostrarErro('A senha deve ter pelo menos 6 caracteres.');
     return;
   }
+  if (!dbAdmin) {
+    mostrarErro('Service key não configurada. Adicione a chave service_role no admin.html.');
+    return;
+  }
 
   // Criar usuário via Supabase Admin API
   try {
@@ -375,8 +383,8 @@ async function criarUsuario() {
 
     const newUserId = userData.id;
 
-    // Vincular ao técnico
-    const { error: updateError } = await db
+    // Vincular ao técnico — usa dbAdmin (service_role) para bypassar RLS
+    const { error: updateError } = await dbAdmin
       .from('tecnicos')
       .update({ auth_user_id: newUserId, email, role })
       .eq('id', tecnicoId);
