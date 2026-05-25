@@ -201,7 +201,7 @@ async function carregarObra() {
     .from('ordens_de_servico')
     .select('*, tecnicos(nome)')
     .eq('obra_id', obraId)
-    .order('created_at', { ascending: false });
+    .order('criado_em', { ascending: false });
 
   todasOS = osList || [];
 
@@ -209,7 +209,7 @@ async function carregarObra() {
   todasFotos = [];
   todasOS.forEach(os => {
     (os.fotos_urls || []).forEach(url => {
-      todasFotos.push({ url, tecnico: os.tecnicos?.nome || '—', data: os.created_at?.slice(0,10) || '' });
+      todasFotos.push({ url, tecnico: os.tecnicos?.nome || '—', data: os.criado_em?.slice(0,10) || '' });
     });
   });
 
@@ -270,7 +270,7 @@ function renderTabelaOS(lista) {
   const rows = lista.map((os, idx) => {
     const st = STATUS_LABELS[os.status_aprovacao] || { label: os.status_aprovacao || '—', cls: '' };
     const tec = os.tecnicos?.nome || '—';
-    const data = os.created_at ? new Date(os.created_at).toLocaleDateString('pt-BR') : '—';
+    const data = os.criado_em ? new Date(os.criado_em).toLocaleDateString('pt-BR') : '—';
     const nFotos = (os.fotos_urls || []).length;
 
     const minisFotos = (os.fotos_urls || []).slice(0,3).map((url, fi) =>

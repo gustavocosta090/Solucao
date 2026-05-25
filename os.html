@@ -601,6 +601,7 @@ async function enviarOS() {
       observacoes:         document.getElementById('f-obs').value || null,
       fotos_urls:          fotoUrls.length > 0 ? fotoUrls : null,
       status_aprovacao:    'pendente',
+      criado_em:           new Date().toISOString(),
     };
 
     btn.textContent = '💾 Salvando...';

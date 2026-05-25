@@ -225,7 +225,7 @@ async function carregarOSs() {
     .from('ordens_de_servico')
     .select('*, obras(nome_cliente, endereco)')
     .eq('tecnico_id', tecnicoAtual.id)
-    .order('created_at', { ascending: false });
+    .order('criado_em', { ascending: false });
 
   if (error) {
     document.getElementById('tabelaBody').innerHTML =
@@ -254,7 +254,7 @@ function filtrar() {
   const dataFim    = document.getElementById('dataFim').value;
 
   const filtradas = todasOSs.filter(o => {
-    const dataOS = (o.created_at || '').slice(0, 10);
+    const dataOS = (o.criado_em || '').slice(0, 10);
     const matchStatus  = filtroStatus === 'todos' || o.status_aprovacao === filtroStatus;
     const matchInicio  = !dataInicio || dataOS >= dataInicio;
     const matchFim     = !dataFim    || dataOS <= dataFim;
@@ -289,7 +289,7 @@ function renderTabela(lista) {
   tbody.innerHTML = lista.map(os => {
     const nFotos = (os.fotos_urls || []).length;
     return `<tr onclick="verDetalhe(${os.id})">
-      <td style="color:#7c85b0;white-space:nowrap">${fmtData(os.created_at)}</td>
+      <td style="color:#7c85b0;white-space:nowrap">${fmtData(os.criado_em)}</td>
       <td><strong>${os.obras?.nome_cliente || '—'}</strong>
         ${os.obras?.endereco ? `<div style="font-size:.72rem;color:#7c85b0">${os.obras.endereco}</div>` : ''}</td>
       <td style="color:#a0aec0;max-width:280px">${(os.observacoes || os.servicos_realizados || '—').slice(0,80)}</td>
@@ -310,7 +310,7 @@ function renderCards(lista) {
     <div class="os-card" onclick="verDetalhe(${os.id})">
       <div class="os-card-header">
         <div class="os-obra">${os.obras?.nome_cliente || '—'}</div>
-        <div class="os-data">${fmtData(os.created_at)}</div>
+        <div class="os-data">${fmtData(os.criado_em)}</div>
       </div>
       <div class="os-obs">${os.observacoes || os.servicos_realizados || 'Sem observações'}</div>
       <div class="os-footer">
@@ -328,7 +328,7 @@ function verDetalhe(id) {
   document.getElementById('modalTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
 
   let html = `
-    <div class="detail-row"><div class="detail-label">Data</div><div class="detail-value">${fmtData(os.created_at)}</div></div>
+    <div class="detail-row"><div class="detail-label">Data</div><div class="detail-value">${fmtData(os.criado_em)}</div></div>
     <div class="detail-row"><div class="detail-label">Obra / Endereço</div><div class="detail-value">${os.obras?.nome_cliente || '—'}${os.obras?.endereco ? ` · 📍 ${os.obras.endereco}` : ''}</div></div>
     <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value">${badgeHTML(os.status_aprovacao)}</div></div>
     ${os.observacao_supervisor ? `<div class="obs-supervisor">💬 Supervisor: "${os.observacao_supervisor}"</div>` : ''}
