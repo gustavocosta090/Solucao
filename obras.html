@@ -423,7 +423,7 @@
     const status = obra.status_compra ?? fase.prazo;
 
     return `
-      <div class="card">
+      <div class="card" onclick="window.location.href='obra_detail.html?id=${obra.id}'" style="cursor:pointer" title="Ver OS e fotos desta obra">
         <div class="card-topo">
           <div>
             <div class="card-cliente">${obra.nome_cliente}</div>

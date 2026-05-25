@@ -220,6 +220,13 @@ async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
+  // Técnicos não gerenciam agenda — só visualizam via os.html
+  const { data: eu } = await db.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
+  if (eu && eu.role === 'tecnico') {
+    window.location.href = 'os.html';
+    return;
+  }
+
   await Promise.all([carregarObras(), carregarTecnicos()]);
   preencherModal();
   await carregarAgenda();

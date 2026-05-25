@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solução Técnica — Detalhe da Obra</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+
+    header{background:#1a1d2e;border-bottom:1px solid #2d3148;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    header h1{font-size:1.2rem;font-weight:700;color:#fff}
+    nav{display:flex;gap:6px}
+    nav a{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;text-decoration:none;transition:all .2s}
+    nav a:hover{background:#3b5bdb;color:#fff}
+    .btn-logout{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;background:none;border:none;cursor:pointer;transition:all .2s}
+    .btn-logout:hover{background:#7f1d1d;color:#fca5a5}
+
+    main{max-width:1100px;margin:0 auto;padding:28px 20px}
+
+    .btn-voltar{display:inline-flex;align-items:center;gap:6px;color:#7c85b0;font-size:0.85rem;background:none;border:none;cursor:pointer;margin-bottom:20px;padding:0}
+    .btn-voltar:hover{color:#e2e8f0}
+
+    /* ── Card da obra ── */
+    .obra-card{background:#1a1d2e;border:1px solid #2d3148;border-radius:14px;padding:24px;margin-bottom:28px}
+    .obra-title{font-size:1.4rem;font-weight:700;color:#fff;margin-bottom:4px}
+    .obra-id{font-size:0.78rem;color:#7c85b0;font-weight:600;letter-spacing:.06em;margin-bottom:16px}
+    .obra-infos{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+    .obra-info-item{background:#12152a;border-radius:8px;padding:10px 14px}
+    .obra-info-label{font-size:0.7rem;color:#7c85b0;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+    .obra-info-value{font-size:0.88rem;color:#e2e8f0}
+
+    .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700}
+    .badge-em_andamento{background:#1e3a5f;color:#93c5fd}
+    .badge-entregue{background:#14532d;color:#86efac}
+    .badge-pausada{background:#3d2700;color:#fbbf24}
+    .badge-planejamento{background:#2d1b4e;color:#c4b5fd}
+
+    /* ── Stats ── */
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+    @media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
+    .stat-card{background:#1a1d2e;border:1px solid #2d3148;border-radius:10px;padding:16px;text-align:center}
+    .stat-num{font-size:1.8rem;font-weight:700;color:#3b5bdb}
+    .stat-label{font-size:0.72rem;color:#7c85b0;margin-top:4px}
+
+    /* ── Seção OS ── */
+    .section-title{font-size:1rem;font-weight:700;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+    .section-title span{font-size:0.72rem;background:#2d3148;color:#7c85b0;padding:2px 8px;border-radius:20px;font-weight:600}
+
+    /* ── Filtros ── */
+    .filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .filtro-btn{padding:5px 14px;border-radius:20px;border:1px solid #2d3148;background:#1a1d2e;color:#9ba3cc;font-size:0.78rem;cursor:pointer;transition:all .2s}
+    .filtro-btn:hover,.filtro-btn.ativo{background:#3b5bdb;border-color:#3b5bdb;color:#fff}
+
+    /* ── Tabela OS ── */
+    .os-table-wrap{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;overflow:hidden;margin-bottom:28px}
+    table{width:100%;border-collapse:collapse;font-size:0.82rem}
+    th{background:#12152a;padding:10px 14px;text-align:left;font-size:0.7rem;font-weight:700;color:#7c85b0;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #2d3148}
+    td{padding:11px 14px;border-bottom:1px solid #1e2240;vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:#1e2240}
+
+    .badge-pend{background:#3d2700;color:#fbbf24}
+    .badge-aprov{background:#14532d;color:#86efac}
+    .badge-rejt{background:#450a0a;color:#fca5a5}
+
+    .fotos-mini{display:flex;gap:4px;flex-wrap:wrap}
+    .foto-mini{width:36px;height:36px;border-radius:4px;object-fit:cover;cursor:pointer;border:2px solid transparent;transition:border-color .2s}
+    .foto-mini:hover{border-color:#3b5bdb}
+
+    /* ── Galeria de fotos ── */
+    .galeria-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:28px}
+    .galeria-item{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#1a1d2e;cursor:pointer}
+    .galeria-item img{width:100%;height:100%;object-fit:cover;transition:transform .2s}
+    .galeria-item:hover img{transform:scale(1.04)}
+    .galeria-info{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.8));padding:8px 8px 6px;font-size:0.68rem;color:#ccc}
+
+    /* ── Empty state ── */
+    .empty{text-align:center;padding:40px;color:#4a5080;font-size:0.9rem}
+
+    /* ── Spinner ── */
+    .spinner-wrap{text-align:center;padding:50px;color:#4a5080}
+    .spinner{width:32px;height:32px;border:3px solid #2d3148;border-top-color:#3b5bdb;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ── Lightbox ── */
+    .lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1000;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+    .lightbox.aberto{display:flex}
+    .lightbox img{max-width:90vw;max-height:80vh;border-radius:8px;object-fit:contain}
+    .lightbox-close{position:absolute;top:16px;right:20px;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer;line-height:1}
+    .lightbox-nav{display:flex;gap:16px}
+    .lightbox-nav button{background:#1a1d2e;border:1px solid #2d3148;color:#e2e8f0;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:1rem}
+    .lightbox-nav button:hover{background:#3b5bdb;border-color:#3b5bdb}
+    .lightbox-caption{color:#9ba3cc;font-size:0.82rem}
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Solução Técnica</h1>
+  <nav>
+    <a href="obras.html">Obras</a>
+    <a href="agenda.html">Agenda</a>
+    <a href="supervisor.html">Supervisor</a>
+    <button class="btn-logout" onclick="logout()">↩ Sair</button>
+  </nav>
+</header>
+
+<main>
+  <button class="btn-voltar" onclick="history.back()">← Voltar para Obras</button>
+
+  <!-- Conteúdo carregado dinamicamente -->
+  <div id="conteudo">
+    <div class="spinner-wrap"><div class="spinner"></div><p>Carregando obra...</p></div>
+  </div>
+</main>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="fecharLightbox()">✕</button>
+  <img id="lb-img" src="" alt="">
+  <div class="lightbox-nav">
+    <button onclick="navLightbox(-1)">← Anterior</button>
+    <button onclick="navLightbox(1)">Próxima →</button>
+  </div>
+  <div class="lightbox-caption" id="lb-caption"></div>
+</div>
+
+<script>
+const { createClient } = supabase;
+const db = createClient(
+  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
+);
+
+const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+
+// Pega o ID da obra da URL
+const params  = new URLSearchParams(location.search);
+const obraId  = parseInt(params.get('id'));
+
+let todasFotos = []; // para o lightbox
+let lbIndex    = 0;
+let filtroStatus = 'todos';
+let todasOS = [];
+
+const FASES = {
+  planejamento:  'Planejamento',
+  em_andamento:  'Em andamento',
+  entregue:      'Entregue',
+  pausada:       'Pausada',
+};
+
+const STATUS_LABELS = {
+  pendente:  { label: '🟡 Pendente',   cls: 'badge-pend' },
+  aprovado:  { label: '✅ Aprovado',   cls: 'badge-aprov' },
+  rejeitado: { label: '❌ Rejeitado',  cls: 'badge-rejt' },
+};
+
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  if (!obraId) {
+    document.getElementById('conteudo').innerHTML = '<div class="empty">Obra não encontrada.</div>';
+    return;
+  }
+
+  await carregarObra();
+}
+
+async function logout() {
+  await db.auth.signOut();
+  window.location.href = 'login.html';
+}
+
+async function carregarObra() {
+  // Busca obra
+  const { data: obra, error } = await db
+    .from('obras')
+    .select('*, consultores(nome)')
+    .eq('id', obraId)
+    .single();
+
+  if (error || !obra) {
+    document.getElementById('conteudo').innerHTML = '<div class="empty">Obra não encontrada.</div>';
+    return;
+  }
+
+  // Busca OS da obra
+  const { data: osList } = await db
+    .from('ordens_de_servico')
+    .select('*, tecnicos(nome)')
+    .eq('obra_id', obraId)
+    .order('created_at', { ascending: false });
+
+  todasOS = osList || [];
+
+  // Monta todas as fotos para lightbox
+  todasFotos = [];
+  todasOS.forEach(os => {
+    (os.fotos_urls || []).forEach(url => {
+      todasFotos.push({ url, tecnico: os.tecnicos?.nome || '—', data: os.created_at?.slice(0,10) || '' });
+    });
+  });
+
+  renderPagina(obra);
+}
+
+function renderPagina(obra) {
+  const consultor = obra.consultores?.nome || '—';
+  const fase = FASES[obra.fase_atual] || obra.fase_atual || '—';
+
+  // Stats
+  const total    = todasOS.length;
+  const aprovadas = todasOS.filter(o => o.status_aprovacao === 'aprovado').length;
+  const pendentes = todasOS.filter(o => o.status_aprovacao === 'pendente').length;
+  const nFotos   = todasFotos.length;
+
+  document.getElementById('conteudo').innerHTML = `
+    <!-- Cabeçalho da obra -->
+    <div class="obra-card">
+      <div class="obra-title">${obra.nome_cliente}</div>
+      <div class="obra-id">#${String(obra.id).padStart(3,'0')} · <span class="badge badge-${obra.fase_atual || 'em_andamento'}">${fase}</span></div>
+      <div class="obra-infos">
+        <div class="obra-info-item"><div class="obra-info-label">Endereço</div><div class="obra-info-value">📍 ${obra.endereco || '—'}</div></div>
+        <div class="obra-info-item"><div class="obra-info-label">Arquiteto</div><div class="obra-info-value">🏛️ ${obra.arquiteto_responsavel || '—'}</div></div>
+        <div class="obra-info-item"><div class="obra-info-label">Consultor</div><div class="obra-info-value">👔 ${consultor}</div></div>
+        <div class="obra-info-item"><div class="obra-info-label">Status compra</div><div class="obra-info-value">🛒 ${obra.status_compra || '—'}</div></div>
+        ${obra.cod_shankya ? `<div class="obra-info-item"><div class="obra-info-label">Cod. Shankya</div><div class="obra-info-value">${obra.cod_shankya}</div></div>` : ''}
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">Total de OS</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#22c55e">${aprovadas}</div><div class="stat-label">Aprovadas</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#f59e0b">${pendentes}</div><div class="stat-label">Pendentes</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#60a5fa">${nFotos}</div><div class="stat-label">Fotos</div></div>
+    </div>
+
+    <!-- Ordens de Serviço -->
+    <div class="section-title">📋 Ordens de Serviço <span>${total}</span></div>
+    <div class="filtros">
+      <button class="filtro-btn ativo" data-f="todos" onclick="filtrarOS(this,'todos')">Todas</button>
+      <button class="filtro-btn" data-f="pendente"  onclick="filtrarOS(this,'pendente')">Pendentes</button>
+      <button class="filtro-btn" data-f="aprovado"  onclick="filtrarOS(this,'aprovado')">Aprovadas</button>
+      <button class="filtro-btn" data-f="rejeitado" onclick="filtrarOS(this,'rejeitado')">Rejeitadas</button>
+    </div>
+    <div id="tabela-os" class="os-table-wrap">${renderTabelaOS(todasOS)}</div>
+
+    <!-- Galeria de Fotos -->
+    <div class="section-title">📸 Galeria de Fotos <span>${nFotos}</span></div>
+    <div id="galeria">${renderGaleria(todasFotos)}</div>
+  `;
+}
+
+function renderTabelaOS(lista) {
+  if (!lista.length) return '<div class="empty">Nenhuma OS registrada para esta obra.</div>';
+
+  const rows = lista.map((os, idx) => {
+    const st = STATUS_LABELS[os.status_aprovacao] || { label: os.status_aprovacao || '—', cls: '' };
+    const tec = os.tecnicos?.nome || '—';
+    const data = os.created_at ? new Date(os.created_at).toLocaleDateString('pt-BR') : '—';
+    const nFotos = (os.fotos_urls || []).length;
+
+    const minisFotos = (os.fotos_urls || []).slice(0,3).map((url, fi) =>
+      `<img class="foto-mini" src="${url}" alt="foto" onclick="event.stopPropagation();abrirLightboxOS(${idx},${fi})">`
+    ).join('');
+    const maisTag = nFotos > 3 ? `<span style="font-size:0.72rem;color:#7c85b0">+${nFotos-3}</span>` : '';
+
+    return `<tr>
+      <td style="color:#7c85b0;font-size:0.72rem">${data}</td>
+      <td><strong>${tec}</strong></td>
+      <td style="color:#a0aec0;font-size:0.78rem">${os.observacoes_finais || os.atividades_realizadas || '—'}</td>
+      <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td><div class="fotos-mini">${minisFotos}${maisTag}</div></td>
+    </tr>`;
+  }).join('');
+
+  return `<table>
+    <thead><tr>
+      <th>Data</th><th>Técnico</th><th>Observações</th><th>Status</th><th>Fotos</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function renderGaleria(fotos) {
+  if (!fotos.length) return '<div class="empty">Nenhuma foto registrada ainda.</div>';
+
+  return fotos.map((f, i) => `
+    <div class="galeria-item" onclick="abrirLightbox(${i})">
+      <img src="${f.url}" alt="foto" loading="lazy">
+      <div class="galeria-info">👷 ${f.tecnico} · ${f.data}</div>
+    </div>`).join('');
+}
+
+// ── Filtro OS ────────────────────────────────────────────────
+function filtrarOS(btn, status) {
+  filtroStatus = status;
+  document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
+  btn.classList.add('ativo');
+  const filtradas = status === 'todos' ? todasOS : todasOS.filter(o => o.status_aprovacao === status);
+  document.getElementById('tabela-os').innerHTML = renderTabelaOS(filtradas);
+}
+
+// ── Lightbox galeria ─────────────────────────────────────────
+function abrirLightbox(idx) {
+  lbIndex = idx;
+  mostrarFotoLb();
+  document.getElementById('lightbox').classList.add('aberto');
+}
+
+function abrirLightboxOS(osIdx, fotoIdx) {
+  // Calcula índice global na lista todasFotos
+  let globalIdx = 0;
+  for (let i = 0; i < osIdx; i++) globalIdx += (todasOS[i].fotos_urls || []).length;
+  globalIdx += fotoIdx;
+  abrirLightbox(globalIdx);
+}
+
+function fecharLightbox() {
+  document.getElementById('lightbox').classList.remove('aberto');
+}
+
+function navLightbox(delta) {
+  lbIndex = (lbIndex + delta + todasFotos.length) % todasFotos.length;
+  mostrarFotoLb();
+}
+
+function mostrarFotoLb() {
+  const f = todasFotos[lbIndex];
+  document.getElementById('lb-img').src = f.url;
+  document.getElementById('lb-caption').textContent = `👷 ${f.tecnico} · ${f.data} · ${lbIndex+1}/${todasFotos.length}`;
+}
+
+// Fechar lightbox com ESC
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') fecharLightbox();
+  if (e.key === 'ArrowLeft') navLightbox(-1);
+  if (e.key === 'ArrowRight') navLightbox(1);
+});
+
+init();
+</script>
+</body>
+</html>
