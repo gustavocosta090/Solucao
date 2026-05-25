@@ -364,9 +364,21 @@
   let faseFiltro = 'todas';
 
   // ── Auth check ──────────────────────────────────────────────
+  let userRole = 'tecnico';
+
   async function init() {
     const { data: { session } } = await db.auth.getSession();
     if (!session) { window.location.href = 'login.html'; return; }
+
+    // Buscar role do usuário
+    const { data: eu } = await db.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
+    userRole = eu?.role || 'tecnico';
+
+    // Técnicos só visualizam — esconder botão Nova Obra
+    if (userRole === 'tecnico') {
+      const btnNova = document.querySelector('.btn-nova-obra');
+      if (btnNova) btnNova.style.display = 'none';
+    }
 
     await Promise.all([carregarObras(), carregarConsultores()]);
   }
@@ -477,6 +489,7 @@
 
   // ── Modal Nova Obra ─────────────────────────────────────────
   function abrirModal() {
+    if (userRole === 'tecnico') return; // técnicos não podem criar obras
     document.getElementById('f-cliente').value      = '';
     document.getElementById('f-endereco').value     = '';
     document.getElementById('f-arquiteto').value    = '';
