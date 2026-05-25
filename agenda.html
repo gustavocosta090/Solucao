@@ -575,6 +575,8 @@
       <div class="modal-title" id="modal-titulo">Novo Agendamento</div>
     </div>
 
+    <div id="modal-erro" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:16px;"></div>
+
     <div class="form-group">
       <label>Obra / Cliente</label>
       <select id="f-obra"><option value="">Selecione a obra...</option></select>
@@ -586,8 +588,18 @@
         <select id="f-tecnico"><option value="">Selecione...</option></select>
       </div>
       <div class="form-group">
-        <label>Auxiliar (opcional)</label>
+        <label>Auxiliar 1</label>
         <select id="f-auxiliar"><option value="">Nenhum</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Auxiliar 2</label>
+        <select id="f-auxiliar2"><option value="">Nenhum</option></select>
+      </div>
+      <div class="form-group">
+        <label>Auxiliar 3</label>
+        <select id="f-auxiliar3"><option value="">Nenhum</option></select>
       </div>
     </div>
 
@@ -768,7 +780,12 @@ function tecnicosDaEquipe(equipeId) {
 function agendamentosVisiveis() {
   if (filtroEquipe === 'todas') return agendamentos;
   const ids = tecnicosDaEquipe(parseInt(filtroEquipe));
-  return agendamentos.filter(ag => ids.includes(ag.tecnico_id) || ids.includes(ag.auxiliar_id));
+  return agendamentos.filter(ag =>
+    ids.includes(ag.tecnico_id)   ||
+    ids.includes(ag.auxiliar_id)  ||
+    ids.includes(ag.auxiliar2_id) ||
+    ids.includes(ag.auxiliar3_id)
+  );
 }
 
 // ── Renderizar grade ────────────────────────────────────────
@@ -801,36 +818,32 @@ function renderGrade(dias) {
 }
 
 // ── Card de agendamento ─────────────────────────────────────
+function nomeTecnico(id) {
+  if (!id) return null;
+  // Tenta pegar do objeto ag (FK join) ou do array tecnicos
+  const t = tecnicos.find(t => t.id === id);
+  return t ? t.nome : null;
+}
+
 function cardHTML(ag) {
   const status = ag.status || 'confirmado';
 
-  let primario   = ag.tecnico?.nome  || '—';
-  let secundario = ag.auxiliar?.nome || null;
+  // Monta lista de nomes: tecnico principal + auxiliares não nulos
+  const nomes = [
+    ag.tecnico?.nome || nomeTecnico(ag.tecnico_id),
+    ag.auxiliar?.nome || nomeTecnico(ag.auxiliar_id),
+    nomeTecnico(ag.auxiliar2_id),
+    nomeTecnico(ag.auxiliar3_id),
+  ].filter(Boolean);
 
-  if (filtroEquipe !== 'todas' && ag.auxiliar_id) {
-    const ids = tecnicosDaEquipe(parseInt(filtroEquipe));
-    const tecNaEquipe = ids.includes(ag.tecnico_id);
-    const auxNaEquipe = ids.includes(ag.auxiliar_id);
-    if (auxNaEquipe && !tecNaEquipe) {
-      primario   = ag.auxiliar?.nome || '—';
-      secundario = ag.tecnico?.nome  || null;
-    }
-  }
-
-  const tecs    = secundario ? `${primario} + ${secundario}` : primario;
+  const tecs    = nomes.join(' + ');
   const cliente = ag.obras?.nome_cliente || '—';
   const end     = ag.obras?.endereco || '';
   const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
 
-  const iconMap = {
-    map: 'map-pin',
-    tool: 'wrench',
-    car: 'car',
-  };
-
   return `
     <div class="card-ag card-${status}" ${modoVisualizacao ? '' : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`} style="${modoVisualizacao ? 'cursor:default' : ''}">
-      <div class="ag-tecs">${hora ? hora + ' · ' : ''}${tecs}</div>
+      <div class="ag-tecs">${hora ? hora + ' · ' : ''}${tecs || '—'}</div>
       <div class="ag-cliente">${cliente}</div>
       ${end ? `<div class="ag-detalhe"><i data-lucide="map-pin"></i>${end}</div>` : ''}
       ${ag.servico ? `<div class="ag-detalhe"><i data-lucide="wrench"></i>${ag.servico}</div>` : ''}
@@ -846,57 +859,96 @@ function mudarSemana(delta) {
 }
 
 // ── Modal ───────────────────────────────────────────────────
-function preencherModal() {
+function preencherSelects() {
+  // Obras
   const selObra = document.getElementById('f-obra');
+  const obraVal = selObra.value;
+  selObra.innerHTML = '<option value="">Selecione a obra...</option>';
   obras.forEach(o => {
     const opt = document.createElement('option');
-    opt.value = o.id; opt.textContent = o.nome_cliente;
+    opt.value = String(o.id); opt.textContent = o.nome_cliente;
     selObra.appendChild(opt);
   });
+  if (obraVal) selObra.value = obraVal;
 
-  ['f-tecnico','f-auxiliar'].forEach(id => {
+  // Técnicos (todos os selects de pessoa)
+  ['f-tecnico','f-auxiliar','f-auxiliar2','f-auxiliar3'].forEach(id => {
     const sel = document.getElementById(id);
+    const val = sel.value;
+    const defaultLabel = id === 'f-tecnico' ? 'Selecione...' : 'Nenhum';
+    sel.innerHTML = `<option value="">${defaultLabel}</option>`;
     tecnicos.forEach(t => {
       const opt = document.createElement('option');
-      opt.value = t.id;
+      opt.value = String(t.id);
       opt.textContent = t.funcao ? `${t.nome} (${t.funcao})` : t.nome;
       sel.appendChild(opt);
     });
+    if (val) sel.value = val;
   });
 }
 
-function abrirModal(data = '') {
+// Compatibilidade — mantém o nome antigo caso chamado de outro lugar
+function preencherModal() { preencherSelects(); }
+
+async function abrirModal(data = '') {
   agEditandoId = null;
+
+  // Garante que obras e técnicos estão carregados
+  if (!obras.length || !tecnicos.length) {
+    await Promise.all([
+      obras.length    ? Promise.resolve() : carregarObras(),
+      tecnicos.length ? Promise.resolve() : carregarTecnicos(),
+    ]);
+  }
+  preencherSelects();
+
   document.getElementById('modal-titulo').textContent = 'Novo Agendamento';
-  document.querySelector('.modal-header-icon i').setAttribute('data-lucide', 'calendar');
-  document.getElementById('f-obra').value     = '';
-  document.getElementById('f-tecnico').value  = '';
-  document.getElementById('f-auxiliar').value = '';
-  document.getElementById('f-status').value   = 'confirmado';
-  document.getElementById('f-inicio').value   = '';
-  document.getElementById('f-fim').value      = '';
-  document.getElementById('f-veiculo').value  = '';
-  document.getElementById('f-servico').value  = '';
-  document.getElementById('f-data').value     = data || fmtISO(new Date());
+  document.getElementById('modal-erro').style.display = 'none';
+  document.getElementById('f-obra').value      = '';
+  document.getElementById('f-tecnico').value   = '';
+  document.getElementById('f-auxiliar').value  = '';
+  document.getElementById('f-auxiliar2').value = '';
+  document.getElementById('f-auxiliar3').value = '';
+  document.getElementById('f-status').value    = 'confirmado';
+  document.getElementById('f-inicio').value    = '';
+  document.getElementById('f-fim').value       = '';
+  document.getElementById('f-veiculo').value   = '';
+  document.getElementById('f-servico').value   = '';
+  document.getElementById('f-data').value      = data || fmtISO(new Date());
   document.getElementById('btn-excluir').style.display = 'none';
   document.getElementById('overlay').classList.add('aberto');
   lucide.createIcons();
 }
 
-function editarAgendamento(id) {
+async function editarAgendamento(id) {
   const ag = agendamentos.find(a => a.id === id);
   if (!ag) return;
   agEditandoId = id;
+
+  // Garante que obras e técnicos estão carregados
+  if (!obras.length || !tecnicos.length) {
+    await Promise.all([
+      obras.length    ? Promise.resolve() : carregarObras(),
+      tecnicos.length ? Promise.resolve() : carregarTecnicos(),
+    ]);
+  }
+  preencherSelects();
+
   document.getElementById('modal-titulo').textContent = 'Editar Agendamento';
-  document.getElementById('f-obra').value     = ag.obra_id     || '';
-  document.getElementById('f-tecnico').value  = ag.tecnico_id  || '';
-  document.getElementById('f-auxiliar').value = ag.auxiliar_id || '';
-  document.getElementById('f-data').value     = ag.data        || '';
-  document.getElementById('f-status').value   = ag.status      || 'confirmado';
-  document.getElementById('f-inicio').value   = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
-  document.getElementById('f-fim').value      = ag.hora_fim    ? ag.hora_fim.slice(0,5)    : '';
-  document.getElementById('f-veiculo').value  = ag.veiculo     || '';
-  document.getElementById('f-servico').value  = ag.servico     || '';
+  document.getElementById('modal-erro').style.display = 'none';
+
+  // Usa String() para garantir compatibilidade com o valor dos <option>
+  document.getElementById('f-obra').value      = ag.obra_id      ? String(ag.obra_id)      : '';
+  document.getElementById('f-tecnico').value   = ag.tecnico_id   ? String(ag.tecnico_id)   : '';
+  document.getElementById('f-auxiliar').value  = ag.auxiliar_id  ? String(ag.auxiliar_id)  : '';
+  document.getElementById('f-auxiliar2').value = ag.auxiliar2_id ? String(ag.auxiliar2_id) : '';
+  document.getElementById('f-auxiliar3').value = ag.auxiliar3_id ? String(ag.auxiliar3_id) : '';
+  document.getElementById('f-data').value      = ag.data         || '';
+  document.getElementById('f-status').value    = ag.status       || 'confirmado';
+  document.getElementById('f-inicio').value    = ag.hora_inicio  ? ag.hora_inicio.slice(0,5) : '';
+  document.getElementById('f-fim').value       = ag.hora_fim     ? ag.hora_fim.slice(0,5)    : '';
+  document.getElementById('f-veiculo').value   = ag.veiculo      || '';
+  document.getElementById('f-servico').value   = ag.servico      || '';
   document.getElementById('btn-excluir').style.display = 'flex';
   document.getElementById('overlay').classList.add('aberto');
 }
@@ -911,13 +963,17 @@ function fecharModalFora(e) {
 }
 
 async function salvarAgendamento() {
-  const btn = document.getElementById('btn-salvar');
+  const btn    = document.getElementById('btn-salvar');
+  const erroEl = document.getElementById('modal-erro');
   btn.disabled = true;
   btn.innerHTML = 'Salvando...';
+  erroEl.style.display = 'none';
 
   const obraId  = document.getElementById('f-obra').value;
   const tecId   = document.getElementById('f-tecnico').value;
   const auxId   = document.getElementById('f-auxiliar').value;
+  const aux2Id  = document.getElementById('f-auxiliar2').value;
+  const aux3Id  = document.getElementById('f-auxiliar3').value;
   const data    = document.getElementById('f-data').value;
   const status  = document.getElementById('f-status').value;
   const inicio  = document.getElementById('f-inicio').value;
@@ -926,7 +982,8 @@ async function salvarAgendamento() {
   const servico = document.getElementById('f-servico').value;
 
   if (!obraId || !tecId || !data) {
-    alert('Preencha obra, tecnico e data!');
+    erroEl.textContent = 'Preencha obra, tecnico principal e data.';
+    erroEl.style.display = 'block';
     btn.disabled = false;
     btn.innerHTML = '<i data-lucide="save"></i> Salvar';
     lucide.createIcons();
@@ -934,9 +991,11 @@ async function salvarAgendamento() {
   }
 
   const payload = {
-    obra_id:     parseInt(obraId),
-    tecnico_id:  parseInt(tecId),
-    auxiliar_id: auxId   ? parseInt(auxId) : null,
+    obra_id:      parseInt(obraId),
+    tecnico_id:   parseInt(tecId),
+    auxiliar_id:  auxId  ? parseInt(auxId)  : null,
+    auxiliar2_id: aux2Id ? parseInt(aux2Id) : null,
+    auxiliar3_id: aux3Id ? parseInt(aux3Id) : null,
     data, status,
     hora_inicio: inicio  || null,
     hora_fim:    fim     || null,
@@ -945,14 +1004,28 @@ async function salvarAgendamento() {
   };
 
   let error;
-  if (agEditandoId) {
-    ({ error } = await db.from('agendamentos').update(payload).eq('id', agEditandoId));
-  } else {
-    ({ error } = await db.from('agendamentos').insert(payload));
+
+  const tentarSalvar = async (p) => {
+    if (agEditandoId) {
+      return (await db.from('agendamentos').update(p).eq('id', agEditandoId)).error;
+    } else {
+      return (await db.from('agendamentos').insert(p)).error;
+    }
+  };
+
+  error = await tentarSalvar(payload);
+
+  // Se falhou por coluna inexistente (SQL ainda não rodado), tenta sem aux2/aux3
+  if (error && (error.message.includes('auxiliar2_id') || error.message.includes('auxiliar3_id'))) {
+    const payloadSimples = { ...payload };
+    delete payloadSimples.auxiliar2_id;
+    delete payloadSimples.auxiliar3_id;
+    error = await tentarSalvar(payloadSimples);
   }
 
   if (error) {
-    alert('Erro ao salvar: ' + error.message);
+    erroEl.textContent = 'Erro ao salvar: ' + error.message;
+    erroEl.style.display = 'block';
   } else {
     fecharModal();
     await carregarAgenda();
