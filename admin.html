@@ -253,8 +253,10 @@ const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
 
 // SERVICE ROLE KEY — necessária para criar usuários via API admin
-// Cole aqui a service_role key do seu projeto Supabase (Settings > API)
-const SUPABASE_SERVICE_KEY = 'COLE_SUA_SERVICE_ROLE_KEY_AQUI';
+// 1. Acesse: https://supabase.com/dashboard/project/kxtjqudpnmdqkzqhyhmz/settings/api
+// 2. Copie a chave "service_role" (Project API Keys → service_role)
+// 3. Cole aqui substituindo o placeholder abaixo:
+const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY0NjMzMSwiZXhwIjoyMDk1MjIyMzMxfQ.QyzUGOJgrF7YqU6QY6gPzT_jLYbeGV6gE6UTqe2Xrn0';
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -271,6 +273,20 @@ let resetUserId = null;
     alert('Acesso restrito ao coordenador.');
     window.location.href = 'obras.html';
     return;
+  }
+
+  // Aviso se service key não foi configurada
+  if (SUPABASE_SERVICE_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY0NjMzMSwiZXhwIjoyMDk1MjIyMzMxfQ.QyzUGOJgrF7YqU6QY6gPzT_jLYbeGV6gE6UTqe2Xrn0') {
+    const aviso = document.createElement('div');
+    aviso.style.cssText = 'background:#fef3c7;border:1px solid #f59e0b;color:#92400e;padding:14px 20px;margin:16px 0;border-radius:8px;font-size:14px;line-height:1.6;';
+    aviso.innerHTML = `<strong>⚠️ Service Key não configurada</strong><br>
+      Para criar usuários, você precisa adicionar a <strong>service_role key</strong> no arquivo <code>admin.html</code>.<br>
+      <strong>Passos:</strong><br>
+      1. Acesse <a href="https://supabase.com/dashboard/project/kxtjqudpnmdqkzqhyhmz/settings/api" target="_blank" style="color:#d97706;">Supabase → Settings → API</a><br>
+      2. Copie a chave <strong>"service_role"</strong> (em "Project API Keys")<br>
+      3. No arquivo <code>admin.html</code>, localize a linha com <code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY0NjMzMSwiZXhwIjoyMDk1MjIyMzMxfQ.QyzUGOJgrF7YqU6QY6gPzT_jLYbeGV6gE6UTqe2Xrn0</code> e substitua pela chave copiada`;
+    const container = document.querySelector('.container');
+    if (container) container.insertBefore(aviso, container.firstChild);
   }
 
   await carregarDados();

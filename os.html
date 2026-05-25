@@ -600,6 +600,7 @@ async function enviarOS() {
       proximas_atividades: document.getElementById('f-proximas').value || null,
       observacoes:         document.getElementById('f-obs').value || null,
       fotos_urls:          fotoUrls.length > 0 ? fotoUrls : null,
+      data_servico:        agendamentoSelecionado?.data || new Date().toISOString().split('T')[0],
       status_aprovacao:    'pendente',
       criado_em:           new Date().toISOString(),
     };

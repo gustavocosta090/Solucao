@@ -152,8 +152,8 @@ const FASES = {
 
 const STATUS_LABELS = {
   pendente:  { label: '🟡 Pendente',   cls: 'badge-pend' },
-  aprovado:  { label: '✅ Aprovado',   cls: 'badge-aprov' },
-  rejeitado: { label: '❌ Rejeitado',  cls: 'badge-rejt' },
+  aprovada:  { label: '✅ Aprovada',   cls: 'badge-aprov' },
+  reprovada: { label: '❌ Reprovada',  cls: 'badge-rejt' },
 };
 
 async function init() {
@@ -222,7 +222,7 @@ function renderPagina(obra) {
 
   // Stats
   const total    = todasOS.length;
-  const aprovadas = todasOS.filter(o => o.status_aprovacao === 'aprovado').length;
+  const aprovadas = todasOS.filter(o => o.status_aprovacao === 'aprovada').length;
   const pendentes = todasOS.filter(o => o.status_aprovacao === 'pendente').length;
   const nFotos   = todasFotos.length;
 
@@ -253,8 +253,8 @@ function renderPagina(obra) {
     <div class="filtros">
       <button class="filtro-btn ativo" data-f="todos" onclick="filtrarOS(this,'todos')">Todas</button>
       <button class="filtro-btn" data-f="pendente"  onclick="filtrarOS(this,'pendente')">Pendentes</button>
-      <button class="filtro-btn" data-f="aprovado"  onclick="filtrarOS(this,'aprovado')">Aprovadas</button>
-      <button class="filtro-btn" data-f="rejeitado" onclick="filtrarOS(this,'rejeitado')">Rejeitadas</button>
+      <button class="filtro-btn" data-f="aprovada"  onclick="filtrarOS(this,'aprovada')">Aprovadas</button>
+      <button class="filtro-btn" data-f="reprovada" onclick="filtrarOS(this,'reprovada')">Reprovadas</button>
     </div>
     <div id="tabela-os" class="os-table-wrap">${renderTabelaOS(todasOS)}</div>
 

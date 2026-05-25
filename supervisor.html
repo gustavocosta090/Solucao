@@ -417,7 +417,8 @@
 <script>
 const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let todasOSs = [];
 let filtradas = [];
@@ -431,10 +432,10 @@ let osSendoVisualizada = null;
 
 // Init
 (async () => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
-  const { data: eu } = await supabase
+  const { data: eu } = await db
     .from('tecnicos')
     .select('role, nome')
     .eq('auth_user_id', session.user.id)
@@ -446,17 +447,14 @@ let osSendoVisualizada = null;
     return;
   }
 
-  // Datas padrão (último mês)
-  const hoje = new Date();
-  const ini = new Date(hoje); ini.setDate(ini.getDate() - 30);
-  document.getElementById('fDataInicio').value = ini.toISOString().split('T')[0];
-  document.getElementById('fDataFim').value = hoje.toISOString().split('T')[0];
+  // Sem filtro de data por padrão — mostra todas as OSs
+  // document.getElementById('fDataInicio').value = ...;
 
   await Promise.all([carregarOSs(), carregarTecnicos()]);
 })();
 
 async function carregarTecnicos() {
-  const { data } = await supabase.from('tecnicos').select('id, nome').order('nome');
+  const { data } = await db.from('tecnicos').select('id, nome').order('nome');
   const sel = document.getElementById('fTecnico');
   (data || []).forEach(t => {
     sel.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
@@ -464,16 +462,20 @@ async function carregarTecnicos() {
 }
 
 async function carregarOSs() {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('ordens_de_servico')
     .select(`
       *,
       obras(nome_cliente, endereco),
-      tecnicos!ordens_de_servico_tecnico_id_fkey(id, nome)
+      tecnicos(id, nome)
     `)
-    .order('data_servico', { ascending: false });
+    .order('criado_em', { ascending: false });
 
-  if (error) { console.error(error); return; }
+  if (error) {
+    console.error('Erro ao carregar OSs:', error);
+    document.getElementById('loadingEl').innerHTML = `<div style="color:red;padding:20px;">Erro ao carregar OS: ${error.message}</div>`;
+    return;
+  }
   todasOSs = data || [];
 
   // Stats
@@ -499,8 +501,8 @@ function filtrar() {
   filtradas = todasOSs.filter(o => {
     const matchTec = !fTec || String(o.tecnicos?.id) === fTec;
     const matchSt = !fSt || o.status_aprovacao === fSt;
-    const matchDi = !fDi || o.data_servico >= fDi;
-    const matchDf = !fDf || o.data_servico <= fDf;
+    const matchDi = !fDi || !o.data_servico || o.data_servico >= fDi;
+    const matchDf = !fDf || !o.data_servico || o.data_servico <= fDf;
     const matchBusca = !fBusca ||
       (o.obras?.nome_cliente || '').toLowerCase().includes(fBusca) ||
       (o.tecnicos?.nome || '').toLowerCase().includes(fBusca);
@@ -543,7 +545,8 @@ function renderTabela() {
 
   const tbody = document.getElementById('tbody');
   tbody.innerHTML = pagina.map(o => {
-    const data = new Date(o.data_servico + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+    const dataRef = o.data_servico || (o.criado_em ? o.criado_em.slice(0,10) : null);
+    const data = dataRef ? new Date(dataRef + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—';
     const statusBadge = { pendente: '<span class="badge badge-pendente">⏳ Pendente</span>', aprovada: '<span class="badge badge-aprovada">✅ Aprovada</span>', reprovada: '<span class="badge badge-reprovada">❌ Reprovada</span>' }[o.status_aprovacao] || '';
     const nFotos = o.fotos_urls?.length || 0;
     const servicoLabel = o.status_servico === 'concluido' ? 'Concluído' : o.status_servico === 'parcial' ? 'Parcial' : 'Ag. Material';
@@ -601,7 +604,8 @@ function verOS(id) {
   if (!os) return;
   osSendoVisualizada = os;
 
-  const data = new Date(os.data_servico + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const dataRefModal = os.data_servico || (os.criado_em ? os.criado_em.slice(0,10) : null);
+  const data = dataRefModal ? new Date(dataRefModal + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) : '—';
   const statusLabel = { pendente: '⏳ Aguardando aprovação', aprovada: '✅ Aprovada', reprovada: '❌ Reprovada' }[os.status_aprovacao] || '';
 
   let html = `
@@ -706,7 +710,7 @@ function pedirReprovacaoModal() {
 }
 
 async function mudarStatusOS(id, status, obs) {
-  const { error } = await supabase
+  const { error } = await db
     .from('ordens_de_servico')
     .update({
       status_aprovacao: status,
@@ -790,7 +794,7 @@ document.getElementById('modalOS').addEventListener('click', e => {
 });
 
 async function logout() {
-  await supabase.auth.signOut();
+  await db.auth.signOut();
   window.location.href = 'login.html';
 }
 </script>
