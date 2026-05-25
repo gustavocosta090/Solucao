@@ -398,7 +398,7 @@ async function carregarAgendamentosHoje() {
 
   const { data, error } = await db
     .from('agendamentos')
-    .select('*, obras(nome_cliente, endereco)')
+    .select('*, obras(id, nome_cliente, endereco, consultores(id))')
     .gte('data', dataInicio)
     .or(`tecnico_id.eq.${tecnicoLogado.id},auxiliar_id.eq.${tecnicoLogado.id}`)
     .order('data', { ascending: true })

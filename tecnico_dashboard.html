@@ -267,17 +267,17 @@
 <script>
 const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let todasOSs = [];
 let filtroStatus = 'todos';
 let tecnicoAtual = null;
 
 (async () => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
-  const { data: tec } = await supabase
+  const { data: tec } = await db
     .from('tecnicos')
     .select('id, nome, role')
     .eq('auth_user_id', session.user.id)
@@ -298,11 +298,11 @@ let tecnicoAtual = null;
 })();
 
 async function carregarOSs() {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('ordens_de_servico')
     .select('*, obras(nome_cliente, endereco), tecnicos!ordens_de_servico_tecnico_id_fkey(nome)')
     .eq('tecnico_id', tecnicoAtual.id)
-    .order('data_servico', { ascending: false });
+    .order('created_at', { ascending: false });
 
   if (error) { console.error(error); return; }
   todasOSs = data || [];
@@ -327,9 +327,10 @@ function filtrar() {
   const dataFim = document.getElementById('dataFim').value;
 
   let filtradas = todasOSs.filter(o => {
+    const dataOS = (o.created_at || '').slice(0, 10);
     const matchStatus = filtroStatus === 'todos' || o.status_aprovacao === filtroStatus;
-    const matchInicio = !dataInicio || o.data_servico >= dataInicio;
-    const matchFim = !dataFim || o.data_servico <= dataFim;
+    const matchInicio = !dataInicio || dataOS >= dataInicio;
+    const matchFim = !dataFim || dataOS <= dataFim;
     return matchStatus && matchInicio && matchFim;
   });
 
@@ -344,7 +345,7 @@ function renderLista(lista) {
   }
 
   container.innerHTML = lista.map(os => {
-    const data = new Date(os.data_servico + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
+    const data = new Date(os.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
     const nFotos = os.fotos_urls?.length || 0;
     const statusLabel = { pendente: '⏳ Aguardando', aprovada: '✅ Aprovada', reprovada: '❌ Reprovada' }[os.status_aprovacao] || '';
     const servicoLabel = { concluido: 'Concluído', parcial: 'Parcial', aguardando_material: 'Aguard. Material' }[os.status_servico] || '';
@@ -370,7 +371,7 @@ function verDetalhe(id) {
   const os = todasOSs.find(o => o.id === id);
   if (!os) return;
 
-  const data = new Date(os.data_servico + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const data = new Date(os.created_at).toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
   const statusLabel = { pendente: '⏳ Aguardando aprovação', aprovada: '✅ Aprovada', reprovada: '❌ Reprovada' }[os.status_aprovacao] || '';
 
   let html = `

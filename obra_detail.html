@@ -99,10 +99,8 @@
 
 <header>
   <h1>Solução Técnica</h1>
-  <nav>
+  <nav id="nav-links">
     <a href="obras.html">Obras</a>
-    <a href="agenda.html">Agenda</a>
-    <a href="supervisor.html">Supervisor</a>
     <button class="btn-logout" onclick="logout()">↩ Sair</button>
   </nav>
 </header>
@@ -161,6 +159,16 @@ const STATUS_LABELS = {
 async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
+
+  // Nav dinâmico por role
+  const { data: eu } = await db.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
+  const role = eu?.role || 'tecnico';
+  const nav = document.getElementById('nav-links');
+  if (role === 'tecnico') {
+    nav.innerHTML = `<a href="obras.html">Obras</a><a href="os.html">OS</a><button class="btn-logout" onclick="logout()">↩ Sair</button>`;
+  } else {
+    nav.innerHTML = `<a href="obras.html">Obras</a><a href="agenda.html">Agenda</a><a href="supervisor.html">Supervisor</a><button class="btn-logout" onclick="logout()">↩ Sair</button>`;
+  }
 
   if (!obraId) {
     document.getElementById('conteudo').innerHTML = '<div class="empty">Obra não encontrada.</div>';
