@@ -489,12 +489,10 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   const senha = document.getElementById('senha').value;
   const btnLogin = document.getElementById('btnLogin');
   const errorMsg = document.getElementById('errorMsg');
-  const loadingMsg = document.getElementById('loadingMsg');
 
-  errorMsg.style.display = 'none';
+  errorMsg.classList.remove('visible');
   btnLogin.disabled = true;
-  btnLogin.textContent = 'Entrando...';
-  loadingMsg.classList.add('visible');
+  btnLogin.innerHTML = '<span class="spinner"></span> Entrando...';
 
   try {
     const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
@@ -503,20 +501,19 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       let msg = 'E-mail ou senha incorretos.';
       if (error.message.includes('Email not confirmed')) msg = 'Confirme seu e-mail antes de acessar.';
       if (error.message.includes('Invalid login')) msg = 'E-mail ou senha incorretos.';
-      errorMsg.textContent = msg;
-      errorMsg.style.display = 'block';
+      document.getElementById('errorText').textContent = msg;
+      errorMsg.classList.add('visible');
       return;
     }
 
     await redirecionarUsuario();
 
   } catch (err) {
-    errorMsg.textContent = 'Erro de conexão. Tente novamente.';
-    errorMsg.style.display = 'block';
+    document.getElementById('errorText').textContent = 'Erro de conexão. Tente novamente.';
+    errorMsg.classList.add('visible');
   } finally {
     btnLogin.disabled = false;
-    btnLogin.textContent = 'Entrar';
-    loadingMsg.classList.remove('visible');
+    btnLogin.innerHTML = '<span id="btnText">Entrar</span>';
   }
 });
 </script>
