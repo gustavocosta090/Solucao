@@ -4,172 +4,536 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin — Gerenciar Usuários</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6fa; color: #222; }
+  :root {
+    --bg: #0A0A0A;
+    --surface-1: #111111;
+    --surface-2: #161616;
+    --surface-3: #1B1B1B;
+    --primary: #3ECF8E;
+    --primary-hover: #2EBF7E;
+    --primary-muted: rgba(62, 207, 142, 0.1);
+    --secondary: #4F46E5;
+    --text-1: #FFFFFF;
+    --text-2: #A1A1AA;
+    --text-3: #52525B;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.12);
+    --border-focus: rgba(62, 207, 142, 0.4);
+    --radius: 8px;
+  }
 
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text-1);
+    min-height: 100vh;
+  }
+
+  /* ── Topbar ── */
   .topbar {
-    background: linear-gradient(135deg, #1a1a2e, #0f3460);
-    color: white;
-    padding: 16px 24px;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
   }
-  .topbar h1 { font-size: 18px; font-weight: 700; }
-  .topbar-links a {
-    color: rgba(255,255,255,0.8);
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .topbar-logo-mark {
+    width: 30px;
+    height: 30px;
+    background: var(--primary-muted);
+    border: 1px solid rgba(62, 207, 142, 0.2);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+
+  .topbar-logo-mark i {
+    width: 15px;
+    height: 15px;
+  }
+
+  .topbar-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-1);
+    letter-spacing: -0.2px;
+  }
+
+  .topbar-divider {
+    width: 1px;
+    height: 18px;
+    background: var(--border-strong);
+    margin: 0 4px;
+  }
+
+  .topbar-nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .topbar-nav a {
+    color: var(--text-2);
     text-decoration: none;
     font-size: 13px;
-    margin-left: 16px;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
-  .topbar-links a:hover { color: white; }
 
-  .container { max-width: 900px; margin: 32px auto; padding: 0 20px; }
+  .topbar-nav a i {
+    width: 14px;
+    height: 14px;
+  }
 
-  .section-title {
-    font-size: 20px;
-    font-weight: 700;
-    color: #1a1a2e;
-    margin-bottom: 16px;
+  .topbar-nav a:hover {
+    color: var(--text-1);
+    background: var(--surface-2);
+  }
+
+  .btn-logout {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    text-decoration: none;
+  }
+
+  .btn-logout i {
+    width: 14px;
+    height: 14px;
+  }
+
+  .btn-logout:hover {
+    color: var(--text-1);
+    border-color: var(--border-strong);
+    background: var(--surface-2);
+  }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 960px;
+    margin: 32px auto;
+    padding: 0 24px;
+  }
+
+  /* ── Section header ── */
+  .section-header {
     display: flex;
     align-items: center;
     gap: 8px;
-  }
-
-  .card {
-    background: white;
-    border-radius: 12px;
-    padding: 28px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    margin-bottom: 28px;
-  }
-
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .form-group { display: flex; flex-direction: column; gap: 6px; }
-  .form-group.full { grid-column: 1/-1; }
-  label { font-size: 13px; font-weight: 600; color: #555; }
-  input, select {
-    padding: 10px 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.2s;
-    background: white;
-  }
-  input:focus, select:focus { border-color: #0f3460; }
-
-  .btn-primary {
-    background: linear-gradient(135deg, #0f3460, #e94560);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.2s;
-    margin-top: 16px;
-  }
-  .btn-primary:hover { opacity: 0.9; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .alert {
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 13px;
     margin-bottom: 16px;
-    display: none;
   }
-  .alert-success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
-  .alert-error { background: #fff0f0; border: 1px solid #fca5a5; color: #991b1b; }
 
-  /* Tabela de usuários */
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { background: #f4f6fa; padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e0e0e0; }
-  td { padding: 12px 14px; border-bottom: 1px solid #f0f0f0; }
-  tr:hover td { background: #fafafa; }
+  .section-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-1);
+    letter-spacing: -0.2px;
+  }
 
+  .section-header i {
+    width: 16px;
+    height: 16px;
+    color: var(--text-3);
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+
+  /* ── Form ── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .form-group.full {
+    grid-column: 1 / -1;
+  }
+
+  label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+    letter-spacing: 0.1px;
+  }
+
+  input, select {
+    padding: 9px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text-1);
+    outline: none;
+    transition: border-color 0.15s;
+    appearance: none;
+  }
+
+  input::placeholder {
+    color: var(--text-3);
+  }
+
+  input:focus, select:focus {
+    border-color: var(--border-focus);
+  }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2352525B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+
+  select option {
+    background: var(--surface-2);
+    color: var(--text-1);
+  }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--primary);
+    color: #0A0A0A;
+    border: none;
+    padding: 9px 18px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    margin-top: 20px;
+  }
+
+  .btn-primary i {
+    width: 14px;
+    height: 14px;
+  }
+
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-2);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+    padding: 9px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .btn-secondary:hover {
+    color: var(--text-1);
+    border-color: var(--border-strong);
+  }
+
+  /* ── Alerts ── */
+  .alert {
+    padding: 11px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    margin-bottom: 18px;
+    display: none;
+    line-height: 1.5;
+  }
+
+  .alert-success {
+    background: rgba(62, 207, 142, 0.08);
+    border: 1px solid rgba(62, 207, 142, 0.2);
+    color: var(--primary);
+  }
+
+  .alert-error {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #F87171;
+  }
+
+  /* ── Password note ── */
+  .senha-nota {
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    border-radius: var(--radius);
+    padding: 11px 14px;
+    font-size: 12px;
+    color: #D97706;
+    margin-top: 16px;
+    line-height: 1.6;
+  }
+
+  /* ── Table ── */
+  .table-wrapper {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .td-name {
+    font-weight: 500;
+    color: var(--text-1);
+  }
+
+  /* ── Badges ── */
   .badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     padding: 3px 8px;
     border-radius: 20px;
     font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.3px;
   }
-  .badge-tecnico { background: #dbeafe; color: #1d4ed8; }
-  .badge-supervisor { background: #fef3c7; color: #92400e; }
-  .badge-coordenador { background: #fce7f3; color: #9d174d; }
-  .badge-agendamento { background: #d1fae5; color: #065f46; }
-  .badge-sem-conta { background: #f3f4f6; color: #6b7280; }
 
+  .badge-tecnico {
+    background: rgba(79, 70, 229, 0.12);
+    color: #818CF8;
+  }
+
+  .badge-supervisor {
+    background: rgba(245, 158, 11, 0.12);
+    color: #FBBF24;
+  }
+
+  .badge-coordenador {
+    background: rgba(236, 72, 153, 0.12);
+    color: #F472B6;
+  }
+
+  .badge-agendamento {
+    background: rgba(20, 184, 166, 0.12);
+    color: #2DD4BF;
+  }
+
+  .badge-ativo {
+    background: var(--primary-muted);
+    color: var(--primary);
+  }
+
+  .badge-sem-conta {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-3);
+  }
+
+  /* ── Table action buttons ── */
   .btn-sm {
-    padding: 5px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
     border-radius: 6px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
+    font-family: inherit;
     cursor: pointer;
-    border: 1px solid;
     transition: all 0.15s;
   }
-  .btn-reset { color: #0f3460; border-color: #0f3460; background: white; }
-  .btn-reset:hover { background: #0f3460; color: white; }
-  .btn-danger { color: #dc2626; border-color: #dc2626; background: white; }
-  .btn-danger:hover { background: #dc2626; color: white; }
 
-  .senha-nota {
-    background: #fffbeb;
-    border: 1px solid #fcd34d;
-    border-radius: 8px;
-    padding: 12px 14px;
-    font-size: 13px;
-    color: #92400e;
-    margin-top: 12px;
+  .btn-sm i {
+    width: 12px;
+    height: 12px;
   }
 
+  .btn-reset {
+    color: var(--text-2);
+    border: 1px solid var(--border);
+    background: transparent;
+  }
+
+  .btn-reset:hover {
+    color: var(--text-1);
+    border-color: var(--border-strong);
+    background: var(--surface-2);
+  }
+
+  .table-empty {
+    text-align: center;
+    color: var(--text-3);
+    padding: 24px;
+    font-size: 13px;
+  }
+
+  /* ── Modal ── */
   .modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.5);
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    padding: 20px;
   }
-  .modal-overlay.open { display: flex; }
+
+  .modal-overlay.open {
+    display: flex;
+  }
+
   .modal {
-    background: white;
+    background: var(--surface-1);
+    border: 1px solid var(--border-strong);
     border-radius: 12px;
     padding: 28px;
     width: 100%;
     max-width: 400px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
   }
-  .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
-  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-  .btn-secondary { background: #f3f4f6; color: #374151; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .modal-header i {
+    width: 16px;
+    height: 16px;
+    color: var(--text-3);
+  }
+
+  .modal-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-1);
+  }
+
+  .modal .form-group {
+    gap: 7px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    justify-content: flex-end;
+  }
+
+  .modal-actions .btn-primary {
+    margin-top: 0;
+  }
 </style>
 </head>
 <body>
 
+<!-- Topbar -->
 <div class="topbar">
-  <h1>⚙️ Painel Admin — Usuários</h1>
-  <div class="topbar-links">
-    <a href="obras.html">📋 Obras</a>
-    <a href="agenda.html">📅 Agenda</a>
-    <a href="supervisor.html">👷 Supervisor</a>
-    <a href="#" onclick="logout()">🚪 Sair</a>
+  <div class="topbar-left">
+    <div class="topbar-logo-mark">
+      <i data-lucide="hard-hat"></i>
+    </div>
+    <span class="topbar-title">Solução Técnica</span>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-nav">
+      <a href="obras.html"><i data-lucide="layout-list"></i> Obras</a>
+      <a href="agenda.html"><i data-lucide="calendar"></i> Agenda</a>
+      <a href="supervisor.html"><i data-lucide="users"></i> Supervisor</a>
+    </nav>
   </div>
+  <button class="btn-logout" onclick="logout()">
+    <i data-lucide="log-out"></i>
+    Sair
+  </button>
 </div>
 
 <div class="container">
 
   <!-- Criar novo usuário -->
   <div class="card">
-    <div class="section-title">➕ Criar Conta para Técnico</div>
+    <div class="section-header">
+      <i data-lucide="user-plus"></i>
+      <h2>Criar Conta para Técnico</h2>
+    </div>
 
     <div id="alertSuccess" class="alert alert-success"></div>
     <div id="alertError" class="alert alert-error"></div>
@@ -182,7 +546,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Role / Perfil *</label>
+        <label>Perfil *</label>
         <select id="selectRole">
           <option value="tecnico">Técnico</option>
           <option value="supervisor">Supervisor</option>
@@ -201,42 +565,54 @@
     </div>
 
     <div class="senha-nota">
-      ⚠️ <strong>Atenção:</strong> Anote a senha e passe para o técnico. Após o primeiro login, ele poderá alterá-la (funcionalidade futura). O técnico deve guardar sua senha.
+      <strong>Atenção:</strong> Anote a senha e passe para o técnico. Após o primeiro login, ele poderá alterá-la (funcionalidade futura). O técnico deve guardar sua senha.
     </div>
 
     <button class="btn-primary" onclick="criarUsuario()">
+      <i data-lucide="user-plus"></i>
       Criar Conta
     </button>
   </div>
 
-  <!-- Lista de técnicos e status de conta -->
+  <!-- Lista de técnicos -->
   <div class="card">
-    <div class="section-title">👥 Técnicos e Status de Acesso</div>
-    <div id="loadingTabela" style="text-align:center; color:#666; padding:20px;">Carregando...</div>
-    <div id="tabelaContainer" style="display:none; overflow-x:auto;">
-      <table>
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Equipe(s)</th>
-            <th>Perfil</th>
-            <th>E-mail</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tabelaBody"></tbody>
-      </table>
+    <div class="section-header">
+      <i data-lucide="users"></i>
+      <h2>Técnicos e Status de Acesso</h2>
+    </div>
+
+    <div id="loadingTabela" class="table-empty">Carregando...</div>
+
+    <div id="tabelaContainer" style="display:none;">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Equipe(s)</th>
+              <th>Perfil</th>
+              <th>E-mail</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
+
 </div>
 
 <!-- Modal de reset de senha -->
 <div class="modal-overlay" id="modalReset">
   <div class="modal">
-    <h3>🔑 Redefinir Senha</h3>
+    <div class="modal-header">
+      <i data-lucide="key-round"></i>
+      <h3>Redefinir Senha</h3>
+    </div>
     <div class="form-group">
-      <label>Nova senha para <span id="resetNome"></span></label>
+      <label>Nova senha para <span id="resetNome" style="color:var(--text-1);font-weight:600;"></span></label>
       <input type="text" id="resetSenha" placeholder="Mínimo 6 caracteres">
     </div>
     <div class="modal-actions">
@@ -318,19 +694,19 @@ async function carregarDados() {
     const equipes = t.tecnico_equipes?.map(te => te.equipes?.nome).filter(Boolean).join(', ') || '—';
     const badgeRole = `<span class="badge badge-${t.role || 'tecnico'}">${t.role || 'técnico'}</span>`;
     const status = t.auth_user_id
-      ? '<span style="color:#16a34a;font-weight:600;">✅ Ativo</span>'
+      ? '<span class="badge badge-ativo">Ativo</span>'
       : '<span class="badge badge-sem-conta">Sem conta</span>';
 
     const acoes = t.auth_user_id
-      ? `<button class="btn-sm btn-reset" onclick="abrirReset('${t.auth_user_id}', '${t.nome.replace(/'/g,'\\\'')}')" title="Redefinir senha">🔑 Senha</button>`
-      : `<span style="color:#9ca3af;font-size:12px;">—</span>`;
+      ? `<button class="btn-sm btn-reset" onclick="abrirReset('${t.auth_user_id}', '${t.nome.replace(/'/g,'\\\'')}')" title="Redefinir senha"><i data-lucide="key-round"></i> Redefinir senha</button>`
+      : `<span style="color:var(--text-3);font-size:12px;">—</span>`;
 
     tbody.innerHTML += `
       <tr>
-        <td><strong>${t.nome}</strong></td>
-        <td style="color:#666;font-size:13px;">${equipes}</td>
+        <td class="td-name">${t.nome}</td>
+        <td style="font-size:12px;">${equipes}</td>
         <td>${badgeRole}</td>
-        <td style="color:#666;font-size:13px;">${t.email || '—'}</td>
+        <td style="font-size:12px;">${t.email || '—'}</td>
         <td>${status}</td>
         <td>${acoes}</td>
       </tr>`;
@@ -338,6 +714,9 @@ async function carregarDados() {
 
   document.getElementById('loadingTabela').style.display = 'none';
   document.getElementById('tabelaContainer').style.display = 'block';
+
+  // Re-init icons for dynamically inserted elements
+  lucide.createIcons();
 }
 
 async function criarUsuario() {
@@ -394,7 +773,7 @@ async function criarUsuario() {
       return;
     }
 
-    mostrarSucesso(`✅ Conta criada com sucesso! E-mail: ${email} | Senha: ${senha}`);
+    mostrarSucesso(`Conta criada com sucesso. E-mail: ${email} | Senha: ${senha}`);
     document.getElementById('novoEmail').value = '';
     document.getElementById('novaSenha').value = '';
     await carregarDados();
@@ -437,7 +816,7 @@ async function confirmarReset() {
       return;
     }
 
-    alert(`✅ Senha redefinida! Nova senha: ${novaSenha}`);
+    alert(`Senha redefinida com sucesso. Nova senha: ${novaSenha}`);
     fecharModal();
   } catch (err) {
     alert('Erro de conexão.');
@@ -463,6 +842,10 @@ async function logout() {
   await db.auth.signOut();
   window.location.href = 'login.html';
 }
+</script>
+
+<script>
+  lucide.createIcons();
 </script>
 </body>
 </html>

@@ -4,145 +4,689 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Solução Técnica — Minhas OSs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #0A0A0A;
+    color: #FFFFFF;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
 
   /* ── Header ── */
-  header{background:#1a1d2e;border-bottom:1px solid #2d3148;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-  header h1{font-size:1.2rem;font-weight:700;color:#fff}
-  nav{display:flex;gap:6px;align-items:center}
-  nav a{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;text-decoration:none;transition:all .2s}
-  nav a:hover,nav a.ativo{background:#3b5bdb;color:#fff}
-  .btn-logout{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;background:none;border:none;cursor:pointer;transition:all .2s}
-  .btn-logout:hover{background:#7f1d1d;color:#fca5a5}
+  header {
+    background: #111111;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    height: 56px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .header-brand {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #FFFFFF;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  nav a {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #A1A1AA;
+    text-decoration: none;
+    transition: color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+
+  nav a:hover { color: #FFFFFF; background: rgba(255,255,255,0.06); }
+  nav a.ativo { color: #FFFFFF; background: rgba(255,255,255,0.08); }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-nova-os {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #FFFFFF;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  .btn-nova-os:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.04); }
+  .btn-nova-os i { width: 14px; height: 14px; }
+
+  .btn-logout {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #A1A1AA;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  .btn-logout:hover { color: #FFFFFF; background: rgba(255,255,255,0.06); }
+  .btn-logout i { width: 14px; height: 14px; }
 
   /* ── Layout principal ── */
-  main{max-width:1100px;margin:0 auto;padding:24px 20px}
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 20px; }
 
   /* ── Stats ── */
-  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
-  .stat-card{background:#1a1d2e;border:1px solid #2d3148;border-radius:10px;padding:16px;text-align:center}
-  .stat-num{font-size:2rem;font-weight:700;color:#3b5bdb}
-  .stat-num.verde{color:#22c55e}
-  .stat-num.amarelo{color:#f59e0b}
-  .stat-label{font-size:0.72rem;color:#7c85b0;margin-top:4px}
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: #111111;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .stat-num {
+    font-size: 1.875rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 6px;
+    color: #FFFFFF;
+  }
+
+  .stat-num.verde { color: #3ECF8E; }
+  .stat-num.amarelo { color: #F59E0B; }
+
+  .stat-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #52525B;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
 
   /* ── Filtros ── */
-  .filtros-wrap{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;padding:16px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-  .chips{display:flex;gap:8px;flex-wrap:wrap}
-  .chip{padding:6px 14px;border-radius:20px;border:1px solid #2d3148;background:#12152a;color:#9ba3cc;font-size:0.78rem;cursor:pointer;transition:all .2s;white-space:nowrap}
-  .chip:hover,.chip.ativo{background:#3b5bdb;border-color:#3b5bdb;color:#fff}
-  .date-group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .date-group label{font-size:0.78rem;color:#7c85b0}
-  .date-group input{background:#12152a;border:1px solid #2d3148;border-radius:8px;padding:7px 10px;color:#e2e8f0;font-size:0.82rem;outline:none}
-  .date-group input:focus{border-color:#3b5bdb}
+  .filtros-wrap {
+    background: #111111;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
 
-  /* ── Tabela desktop ── */
-  .tabela-wrap{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;overflow:hidden;margin-bottom:20px}
-  table{width:100%;border-collapse:collapse;font-size:0.83rem}
-  th{background:#12152a;padding:10px 16px;text-align:left;font-size:0.7rem;font-weight:700;color:#7c85b0;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #2d3148}
-  td{padding:12px 16px;border-bottom:1px solid #1e2240;vertical-align:middle}
-  tr:last-child td{border-bottom:none}
-  tr:hover td{background:#1e2240;cursor:pointer}
-  .empty-table{text-align:center;padding:40px;color:#4a5080;font-size:0.88rem}
+  .filtros-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+
+  .filtros-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #52525B;
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+
+  .chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: transparent;
+    color: #A1A1AA;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .chip:hover { border-color: rgba(255,255,255,0.2); color: #FFFFFF; background: rgba(255,255,255,0.04); }
+  .chip.ativo { border-color: #3ECF8E; color: #3ECF8E; background: rgba(62,207,142,0.08); }
+
+  .date-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .date-group label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #52525B;
+  }
+
+  .date-group input {
+    background: #0A0A0A;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #FFFFFF;
+    font-size: 0.82rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+    color-scheme: dark;
+  }
+  .date-group input:focus { border-color: rgba(255,255,255,0.25); }
+
+  /* ── Busca ── */
+  .busca-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .busca-wrap i {
+    position: absolute;
+    left: 10px;
+    width: 14px;
+    height: 14px;
+    color: #52525B;
+    pointer-events: none;
+  }
+  .busca-wrap input {
+    background: #0A0A0A;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    padding: 6px 10px 6px 32px;
+    color: #FFFFFF;
+    font-size: 0.82rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 200px;
+  }
+  .busca-wrap input:focus { border-color: rgba(255,255,255,0.25); }
+  .busca-wrap input::placeholder { color: #52525B; }
+
+  /* ── Tabela (desktop) ── */
+  .tabela-wrap {
+    background: #111111;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+  }
+
+  thead {
+    background: #0A0A0A;
+  }
+
+  th {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #52525B;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: middle;
+    color: #A1A1AA;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tbody tr {
+    transition: background 0.1s;
+    cursor: pointer;
+  }
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .empty-table {
+    text-align: center;
+    padding: 48px 16px;
+    color: #52525B;
+    font-size: 0.85rem;
+  }
+
+  .empty-table i {
+    display: block;
+    margin: 0 auto 12px;
+    width: 28px;
+    height: 28px;
+    color: #52525B;
+  }
 
   /* ── Cards mobile ── */
-  .cards-lista{display:none}
-  .os-card{background:#1a1d2e;border:1px solid #2d3148;border-radius:10px;padding:16px;margin-bottom:10px;cursor:pointer;transition:border-color .2s}
-  .os-card:hover{border-color:#3b5bdb}
-  .os-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
-  .os-obra{font-size:0.95rem;font-weight:700;color:#fff}
-  .os-data{font-size:0.75rem;color:#7c85b0;white-space:nowrap}
-  .os-obs{font-size:0.8rem;color:#a0aec0;margin:6px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .os-footer{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .cards-lista { display: none; }
+
+  .os-card {
+    background: #111111;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .os-card:hover { border-color: rgba(255,255,255,0.18); }
+
+  .os-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .os-obra {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #FFFFFF;
+  }
+
+  .os-data {
+    font-size: 0.72rem;
+    color: #52525B;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .os-obs {
+    font-size: 0.8rem;
+    color: #A1A1AA;
+    margin: 6px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.5;
+  }
+
+  .os-footer {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    align-items: center;
+  }
 
   /* ── Badges ── */
-  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:0.7rem;font-weight:700}
-  .badge-pendente{background:#3d2700;color:#fbbf24}
-  .badge-aprovado,.badge-aprovada{background:#14532d;color:#86efac}
-  .badge-rejeitado,.badge-reprovada{background:#450a0a;color:#fca5a5}
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 5px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .badge i { width: 10px; height: 10px; }
+
+  .badge-pendente { background: rgba(245,158,11,0.12); color: #F59E0B; border: 1px solid rgba(245,158,11,0.2); }
+  .badge-aprovado, .badge-aprovada { background: rgba(62,207,142,0.1); color: #3ECF8E; border: 1px solid rgba(62,207,142,0.2); }
+  .badge-rejeitado, .badge-reprovada { background: rgba(239,68,68,0.1); color: #EF4444; border: 1px solid rgba(239,68,68,0.2); }
+
+  .badge-fotos {
+    background: rgba(79,70,229,0.1);
+    color: #818CF8;
+    border: 1px solid rgba(79,70,229,0.2);
+  }
 
   /* ── Spinner ── */
-  .spinner-wrap{text-align:center;padding:40px;color:#4a5080}
-  .spinner{width:28px;height:28px;border:3px solid #2d3148;border-top-color:#3b5bdb;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
-  @keyframes spin{to{transform:rotate(360deg)}}
+  .spinner-wrap {
+    text-align: center;
+    padding: 48px;
+    color: #52525B;
+  }
+
+  .spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255,255,255,0.08);
+    border-top-color: #3ECF8E;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 12px;
+  }
+
+  .spinner-wrap p {
+    font-size: 0.82rem;
+    color: #52525B;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ── Modal detalhe ── */
-  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;padding:16px}
-  .overlay.aberto{display:flex}
-  .modal{background:#1a1d2e;border:1px solid #2d3148;border-radius:16px;padding:28px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto}
-  .modal h2{font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:20px}
-  .detail-row{margin-bottom:14px}
-  .detail-label{font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#7c85b0;letter-spacing:.06em;margin-bottom:3px}
-  .detail-value{font-size:0.88rem;color:#e2e8f0}
-  .obs-supervisor{background:#3d2700;border:1px solid #f59e0b;border-radius:8px;padding:10px 12px;font-size:0.82rem;color:#fbbf24;margin:8px 0}
-  .btn-fechar{width:100%;padding:12px;background:#2d3148;border:none;border-radius:8px;color:#e2e8f0;font-size:0.9rem;font-weight:600;cursor:pointer;margin-top:16px}
-  .btn-fechar:hover{background:#3b5bdb}
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(4px);
+  }
+  .overlay.aberto { display: flex; }
+
+  .modal {
+    background: #161616;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 28px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .modal-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #FFFFFF;
+    letter-spacing: -0.01em;
+  }
+
+  .btn-modal-fechar {
+    background: none;
+    border: none;
+    color: #52525B;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+  }
+  .btn-modal-fechar:hover { color: #FFFFFF; }
+  .btn-modal-fechar i { width: 16px; height: 16px; }
+
+  .detail-row { margin-bottom: 16px; }
+
+  .detail-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #52525B;
+    letter-spacing: 0.07em;
+    margin-bottom: 4px;
+  }
+
+  .detail-value {
+    font-size: 0.85rem;
+    color: #FFFFFF;
+    line-height: 1.5;
+  }
+
+  .obs-supervisor {
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 0.82rem;
+    color: #F59E0B;
+    margin: 8px 0 16px;
+    line-height: 1.5;
+  }
+
+  .obs-supervisor .obs-sup-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 4px;
+    color: #F59E0B;
+    opacity: 0.7;
+  }
+
+  .btn-fechar {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    color: #A1A1AA;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 20px;
+    font-family: 'Inter', system-ui, sans-serif;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-fechar:hover { background: rgba(255,255,255,0.08); color: #FFFFFF; }
 
   /* ── Fotos no modal ── */
-  .fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:8px}
-  .foto-item{aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;background:#12152a}
-  .foto-item img{width:100%;height:100%;object-fit:cover;transition:transform .2s}
-  .foto-item:hover img{transform:scale(1.05)}
+  .fotos-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .foto-item {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    background: #0A0A0A;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .foto-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s;
+  }
+  .foto-item:hover img { transform: scale(1.05); }
 
   /* ── Lightbox ── */
-  .lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;align-items:center;justify-content:center}
-  .lightbox.aberto{display:flex}
-  .lightbox img{max-width:90vw;max-height:85vh;border-radius:8px;object-fit:contain}
-  .lb-close{position:absolute;top:16px;right:20px;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer}
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.95);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+  }
+  .lightbox.aberto { display: flex; }
+
+  .lightbox img {
+    max-width: 90vw;
+    max-height: 85vh;
+    border-radius: 8px;
+    object-fit: contain;
+  }
+
+  .lb-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: #FFFFFF;
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    transition: background 0.15s;
+  }
+  .lb-close:hover { background: rgba(255,255,255,0.15); }
+  .lb-close i { width: 18px; height: 18px; }
+
+  /* ── Divisor modal ── */
+  .modal-section-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 16px 0;
+  }
+
+  /* ── Texto célula tabela ── */
+  .cell-primary {
+    font-weight: 600;
+    color: #FFFFFF;
+    font-size: 0.83rem;
+  }
+  .cell-secondary {
+    font-size: 0.72rem;
+    color: #52525B;
+    margin-top: 2px;
+  }
+  .cell-obs {
+    color: #A1A1AA;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   /* ── Responsive ── */
-  @media(max-width:700px){
-    main{padding:16px 12px}
-    .stats{grid-template-columns:repeat(3,1fr);gap:8px}
-    .stat-num{font-size:1.4rem}
-    .tabela-wrap{display:none}          /* esconde tabela no mobile */
-    .cards-lista{display:block}         /* mostra cards no mobile */
-    .filtros-wrap{padding:12px}
-    .date-group{width:100%}
+  @media (max-width: 700px) {
+    main { padding: 16px 12px; }
+    .stats { gap: 8px; }
+    .stat-card { padding: 14px; }
+    .stat-num { font-size: 1.5rem; }
+    .tabela-wrap { display: none; }
+    .cards-lista { display: block; }
+    .filtros-wrap { padding: 12px; }
+    .date-group { width: 100%; }
+    .busca-wrap input { width: 100%; }
+    nav a { display: none; }
+    nav a.ativo { display: block; }
   }
-  @media(min-width:701px){
-    .tabela-wrap{display:block}         /* tabela no desktop */
-    .cards-lista{display:none}          /* esconde cards no desktop */
+
+  @media (min-width: 701px) {
+    .tabela-wrap { display: block; }
+    .cards-lista { display: none; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Solução Técnica</h1>
+  <span class="header-brand">Solução Técnica</span>
   <nav>
     <a href="obras.html">Obras</a>
     <a href="agenda.html">Agenda</a>
     <a href="os.html">OS</a>
     <a href="tecnico_dashboard.html" class="ativo">Minhas OSs</a>
-    <button class="btn-logout" onclick="logout()">↩ Sair</button>
   </nav>
+  <div class="header-actions">
+    <button class="btn-nova-os">
+      <i data-lucide="plus"></i>
+      Nova OS
+    </button>
+    <button class="btn-logout" onclick="logout()">
+      <i data-lucide="log-out"></i>
+      Sair
+    </button>
+  </div>
 </header>
 
 <main>
   <!-- Stats -->
   <div class="stats">
-    <div class="stat-card"><div class="stat-num" id="statTotal">—</div><div class="stat-label">Total</div></div>
-    <div class="stat-card"><div class="stat-num verde" id="statAprovadas">—</div><div class="stat-label">Aprovadas</div></div>
-    <div class="stat-card"><div class="stat-num amarelo" id="statPendentes">—</div><div class="stat-label">Pendentes</div></div>
+    <div class="stat-card">
+      <div class="stat-num" id="statTotal">—</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num verde" id="statAprovadas">—</div>
+      <div class="stat-label">Aprovadas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num amarelo" id="statPendentes">—</div>
+      <div class="stat-label">Pendentes</div>
+    </div>
   </div>
 
   <!-- Filtros -->
   <div class="filtros-wrap">
-    <div class="chips">
-      <div class="chip ativo" onclick="setFiltro('todos',this)">Todas</div>
-      <div class="chip" onclick="setFiltro('pendente',this)">⏳ Pendentes</div>
-      <div class="chip" onclick="setFiltro('aprovado',this)">✅ Aprovadas</div>
-      <div class="chip" onclick="setFiltro('rejeitado',this)">❌ Rejeitadas</div>
+    <div class="filtros-left">
+      <span class="filtros-label">Status</span>
+      <div class="chips">
+        <div class="chip ativo" onclick="setFiltro('todos',this)">Todas</div>
+        <div class="chip" onclick="setFiltro('pendente',this)">Pendentes</div>
+        <div class="chip" onclick="setFiltro('aprovado',this)">Aprovadas</div>
+        <div class="chip" onclick="setFiltro('rejeitado',this)">Rejeitadas</div>
+      </div>
     </div>
     <div class="date-group">
-      <label>De:</label>
+      <label>De</label>
       <input type="date" id="dataInicio" onchange="filtrar()">
-      <label>Até:</label>
+      <label>Até</label>
       <input type="date" id="dataFim" onchange="filtrar()">
+    </div>
+    <div class="busca-wrap">
+      <i data-lucide="search"></i>
+      <input type="text" id="busca" placeholder="Buscar obra..." oninput="filtrar()">
     </div>
   </div>
 
@@ -151,29 +695,44 @@
     <table>
       <thead>
         <tr>
-          <th>Data</th>
-          <th>Obra / Cliente</th>
+          <th>Data serviço / Envio</th>
+          <th>Obra</th>
           <th>Observações</th>
           <th>Status</th>
           <th>Fotos</th>
         </tr>
       </thead>
       <tbody id="tabelaBody">
-        <tr><td colspan="5" class="empty-table"><div class="spinner"></div> Carregando...</td></tr>
+        <tr>
+          <td colspan="5">
+            <div class="spinner-wrap">
+              <div class="spinner"></div>
+              <p>Carregando...</p>
+            </div>
+          </td>
+        </tr>
       </tbody>
     </table>
   </div>
 
   <!-- Cards (mobile) -->
   <div class="cards-lista" id="cardLista">
-    <div class="spinner-wrap"><div class="spinner"></div><p>Carregando...</p></div>
+    <div class="spinner-wrap">
+      <div class="spinner"></div>
+      <p>Carregando...</p>
+    </div>
   </div>
 </main>
 
 <!-- Modal detalhe OS -->
 <div class="overlay" id="modalOverlay" onclick="fecharModal(event)">
   <div class="modal">
-    <h2 id="modalTitulo"></h2>
+    <div class="modal-header">
+      <h2 id="modalTitulo"></h2>
+      <button class="btn-modal-fechar" onclick="fecharModal()">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
     <div id="modalConteudo"></div>
     <button class="btn-fechar" onclick="fecharModal()">Fechar</button>
   </div>
@@ -181,7 +740,9 @@
 
 <!-- Lightbox -->
 <div class="lightbox" id="lightbox">
-  <button class="lb-close" onclick="fecharLightbox()">✕</button>
+  <button class="lb-close" onclick="fecharLightbox()">
+    <i data-lucide="x"></i>
+  </button>
   <img id="lbImg" src="" alt="">
 </div>
 
@@ -272,9 +833,9 @@ function fmtData(iso) {
 
 function badgeHTML(status) {
   const map = {
-    pendente:  '<span class="badge badge-pendente">⏳ Pendente</span>',
-    aprovado:  '<span class="badge badge-aprovado">✅ Aprovado</span>',
-    rejeitado: '<span class="badge badge-rejeitado">❌ Rejeitado</span>',
+    pendente:  '<span class="badge badge-pendente"><i data-lucide="clock"></i>Pendente</span>',
+    aprovado:  '<span class="badge badge-aprovado"><i data-lucide="check"></i>Aprovado</span>',
+    rejeitado: '<span class="badge badge-rejeitado"><i data-lucide="x"></i>Rejeitado</span>',
   };
   return map[status] || `<span class="badge">${status || '—'}</span>`;
 }
@@ -283,7 +844,11 @@ function badgeHTML(status) {
 function renderTabela(lista) {
   const tbody = document.getElementById('tabelaBody');
   if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-table">Nenhuma OS encontrada.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-table">
+      <i data-lucide="inbox"></i>
+      Nenhuma OS encontrada.
+    </td></tr>`;
+    lucide.createIcons();
     return;
   }
   tbody.innerHTML = lista.map(os => {
@@ -291,23 +856,26 @@ function renderTabela(lista) {
     return `<tr onclick="verDetalhe(${os.id})">
       <td style="white-space:nowrap">
         ${os.data_servico
-          ? `<div style="font-weight:600;color:#e2e8f0">${fmtData(os.data_servico + 'T12:00')}</div><div style="font-size:.7rem;color:#7c85b0;margin-top:2px">enviado ${fmtData(os.criado_em)}</div>`
-          : `<div style="color:#7c85b0">${fmtData(os.criado_em)}</div>`}
+          ? `<div class="cell-primary">${fmtData(os.data_servico + 'T12:00')}</div><div class="cell-secondary">enviado ${fmtData(os.criado_em)}</div>`
+          : `<div class="cell-secondary">${fmtData(os.criado_em)}</div>`}
       </td>
-      <td><strong>${os.obras?.nome_cliente || '—'}</strong>
-        ${os.obras?.endereco ? `<div style="font-size:.72rem;color:#7c85b0">${os.obras.endereco}</div>` : ''}</td>
-      <td style="color:#a0aec0;max-width:280px">${(os.observacoes || os.servicos_realizados || '—').slice(0,80)}</td>
+      <td>
+        <div class="cell-primary">${os.obras?.nome_cliente || '—'}</div>
+        ${os.obras?.endereco ? `<div class="cell-secondary">${os.obras.endereco}</div>` : ''}
+      </td>
+      <td class="cell-obs">${(os.observacoes || os.servicos_realizados || '—').slice(0,80)}</td>
       <td>${badgeHTML(os.status_aprovacao)}</td>
-      <td style="color:#7c85b0">${nFotos > 0 ? `📸 ${nFotos}` : '—'}</td>
+      <td>${nFotos > 0 ? `<span class="badge badge-fotos"><i data-lucide="image"></i>${nFotos}</span>` : '<span style="color:#52525B">—</span>'}</td>
     </tr>`;
   }).join('');
+  lucide.createIcons();
 }
 
 /* ── Cards (mobile) ── */
 function renderCards(lista) {
   const container = document.getElementById('cardLista');
   if (!lista.length) {
-    container.innerHTML = '<div class="spinner-wrap" style="padding:40px;text-align:center;color:#4a5080">Nenhuma OS encontrada.</div>';
+    container.innerHTML = '<div class="spinner-wrap" style="padding:40px;text-align:center;color:#52525B">Nenhuma OS encontrada.</div>';
     return;
   }
   container.innerHTML = lista.map(os => `
@@ -316,16 +884,17 @@ function renderCards(lista) {
         <div class="os-obra">${os.obras?.nome_cliente || '—'}</div>
         <div class="os-data">
           ${os.data_servico
-            ? `<span style="font-weight:600">${fmtData(os.data_servico + 'T12:00')}</span><span style="font-size:.7rem;color:#7c85b0;margin-left:4px">· env. ${fmtData(os.criado_em)}</span>`
+            ? `<div style="font-weight:600;color:#FFFFFF">${fmtData(os.data_servico + 'T12:00')}</div><div>env. ${fmtData(os.criado_em)}</div>`
             : fmtData(os.criado_em)}
         </div>
       </div>
       <div class="os-obs">${os.observacoes || os.servicos_realizados || 'Sem observações'}</div>
       <div class="os-footer">
         ${badgeHTML(os.status_aprovacao)}
-        ${(os.fotos_urls||[]).length > 0 ? `<span class="badge" style="background:#1e3a5f;color:#93c5fd">📸 ${os.fotos_urls.length} foto(s)</span>` : ''}
+        ${(os.fotos_urls||[]).length > 0 ? `<span class="badge badge-fotos"><i data-lucide="image"></i>${os.fotos_urls.length} foto(s)</span>` : ''}
       </div>
     </div>`).join('');
+  lucide.createIcons();
 }
 
 /* ── Modal detalhe ── */
@@ -338,9 +907,9 @@ function verDetalhe(id) {
   let html = `
     ${os.data_servico ? `<div class="detail-row"><div class="detail-label">Data do serviço</div><div class="detail-value">${fmtData(os.data_servico + 'T12:00')}</div></div>` : ''}
     <div class="detail-row"><div class="detail-label">OS enviada em</div><div class="detail-value">${fmtData(os.criado_em)}</div></div>
-    <div class="detail-row"><div class="detail-label">Obra / Endereço</div><div class="detail-value">${os.obras?.nome_cliente || '—'}${os.obras?.endereco ? ` · 📍 ${os.obras.endereco}` : ''}</div></div>
+    <div class="detail-row"><div class="detail-label">Obra / Endereço</div><div class="detail-value">${os.obras?.nome_cliente || '—'}${os.obras?.endereco ? ` · ${os.obras.endereco}` : ''}</div></div>
     <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value">${badgeHTML(os.status_aprovacao)}</div></div>
-    ${os.observacao_supervisor ? `<div class="obs-supervisor">💬 Supervisor: "${os.observacao_supervisor}"</div>` : ''}
+    ${os.observacao_supervisor ? `<div class="obs-supervisor"><div class="obs-sup-label">Observação do supervisor</div>${os.observacao_supervisor}</div>` : ''}
     ${os.servicos_realizados ? `<div class="detail-row"><div class="detail-label">Serviços realizados</div><div class="detail-value">${os.servicos_realizados}</div></div>` : ''}
     ${os.observacoes ? `<div class="detail-row"><div class="detail-label">Observações</div><div class="detail-value">${os.observacoes}</div></div>` : ''}
     ${os.proximas_atividades ? `<div class="detail-row"><div class="detail-label">Próximas atividades</div><div class="detail-value">${os.proximas_atividades}</div></div>` : ''}
@@ -348,7 +917,8 @@ function verDetalhe(id) {
   `;
 
   if (os.fotos_urls && os.fotos_urls.length > 0) {
-    html += `<div class="detail-row">
+    html += `<div class="modal-section-divider"></div>
+    <div class="detail-row">
       <div class="detail-label">Fotos (${os.fotos_urls.length})</div>
       <div class="fotos-grid">
         ${os.fotos_urls.map(url => `<div class="foto-item" onclick="event.stopPropagation();abrirLightbox('${url}')"><img src="${url}" loading="lazy" alt="foto"></div>`).join('')}
@@ -357,6 +927,7 @@ function verDetalhe(id) {
 
   document.getElementById('modalConteudo').innerHTML = html;
   document.getElementById('modalOverlay').classList.add('aberto');
+  lucide.createIcons();
 }
 
 function fecharModal(e) {
@@ -377,5 +948,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { fecharModal(); fecharLightbox(); }
 });
 </script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
 </body>
 </html>

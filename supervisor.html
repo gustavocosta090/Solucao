@@ -4,348 +4,861 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Supervisor — Ordens de Serviço</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- SheetJS para exportar Excel -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6fa; color: #222; }
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+  :root {
+    --bg: #0A0A0A;
+    --surface-1: #111111;
+    --surface-2: #161616;
+    --surface-3: #1B1B1B;
+    --primary: #3ECF8E;
+    --secondary: #4F46E5;
+    --text-1: #FFFFFF;
+    --text-2: #A1A1AA;
+    --text-3: #52525B;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.12);
+    --amber: #F59E0B;
+    --amber-text: #FCD34D;
+    --red: #EF4444;
+    --red-text: #F87171;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text-1);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== TOPBAR ===== */
   .topbar {
-    background: linear-gradient(135deg, #1a1a2e, #0f3460);
-    color: white;
-    padding: 14px 24px;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    height: 56px;
+    padding: 0 24px;
     display: flex;
     align-items: center;
-    gap: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     position: sticky;
     top: 0;
     z-index: 100;
   }
-  .topbar h1 { font-size: 18px; font-weight: 700; flex: 1; }
-  .topbar-links { display: flex; gap: 12px; align-items: center; }
-  .topbar-links a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; white-space: nowrap; }
-  .topbar-links a:hover { color: white; }
 
-  /* Stats */
+  .topbar-logo {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-1);
+    letter-spacing: -0.2px;
+    flex: 1;
+    text-decoration: none;
+  }
+
+  .topbar-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .topbar-links a {
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .topbar-links a:hover {
+    color: var(--text-1);
+    background: rgba(255,255,255,0.06);
+  }
+
+  .topbar-links a.active {
+    color: var(--primary);
+  }
+
+  .topbar-links a.nav-sair {
+    color: var(--text-2);
+    border: 1px solid var(--border-strong);
+    margin-left: 8px;
+  }
+
+  .topbar-links a.nav-sair:hover {
+    color: var(--text-1);
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.18);
+  }
+
+  /* ===== STATS ROW ===== */
   .stats-row {
     display: flex;
-    gap: 16px;
+    gap: 12px;
     padding: 20px 24px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  .stat-card {
-    background: white;
-    border-radius: 12px;
-    padding: 16px 20px;
-    min-width: 130px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    border-top: 3px solid;
-  }
-  .stat-num { font-size: 28px; font-weight: 700; }
-  .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
 
-  /* Filtros */
+  .stat-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    min-width: 150px;
+    flex: 1;
+  }
+
+  .stat-num {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-2);
+    font-weight: 500;
+  }
+
+  /* ===== FILTROS ===== */
   .filtros-bar {
-    background: white;
-    padding: 16px 24px;
+    background: var(--surface-1);
+    padding: 14px 24px;
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
-    border-bottom: 1px solid #e0e0e0;
-    border-top: 1px solid #e0e0e0;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
   }
-  .filtros-bar select, .filtros-bar input {
-    padding: 9px 12px;
-    border: 1.5px solid #e0e0e0;
-    border-radius: 8px;
+
+  .filtros-bar select,
+  .filtros-bar input[type="date"],
+  .filtros-bar input[type="text"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    border-radius: 6px;
+    padding: 8px 12px;
     font-size: 13px;
-    background: white;
+    font-family: 'Inter', system-ui, sans-serif;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
   }
-  .filtros-bar select:focus, .filtros-bar input:focus { border-color: #0f3460; }
-  .filtros-bar input[type="date"] { width: 140px; }
+
+  .filtros-bar select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2352525B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+  }
+
+  .filtros-bar select:focus,
+  .filtros-bar input:focus {
+    border-color: var(--border-strong);
+  }
+
+  .filtros-bar select option {
+    background: #1B1B1B;
+    color: var(--text-1);
+  }
+
+  .filtros-bar input[type="date"] { width: 148px; }
+
+  .input-busca-wrap {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .input-busca-wrap i {
+    position: absolute;
+    left: 10px;
+    color: var(--text-3);
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+  }
+
+  .input-busca-wrap input {
+    width: 100%;
+    padding-left: 32px !important;
+  }
 
   .btn-exportar {
     margin-left: auto;
-    background: #166534;
-    color: white;
-    border: none;
-    padding: 9px 16px;
-    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text-1);
+    border: 1px solid var(--border-strong);
+    padding: 8px 14px;
+    border-radius: 6px;
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 500;
+    font-family: 'Inter', system-ui, sans-serif;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     white-space: nowrap;
-    transition: opacity 0.2s;
+    transition: background 0.15s, border-color 0.15s;
   }
-  .btn-exportar:hover { opacity: 0.9; }
 
-  /* Tabela */
+  .btn-exportar:hover {
+    background: var(--surface-3);
+    border-color: rgba(255,255,255,0.18);
+  }
+
+  .btn-exportar i {
+    width: 14px;
+    height: 14px;
+    color: var(--text-2);
+  }
+
+  /* ===== TABLE CONTAINER ===== */
   .container { padding: 20px 24px; }
-  .table-wrap { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  thead { background: #f8fafc; }
+
+  .table-wrap {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  thead { background: var(--bg); }
+
   th {
-    padding: 12px 16px;
+    padding: 11px 16px;
     text-align: left;
     font-size: 11px;
-    font-weight: 700;
-    color: #666;
+    font-weight: 600;
+    color: var(--text-3);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 2px solid #e8e8e8;
+    border-bottom: 1px solid var(--border);
     white-space: nowrap;
     cursor: pointer;
     user-select: none;
   }
-  th:hover { background: #f0f0f0; }
-  th .sort-icon { margin-left: 4px; opacity: 0.4; }
-  th.sorted .sort-icon { opacity: 1; color: #0f3460; }
-  td { padding: 13px 16px; border-bottom: 1px solid #f4f4f4; vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #fafafa; }
 
-  .badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 700;
-    white-space: nowrap;
+  th:hover { color: var(--text-2); }
+
+  th .sort-icon {
+    margin-left: 4px;
+    opacity: 0.4;
+    font-style: normal;
   }
-  .badge-pendente   { background: #fef3c7; color: #92400e; }
-  .badge-aprovada   { background: #d1fae5; color: #065f46; }
-  .badge-reprovada  { background: #fee2e2; color: #991b1b; }
 
-  .btn-ver { background: #eff6ff; color: #1d4ed8; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
-  .btn-ver:hover { background: #dbeafe; }
-  .btn-aprovar { background: #d1fae5; color: #065f46; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; margin-right: 4px; }
-  .btn-aprovar:hover { background: #a7f3d0; }
-  .btn-reprovar { background: #fee2e2; color: #991b1b; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
-  .btn-reprovar:hover { background: #fecaca; }
+  th.sorted .sort-icon { opacity: 1; color: var(--primary); }
 
-  .empty { text-align: center; padding: 60px 24px; color: #999; }
-  .empty .icon { font-size: 48px; margin-bottom: 12px; }
+  td {
+    padding: 13px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    vertical-align: middle;
+    color: var(--text-1);
+  }
 
-  .loading { text-align: center; padding: 40px; color: #666; }
-  .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #e0e0e0; border-top-color: #0f3460; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
+  tr:last-child td { border-bottom: none; }
+
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .td-muted { font-size: 12px; color: var(--text-2); }
+  .td-center { text-align: center; }
+
+  /* ===== BADGES ===== */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+
+  .badge-pendente {
+    background: rgba(245,158,11,0.1);
+    color: var(--amber-text);
+    border-color: rgba(245,158,11,0.2);
+  }
+
+  .badge-aprovada {
+    background: rgba(62,207,142,0.1);
+    color: var(--primary);
+    border-color: rgba(62,207,142,0.2);
+  }
+
+  .badge-reprovada {
+    background: rgba(239,68,68,0.1);
+    color: var(--red-text);
+    border-color: rgba(239,68,68,0.2);
+  }
+
+  /* ===== ACTION BUTTONS ===== */
+  .btn-ver,
+  .btn-aprovar,
+  .btn-reprovar {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Inter', system-ui, sans-serif;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .btn-ver {
+    background: rgba(255,255,255,0.06);
+    color: var(--text-2);
+    border-color: var(--border);
+  }
+
+  .btn-ver:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-1);
+  }
+
+  .btn-aprovar {
+    background: rgba(62,207,142,0.1);
+    color: var(--primary);
+    border-color: rgba(62,207,142,0.2);
+    margin-right: 4px;
+  }
+
+  .btn-aprovar:hover {
+    background: rgba(62,207,142,0.2);
+    border-color: rgba(62,207,142,0.35);
+  }
+
+  .btn-reprovar {
+    background: rgba(239,68,68,0.1);
+    color: var(--red-text);
+    border-color: rgba(239,68,68,0.2);
+    margin-right: 4px;
+  }
+
+  .btn-reprovar:hover {
+    background: rgba(239,68,68,0.2);
+    border-color: rgba(239,68,68,0.35);
+  }
+
+  /* ===== EMPTY & LOADING ===== */
+  .loading {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 14px;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-strong);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    flex-shrink: 0;
+  }
+
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Paginação */
+  .empty {
+    text-align: center;
+    padding: 56px 24px;
+    color: var(--text-3);
+  }
+
+  .empty i {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+  }
+
+  .empty p {
+    font-size: 14px;
+    color: var(--text-2);
+  }
+
+  /* ===== PAGINAÇÃO ===== */
   .paginacao {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 16px;
-    border-top: 1px solid #f0f0f0;
+    gap: 6px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
   }
+
   .btn-pag {
-    padding: 6px 12px;
-    border: 1.5px solid #e0e0e0;
-    background: white;
+    padding: 5px 11px;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-2);
     border-radius: 6px;
     font-size: 13px;
+    font-family: 'Inter', system-ui, sans-serif;
     cursor: pointer;
     transition: all 0.15s;
+    font-weight: 500;
   }
-  .btn-pag:hover, .btn-pag.active { background: #0f3460; color: white; border-color: #0f3460; }
-  .btn-pag:disabled { opacity: 0.4; cursor: not-allowed; }
-  .pag-info { font-size: 13px; color: #888; }
+
+  .btn-pag:hover { background: rgba(255,255,255,0.06); color: var(--text-1); }
+
+  .btn-pag.active {
+    background: var(--primary);
+    color: var(--bg);
+    border-color: var(--primary);
+    font-weight: 600;
+  }
+
+  .btn-pag:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .pag-info {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-left: 4px;
+    font-weight: 500;
+  }
 
   /* ===== MODAL DETALHE OS ===== */
   .modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.55);
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 1000;
     padding: 20px;
+    backdrop-filter: blur(2px);
   }
+
   .modal-overlay.open { display: flex; }
+
   .modal {
-    background: white;
+    background: var(--surface-2);
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 14px;
     width: 100%;
     max-width: 680px;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    box-shadow: 0 25px 80px rgba(0,0,0,0.6);
   }
+
   .modal-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
     position: sticky;
     top: 0;
-    background: white;
+    background: var(--surface-2);
     z-index: 2;
   }
-  .modal-header h2 { font-size: 17px; font-weight: 700; }
-  .btn-fechar { background: none; border: none; font-size: 22px; cursor: pointer; color: #999; }
-  .btn-fechar:hover { color: #333; }
+
+  .modal-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-1);
+  }
+
+  .btn-fechar {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .btn-fechar:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-1);
+  }
+
+  .btn-fechar i { width: 14px; height: 14px; }
+
   .modal-body { padding: 20px 24px; }
 
-  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-  .detail-item label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #999; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }
-  .detail-item span { font-size: 14px; color: #222; }
-  .detail-item.full { grid-column: 1/-1; }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
 
-  .fotos-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
-  .foto-item { aspect-ratio: 1; border-radius: 8px; overflow: hidden; cursor: pointer; }
-  .foto-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }
-  .foto-item:hover img { transform: scale(1.05); }
+  .detail-item label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-3);
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .detail-item span {
+    font-size: 13.5px;
+    color: var(--text-1);
+    line-height: 1.5;
+  }
+
+  .detail-item.full { grid-column: 1 / -1; }
+
+  .detail-address {
+    font-size: 12px;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+  }
+
+  .detail-address i { width: 12px; height: 12px; }
+
+  .obs-supervisor {
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.2);
+    color: var(--amber-text);
+    padding: 10px 12px;
+    border-radius: 6px;
+    display: block;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* Fotos */
+  .fotos-section {
+    margin-bottom: 20px;
+  }
+
+  .fotos-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-3);
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+
+  .fotos-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .foto-item {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid var(--border);
+  }
+
+  .foto-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s, opacity 0.2s;
+  }
+
+  .foto-item:hover img {
+    transform: scale(1.05);
+    opacity: 0.85;
+  }
 
   /* Aprovação */
   .aprovacao-box {
-    background: #f8fafc;
-    border: 1px solid #e0e0e0;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 16px;
+    padding: 18px;
     margin-top: 16px;
   }
-  .aprovacao-box h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #444; }
+
+  .aprovacao-box h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .aprovacao-box h3 i { width: 14px; height: 14px; }
+
   .aprovacao-box textarea {
     width: 100%;
     padding: 10px 12px;
-    border: 1.5px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'Inter', system-ui, sans-serif;
     outline: none;
     resize: vertical;
-    min-height: 70px;
-    font-family: inherit;
+    min-height: 72px;
     margin-bottom: 12px;
+    transition: border-color 0.15s;
   }
-  .aprovacao-box textarea:focus { border-color: #0f3460; }
+
+  .aprovacao-box textarea::placeholder { color: var(--text-3); }
+
+  .aprovacao-box textarea:focus { border-color: var(--border-strong); }
+
   .aprovacao-btns { display: flex; gap: 10px; }
+
   .btn-aprovar-lg {
     flex: 1;
-    padding: 12px;
-    background: #166534;
-    color: white;
-    border: none;
+    padding: 11px;
+    background: rgba(62,207,142,0.12);
+    color: var(--primary);
+    border: 1px solid rgba(62,207,142,0.25);
     border-radius: 8px;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
     cursor: pointer;
-    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: background 0.15s, border-color 0.15s;
   }
-  .btn-aprovar-lg:hover { opacity: 0.9; }
+
+  .btn-aprovar-lg:hover {
+    background: rgba(62,207,142,0.2);
+    border-color: rgba(62,207,142,0.4);
+  }
+
+  .btn-aprovar-lg i { width: 15px; height: 15px; }
+
   .btn-reprovar-lg {
     flex: 1;
-    padding: 12px;
-    background: white;
-    color: #991b1b;
-    border: 2px solid #dc2626;
+    padding: 11px;
+    background: rgba(239,68,68,0.1);
+    color: var(--red-text);
+    border: 1px solid rgba(239,68,68,0.2);
     border-radius: 8px;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
     cursor: pointer;
-    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: background 0.15s, border-color 0.15s;
   }
-  .btn-reprovar-lg:hover { background: #dc2626; color: white; }
+
+  .btn-reprovar-lg:hover {
+    background: rgba(239,68,68,0.2);
+    border-color: rgba(239,68,68,0.35);
+  }
+
+  .btn-reprovar-lg i { width: 15px; height: 15px; }
 
   .already-approved {
     padding: 12px 16px;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+    border: 1px solid transparent;
   }
-  .already-approved.aprovada { background: #d1fae5; color: #065f46; }
-  .already-approved.reprovada { background: #fee2e2; color: #991b1b; }
 
-  /* Lightbox */
+  .already-approved.aprovada {
+    background: rgba(62,207,142,0.1);
+    color: var(--primary);
+    border-color: rgba(62,207,142,0.2);
+  }
+
+  .already-approved.reprovada {
+    background: rgba(239,68,68,0.1);
+    color: var(--red-text);
+    border-color: rgba(239,68,68,0.2);
+  }
+
+  .already-approved i { width: 15px; height: 15px; }
+
+  /* ===== LIGHTBOX ===== */
   .lightbox {
-    position: fixed; inset: 0;
+    position: fixed;
+    inset: 0;
     background: rgba(0,0,0,0.92);
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 2000;
   }
+
   .lightbox.open { display: flex; }
-  .lightbox img { max-width: 95%; max-height: 90vh; border-radius: 8px; }
-  .lightbox-close { position: absolute; top: 16px; right: 20px; color: white; font-size: 28px; cursor: pointer; background: none; border: none; }
-  .lightbox-nav {
+
+  .lightbox img {
+    max-width: 95%;
+    max-height: 90vh;
+    border-radius: 8px;
+  }
+
+  .lightbox-close {
     position: absolute;
-    top: 50%; transform: translateY(-50%);
-    background: rgba(255,255,255,0.2);
-    border: none;
+    top: 16px;
+    right: 20px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
     color: white;
-    font-size: 28px;
-    padding: 12px 16px;
+    width: 36px;
+    height: 36px;
     border-radius: 8px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
   }
-  .lightbox-nav:hover { background: rgba(255,255,255,0.35); }
+
+  .lightbox-close:hover { background: rgba(255,255,255,0.2); }
+  .lightbox-close i { width: 16px; height: 16px; }
+
+  .lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+
+  .lightbox-nav:hover { background: rgba(255,255,255,0.25); }
+  .lightbox-nav i { width: 20px; height: 20px; }
+
   #btnLbPrev { left: 12px; }
   #btnLbNext { right: 12px; }
 
-  /* Modal reprovação */
-  .modal-reprov {
-    background: white;
-    border-radius: 12px;
-    padding: 24px;
-    width: 100%;
-    max-width: 400px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  /* ===== DIVIDER ===== */
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
   }
-  .modal-reprov h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+
+  /* ===== FOTOS COUNT CHIP ===== */
+  .fotos-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--secondary);
+    font-weight: 500;
+  }
+
+  .fotos-chip i { width: 12px; height: 12px; }
 
   @media (max-width: 768px) {
-    .filtros-bar { gap: 6px; }
-    .filtros-bar select, .filtros-bar input { font-size: 12px; padding: 8px 10px; }
+    .stats-row { gap: 8px; padding: 16px; }
+    .stat-card { min-width: 120px; padding: 14px; }
+    .filtros-bar { gap: 6px; padding: 10px 16px; }
+    .filtros-bar select,
+    .filtros-bar input[type="date"],
+    .filtros-bar input[type="text"] { font-size: 12px; padding: 7px 10px; }
+    .container { padding: 16px; }
     table { font-size: 12px; }
-    td, th { padding: 10px 10px; }
+    td, th { padding: 10px 12px; }
     .fotos-grid { grid-template-columns: repeat(3, 1fr); }
     .detail-grid { grid-template-columns: 1fr; }
+    .topbar { padding: 0 16px; }
   }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <h1>📋 Supervisor — Ordens de Serviço</h1>
-  <div class="topbar-links">
-    <a href="obras.html">🏗️ Obras</a>
-    <a href="agenda.html">📅 Agenda</a>
-    <a href="admin.html">⚙️ Admin</a>
-    <a href="#" onclick="logout()">🚪 Sair</a>
-  </div>
-</div>
+<!-- Topbar -->
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <nav class="topbar-links">
+    <a href="obras.html">Obras</a>
+    <a href="agenda.html">Agenda</a>
+    <a href="admin.html">Admin</a>
+    <a href="#" class="nav-sair" onclick="logout()">Sair</a>
+  </nav>
+</header>
 
 <!-- Stats -->
 <div class="stats-row" id="statsRow">
-  <div class="stat-card" style="border-color:#6b7280;">
-    <div class="stat-num" id="sTot">—</div>
+  <div class="stat-card">
+    <div class="stat-num" id="sTot" style="color: var(--text-2);">—</div>
     <div class="stat-label">Total de OSs</div>
   </div>
-  <div class="stat-card" style="border-color:#f59e0b;">
-    <div class="stat-num" id="sPend">—</div>
+  <div class="stat-card">
+    <div class="stat-num" id="sPend" style="color: var(--amber);">—</div>
     <div class="stat-label">Pendentes</div>
   </div>
-  <div class="stat-card" style="border-color:#16a34a;">
-    <div class="stat-num" id="sAprov">—</div>
+  <div class="stat-card">
+    <div class="stat-num" id="sAprov" style="color: var(--primary);">—</div>
     <div class="stat-label">Aprovadas</div>
   </div>
-  <div class="stat-card" style="border-color:#dc2626;">
-    <div class="stat-num" id="sReprov">—</div>
+  <div class="stat-card">
+    <div class="stat-num" id="sReprov" style="color: var(--red);">—</div>
     <div class="stat-label">Reprovadas</div>
   </div>
-  <div class="stat-card" style="border-color:#0f3460;">
-    <div class="stat-num" id="sFotos">—</div>
+  <div class="stat-card">
+    <div class="stat-num" id="sFotos" style="color: var(--secondary);">—</div>
     <div class="stat-label">Com fotos</div>
   </div>
 </div>
@@ -357,19 +870,28 @@
   </select>
   <select id="fStatus" onchange="filtrar()">
     <option value="">Todos os status</option>
-    <option value="pendente">⏳ Pendente</option>
-    <option value="aprovada">✅ Aprovada</option>
-    <option value="reprovada">❌ Reprovada</option>
+    <option value="pendente">Pendente</option>
+    <option value="aprovada">Aprovada</option>
+    <option value="reprovada">Reprovada</option>
   </select>
   <input type="date" id="fDataInicio" onchange="filtrar()" title="Data início">
   <input type="date" id="fDataFim" onchange="filtrar()" title="Data fim">
-  <input type="text" id="fBusca" placeholder="🔍 Buscar obra ou técnico..." onInput="filtrar()" style="flex:1;min-width:180px;">
-  <button class="btn-exportar" onclick="exportarExcel()">📊 Exportar Excel</button>
+  <div class="input-busca-wrap">
+    <i data-lucide="search"></i>
+    <input type="text" id="fBusca" placeholder="Buscar obra ou técnico..." onInput="filtrar()">
+  </div>
+  <button class="btn-exportar" onclick="exportarExcel()">
+    <i data-lucide="download"></i>
+    Exportar Excel
+  </button>
 </div>
 
 <div class="container">
   <div class="table-wrap">
-    <div id="loadingEl" class="loading"><span class="spinner"></span> Carregando ordens de serviço...</div>
+    <div id="loadingEl" class="loading">
+      <span class="spinner"></span>
+      Carregando ordens de serviço...
+    </div>
     <div id="tabelaEl" style="display:none;">
       <table id="tabelaOS">
         <thead>
@@ -389,7 +911,7 @@
       <div class="paginacao" id="paginacao"></div>
     </div>
     <div id="emptyEl" class="empty" style="display:none;">
-      <div class="icon">📋</div>
+      <i data-lucide="clipboard-list"></i>
       <p>Nenhuma OS encontrada com os filtros selecionados.</p>
     </div>
   </div>
@@ -400,7 +922,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2 id="modalTitulo">OS</h2>
-      <button class="btn-fechar" onclick="fecharModal()">✕</button>
+      <button class="btn-fechar" onclick="fecharModal()"><i data-lucide="x"></i></button>
     </div>
     <div class="modal-body" id="modalBody"></div>
   </div>
@@ -408,10 +930,10 @@
 
 <!-- Lightbox fotos -->
 <div class="lightbox" id="lightbox">
-  <button class="lightbox-close" onclick="fecharLightbox()">✕</button>
-  <button class="lightbox-nav" id="btnLbPrev" onclick="navLightbox(-1)">‹</button>
+  <button class="lightbox-close" onclick="fecharLightbox()"><i data-lucide="x"></i></button>
+  <button class="lightbox-nav" id="btnLbPrev" onclick="navLightbox(-1)"><i data-lucide="chevron-left"></i></button>
   <img id="lightboxImg" src="" alt="">
-  <button class="lightbox-nav" id="btnLbNext" onclick="navLightbox(1)">›</button>
+  <button class="lightbox-nav" id="btnLbNext" onclick="navLightbox(1)"><i data-lucide="chevron-right"></i></button>
 </div>
 
 <script>
@@ -472,7 +994,7 @@ async function carregarOSs() {
 
   if (osError) {
     console.error('Erro ao carregar OSs:', osError);
-    document.getElementById('loadingEl').innerHTML = `<div style="color:red;padding:20px;">Erro ao carregar OS: ${osError.message}</div>`;
+    document.getElementById('loadingEl').innerHTML = `<div style="color:var(--red-text);padding:20px;">Erro ao carregar OS: ${osError.message}</div>`;
     return;
   }
 
@@ -546,6 +1068,7 @@ function renderTabela() {
   if (filtradas.length === 0) {
     document.getElementById('tabelaEl').style.display = 'none';
     document.getElementById('emptyEl').style.display = 'block';
+    lucide.createIcons();
     return;
   }
   document.getElementById('tabelaEl').style.display = 'block';
@@ -555,13 +1078,17 @@ function renderTabela() {
   tbody.innerHTML = pagina.map(o => {
     const dataRef = o.data_servico || (o.criado_em ? o.criado_em.slice(0,10) : null);
     const data = dataRef ? new Date(dataRef + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—';
-    const statusBadge = { pendente: '<span class="badge badge-pendente">⏳ Pendente</span>', aprovada: '<span class="badge badge-aprovada">✅ Aprovada</span>', reprovada: '<span class="badge badge-reprovada">❌ Reprovada</span>' }[o.status_aprovacao] || '';
+    const statusBadge = {
+      pendente: '<span class="badge badge-pendente">Pendente</span>',
+      aprovada: '<span class="badge badge-aprovada">Aprovada</span>',
+      reprovada: '<span class="badge badge-reprovada">Reprovada</span>'
+    }[o.status_aprovacao] || '';
     const nFotos = o.fotos_urls?.length || 0;
     const servicoLabel = o.status_servico === 'concluido' ? 'Concluído' : o.status_servico === 'parcial' ? 'Parcial' : 'Ag. Material';
 
     const botoesAprov = o.status_aprovacao === 'pendente'
-      ? `<button class="btn-aprovar" onclick="event.stopPropagation();aprovarOS(${o.id}, event)">✅</button>
-         <button class="btn-reprovar" onclick="event.stopPropagation();pedirReprovacao(${o.id})">❌</button>`
+      ? `<button class="btn-aprovar" onclick="event.stopPropagation();aprovarOS(${o.id}, event)">Aprovar</button>
+         <button class="btn-reprovar" onclick="event.stopPropagation();pedirReprovacao(${o.id})">Reprovar</button>`
       : '';
 
     return `
@@ -569,16 +1096,18 @@ function renderTabela() {
       <td>${data}</td>
       <td>${o.tecnicos?.nome || '—'}</td>
       <td title="${o.obras?.endereco || ''}">${o.obras?.nome_cliente || '—'}</td>
-      <td style="font-size:12px;color:#666;">${(o.tipo_servico || '').replace(/_/g,' ')}</td>
-      <td><span style="font-size:12px;">${servicoLabel}</span></td>
+      <td class="td-muted">${(o.tipo_servico || '').replace(/_/g,' ')}</td>
+      <td class="td-muted">${servicoLabel}</td>
       <td>${statusBadge}</td>
-      <td style="text-align:center;">${nFotos > 0 ? `📸 ${nFotos}` : '—'}</td>
+      <td class="td-center">${nFotos > 0 ? `<span class="fotos-chip"><i data-lucide="image"></i>${nFotos}</span>` : '<span style="color:var(--text-3);">—</span>'}</td>
       <td style="white-space:nowrap;">
         ${botoesAprov}
         <button class="btn-ver" onclick="verOS(${o.id})">Ver</button>
       </td>
     </tr>`;
   }).join('');
+
+  lucide.createIcons();
 
   // Paginação
   const totalPages = Math.ceil(filtradas.length / PER_PAGE);
@@ -590,7 +1119,7 @@ function renderTabela() {
     if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 2) {
       html += `<button class="btn-pag ${i===currentPage?'active':''}" onclick="irPagina(${i})">${i}</button>`;
     } else if (Math.abs(i - currentPage) === 3) {
-      html += `<span>…</span>`;
+      html += `<span style="color:var(--text-3);padding:0 4px;">…</span>`;
     }
   }
   html += `<button class="btn-pag" onclick="irPagina(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
@@ -614,7 +1143,11 @@ function verOS(id) {
 
   const dataRefModal = os.data_servico || (os.criado_em ? os.criado_em.slice(0,10) : null);
   const data = dataRefModal ? new Date(dataRefModal + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) : '—';
-  const statusLabel = { pendente: '⏳ Aguardando aprovação', aprovada: '✅ Aprovada', reprovada: '❌ Reprovada' }[os.status_aprovacao] || '';
+  const statusLabel = {
+    pendente: 'Aguardando aprovação',
+    aprovada: 'Aprovada',
+    reprovada: 'Reprovada'
+  }[os.status_aprovacao] || '';
 
   let html = `
   <div class="detail-grid">
@@ -628,7 +1161,7 @@ function verOS(id) {
     </div>
     <div class="detail-item full">
       <label>Obra</label>
-      <span><strong>${os.obras?.nome_cliente || '—'}</strong>${os.obras?.endereco ? `<br><small style="color:#888;">📍 ${os.obras.endereco}</small>` : ''}</span>
+      <span><strong>${os.obras?.nome_cliente || '—'}</strong>${os.obras?.endereco ? `<span class="detail-address"><i data-lucide="map-pin"></i>${os.obras.endereco}</span>` : ''}</span>
     </div>
     <div class="detail-item">
       <label>Status de aprovação</label>
@@ -648,14 +1181,14 @@ function verOS(id) {
     ${os.materiais_utilizados ? `<div class="detail-item full"><label>Materiais utilizados</label><span style="white-space:pre-line;">${os.materiais_utilizados}</span></div>` : ''}
     ${os.pendencias ? `<div class="detail-item full"><label>Pendências</label><span style="white-space:pre-line;">${os.pendencias}</span></div>` : ''}
     ${os.observacoes ? `<div class="detail-item full"><label>Observações</label><span style="white-space:pre-line;">${os.observacoes}</span></div>` : ''}
-    ${os.observacao_supervisor ? `<div class="detail-item full"><label>Observação do supervisor</label><span style="color:#92400e;background:#fff7ed;padding:8px;border-radius:6px;display:block;">${os.observacao_supervisor}</span></div>` : ''}
+    ${os.observacao_supervisor ? `<div class="detail-item full"><label>Observação do supervisor</label><span class="obs-supervisor">${os.observacao_supervisor}</span></div>` : ''}
   </div>`;
 
   // Fotos
   if (os.fotos_urls && os.fotos_urls.length > 0) {
     html += `
-    <div style="margin-bottom:20px;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.5px;margin-bottom:8px;">Fotos (${os.fotos_urls.length})</div>
+    <div class="fotos-section">
+      <div class="fotos-section-label">Fotos (${os.fotos_urls.length})</div>
       <div class="fotos-grid">
         ${os.fotos_urls.map((url, i) => `
           <div class="foto-item" onclick="abrirLightbox(${i}, ${JSON.stringify(os.fotos_urls).replace(/</g,'\\u003c')})">
@@ -669,22 +1202,24 @@ function verOS(id) {
   if (os.status_aprovacao === 'pendente') {
     html += `
     <div class="aprovacao-box">
-      <h3>✏️ Aprovar / Reprovar esta OS</h3>
+      <h3><i data-lucide="edit-3"></i> Aprovar ou reprovar esta OS</h3>
       <textarea id="obsModalSup" placeholder="Observação para o técnico (opcional)..."></textarea>
       <div class="aprovacao-btns">
-        <button class="btn-reprovar-lg" onclick="pedirReprovacaoModal()">❌ Reprovar</button>
-        <button class="btn-aprovar-lg" onclick="aprovarOSModal()">✅ Aprovar</button>
+        <button class="btn-reprovar-lg" onclick="pedirReprovacaoModal()"><i data-lucide="x-circle"></i> Reprovar</button>
+        <button class="btn-aprovar-lg" onclick="aprovarOSModal()"><i data-lucide="check-circle"></i> Aprovar</button>
       </div>
     </div>`;
   } else {
     const cl = os.status_aprovacao;
-    const lbl = cl === 'aprovada' ? '✅ Esta OS já foi aprovada.' : '❌ Esta OS foi reprovada.';
-    html += `<div class="already-approved ${cl}">${lbl}</div>`;
+    const icon = cl === 'aprovada' ? 'check-circle' : 'x-circle';
+    const lbl = cl === 'aprovada' ? 'Esta OS já foi aprovada.' : 'Esta OS foi reprovada.';
+    html += `<div class="already-approved ${cl}"><i data-lucide="${icon}"></i>${lbl}</div>`;
   }
 
   document.getElementById('modalTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('modalOS').classList.add('open');
+  lucide.createIcons();
 }
 
 function fecharModal() { document.getElementById('modalOS').classList.remove('open'); }
@@ -806,5 +1341,6 @@ async function logout() {
   window.location.href = 'login.html';
 }
 </script>
+<script>lucide.createIcons();</script>
 </body>
 </html>

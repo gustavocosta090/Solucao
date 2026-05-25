@@ -4,150 +4,650 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Solução Técnica — OS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    header{background:#1a1d2e;border-bottom:1px solid #2d3148;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-    header h1{font-size:1.2rem;font-weight:700;color:#fff}
-    nav{display:flex;gap:6px}
-    nav a{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;text-decoration:none;transition:all .2s}
-    nav a:hover,nav a.ativo{background:#3b5bdb;color:#fff}
-    .btn-logout{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;background:none;border:none;cursor:pointer;transition:all .2s}
-    .btn-logout:hover{background:#7f1d1d;color:#fca5a5}
+    :root {
+      --bg:        #0A0A0A;
+      --surface-1: #111111;
+      --surface-2: #161616;
+      --surface-3: #1B1B1B;
+      --primary:   #3ECF8E;
+      --secondary: #4F46E5;
+      --text-1:    #FFFFFF;
+      --text-2:    #A1A1AA;
+      --text-3:    #52525B;
+      --border:    rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.16);
+      --radius-card:  8px;
+      --radius-input: 6px;
+    }
 
-    .tela{display:none;max-width:620px;margin:0 auto;padding:32px 16px}
-    .tela.ativa{display:block}
+    html, body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
 
-    /* ── Tela 1: Identificação via auth ── */
-    .login-box{background:#1a1d2e;border:1px solid #2d3148;border-radius:16px;padding:36px 28px;text-align:center}
-    .login-box .icone{font-size:3rem;margin-bottom:16px}
-    .login-box h2{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:6px}
-    .login-box p{color:#7c85b0;font-size:0.85rem;margin-bottom:24px}
-    .spinner-inline{width:28px;height:28px;border:3px solid #2d3148;border-top-color:#3b5bdb;border-radius:50%;animation:spin .8s linear infinite;margin:16px auto}
+    /* ─── Topbar ─── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 56px;
+      background: var(--surface-1);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      gap: 12px;
+    }
 
-    .btn-primario{width:100%;padding:12px;background:#3b5bdb;border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;transition:background .2s}
-    .btn-primario:hover{background:#2f4ac7}
-    .btn-primario:disabled{opacity:.5;cursor:not-allowed}
+    .header-brand {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+    }
 
-    /* ── Tela 2: Lista de OS ── */
-    .tela-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
-    .tela-header h2{font-size:1.1rem;font-weight:700;color:#fff}
-    .btn-secundario{padding:8px 16px;background:#1a1d2e;border:1px solid #2d3148;border-radius:8px;color:#e2e8f0;font-size:0.82rem;cursor:pointer;transition:all .2s}
-    .btn-secundario:hover{border-color:#3b5bdb;color:#3b5bdb}
-    .btn-novo-os{padding:8px 16px;background:#3b5bdb;border:none;border-radius:8px;color:#fff;font-size:0.82rem;font-weight:600;cursor:pointer}
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-    .card-agenda{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;padding:16px 18px;margin-bottom:10px;cursor:pointer;transition:border-color .2s}
-    .card-agenda:hover{border-color:#3b5bdb}
-    .card-agenda .ca-cliente{font-weight:700;color:#fff;font-size:0.95rem}
-    .card-agenda .ca-detalhe{font-size:0.78rem;color:#7c85b0;margin-top:4px}
-    .card-agenda .ca-servico{font-size:0.82rem;color:#a0aec0;margin-top:6px}
-    .card-agenda .ca-badge{margin-top:8px}
+    .btn-outline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      background: transparent;
+      color: var(--text-2);
+      font-size: 0.8rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-outline:hover {
+      border-color: var(--border-hover);
+      color: var(--text-1);
+    }
 
-    .lista-vazia{text-align:center;padding:40px;color:#4a5080;font-size:0.9rem}
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: var(--primary);
+      border: none;
+      border-radius: var(--radius-input);
+      color: #0A0A0A;
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* ── Tela 3: Formulário OS ── */
-    .os-header{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;padding:16px 18px;margin-bottom:20px}
-    .os-numero{font-size:0.78rem;color:#7c85b0;font-weight:600;letter-spacing:.06em}
-    .os-cliente{font-size:1.1rem;font-weight:700;color:#fff;margin:4px 0}
-    .os-meta{font-size:0.78rem;color:#7c85b0}
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-input);
+      color: var(--text-3);
+      font-size: 0.8rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+    }
+    .btn-ghost:hover { color: var(--text-2); background: var(--surface-2); }
 
-    .secao{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;padding:18px;margin-bottom:12px}
-    .secao-titulo{font-size:0.72rem;font-weight:700;color:#7c85b0;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+    /* ─── Telas ─── */
+    .tela { display: none; max-width: 640px; margin: 0 auto; padding: 32px 16px 64px; }
+    .tela.ativa { display: block; }
 
-    .form-group{margin-bottom:12px}
-    .form-group label{display:block;font-size:0.78rem;color:#7c85b0;margin-bottom:5px;font-weight:600}
-    .form-group input,.form-group select,.form-group textarea{width:100%;background:#12152a;border:1px solid #2d3148;border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:0.85rem;outline:none;transition:border .2s;font-family:inherit}
-    .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#3b5bdb}
-    .form-group select option{background:#1a1d2e}
-    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    /* ─── Tela Login / Loading ─── */
+    .login-box {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 48px 32px;
+      text-align: center;
+      margin-top: 32px;
+    }
+    .login-box .login-icon {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-3);
+      border-radius: 12px;
+      margin: 0 auto 20px;
+      color: var(--primary);
+    }
+    .login-box h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-1);
+      margin-bottom: 6px;
+    }
+    .login-box p {
+      color: var(--text-2);
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .spinner-inline {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 20px auto 0;
+    }
+
+    /* ─── Tela Lista ─── */
+    .greeting-block {
+      margin-bottom: 28px;
+    }
+    .greeting-block h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.02em;
+    }
+    .greeting-block .greeting-date {
+      font-size: 0.85rem;
+      color: var(--text-2);
+      margin-top: 4px;
+    }
+
+    .list-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .date-group-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin: 20px 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .date-group-label:first-child { margin-top: 0; }
+
+    .badge-pendente-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #F59E0B;
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.2);
+      padding: 2px 7px;
+      border-radius: 999px;
+      letter-spacing: 0.4px;
+    }
+
+    .card-agenda {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .card-agenda:hover { border-color: var(--border-hover); }
+    .card-agenda.disabled { opacity: 0.65; cursor: default; }
+    .card-agenda.disabled:hover { border-color: var(--border); }
+
+    .ca-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .ca-cliente {
+      font-weight: 600;
+      color: var(--text-1);
+      font-size: 0.9rem;
+    }
+    .ca-detalhe {
+      font-size: 0.8rem;
+      color: var(--text-2);
+      margin-top: 3px;
+    }
+    .ca-servico {
+      font-size: 0.75rem;
+      color: var(--text-3);
+      margin-top: 6px;
+    }
+    .ca-badge-row { margin-top: 10px; }
+
+    /* Status badges inline */
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .badge-status i { width: 12px; height: 12px; }
+    .badge-aprovada {
+      background: rgba(62,207,142,0.1);
+      color: var(--primary);
+      border: 1px solid rgba(62,207,142,0.2);
+    }
+    .badge-reprovada {
+      background: rgba(239,68,68,0.1);
+      color: #EF4444;
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+    .badge-pendente {
+      background: rgba(245,158,11,0.1);
+      color: #F59E0B;
+      border: 1px solid rgba(245,158,11,0.2);
+    }
+
+    /* Card status dot (confirmado etc.) */
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+    .dot-confirmado { background: var(--primary); }
+    .dot-nao_confirmado { background: #F59E0B; }
+    .dot-viagem { background: #3B82F6; }
+    .dot-cuiaba { background: #8B5CF6; }
+    .dot-default { background: var(--text-3); }
+
+    /* Lista vazia */
+    .lista-vazia {
+      text-align: center;
+      padding: 56px 24px;
+      color: var(--text-3);
+    }
+    .lista-vazia i { width: 40px; height: 40px; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto; }
+    .lista-vazia p { font-size: 0.9rem; color: var(--text-2); margin-bottom: 4px; }
+    .lista-vazia small { font-size: 0.8rem; color: var(--text-3); }
+
+    /* ─── Tela Formulário ─── */
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: var(--text-3);
+      font-size: 0.82rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      margin-bottom: 20px;
+      padding: 0;
+      transition: color 0.15s;
+    }
+    .btn-back:hover { color: var(--text-2); }
+    .btn-back i { width: 14px; height: 14px; }
+
+    .os-header {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+    .os-numero {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .os-cliente {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-1);
+    }
+    .os-meta {
+      font-size: 0.78rem;
+      color: var(--text-2);
+      margin-top: 3px;
+    }
+
+    .secao {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+    .secao-titulo {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group:last-child { margin-bottom: 0; }
+
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      padding: 10px 12px;
+      color: var(--text-1);
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+      appearance: none;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: rgba(62,207,142,0.5);
+    }
+    .form-group select { cursor: pointer; }
+    .form-group select option { background: var(--surface-2); }
+    .form-group textarea { resize: vertical; min-height: 72px; }
+    .form-group input[type="time"] { color-scheme: dark; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
 
     /* Toggle sim/não */
-    .toggle-group{display:flex;gap:8px;margin-bottom:8px}
-    .toggle-btn{flex:1;padding:8px;border:1px solid #2d3148;border-radius:8px;background:#12152a;color:#7c85b0;cursor:pointer;font-size:0.82rem;font-weight:600;transition:all .2s;text-align:center}
-    .toggle-btn.ativo-sim{background:#14532d;border-color:#22c55e;color:#86efac}
-    .toggle-btn.ativo-nao{background:#1a1d2e;border-color:#3b5bdb;color:#93c5fd}
-    .campo-condicional{display:none;margin-top:8px}
-    .campo-condicional.visivel{display:block}
+    .toggle-group {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .toggle-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--bg);
+      color: var(--text-3);
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .toggle-btn:hover { border-color: var(--border-hover); color: var(--text-2); }
+    .toggle-btn.ativo-sim {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #0A0A0A;
+    }
+    .toggle-btn.ativo-nao {
+      background: var(--surface-2);
+      border-color: var(--border);
+      color: var(--text-2);
+    }
 
-    /* ── Seção de fotos ── */
-    .upload-area{border:2px dashed #2d3148;border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:#12152a}
-    .upload-area:hover,.upload-area.dragover{border-color:#3b5bdb;background:#1a1d2e}
-    .upload-icone{font-size:2rem;margin-bottom:8px}
-    .upload-texto{font-size:0.82rem;color:#7c85b0}
-    .upload-sub{font-size:0.72rem;color:#4a5080;margin-top:4px}
-    #foto-input{display:none}
+    .campo-condicional { display: none; margin-top: 8px; }
+    .campo-condicional.visivel { display: block; }
 
-    .fotos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
-    .foto-thumb{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#1a1d2e}
-    .foto-thumb img{width:100%;height:100%;object-fit:cover}
-    .foto-thumb .remover{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fca5a5;border:none;border-radius:4px;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-    .foto-thumb .remover:hover{background:#7f1d1d}
-    .foto-uploading{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-size:0.72rem;color:#fff;font-weight:700}
+    /* Upload de fotos */
+    .upload-area {
+      border: 1px dashed rgba(255,255,255,0.12);
+      border-radius: var(--radius-input);
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--bg);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .upload-area:hover,
+    .upload-area.dragover {
+      border-color: rgba(62,207,142,0.3);
+      background: rgba(62,207,142,0.03);
+    }
+    .upload-area i { width: 24px; height: 24px; color: var(--text-3); margin-bottom: 8px; }
+    .upload-texto {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-2);
+    }
+    .upload-sub {
+      font-size: 0.72rem;
+      color: var(--text-3);
+      margin-top: 3px;
+    }
+    #foto-input { display: none; }
 
-    .btn-enviar{width:100%;padding:14px;background:#3b5bdb;border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:8px;transition:background .2s}
-    .btn-enviar:hover{background:#2f4ac7}
-    .btn-enviar:disabled{opacity:.5;cursor:not-allowed}
-    .btn-voltar{display:flex;align-items:center;gap:6px;background:none;border:none;color:#7c85b0;cursor:pointer;font-size:0.85rem;margin-bottom:20px;padding:0}
-    .btn-voltar:hover{color:#e2e8f0}
+    .fotos-grid {
+      display: grid;
+      grid-template-columns: repeat(4,1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .foto-thumb {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: var(--radius-input);
+      overflow: hidden;
+      background: var(--surface-2);
+    }
+    .foto-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .foto-thumb .remover {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(0,0,0,0.75);
+      color: #EF4444;
+      border: none;
+      border-radius: 4px;
+      width: 20px;
+      height: 20px;
+      font-size: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .foto-thumb .remover:hover { background: rgba(239,68,68,0.3); }
+    .foto-uploading {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: var(--text-1);
+      font-weight: 700;
+    }
 
-    /* Badge status */
-    .badge{padding:3px 9px;border-radius:999px;font-size:0.7rem;font-weight:700}
-    .badge-confirmado{background:#14532d;color:#86efac}
-    .badge-nao_confirmado{background:#713f12;color:#fef08a}
-    .badge-viagem{background:#14532d;color:#4ade80}
-    .badge-cuiaba{background:#1e3a5f;color:#93c5fd}
+    /* Botão enviar */
+    .btn-enviar {
+      width: 100%;
+      height: 44px;
+      background: var(--primary);
+      border: none;
+      border-radius: var(--radius-input);
+      color: #0A0A0A;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: opacity 0.15s;
+    }
+    .btn-enviar:hover { opacity: 0.88; }
+    .btn-enviar:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-enviar i { width: 16px; height: 16px; }
 
-    /* Sucesso */
-    .sucesso-box{text-align:center;padding:60px 24px}
-    .sucesso-box .icone{font-size:4rem;margin-bottom:16px}
-    .sucesso-box h2{font-size:1.3rem;font-weight:700;color:#22c55e;margin-bottom:8px}
-    .sucesso-box p{color:#7c85b0;margin-bottom:24px}
+    /* ─── Tela Sucesso ─── */
+    .sucesso-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 64px 24px;
+    }
+    .sucesso-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(62,207,142,0.1);
+      border: 1px solid rgba(62,207,142,0.2);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+    .sucesso-icon i { width: 32px; height: 32px; }
+    .sucesso-box h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-1);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .sucesso-box p {
+      color: var(--text-2);
+      font-size: 0.875rem;
+      line-height: 1.5;
+      margin-bottom: 28px;
+      max-width: 320px;
+    }
+    .sucesso-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn-sucesso-secondary {
+      padding: 9px 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      background: transparent;
+      color: var(--text-2);
+      font-size: 0.85rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-sucesso-secondary:hover { border-color: var(--border-hover); color: var(--text-1); }
+    .btn-sucesso-primary {
+      padding: 9px 18px;
+      background: var(--primary);
+      border: none;
+      border-radius: var(--radius-input);
+      color: #0A0A0A;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-sucesso-primary:hover { opacity: 0.88; }
 
-    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>Solução Técnica</h1>
-  <nav>
-    <a href="obras.html">Obras</a>
-    <a href="agenda.html">Agenda</a>
-    <a href="os.html" class="ativo">OS</a>
-    <button class="btn-logout" onclick="sair()">↩ Sair</button>
-  </nav>
+  <span class="header-brand">Solução Técnica</span>
+  <div class="header-actions">
+    <button class="btn-outline" onclick="irHistorico()">
+      <i data-lucide="list"></i>
+      Minhas OSs
+    </button>
+    <button class="btn-primary" onclick="abrirFormulario(null)">
+      <i data-lucide="plus"></i>
+      Nova OS
+    </button>
+    <button class="btn-ghost" onclick="sair()">Sair</button>
+  </div>
 </header>
 
-<!-- ══ TELA 1: CARREGANDO / IDENTIFICAÇÃO ══ -->
+<!-- TELA 1: CARREGANDO / IDENTIFICAÇÃO -->
 <div class="tela ativa" id="tela-login">
   <div class="login-box">
-    <div class="icone">👷</div>
+    <div class="login-icon">
+      <i data-lucide="hard-hat"></i>
+    </div>
     <h2>Ordem de Serviço</h2>
     <p id="login-msg">Verificando autenticação...</p>
     <div class="spinner-inline" id="login-spinner"></div>
   </div>
 </div>
 
-<!-- ══ TELA 2: AGENDAMENTOS DO DIA ══ -->
+<!-- TELA 2: AGENDAMENTOS -->
 <div class="tela" id="tela-lista">
-  <div class="tela-header">
-    <div>
-      <h2 id="saudacao">Bom dia!</h2>
-      <div style="font-size:.8rem;color:#7c85b0" id="data-hoje"></div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn-secundario" onclick="irHistorico()">📋 Minhas OSs</button>
-      <button class="btn-novo-os" onclick="abrirFormulario(null)">+ OS sem agendamento</button>
-    </div>
+  <div class="greeting-block">
+    <h2 id="saudacao">Bom dia!</h2>
+    <div class="greeting-date" id="data-hoje"></div>
   </div>
   <div id="lista-agendamentos"></div>
 </div>
 
-<!-- ══ TELA 3: FORMULÁRIO OS ══ -->
+<!-- TELA 3: FORMULÁRIO OS -->
 <div class="tela" id="tela-form">
-  <button class="btn-voltar" onclick="voltarLista()">← Voltar</button>
+  <button class="btn-back" onclick="voltarLista()">
+    <i data-lucide="arrow-left"></i>
+    Voltar
+  </button>
 
   <div class="os-header" id="os-cabecalho">
     <div class="os-numero" id="os-numero">Nova OS</div>
@@ -157,18 +657,18 @@
 
   <!-- Identificação -->
   <div class="secao">
-    <div class="secao-titulo">Identificação</div>
+    <div class="secao-titulo">Informações gerais</div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Auxiliar (opcional)</label>
-        <select id="f-auxiliar"><option value="">Nenhum</option></select>
-      </div>
       <div class="form-group">
         <label>Tipo de serviço</label>
         <select id="f-tipo">
           <option value="execucao">Execução de projeto</option>
           <option value="assistencia">Assistência técnica</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label>Auxiliar (opcional)</label>
+        <select id="f-auxiliar"><option value="">Nenhum</option></select>
       </div>
     </div>
     <div class="form-row">
@@ -198,13 +698,13 @@
 
   <!-- Ocorrências -->
   <div class="secao">
-    <div class="secao-titulo">Ocorrências</div>
+    <div class="secao-titulo">Materiais e Problemas</div>
 
     <div class="form-group">
       <label>Houve algum problema?</label>
       <div class="toggle-group">
-        <button class="toggle-btn" id="prob-sim" onclick="toggle('prob','sim')">✅ Sim</button>
-        <button class="toggle-btn ativo-nao" id="prob-nao" onclick="toggle('prob','nao')">❌ Não</button>
+        <button class="toggle-btn" id="prob-sim" onclick="toggle('prob','sim')">Sim</button>
+        <button class="toggle-btn ativo-nao" id="prob-nao" onclick="toggle('prob','nao')">Não</button>
       </div>
       <div class="campo-condicional" id="campo-prob">
         <textarea id="f-problema" rows="2" placeholder="Descreva o problema..."></textarea>
@@ -214,8 +714,8 @@
     <div class="form-group">
       <label>Faltou material?</label>
       <div class="toggle-group">
-        <button class="toggle-btn" id="mat-sim" onclick="toggle('mat','sim')">✅ Sim</button>
-        <button class="toggle-btn ativo-nao" id="mat-nao" onclick="toggle('mat','nao')">❌ Não</button>
+        <button class="toggle-btn" id="mat-sim" onclick="toggle('mat','sim')">Sim</button>
+        <button class="toggle-btn ativo-nao" id="mat-nao" onclick="toggle('mat','nao')">Não</button>
       </div>
       <div class="campo-condicional" id="campo-mat">
         <textarea id="f-material" rows="2" placeholder="Liste os materiais que faltaram..."></textarea>
@@ -225,8 +725,8 @@
     <div class="form-group">
       <label>Retornou material?</label>
       <div class="toggle-group">
-        <button class="toggle-btn" id="ret-sim" onclick="toggle('ret','sim')">✅ Sim</button>
-        <button class="toggle-btn ativo-nao" id="ret-nao" onclick="toggle('ret','nao')">❌ Não</button>
+        <button class="toggle-btn" id="ret-sim" onclick="toggle('ret','sim')">Sim</button>
+        <button class="toggle-btn ativo-nao" id="ret-nao" onclick="toggle('ret','nao')">Não</button>
       </div>
       <div class="campo-condicional" id="campo-ret">
         <textarea id="f-retorno" rows="2" placeholder="Liste os materiais retornados..."></textarea>
@@ -236,8 +736,8 @@
     <div class="form-group">
       <label>Retornou equipamento para assistência?</label>
       <div class="toggle-group">
-        <button class="toggle-btn" id="eqp-sim" onclick="toggle('eqp','sim')">✅ Sim</button>
-        <button class="toggle-btn ativo-nao" id="eqp-nao" onclick="toggle('eqp','nao')">❌ Não</button>
+        <button class="toggle-btn" id="eqp-sim" onclick="toggle('eqp','sim')">Sim</button>
+        <button class="toggle-btn ativo-nao" id="eqp-nao" onclick="toggle('eqp','nao')">Não</button>
       </div>
       <div class="campo-condicional" id="campo-eqp">
         <textarea id="f-equipamentos" rows="2" placeholder="Liste os equipamentos..."></textarea>
@@ -269,9 +769,9 @@
   <div class="secao">
     <div class="secao-titulo">Fotos</div>
     <div class="upload-area" id="upload-area" onclick="document.getElementById('foto-input').click()">
-      <div class="upload-icone">📷</div>
-      <div class="upload-texto">Toque para adicionar fotos</div>
-      <div class="upload-sub">JPG, PNG ou HEIC · Máx. 10MB por foto</div>
+      <i data-lucide="camera"></i>
+      <div class="upload-texto">Selecionar fotos</div>
+      <div class="upload-sub">JPG, PNG ou HEIC — máx. 10MB por foto</div>
     </div>
     <input type="file" id="foto-input" accept="image/*" multiple capture="environment" onchange="adicionarFotos(this.files)">
     <div class="fotos-grid" id="fotos-grid"></div>
@@ -290,16 +790,24 @@
     </div>
   </div>
 
-  <button class="btn-enviar" id="btn-enviar" onclick="enviarOS()">📤 Enviar Ordem de Serviço</button>
+  <button class="btn-enviar" id="btn-enviar" onclick="enviarOS()">
+    <i data-lucide="send"></i>
+    Enviar Ordem de Serviço
+  </button>
 </div>
 
-<!-- ══ TELA 4: SUCESSO ══ -->
+<!-- TELA 4: SUCESSO -->
 <div class="tela" id="tela-sucesso">
   <div class="sucesso-box">
-    <div class="icone">✅</div>
-    <h2>OS enviada com sucesso!</h2>
+    <div class="sucesso-icon">
+      <i data-lucide="check-circle-2"></i>
+    </div>
+    <h2>OS registrada com sucesso</h2>
     <p id="sucesso-msg">A ordem de serviço foi registrada.</p>
-    <button class="btn-primario" style="max-width:280px;margin:0 auto" onclick="novaOS()">Nova OS</button>
+    <div class="sucesso-actions">
+      <button class="btn-sucesso-secondary" onclick="irHistorico()">Ver minhas OSs</button>
+      <button class="btn-sucesso-primary" onclick="novaOS()">Nova OS</button>
+    </div>
   </div>
 </div>
 
@@ -341,8 +849,8 @@ async function init() {
     spinner.style.display = 'none';
     loginMsg.innerHTML = `
       Conta não vinculada ao cadastro de técnicos.<br>
-      <small style="color:#7c85b0">Se você é supervisor ou coordenador,
-      <a href="supervisor.html" style="color:#3b5bdb">clique aqui para ir ao painel</a>.
+      <small style="color:#A1A1AA">Se você é supervisor ou coordenador,
+      <a href="supervisor.html" style="color:#3ECF8E">clique aqui para ir ao painel</a>.
       Caso seja técnico, contate o coordenador para vincular sua conta.</small>`;
     return;
   }
@@ -371,7 +879,7 @@ async function init() {
 
   const h = new Date().getHours();
   const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  document.getElementById('saudacao').textContent = `${saudacao}, ${tecnicoLogado.nome.split(' ')[0]}! 👋`;
+  document.getElementById('saudacao').textContent = `${saudacao}, ${tecnicoLogado.nome.split(' ')[0]}`;
 
   const hoje = new Date();
   const DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
@@ -413,10 +921,13 @@ async function carregarAgendamentosHoje() {
   const lista = document.getElementById('lista-agendamentos');
 
   if (error || !data || data.length === 0) {
-    lista.innerHTML = `<div class="lista-vazia">
-      Nenhum agendamento a partir de hoje.<br>
-      <small>Use "+ OS sem agendamento" se necessário.</small>
-    </div>`;
+    lista.innerHTML = `
+      <div class="lista-vazia">
+        <i data-lucide="calendar-x"></i>
+        <p>Nenhum agendamento a partir de hoje.</p>
+        <small>Use "+ Nova OS" se necessário.</small>
+      </div>`;
+    lucide.createIcons();
     return;
   }
 
@@ -462,21 +973,34 @@ async function carregarAgendamentosHoje() {
       const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
       const cliente = ag.obras?.nome_cliente || '—';
       const end     = ag.obras?.endereco || '';
-      const icon    = {confirmado:'✅',nao_confirmado:'🟡',viagem:'🟢',cuiaba:'🔵'}[ag.status]||'📋';
 
-      let badge = '';
+      const dotClass = {
+        confirmado: 'dot-confirmado',
+        nao_confirmado: 'dot-nao_confirmado',
+        viagem: 'dot-viagem',
+        cuiaba: 'dot-cuiaba'
+      }[ag.status] || 'dot-default';
+
+      let badgeHtml = '';
       if (statusOS === 'reprovada') {
-        badge = `<div style="margin-top:6px;font-size:.72rem;font-weight:700;color:#fca5a5;background:#450a0a;padding:3px 8px;border-radius:6px;display:inline-block;">❌ OS reprovada — precisa ser refeita</div>`;
+        badgeHtml = `<div class="ca-badge-row"><span class="badge-status badge-reprovada"><i data-lucide="x-circle"></i>OS reprovada — refazer</span></div>`;
       } else if (statusOS === 'pendente') {
-        badge = `<div style="margin-top:6px;font-size:.72rem;font-weight:700;color:#fbbf24;background:#3d2700;padding:3px 8px;border-radius:6px;display:inline-block;">⏳ OS enviada — aguardando aprovação</div>`;
+        badgeHtml = `<div class="ca-badge-row"><span class="badge-status badge-pendente"><i data-lucide="clock"></i>Aguardando aprovação</span></div>`;
       }
 
+      const isPendente = statusOS === 'pendente';
+
       return `
-        <div class="card-agenda" onclick="${statusOS === 'pendente' ? '' : `abrirFormulario(${ag.id})`}" style="${statusOS === 'pendente' ? 'opacity:0.7;cursor:default;' : ''}">
-          <div class="ca-cliente">${icon} ${cliente}</div>
-          <div class="ca-detalhe">${hora ? hora+' · ' : ''}${end || 'Endereço não informado'}</div>
-          ${ag.servico ? `<div class="ca-servico">🔧 ${ag.servico}</div>` : ''}
-          ${badge}
+        <div class="card-agenda${isPendente ? ' disabled' : ''}" ${isPendente ? '' : `onclick="abrirFormulario(${ag.id})"`}>
+          <div class="ca-top">
+            <div>
+              <div class="ca-cliente">${cliente}</div>
+              <div class="ca-detalhe">${hora ? hora + ' &middot; ' : ''}${end || 'Endereço não informado'}</div>
+              ${ag.servico ? `<div class="ca-servico">${ag.servico}</div>` : ''}
+            </div>
+            <span class="status-dot ${dotClass}"></span>
+          </div>
+          ${badgeHtml}
         </div>`;
     }).join('');
 
@@ -489,19 +1013,31 @@ async function carregarAgendamentosHoje() {
       return isPassado && !osMap[chave];
     });
 
-    const labelData = isHoje
-      ? '📅 Hoje'
-      : isPassado && temPendente
-        ? `⚠️ ${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]} (OS pendente)`
-        : `${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]}`;
-    const corLabel = isHoje ? '#3b5bdb' : (isPassado && temPendente) ? '#f59e0b' : '#7c85b0';
+    let labelData = '';
+    let labelExtra = '';
+
+    if (isHoje) {
+      labelData = 'Hoje';
+    } else if (isPassado && temPendente) {
+      labelData = `${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]}`;
+      labelExtra = `<span class="badge-pendente-label">PENDENTE</span>`;
+    } else {
+      labelData = `${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]}`;
+    }
 
     html += `
-      <div style="font-size:.75rem;font-weight:700;color:${corLabel};text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px">${labelData}</div>
+      <div class="date-group-label">${labelData}${labelExtra}</div>
       ${cardsHtml}`;
   });
 
-  lista.innerHTML = html || `<div class="lista-vazia">Todos os agendamentos já foram concluídos.<br><small>Use "+ OS sem agendamento" se necessário.</small></div>`;
+  lista.innerHTML = html || `
+    <div class="lista-vazia">
+      <i data-lucide="calendar-check"></i>
+      <p>Todos os agendamentos foram concluídos.</p>
+      <small>Use "+ Nova OS" se necessário.</small>
+    </div>`;
+
+  lucide.createIcons();
 }
 
 // ── Tela 2 → 3 ───────────────────────────────────────────────
@@ -585,7 +1121,7 @@ function renderFotos() {
   document.getElementById('fotos-grid').innerHTML = fotosSelecionadas.map(f => `
     <div class="foto-thumb" id="thumb-${f.id}">
       <img src="${f.preview}" alt="foto">
-      <button class="remover" onclick="removerFoto(${f.id})">✕</button>
+      <button class="remover" onclick="removerFoto(${f.id})">&#x2715;</button>
     </div>
   `).join('');
 }
@@ -603,7 +1139,7 @@ async function uploadFotos(obraId) {
     const path = `obras/${obraId}/${Date.now()}_${i}.${ext}`;
 
     const thumb = document.getElementById(`thumb-${f.id}`);
-    if (thumb) thumb.innerHTML += `<div class="foto-uploading">⬆️ ${i+1}/${fotosSelecionadas.length}</div>`;
+    if (thumb) thumb.innerHTML += `<div class="foto-uploading">${i+1}/${fotosSelecionadas.length}</div>`;
 
     const { error } = await db.storage.from('fotos-os').upload(path, f.file, { contentType: f.file.type });
     if (!error) {
@@ -624,7 +1160,7 @@ async function enviarOS() {
     let fotoUrls = [];
     const obraId = agendamentoSelecionado?.obras?.id || null;
     if (fotosSelecionadas.length > 0 && obraId) {
-      btn.textContent = `⬆️ Enviando ${fotosSelecionadas.length} foto(s)...`;
+      btn.textContent = `Enviando ${fotosSelecionadas.length} foto(s)...`;
       fotoUrls = await uploadFotos(obraId);
     }
 
@@ -655,7 +1191,7 @@ async function enviarOS() {
       criado_em:           new Date().toISOString(),
     };
 
-    btn.textContent = '💾 Salvando...';
+    btn.textContent = 'Salvando...';
     let { error } = await db.from('ordens_de_servico').insert(payload);
 
     // Fallback: se data_servico não existe no banco, tenta sem ela
@@ -675,7 +1211,9 @@ async function enviarOS() {
     mostrarTela('tela-sucesso');
 
   } finally {
-    btn.disabled = false; btn.textContent = '📤 Enviar Ordem de Serviço';
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="send"></i> Enviar Ordem de Serviço';
+    lucide.createIcons();
   }
 }
 
@@ -697,5 +1235,7 @@ uploadArea.addEventListener('drop', e => { e.preventDefault(); uploadArea.classL
 
 init();
 </script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
 </body>
 </html>

@@ -3,143 +3,447 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login — Sistema de Gestão de Obras</title>
+<title>Login — Solução Técnica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0A0A0A;
+    --surface-1: #111111;
+    --surface-2: #161616;
+    --primary: #3ECF8E;
+    --primary-hover: #2EBF7E;
+    --primary-muted: rgba(62, 207, 142, 0.1);
+    --text-1: #FFFFFF;
+    --text-2: #A1A1AA;
+    --text-3: #52525B;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.12);
+    --border-focus: rgba(62, 207, 142, 0.4);
+    --radius: 8px;
+  }
+
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
   body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    color: var(--text-1);
   }
-  .card {
-    background: white;
-    border-radius: 16px;
+
+  /* ── Layout wrapper ── */
+  .page-wrapper {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  /* ── Left branding panel ── */
+  .brand-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 64px;
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+  }
+
+  .brand-logo-mark {
+    width: 52px;
+    height: 52px;
+    background: var(--primary-muted);
+    border: 1px solid rgba(62, 207, 142, 0.25);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    margin-bottom: 28px;
+  }
+
+  .brand-logo-mark i {
+    width: 24px;
+    height: 24px;
+  }
+
+  .brand-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-1);
+    letter-spacing: -0.8px;
+    line-height: 1.15;
+    margin-bottom: 10px;
+  }
+
+  .brand-subtitle {
+    font-size: 15px;
+    color: var(--text-2);
+    font-weight: 400;
+    margin-bottom: 48px;
+    line-height: 1.5;
+  }
+
+  .features-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .feature-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+
+  .feature-icon i {
+    width: 16px;
+    height: 16px;
+  }
+
+  .feature-text {
+    padding-top: 2px;
+  }
+
+  .feature-text strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-1);
+    margin-bottom: 2px;
+  }
+
+  .feature-text span {
+    font-size: 13px;
+    color: var(--text-3);
+    line-height: 1.4;
+  }
+
+  /* ── Right login panel ── */
+  .login-panel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+    background: var(--bg);
+  }
+
+  .login-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
     padding: 40px;
     width: 100%;
     max-width: 400px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
   }
-  .logo {
-    text-align: center;
+
+  .card-header {
     margin-bottom: 32px;
   }
-  .logo-icon {
-    width: 64px;
-    height: 64px;
-    background: linear-gradient(135deg, #0f3460, #e94560);
-    border-radius: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    margin-bottom: 12px;
-  }
-  .logo h1 {
-    font-size: 20px;
+
+  .card-header h2 {
+    font-size: 22px;
     font-weight: 700;
-    color: #1a1a2e;
-  }
-  .logo p {
-    font-size: 13px;
-    color: #666;
-    margin-top: 4px;
-  }
-  label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #444;
+    color: var(--text-1);
+    letter-spacing: -0.4px;
     margin-bottom: 6px;
   }
-  input {
-    width: 100%;
-    padding: 12px 14px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 15px;
-    transition: border-color 0.2s;
-    margin-bottom: 18px;
-    outline: none;
-  }
-  input:focus { border-color: #0f3460; }
-  .btn-login {
-    width: 100%;
-    padding: 14px;
-    background: linear-gradient(135deg, #0f3460, #e94560);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
-    letter-spacing: 0.5px;
-  }
-  .btn-login:hover { opacity: 0.92; }
-  .btn-login:active { transform: scale(0.98); }
-  .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
-  .error {
-    background: #fff0f0;
-    border: 1px solid #ffcccc;
-    color: #cc0000;
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    margin-bottom: 16px;
-    display: none;
-  }
-  .loading-msg {
-    text-align: center;
-    color: #666;
+
+  .card-header p {
     font-size: 14px;
-    margin-top: 16px;
-    display: none;
+    color: var(--text-2);
+    font-weight: 400;
   }
-  .spinner {
-    display: inline-block;
+
+  /* ── Error message ── */
+  .error-msg {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #F87171;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.5;
+  }
+
+  .error-msg.visible {
+    display: flex;
+  }
+
+  .error-msg i {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── Form ── */
+  .form-group {
+    margin-bottom: 18px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+    margin-bottom: 7px;
+    letter-spacing: 0.1px;
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+
+  .input-wrap input {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text-1);
+    outline: none;
+    transition: border-color 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .input-wrap input::placeholder {
+    color: var(--text-3);
+  }
+
+  .input-wrap input:focus {
+    border-color: var(--border-focus);
+  }
+
+  .input-wrap.has-toggle input {
+    padding-right: 42px;
+  }
+
+  .toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color 0.15s;
+  }
+
+  .toggle-password:hover {
+    color: var(--text-2);
+  }
+
+  .toggle-password i {
     width: 16px;
     height: 16px;
-    border: 2px solid #ddd;
-    border-top-color: #0f3460;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    vertical-align: middle;
-    margin-right: 6px;
   }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .version { text-align: center; color: #bbb; font-size: 11px; margin-top: 24px; }
+
+  /* ── Submit button ── */
+  .btn-login {
+    width: 100%;
+    height: 42px;
+    padding: 0 16px;
+    background: var(--primary);
+    color: #0A0A0A;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    letter-spacing: -0.1px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-login:hover:not(:disabled) {
+    background: var(--primary-hover);
+  }
+
+  .btn-login:active:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  .btn-login:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* ── Spinner ── */
+  .spinner {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(10, 10, 10, 0.3);
+    border-top-color: #0A0A0A;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ── Footer ── */
+  .card-footer {
+    margin-top: 24px;
+    text-align: center;
+    color: var(--text-3);
+    font-size: 11px;
+    letter-spacing: 0.2px;
+  }
+
+  /* ── Responsive: mobile ── */
+  @media (max-width: 768px) {
+    .brand-panel {
+      display: none;
+    }
+
+    .login-panel {
+      padding: 24px 16px;
+    }
+
+    .login-card {
+      padding: 32px 24px;
+    }
+  }
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="logo">
-    <div class="logo-icon">🏗️</div>
-    <h1>Gestão de Obras</h1>
-    <p>Automação Residencial</p>
+
+<div class="page-wrapper">
+
+  <!-- Left: Branding -->
+  <div class="brand-panel">
+    <div class="brand-logo-mark">
+      <i data-lucide="zap"></i>
+    </div>
+    <h1 class="brand-title">Solução Técnica</h1>
+    <p class="brand-subtitle">Sistema de Gestão de Obras</p>
+
+    <div class="features-list">
+      <div class="feature-item">
+        <div class="feature-icon">
+          <i data-lucide="clipboard-list"></i>
+        </div>
+        <div class="feature-text">
+          <strong>Ordens de Serviço</strong>
+          <span>Crie, atribua e acompanhe ordens com eficiência</span>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">
+          <i data-lucide="hard-hat"></i>
+        </div>
+        <div class="feature-text">
+          <strong>Gestão de Obras</strong>
+          <span>Controle completo de projetos e equipes em campo</span>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">
+          <i data-lucide="activity"></i>
+        </div>
+        <div class="feature-text">
+          <strong>Supervisão em tempo real</strong>
+          <span>Monitore o progresso e status de cada execução</span>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">
+          <i data-lucide="calendar-clock"></i>
+        </div>
+        <div class="feature-text">
+          <strong>Agendamento inteligente</strong>
+          <span>Planeje visitas e recursos com precisão</span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div id="errorMsg" class="error"></div>
+  <!-- Right: Login card -->
+  <div class="login-panel">
+    <div class="login-card">
+      <div class="card-header">
+        <h2>Entrar</h2>
+        <p>Acesse sua conta</p>
+      </div>
 
-  <form id="loginForm">
-    <label for="email">E-mail</label>
-    <input type="email" id="email" placeholder="seu@email.com" required autocomplete="email">
+      <div id="errorMsg" class="error-msg">
+        <i data-lucide="alert-circle"></i>
+        <span id="errorText"></span>
+      </div>
 
-    <label for="senha">Senha</label>
-    <input type="password" id="senha" placeholder="••••••••" required autocomplete="current-password">
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">E-mail</label>
+          <div class="input-wrap">
+            <input type="email" id="email" placeholder="seu@email.com" required autocomplete="email">
+          </div>
+        </div>
 
-    <button type="submit" class="btn-login" id="btnLogin">Entrar</button>
-  </form>
+        <div class="form-group">
+          <label for="senha">Senha</label>
+          <div class="input-wrap has-toggle">
+            <input type="password" id="senha" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="toggle-password" id="toggleSenha" aria-label="Mostrar ou ocultar senha">
+              <i data-lucide="eye" id="toggleIcon"></i>
+            </button>
+          </div>
+        </div>
 
-  <div class="loading-msg" id="loadingMsg">
-    <span class="spinner"></span> Verificando credenciais...
+        <button type="submit" class="btn-login" id="btnLogin">
+          <span id="btnText">Entrar</span>
+        </button>
+      </form>
+
+      <div class="card-footer">v1.0 &middot; Sistema interno</div>
+    </div>
   </div>
 
-  <div class="version">v1.0 · Sistema interno</div>
 </div>
 
 <script>
@@ -190,7 +494,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   errorMsg.style.display = 'none';
   btnLogin.disabled = true;
   btnLogin.textContent = 'Entrando...';
-  loadingMsg.style.display = 'block';
+  loadingMsg.classList.add('visible');
 
   try {
     const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
@@ -212,9 +516,29 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   } finally {
     btnLogin.disabled = false;
     btnLogin.textContent = 'Entrar';
-    loadingMsg.style.display = 'none';
+    loadingMsg.classList.remove('visible');
   }
 });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    lucide.createIcons();
+
+    // Toggle mostrar/ocultar senha
+    var toggleBtn = document.getElementById('toggleSenha');
+    var senhaInput = document.getElementById('senha');
+    var toggleIcon = document.getElementById('toggleIcon');
+
+    if (toggleBtn && senhaInput) {
+      toggleBtn.addEventListener('click', function () {
+        var isPassword = senhaInput.type === 'password';
+        senhaInput.type = isPassword ? 'text' : 'password';
+        toggleIcon.setAttribute('data-lucide', isPassword ? 'eye-off' : 'eye');
+        lucide.createIcons();
+      });
+    }
+  });
 </script>
 </body>
 </html>

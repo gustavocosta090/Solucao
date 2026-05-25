@@ -4,129 +4,577 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Solução Técnica — Detalhe da Obra</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    header{background:#1a1d2e;border-bottom:1px solid #2d3148;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    header h1{font-size:1.2rem;font-weight:700;color:#fff}
-    nav{display:flex;gap:6px}
-    nav a{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;text-decoration:none;transition:all .2s}
-    nav a:hover{background:#3b5bdb;color:#fff}
-    .btn-logout{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;background:none;border:none;cursor:pointer;transition:all .2s}
-    .btn-logout:hover{background:#7f1d1d;color:#fca5a5}
+    :root {
+      --bg:           #0A0A0A;
+      --surface-1:    #111111;
+      --surface-2:    #161616;
+      --surface-3:    #1B1B1B;
+      --primary:      #3ECF8E;
+      --secondary:    #4F46E5;
+      --text-1:       #FFFFFF;
+      --text-2:       #A1A1AA;
+      --text-3:       #52525B;
+      --border:       rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.16);
+      --radius-card:  12px;
+      --radius-input: 6px;
+    }
 
-    main{max-width:1100px;margin:0 auto;padding:28px 20px}
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
 
-    .btn-voltar{display:inline-flex;align-items:center;gap:6px;color:#7c85b0;font-size:0.85rem;background:none;border:none;cursor:pointer;margin-bottom:20px;padding:0}
-    .btn-voltar:hover{color:#e2e8f0}
+    /* ── Header ── */
+    header {
+      background: var(--surface-1);
+      border-bottom: 1px solid var(--border);
+      height: 56px;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-brand {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-brand-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+      flex-shrink: 0;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    nav a {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-2);
+      text-decoration: none;
+      transition: color 150ms, background 150ms;
+    }
+
+    nav a:hover {
+      color: var(--text-1);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .btn-logout {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-2);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color 150ms, background 150ms;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+    }
+
+    .btn-logout:hover {
+      color: #fca5a5;
+      background: rgba(239,68,68,0.08);
+    }
+
+    .nav-divider {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      margin: 0 6px;
+    }
+
+    /* ── Main ── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* ── Voltar ── */
+    .btn-voltar {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text-3);
+      font-size: 0.82rem;
+      font-weight: 500;
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 24px;
+      padding: 0;
+      font-family: inherit;
+      transition: color 150ms;
+    }
+
+    .btn-voltar i { width: 14px; height: 14px; }
+
+    .btn-voltar:hover { color: var(--text-2); }
 
     /* ── Card da obra ── */
-    .obra-card{background:#1a1d2e;border:1px solid #2d3148;border-radius:14px;padding:24px;margin-bottom:28px}
-    .obra-title{font-size:1.4rem;font-weight:700;color:#fff;margin-bottom:4px}
-    .obra-id{font-size:0.78rem;color:#7c85b0;font-weight:600;letter-spacing:.06em;margin-bottom:16px}
-    .obra-infos{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
-    .obra-info-item{background:#12152a;border-radius:8px;padding:10px 14px}
-    .obra-info-label{font-size:0.7rem;color:#7c85b0;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
-    .obra-info-value{font-size:0.88rem;color:#e2e8f0}
+    .obra-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
 
-    .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700}
-    .badge-em_andamento{background:#1e3a5f;color:#93c5fd}
-    .badge-entregue{background:#14532d;color:#86efac}
-    .badge-pausada{background:#3d2700;color:#fbbf24}
-    .badge-planejamento{background:#2d1b4e;color:#c4b5fd}
+    .obra-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    .obra-meta {
+      font-size: 0.75rem;
+      color: var(--text-3);
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .obra-infos {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+    }
+
+    .obra-info-item {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .obra-info-label {
+      font-size: 0.68rem;
+      color: var(--text-3);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 4px;
+    }
+
+    .obra-info-value {
+      font-size: 0.85rem;
+      color: var(--text-2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .obra-info-value i {
+      width: 13px;
+      height: 13px;
+      color: var(--text-3);
+      flex-shrink: 0;
+    }
 
     /* ── Stats ── */
-    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
-    @media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
-    .stat-card{background:#1a1d2e;border:1px solid #2d3148;border-radius:10px;padding:16px;text-align:center}
-    .stat-num{font-size:1.8rem;font-weight:700;color:#3b5bdb}
-    .stat-label{font-size:0.72rem;color:#7c85b0;margin-top:4px}
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+    }
 
-    /* ── Seção OS ── */
-    .section-title{font-size:1rem;font-weight:700;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:8px}
-    .section-title span{font-size:0.72rem;background:#2d3148;color:#7c85b0;padding:2px 8px;border-radius:20px;font-weight:600}
+    @media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+    .stat-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 18px 16px;
+      text-align: center;
+    }
+
+    .stat-num {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text-1);
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--text-3);
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    /* ── Section title ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+    }
+
+    .section-count {
+      font-size: 0.7rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-3);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
 
     /* ── Filtros ── */
-    .filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-    .filtro-btn{padding:5px 14px;border-radius:20px;border:1px solid #2d3148;background:#1a1d2e;color:#9ba3cc;font-size:0.78rem;cursor:pointer;transition:all .2s}
-    .filtro-btn:hover,.filtro-btn.ativo{background:#3b5bdb;border-color:#3b5bdb;color:#fff}
+    .filtros {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .filtro-btn {
+      padding: 5px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-2);
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 150ms;
+      font-family: inherit;
+    }
+
+    .filtro-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-1);
+    }
+
+    .filtro-btn.ativo {
+      background: rgba(62,207,142,0.12);
+      border-color: rgba(62,207,142,0.35);
+      color: var(--primary);
+    }
 
     /* ── Tabela OS ── */
-    .os-table-wrap{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;overflow:hidden;margin-bottom:28px}
-    table{width:100%;border-collapse:collapse;font-size:0.82rem}
-    th{background:#12152a;padding:10px 14px;text-align:left;font-size:0.7rem;font-weight:700;color:#7c85b0;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #2d3148}
-    td{padding:11px 14px;border-bottom:1px solid #1e2240;vertical-align:middle}
-    tr:last-child td{border-bottom:none}
-    tr:hover td{background:#1e2240}
+    .os-table-wrap {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
 
-    .badge-pend{background:#3d2700;color:#fbbf24}
-    .badge-aprov{background:#14532d;color:#86efac}
-    .badge-rejt{background:#450a0a;color:#fca5a5}
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
 
-    .fotos-mini{display:flex;gap:4px;flex-wrap:wrap}
-    .foto-mini{width:36px;height:36px;border-radius:4px;object-fit:cover;cursor:pointer;border:2px solid transparent;transition:border-color .2s}
-    .foto-mini:hover{border-color:#3b5bdb}
+    th {
+      background: var(--surface-2);
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      color: var(--text-2);
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.69rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .badge-pend  { background: rgba(245,158,11,0.12); color: #F59E0B; border: 1px solid rgba(245,158,11,0.22); }
+    .badge-aprov { background: rgba(62,207,142,0.12);  color: var(--primary); border: 1px solid rgba(62,207,142,0.22); }
+    .badge-rejt  { background: rgba(239,68,68,0.1);    color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+
+    /* Badges de fase */
+    .badge-projeto_iniciado  { background: rgba(99,102,241,0.15);  color: #818CF8; border: 1px solid rgba(99,102,241,0.25); }
+    .badge-cabeamento        { background: rgba(245,158,11,0.12);  color: #F59E0B; border: 1px solid rgba(245,158,11,0.22); }
+    .badge-eletrica          { background: rgba(251,191,36,0.12);  color: #FBBF24; border: 1px solid rgba(251,191,36,0.22); }
+    .badge-audio_video       { background: rgba(167,139,250,0.12); color: #A78BFA; border: 1px solid rgba(167,139,250,0.22); }
+    .badge-automacao         { background: rgba(62,207,142,0.12);  color: var(--primary); border: 1px solid rgba(62,207,142,0.22); }
+    .badge-em_finalizacao    { background: rgba(45,212,191,0.12);  color: #2DD4BF; border: 1px solid rgba(45,212,191,0.22); }
+    .badge-nao_iniciado      { background: rgba(82,82,91,0.2);     color: var(--text-2); border: 1px solid rgba(82,82,91,0.3); }
+    .badge-projeto_concluido { background: rgba(79,70,229,0.15);   color: #818CF8; border: 1px solid rgba(79,70,229,0.25); }
+    .badge-entrega_comercial { background: rgba(62,207,142,0.15);  color: var(--primary); border: 1px solid rgba(62,207,142,0.25); }
+    .badge-em_andamento      { background: rgba(99,102,241,0.15);  color: #818CF8; border: 1px solid rgba(99,102,241,0.25); }
+    .badge-entregue          { background: rgba(62,207,142,0.15);  color: var(--primary); border: 1px solid rgba(62,207,142,0.25); }
+    .badge-pausada           { background: rgba(245,158,11,0.12);  color: #F59E0B; border: 1px solid rgba(245,158,11,0.22); }
+    .badge-planejamento      { background: rgba(167,139,250,0.12); color: #A78BFA; border: 1px solid rgba(167,139,250,0.22); }
+
+    /* ── Fotos mini ── */
+    .fotos-mini { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+
+    .foto-mini {
+      width: 34px;
+      height: 34px;
+      border-radius: 4px;
+      object-fit: cover;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: border-color 200ms;
+    }
+
+    .foto-mini:hover { border-color: var(--primary); }
 
     /* ── Galeria de fotos ── */
-    .galeria-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:28px}
-    .galeria-item{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#1a1d2e;cursor:pointer}
-    .galeria-item img{width:100%;height:100%;object-fit:cover;transition:transform .2s}
-    .galeria-item:hover img{transform:scale(1.04)}
-    .galeria-info{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.8));padding:8px 8px 6px;font-size:0.68rem;color:#ccc}
+    .galeria-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .galeria-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .galeria-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 200ms;
+    }
+
+    .galeria-item:hover img { transform: scale(1.04); }
+
+    .galeria-info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.85));
+      padding: 10px 8px 6px;
+      font-size: 0.68rem;
+      color: var(--text-2);
+    }
 
     /* ── Empty state ── */
-    .empty{text-align:center;padding:40px;color:#4a5080;font-size:0.9rem}
+    .empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-3);
+      font-size: 0.85rem;
+    }
+
+    .empty i {
+      width: 36px;
+      height: 36px;
+      margin: 0 auto 12px;
+      display: block;
+      color: var(--text-3);
+    }
 
     /* ── Spinner ── */
-    .spinner-wrap{text-align:center;padding:50px;color:#4a5080}
-    .spinner{width:32px;height:32px;border:3px solid #2d3148;border-top-color:#3b5bdb;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
-    @keyframes spin{to{transform:rotate(360deg)}}
+    .spinner-wrap {
+      text-align: center;
+      padding: 60px;
+      color: var(--text-3);
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 14px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Lightbox ── */
-    .lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1000;align-items:center;justify-content:center;flex-direction:column;gap:12px}
-    .lightbox.aberto{display:flex}
-    .lightbox img{max-width:90vw;max-height:80vh;border-radius:8px;object-fit:contain}
-    .lightbox-close{position:absolute;top:16px;right:20px;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer;line-height:1}
-    .lightbox-nav{display:flex;gap:16px}
-    .lightbox-nav button{background:#1a1d2e;border:1px solid #2d3148;color:#e2e8f0;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:1rem}
-    .lightbox-nav button:hover{background:#3b5bdb;border-color:#3b5bdb}
-    .lightbox-caption{color:#9ba3cc;font-size:0.82rem}
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.94);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      backdrop-filter: blur(8px);
+    }
+
+    .lightbox.aberto { display: flex; }
+
+    .lightbox img {
+      max-width: 90vw;
+      max-height: 78vh;
+      border-radius: 8px;
+      object-fit: contain;
+      border: 1px solid var(--border);
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-2);
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 150ms, color 150ms;
+    }
+
+    .lightbox-close:hover { border-color: var(--border-hover); color: var(--text-1); }
+    .lightbox-close i { width: 16px; height: 16px; }
+
+    .lightbox-nav {
+      display: flex;
+      gap: 10px;
+    }
+
+    .lightbox-nav button {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      padding: 8px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color 150ms, color 150ms;
+    }
+
+    .lightbox-nav button:hover { border-color: var(--border-hover); color: var(--text-1); }
+    .lightbox-nav button i { width: 14px; height: 14px; }
+
+    .lightbox-caption {
+      color: var(--text-3);
+      font-size: 0.78rem;
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>Solução Técnica</h1>
+  <div class="header-brand">
+    <span class="header-brand-dot"></span>
+    Solução Técnica
+  </div>
   <nav id="nav-links">
     <a href="obras.html">Obras</a>
-    <button class="btn-logout" onclick="logout()">↩ Sair</button>
+    <div class="nav-divider"></div>
+    <button class="btn-logout" onclick="logout()">
+      <i data-lucide="log-out"></i>
+      Sair
+    </button>
   </nav>
 </header>
 
 <main>
-  <button class="btn-voltar" onclick="history.back()">← Voltar para Obras</button>
+  <button class="btn-voltar" onclick="history.back()">
+    <i data-lucide="arrow-left"></i>
+    Voltar para Obras
+  </button>
 
-  <!-- Conteúdo carregado dinamicamente -->
   <div id="conteudo">
-    <div class="spinner-wrap"><div class="spinner"></div><p>Carregando obra...</p></div>
+    <div class="spinner-wrap">
+      <div class="spinner"></div>
+      <p>Carregando obra...</p>
+    </div>
   </div>
 </main>
 
 <!-- Lightbox -->
 <div class="lightbox" id="lightbox">
-  <button class="lightbox-close" onclick="fecharLightbox()">✕</button>
+  <button class="lightbox-close" onclick="fecharLightbox()">
+    <i data-lucide="x"></i>
+  </button>
   <img id="lb-img" src="" alt="">
   <div class="lightbox-nav">
-    <button onclick="navLightbox(-1)">← Anterior</button>
-    <button onclick="navLightbox(1)">Próxima →</button>
+    <button onclick="navLightbox(-1)"><i data-lucide="arrow-left"></i> Anterior</button>
+    <button onclick="navLightbox(1)">Proxima <i data-lucide="arrow-right"></i></button>
   </div>
   <div class="lightbox-caption" id="lb-caption"></div>
 </div>
 
 <script>
-const { createClient } = supabase;
+const { createClient } = window.supabase;
 const db = createClient(
   'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
@@ -134,44 +582,62 @@ const db = createClient(
 
 const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
 
-// Pega o ID da obra da URL
 const params  = new URLSearchParams(location.search);
 const obraId  = parseInt(params.get('id'));
 
-let todasFotos = []; // para o lightbox
+let todasFotos = [];
 let lbIndex    = 0;
 let filtroStatus = 'todos';
 let todasOS = [];
 
 const FASES = {
-  planejamento:  'Planejamento',
-  em_andamento:  'Em andamento',
-  entregue:      'Entregue',
-  pausada:       'Pausada',
+  planejamento:     'Planejamento',
+  em_andamento:     'Em andamento',
+  entregue:         'Entregue',
+  pausada:          'Pausada',
+  projeto_iniciado: 'Projeto Iniciado',
+  cabeamento:       'Cabeamento',
+  eletrica:         'Eletrica',
+  audio_video:      'Audio e Video',
+  automacao:        'Automacao',
+  em_finalizacao:   'Em Finalizacao',
+  nao_iniciado:     'Nao Iniciado',
+  projeto_concluido:'Projeto Concluido',
+  entrega_comercial:'Entrega Comercial',
 };
 
 const STATUS_LABELS = {
-  pendente:  { label: '🟡 Pendente',   cls: 'badge-pend' },
-  aprovada:  { label: '✅ Aprovada',   cls: 'badge-aprov' },
-  reprovada: { label: '❌ Reprovada',  cls: 'badge-rejt' },
+  pendente:  { label: 'Pendente',   cls: 'badge-pend' },
+  aprovada:  { label: 'Aprovada',   cls: 'badge-aprov' },
+  reprovada: { label: 'Reprovada',  cls: 'badge-rejt' },
 };
 
 async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
-  // Nav dinâmico por role
   const { data: eu } = await db.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
   const role = eu?.role || 'tecnico';
   const nav = document.getElementById('nav-links');
+
   if (role === 'tecnico') {
-    nav.innerHTML = `<a href="obras.html">Obras</a><a href="os.html">OS</a><button class="btn-logout" onclick="logout()">↩ Sair</button>`;
+    nav.innerHTML = `
+      <a href="obras.html">Obras</a>
+      <a href="os.html">OS</a>
+      <div class="nav-divider"></div>
+      <button class="btn-logout" onclick="logout()"><i data-lucide="log-out"></i> Sair</button>`;
   } else {
-    nav.innerHTML = `<a href="obras.html">Obras</a><a href="agenda.html">Agenda</a><a href="supervisor.html">Supervisor</a><button class="btn-logout" onclick="logout()">↩ Sair</button>`;
+    nav.innerHTML = `
+      <a href="obras.html">Obras</a>
+      <a href="agenda.html">Agenda</a>
+      <a href="supervisor.html">Supervisor</a>
+      <div class="nav-divider"></div>
+      <button class="btn-logout" onclick="logout()"><i data-lucide="log-out"></i> Sair</button>`;
   }
+  lucide.createIcons();
 
   if (!obraId) {
-    document.getElementById('conteudo').innerHTML = '<div class="empty">Obra não encontrada.</div>';
+    document.getElementById('conteudo').innerHTML = '<div class="empty"><p>Obra nao encontrada.</p></div>';
     return;
   }
 
@@ -184,7 +650,6 @@ async function logout() {
 }
 
 async function carregarObra() {
-  // Busca obra
   const { data: obra, error } = await db
     .from('obras')
     .select('*, consultores(nome)')
@@ -192,11 +657,10 @@ async function carregarObra() {
     .single();
 
   if (error || !obra) {
-    document.getElementById('conteudo').innerHTML = '<div class="empty">Obra não encontrada.</div>';
+    document.getElementById('conteudo').innerHTML = '<div class="empty"><p>Obra nao encontrada.</p></div>';
     return;
   }
 
-  // Busca OS da obra e técnicos separadamente (evita ambiguidade de FK)
   const [{ data: osList, error: osErr }, { data: tecList }] = await Promise.all([
     db.from('ordens_de_servico')
       .select('*')
@@ -205,11 +669,8 @@ async function carregarObra() {
     db.from('tecnicos').select('id, nome')
   ]);
 
-  if (osErr) {
-    console.error('Erro ao buscar OS:', osErr.message);
-  }
+  if (osErr) console.error('Erro ao buscar OS:', osErr.message);
 
-  // Mapear técnicos por id
   const tecMap = {};
   (tecList || []).forEach(t => { tecMap[t.id] = t; });
 
@@ -218,7 +679,6 @@ async function carregarObra() {
     tecnicos: o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null
   }));
 
-  // Monta todas as fotos para lightbox
   todasFotos = [];
   todasOS.forEach(os => {
     (os.fotos_urls || []).forEach(url => {
@@ -231,70 +691,108 @@ async function carregarObra() {
 
 function renderPagina(obra) {
   const consultor = obra.consultores?.nome || '—';
-  const fase = FASES[obra.fase_atual] || obra.fase_atual || '—';
+  const faseLabel = FASES[obra.fase_atual] || obra.fase_atual || '—';
+  const faseClass = obra.fase_atual || 'em_andamento';
 
-  // Stats
-  const total    = todasOS.length;
+  const total     = todasOS.length;
   const aprovadas = todasOS.filter(o => o.status_aprovacao === 'aprovada').length;
   const pendentes = todasOS.filter(o => o.status_aprovacao === 'pendente').length;
-  const nFotos   = todasFotos.length;
+  const nFotos    = todasFotos.length;
 
   document.getElementById('conteudo').innerHTML = `
-    <!-- Cabeçalho da obra -->
     <div class="obra-card">
       <div class="obra-title">${obra.nome_cliente}</div>
-      <div class="obra-id">#${String(obra.id).padStart(3,'0')} · <span class="badge badge-${obra.fase_atual || 'em_andamento'}">${fase}</span></div>
+      <div class="obra-meta">
+        #${String(obra.id).padStart(3,'0')}
+        <span class="badge badge-${faseClass}">${faseLabel}</span>
+      </div>
       <div class="obra-infos">
-        <div class="obra-info-item"><div class="obra-info-label">Endereço</div><div class="obra-info-value">📍 ${obra.endereco || '—'}</div></div>
-        <div class="obra-info-item"><div class="obra-info-label">Arquiteto</div><div class="obra-info-value">🏛️ ${obra.arquiteto_responsavel || '—'}</div></div>
-        <div class="obra-info-item"><div class="obra-info-label">Consultor</div><div class="obra-info-value">👔 ${consultor}</div></div>
-        <div class="obra-info-item"><div class="obra-info-label">Status compra</div><div class="obra-info-value">🛒 ${obra.status_compra || '—'}</div></div>
-        ${obra.cod_shankya ? `<div class="obra-info-item"><div class="obra-info-label">Cod. Shankya</div><div class="obra-info-value">${obra.cod_shankya}</div></div>` : ''}
+        <div class="obra-info-item">
+          <div class="obra-info-label">Endereco</div>
+          <div class="obra-info-value"><i data-lucide="map-pin"></i>${obra.endereco || '—'}</div>
+        </div>
+        <div class="obra-info-item">
+          <div class="obra-info-label">Arquiteto</div>
+          <div class="obra-info-value"><i data-lucide="pen-tool"></i>${obra.arquiteto_responsavel || '—'}</div>
+        </div>
+        <div class="obra-info-item">
+          <div class="obra-info-label">Consultor</div>
+          <div class="obra-info-value"><i data-lucide="user"></i>${consultor}</div>
+        </div>
+        <div class="obra-info-item">
+          <div class="obra-info-label">Status Compra</div>
+          <div class="obra-info-value"><i data-lucide="shopping-cart"></i>${obra.status_compra || '—'}</div>
+        </div>
+        ${obra.cod_shankya ? `<div class="obra-info-item">
+          <div class="obra-info-label">Cod. Shankya</div>
+          <div class="obra-info-value"><i data-lucide="hash"></i>${obra.cod_shankya}</div>
+        </div>` : ''}
       </div>
     </div>
 
-    <!-- Stats -->
     <div class="stats">
-      <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">Total de OS</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:#22c55e">${aprovadas}</div><div class="stat-label">Aprovadas</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:#f59e0b">${pendentes}</div><div class="stat-label">Pendentes</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:#60a5fa">${nFotos}</div><div class="stat-label">Fotos</div></div>
+      <div class="stat-card">
+        <div class="stat-num">${total}</div>
+        <div class="stat-label">Total de OS</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" style="color:var(--primary)">${aprovadas}</div>
+        <div class="stat-label">Aprovadas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" style="color:#F59E0B">${pendentes}</div>
+        <div class="stat-label">Pendentes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" style="color:#818CF8">${nFotos}</div>
+        <div class="stat-label">Fotos</div>
+      </div>
     </div>
 
-    <!-- Ordens de Serviço -->
-    <div class="section-title">📋 Ordens de Serviço <span>${total}</span></div>
+    <div class="section-header">
+      <div class="section-title">Ordens de Servico</div>
+      <span class="section-count">${total}</span>
+    </div>
     <div class="filtros">
-      <button class="filtro-btn ativo" data-f="todos" onclick="filtrarOS(this,'todos')">Todas</button>
-      <button class="filtro-btn" data-f="pendente"  onclick="filtrarOS(this,'pendente')">Pendentes</button>
-      <button class="filtro-btn" data-f="aprovada"  onclick="filtrarOS(this,'aprovada')">Aprovadas</button>
-      <button class="filtro-btn" data-f="reprovada" onclick="filtrarOS(this,'reprovada')">Reprovadas</button>
+      <button class="filtro-btn ativo" onclick="filtrarOS(this,'todos')">Todas</button>
+      <button class="filtro-btn" onclick="filtrarOS(this,'pendente')">Pendentes</button>
+      <button class="filtro-btn" onclick="filtrarOS(this,'aprovada')">Aprovadas</button>
+      <button class="filtro-btn" onclick="filtrarOS(this,'reprovada')">Reprovadas</button>
     </div>
     <div id="tabela-os" class="os-table-wrap">${renderTabelaOS(todasOS)}</div>
 
-    <!-- Galeria de Fotos -->
-    <div class="section-title">📸 Galeria de Fotos <span>${nFotos}</span></div>
-    <div id="galeria">${renderGaleria(todasFotos)}</div>
+    <div class="section-header" style="margin-top:8px">
+      <div class="section-title">Galeria de Fotos</div>
+      <span class="section-count">${nFotos}</span>
+    </div>
+    <div class="galeria-grid" id="galeria">${renderGaleria(todasFotos)}</div>
   `;
+
+  lucide.createIcons();
 }
 
 function renderTabelaOS(lista) {
-  if (!lista.length) return '<div class="empty">Nenhuma OS registrada para esta obra.</div>';
+  if (!lista.length) return `
+    <div class="empty">
+      <i data-lucide="file-text"></i>
+      Nenhuma OS registrada para esta obra.
+    </div>`;
 
   const rows = lista.map((os, idx) => {
     const st = STATUS_LABELS[os.status_aprovacao] || { label: os.status_aprovacao || '—', cls: '' };
     const tec = os.tecnicos?.nome || '—';
     const data = os.criado_em ? new Date(os.criado_em).toLocaleDateString('pt-BR') : '—';
-    const nFotos = (os.fotos_urls || []).length;
+    const nF = (os.fotos_urls || []).length;
 
     const minisFotos = (os.fotos_urls || []).slice(0,3).map((url, fi) =>
       `<img class="foto-mini" src="${url}" alt="foto" onclick="event.stopPropagation();abrirLightboxOS(${idx},${fi})">`
     ).join('');
-    const maisTag = nFotos > 3 ? `<span style="font-size:0.72rem;color:#7c85b0">+${nFotos-3}</span>` : '';
+    const maisTag = nF > 3 ? `<span style="font-size:0.72rem;color:var(--text-3);margin-left:2px">+${nF-3}</span>` : '';
 
     return `<tr>
-      <td style="color:#7c85b0;font-size:0.72rem">${data}</td>
-      <td><strong>${tec}</strong></td>
-      <td style="color:#a0aec0;font-size:0.78rem">${os.observacoes_finais || os.atividades_realizadas || '—'}</td>
+      <td style="color:var(--text-3);font-size:0.75rem;white-space:nowrap">${data}</td>
+      <td style="color:var(--text-1);font-weight:600">${tec}</td>
+      <td style="color:var(--text-2);font-size:0.8rem;max-width:260px">${os.observacoes_finais || os.atividades_realizadas || '—'}</td>
       <td><span class="badge ${st.cls}">${st.label}</span></td>
       <td><div class="fotos-mini">${minisFotos}${maisTag}</div></td>
     </tr>`;
@@ -302,32 +800,35 @@ function renderTabelaOS(lista) {
 
   return `<table>
     <thead><tr>
-      <th>Data</th><th>Técnico</th><th>Observações</th><th>Status</th><th>Fotos</th>
+      <th>Data</th><th>Tecnico</th><th>Observacoes</th><th>Status</th><th>Fotos</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
 
 function renderGaleria(fotos) {
-  if (!fotos.length) return '<div class="empty">Nenhuma foto registrada ainda.</div>';
+  if (!fotos.length) return `
+    <div class="empty" style="grid-column:1/-1">
+      <i data-lucide="image"></i>
+      Nenhuma foto registrada ainda.
+    </div>`;
 
   return fotos.map((f, i) => `
     <div class="galeria-item" onclick="abrirLightbox(${i})">
       <img src="${f.url}" alt="foto" loading="lazy">
-      <div class="galeria-info">👷 ${f.tecnico} · ${f.data}</div>
+      <div class="galeria-info">${f.tecnico} · ${f.data}</div>
     </div>`).join('');
 }
 
-// ── Filtro OS ────────────────────────────────────────────────
 function filtrarOS(btn, status) {
   filtroStatus = status;
   document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
   btn.classList.add('ativo');
   const filtradas = status === 'todos' ? todasOS : todasOS.filter(o => o.status_aprovacao === status);
   document.getElementById('tabela-os').innerHTML = renderTabelaOS(filtradas);
+  lucide.createIcons();
 }
 
-// ── Lightbox galeria ─────────────────────────────────────────
 function abrirLightbox(idx) {
   lbIndex = idx;
   mostrarFotoLb();
@@ -335,7 +836,6 @@ function abrirLightbox(idx) {
 }
 
 function abrirLightboxOS(osIdx, fotoIdx) {
-  // Calcula índice global na lista todasFotos
   let globalIdx = 0;
   for (let i = 0; i < osIdx; i++) globalIdx += (todasOS[i].fotos_urls || []).length;
   globalIdx += fotoIdx;
@@ -354,10 +854,9 @@ function navLightbox(delta) {
 function mostrarFotoLb() {
   const f = todasFotos[lbIndex];
   document.getElementById('lb-img').src = f.url;
-  document.getElementById('lb-caption').textContent = `👷 ${f.tecnico} · ${f.data} · ${lbIndex+1}/${todasFotos.length}`;
+  document.getElementById('lb-caption').textContent = `${f.tecnico} · ${f.data} · ${lbIndex+1}/${todasFotos.length}`;
 }
 
-// Fechar lightbox com ESC
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') fecharLightbox();
   if (e.key === 'ArrowLeft') navLightbox(-1);
@@ -366,5 +865,6 @@ document.addEventListener('keydown', e => {
 
 init();
 </script>
+<script>lucide.createIcons();</script>
 </body>
 </html>

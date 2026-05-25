@@ -4,129 +4,576 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Solução Técnica — Agenda</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0A0A0A;
+      --surface-1:    #111111;
+      --surface-2:    #161616;
+      --surface-3:    #1B1B1B;
+      --primary:      #3ECF8E;
+      --secondary:    #4F46E5;
+      --text-1:       #FFFFFF;
+      --text-2:       #A1A1AA;
+      --text-3:       #52525B;
+      --border:       rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.16);
+      --radius-card:  12px;
+      --radius-input: 6px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
 
     /* ── Header ── */
-    header{background:#1a1d2e;border-bottom:1px solid #2d3148;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    header h1{font-size:1.2rem;font-weight:700;color:#fff}
-    nav{display:flex;gap:6px}
-    nav a{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;text-decoration:none;transition:all .2s}
-    nav a:hover,nav a.ativo{background:#3b5bdb;color:#fff}
-    .btn-logout{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;background:none;border:none;cursor:pointer;transition:all .2s}
-    .btn-logout:hover{background:#7f1d1d;color:#fca5a5}
-    .btn-excluir{padding:9px 20px;background:#7f1d1d;border:none;border-radius:8px;color:#fca5a5;font-weight:600;cursor:pointer;font-size:0.85rem;margin-right:auto}
-    .btn-excluir:hover{background:#991b1b}
+    header {
+      background: var(--surface-1);
+      border-bottom: 1px solid var(--border);
+      height: 56px;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
 
-    /* ── Controles ── */
-    .controles{max-width:1400px;margin:20px auto 0;padding:0 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-    .semana-nav{display:flex;align-items:center;gap:12px}
-    .semana-nav button{background:#1a1d2e;border:1px solid #2d3148;color:#e2e8f0;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:1rem;transition:all .2s}
-    .semana-nav button:hover{background:#3b5bdb;border-color:#3b5bdb}
-    .semana-nav span{font-size:0.95rem;font-weight:600;color:#fff;min-width:220px;text-align:center}
-    .filtros{display:flex;gap:8px;flex-wrap:wrap}
-    .filtro-btn{padding:6px 14px;border-radius:999px;border:1px solid #2d3148;background:#1a1d2e;color:#9ba3cc;font-size:0.78rem;cursor:pointer;transition:all .2s}
-    .filtro-btn:hover,.filtro-btn.ativo{background:#3b5bdb;border-color:#3b5bdb;color:#fff}
-    .btn-novo{padding:8px 18px;background:#3b5bdb;border:none;border-radius:8px;color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer;transition:background .2s}
-    .btn-novo:hover{background:#2f4ac7}
+    .header-brand {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .header-brand-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+      flex-shrink: 0;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    nav a {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-2);
+      text-decoration: none;
+      transition: color 150ms, background 150ms;
+    }
+
+    nav a:hover { color: var(--text-1); background: rgba(255,255,255,0.05); }
+    nav a.ativo { color: var(--text-1); background: rgba(255,255,255,0.07); }
+
+    .btn-logout {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-2);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color 150ms, background 150ms;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+    }
+
+    .btn-logout:hover { color: #fca5a5; background: rgba(239,68,68,0.08); }
+
+    .nav-divider {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      margin: 0 6px;
+    }
+
+    /* ── Barra de controles ── */
+    .controles {
+      max-width: 1400px;
+      margin: 28px auto 0;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .semana-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .semana-nav button {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 150ms, color 150ms;
+    }
+
+    .semana-nav button i { width: 16px; height: 16px; }
+    .semana-nav button:hover { border-color: var(--border-hover); color: var(--text-1); }
+
+    .semana-nav span {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-1);
+      min-width: 230px;
+      text-align: center;
+      letter-spacing: -0.01em;
+    }
+
+    .filtros-equipe {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filtro-btn {
+      padding: 5px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-2);
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 150ms;
+      font-family: inherit;
+    }
+
+    .filtro-btn:hover { border-color: var(--border-hover); color: var(--text-1); }
+
+    .filtro-btn.ativo {
+      background: rgba(62,207,142,0.12);
+      border-color: rgba(62,207,142,0.35);
+      color: var(--primary);
+    }
+
+    .btn-novo {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 16px;
+      background: var(--primary);
+      border: none;
+      border-radius: var(--radius-input);
+      color: #000;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 150ms, transform 150ms;
+      font-family: inherit;
+    }
+
+    .btn-novo i { width: 15px; height: 15px; }
+    .btn-novo:hover { opacity: 0.88; transform: translateY(-1px); }
 
     /* ── Grade semanal ── */
-    .grade{max-width:1400px;margin:16px auto 40px;padding:0 16px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+    .grade {
+      max-width: 1400px;
+      margin: 20px auto 48px;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
 
-    .coluna{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
-    .coluna-header{padding:10px 14px;background:#12152a;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:center}
-    .coluna-header .dia-nome{font-size:0.78rem;font-weight:700;color:#7c85b0;text-transform:uppercase;letter-spacing:.06em}
-    .coluna-header .dia-data{font-size:1rem;font-weight:700;color:#fff}
-    .coluna-header .dia-data.hoje{color:#3b5bdb}
-    .btn-add{background:none;border:1px solid #2d3148;color:#7c85b0;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:1rem;line-height:1;transition:all .2s;display:flex;align-items:center;justify-content:center}
-    .btn-add:hover{background:#3b5bdb;border-color:#3b5bdb;color:#fff}
+    @media (max-width: 900px) {
+      .grade { grid-template-columns: repeat(3, 1fr); }
+    }
 
-    .coluna-body{padding:10px;display:flex;flex-direction:column;gap:8px;flex:1}
-    .coluna-vazia{text-align:center;padding:20px 8px;color:#3a4070;font-size:0.78rem}
+    @media (max-width: 600px) {
+      .grade { grid-template-columns: 1fr; }
+    }
+
+    /* ── Coluna do dia ── */
+    .coluna {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 200px;
+    }
+
+    .coluna-header {
+      padding: 12px 14px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dia-nome {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 2px;
+    }
+
+    .dia-data {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.02em;
+    }
+
+    .dia-data.hoje { color: var(--primary); }
+
+    .btn-add {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-3);
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: border-color 150ms, color 150ms, background 150ms;
+    }
+
+    .btn-add i { width: 14px; height: 14px; }
+
+    .btn-add:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(62,207,142,0.08);
+    }
+
+    .coluna-body {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .coluna-vazia {
+      text-align: center;
+      padding: 24px 8px;
+      color: var(--text-3);
+      font-size: 0.75rem;
+    }
 
     /* ── Cards de agendamento ── */
-    .card-ag{border-radius:8px;padding:10px 12px;border-left:3px solid;cursor:pointer;transition:opacity .2s;font-size:0.78rem;line-height:1.5}
-    .card-ag:hover{opacity:.85}
+    .card-ag {
+      border-radius: 8px;
+      padding: 10px 12px;
+      border-left: 2px solid;
+      cursor: pointer;
+      transition: opacity 150ms, transform 150ms;
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
 
-    .card-confirmado  {background:#1a2a1a;border-color:#22c55e;color:#d1fae5}
-    .card-nao_confirmado{background:#2a2500;border-color:#eab308;color:#fef9c3}
-    .card-viagem      {background:#1a2a1a;border-color:#4ade80;color:#d1fae5}
-    .card-cuiaba      {background:#1a233a;border-color:#60a5fa;color:#dbeafe}
+    .card-ag:hover { opacity: 0.85; transform: translateX(2px); }
 
-    .card-ag .ag-tecs{font-weight:700;color:#fff;margin-bottom:4px}
-    .card-ag .ag-cliente{font-weight:600;margin-bottom:2px}
-    .card-ag .ag-detalhe{color:inherit;opacity:.8;font-size:0.73rem}
-    .card-ag .ag-badge{display:inline-block;margin-top:6px;padding:2px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;letter-spacing:.04em}
-    .badge-confirmado    {background:#166534;color:#bbf7d0}
-    .badge-nao_confirmado{background:#713f12;color:#fef08a}
-    .badge-viagem        {background:#14532d;color:#86efac}
-    .badge-cuiaba        {background:#1e3a5f;color:#93c5fd}
+    .card-confirmado   { background: rgba(34,197,94,0.07);   border-color: #22c55e; }
+    .card-nao_confirmado { background: rgba(234,179,8,0.07); border-color: #eab308; }
+    .card-viagem       { background: rgba(74,222,128,0.07);  border-color: #4ade80; }
+    .card-cuiaba       { background: rgba(96,165,250,0.07);  border-color: #60a5fa; }
+
+    .ag-tecs { font-weight: 700; color: var(--text-1); margin-bottom: 3px; }
+    .ag-cliente { font-weight: 600; color: var(--text-2); margin-bottom: 2px; }
+    .ag-detalhe { color: var(--text-3); font-size: 0.72rem; display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+    .ag-detalhe i { width: 11px; height: 11px; flex-shrink: 0; }
+
+    .ag-badge {
+      display: inline-block;
+      margin-top: 7px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.67rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-confirmado     { background: rgba(22,101,52,0.6);  color: #bbf7d0; }
+    .badge-nao_confirmado { background: rgba(113,63,18,0.6);  color: #fef08a; }
+    .badge-viagem         { background: rgba(20,83,45,0.6);   color: #86efac; }
+    .badge-cuiaba         { background: rgba(30,58,95,0.6);   color: #93c5fd; }
 
     /* ── Spinner ── */
-    .spinner-wrap{grid-column:1/-1;text-align:center;padding:60px;color:#4a5080}
-    .spinner{width:32px;height:32px;border:3px solid #2d3148;border-top-color:#3b5bdb;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
-    @keyframes spin{to{transform:rotate(360deg)}}
+    .spinner-wrap {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 60px;
+      color: var(--text-3);
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 14px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Modal ── */
-    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;padding:16px}
-    .overlay.aberto{display:flex}
-    .modal{background:#1a1d2e;border:1px solid #2d3148;border-radius:16px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
-    .modal h2{font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:20px}
-    .form-group{margin-bottom:14px}
-    .form-group label{display:block;font-size:0.78rem;color:#7c85b0;margin-bottom:5px;font-weight:600}
-    .form-group input,.form-group select,.form-group textarea{
-      width:100%;background:#12152a;border:1px solid #2d3148;border-radius:8px;
-      padding:9px 12px;color:#e2e8f0;font-size:0.85rem;outline:none;transition:border .2s}
-    .form-group input:focus,.form-group select,.form-group select:focus,
-    .form-group textarea:focus{border-color:#3b5bdb}
-    .form-group select option{background:#1a1d2e}
-    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
-    .btn-cancelar{padding:9px 20px;background:transparent;border:1px solid #2d3148;border-radius:8px;color:#9ba3cc;cursor:pointer;font-size:0.85rem}
-    .btn-salvar{padding:9px 20px;background:#3b5bdb;border:none;border-radius:8px;color:#fff;font-weight:600;cursor:pointer;font-size:0.85rem}
-    .btn-salvar:disabled{opacity:.5;cursor:not-allowed}
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+
+    .overlay.aberto { display: flex; }
+
+    .modal {
+      background: var(--surface-2);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 28px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .modal-header-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(62,207,142,0.12);
+      border: 1px solid rgba(62,207,142,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .modal-header-icon i { width: 16px; height: 16px; color: var(--primary); }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+    }
+
+    .form-group { margin-bottom: 14px; }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 6px;
+      letter-spacing: 0.01em;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      padding: 9px 12px;
+      color: var(--text-1);
+      font-size: 0.84rem;
+      outline: none;
+      transition: border-color 150ms, box-shadow 150ms;
+      font-family: inherit;
+    }
+
+    .form-group input::placeholder,
+    .form-group textarea::placeholder { color: var(--text-3); }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(62,207,142,0.1);
+    }
+
+    .form-group select option { background: var(--surface-2); color: var(--text-1); }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .modal-footer {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      align-items: center;
+    }
+
+    .btn-cancelar {
+      padding: 8px 18px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      color: var(--text-2);
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+      font-family: inherit;
+      transition: border-color 150ms, color 150ms;
+    }
+
+    .btn-cancelar:hover { border-color: var(--border-hover); color: var(--text-1); }
+
+    .btn-salvar {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 18px;
+      background: var(--primary);
+      border: none;
+      border-radius: var(--radius-input);
+      color: #000;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-family: inherit;
+      transition: opacity 150ms;
+    }
+
+    .btn-salvar:hover { opacity: 0.88; }
+    .btn-salvar:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-excluir {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: var(--radius-input);
+      color: #f87171;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+      font-family: inherit;
+      margin-right: auto;
+      transition: background 150ms, border-color 150ms;
+    }
+
+    .btn-excluir:hover { background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.35); }
+    .btn-excluir i { width: 14px; height: 14px; }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>Solução Técnica</h1>
+  <div class="header-brand">
+    <span class="header-brand-dot"></span>
+    Solução Técnica
+  </div>
   <nav>
     <a href="obras.html">Obras</a>
     <a href="agenda.html" class="ativo">Agenda</a>
     <a href="os.html">OS</a>
-    <button class="btn-logout" onclick="logout()">↩ Sair</button>
+    <div class="nav-divider"></div>
+    <button class="btn-logout" onclick="logout()">
+      <i data-lucide="log-out"></i>
+      Sair
+    </button>
   </nav>
 </header>
 
 <!-- Controles -->
 <div class="controles">
   <div class="semana-nav">
-    <button onclick="mudarSemana(-1)">&#8592;</button>
+    <button onclick="mudarSemana(-1)"><i data-lucide="chevron-left"></i></button>
     <span id="periodo-label">—</span>
-    <button onclick="mudarSemana(1)">&#8594;</button>
+    <button onclick="mudarSemana(1)"><i data-lucide="chevron-right"></i></button>
   </div>
-  <div class="filtros">
+
+  <div class="filtros-equipe">
     <button class="filtro-btn ativo" data-equipe="todas">Todas equipes</button>
     <button class="filtro-btn" data-equipe="1">Cabeamento</button>
-    <button class="filtro-btn" data-equipe="2">Elétrica</button>
-    <button class="filtro-btn" data-equipe="3">Áudio e Vídeo</button>
-    <button class="filtro-btn" data-equipe="4">Automação</button>
+    <button class="filtro-btn" data-equipe="2">Eletrica</button>
+    <button class="filtro-btn" data-equipe="3">Audio e Video</button>
+    <button class="filtro-btn" data-equipe="4">Automacao</button>
   </div>
-  <button class="btn-novo" onclick="abrirModal()">+ Novo agendamento</button>
+
+  <button class="btn-novo" onclick="abrirModal()">
+    <i data-lucide="plus"></i>
+    Novo agendamento
+  </button>
 </div>
 
 <!-- Grade semanal -->
 <div class="grade" id="grade">
-  <div class="spinner-wrap"><div class="spinner"></div><p>Carregando agenda...</p></div>
+  <div class="spinner-wrap">
+    <div class="spinner"></div>
+    <p>Carregando agenda...</p>
+  </div>
 </div>
 
-<!-- Modal novo agendamento -->
+<!-- Modal -->
 <div class="overlay" id="overlay" onclick="fecharModalFora(event)">
   <div class="modal">
-    <h2>📅 Novo Agendamento</h2>
+    <div class="modal-header">
+      <div class="modal-header-icon">
+        <i data-lucide="calendar"></i>
+      </div>
+      <div class="modal-title" id="modal-titulo">Novo Agendamento</div>
+    </div>
 
     <div class="form-group">
       <label>Obra / Cliente</label>
@@ -135,7 +582,7 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label>Técnico principal</label>
+        <label>Tecnico principal</label>
         <select id="f-tecnico"><option value="">Selecione...</option></select>
       </div>
       <div class="form-group">
@@ -152,17 +599,17 @@
       <div class="form-group">
         <label>Status</label>
         <select id="f-status">
-          <option value="confirmado">✅ Confirmado</option>
-          <option value="nao_confirmado">🟡 Não confirmado</option>
-          <option value="viagem">🟢 Viagem</option>
-          <option value="cuiaba">🔵 Cuiabá</option>
+          <option value="confirmado">Confirmado</option>
+          <option value="nao_confirmado">Nao confirmado</option>
+          <option value="viagem">Viagem</option>
+          <option value="cuiaba">Cuiaba</option>
         </select>
       </div>
     </div>
 
     <div class="form-row">
       <div class="form-group">
-        <label>Hora início</label>
+        <label>Hora inicio</label>
         <input type="time" id="f-inicio"/>
       </div>
       <div class="form-group">
@@ -172,25 +619,31 @@
     </div>
 
     <div class="form-group">
-      <label>Veículo (placa)</label>
+      <label>Veiculo (placa)</label>
       <input type="text" id="f-veiculo" placeholder="Ex: STRADA-TYR7C97"/>
     </div>
 
     <div class="form-group">
-      <label>Serviço a realizar</label>
-      <textarea id="f-servico" rows="3" placeholder="Descreva o serviço..."></textarea>
+      <label>Servico a realizar</label>
+      <textarea id="f-servico" rows="3" placeholder="Descreva o servico..."></textarea>
     </div>
 
     <div class="modal-footer">
-      <button class="btn-excluir" id="btn-excluir" onclick="excluirAgendamento()" style="display:none">🗑 Excluir</button>
+      <button class="btn-excluir" id="btn-excluir" onclick="excluirAgendamento()" style="display:none">
+        <i data-lucide="trash-2"></i>
+        Excluir
+      </button>
       <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
-      <button class="btn-salvar" id="btn-salvar" onclick="salvarAgendamento()">Salvar</button>
+      <button class="btn-salvar" id="btn-salvar" onclick="salvarAgendamento()">
+        <i data-lucide="save"></i>
+        Salvar
+      </button>
     </div>
   </div>
 </div>
 
 <script>
-const { createClient } = supabase;
+const { createClient } = window.supabase;
 const db = createClient(
   'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
@@ -205,18 +658,17 @@ let tecnicos     = [];
 let tecnicoEquipes = [];
 let agEditandoId = null;
 
-const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta'];
+const DIAS  = ['Segunda','Terca','Quarta','Quinta','Sexta'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 const STATUS_LABEL = {
-  confirmado:     '✅ Confirmado',
-  nao_confirmado: '🟡 Não confirmado',
-  viagem:         '🟢 Viagem',
-  cuiaba:         '🔵 Cuiabá',
+  confirmado:     'Confirmado',
+  nao_confirmado: 'Nao confirmado',
+  viagem:         'Viagem',
+  cuiaba:         'Cuiaba',
 };
 
-// ── Auth check ──────────────────────────────────────────────
-let modoVisualizacao = false; // true = técnico, só lê
+let modoVisualizacao = false;
 
 async function init() {
   const { data: { session } } = await db.auth.getSession();
@@ -225,7 +677,6 @@ async function init() {
   const { data: eu } = await db.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
   if (eu && eu.role === 'tecnico') {
     modoVisualizacao = true;
-    // Esconde botão de novo agendamento
     const btnNovo = document.querySelector('.btn-novo');
     if (btnNovo) btnNovo.style.display = 'none';
   }
@@ -252,7 +703,7 @@ function getSegunda(offset = 0) {
 
 function diasDaSemana(offset) {
   const seg = getSegunda(offset);
-  return Array.from({length:5}, (_,i) => {
+  return Array.from({length: 5}, (_, i) => {
     const d = new Date(seg);
     d.setDate(seg.getDate() + i);
     return d;
@@ -260,7 +711,8 @@ function diasDaSemana(offset) {
 }
 
 function fmtISO(d) { return d.toISOString().split('T')[0]; }
-function fmtBR(d) { return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; }
+function fmtBR(d)  { return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; }
+
 function isHoje(d) {
   const h = new Date();
   return d.getDate()===h.getDate() && d.getMonth()===h.getMonth() && d.getFullYear()===h.getFullYear();
@@ -273,10 +725,8 @@ async function carregarObras() {
 }
 
 async function carregarTecnicos() {
-  // Tenta com funcao primeiro, cai para apenas nome se coluna não existir
   let { data: t, error: e1 } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
   if (e1 || !t) {
-    // Fallback sem funcao
     const { data: t2 } = await db.from('tecnicos').select('id, nome').order('nome');
     t = (t2 || []).map(x => ({ ...x, funcao: '' }));
   }
@@ -286,9 +736,9 @@ async function carregarTecnicos() {
 }
 
 async function carregarAgenda() {
-  const dias  = diasDaSemana(semanaOffset);
-  const ini   = fmtISO(dias[0]);
-  const fim   = fmtISO(dias[4]);
+  const dias = diasDaSemana(semanaOffset);
+  const ini  = fmtISO(dias[0]);
+  const fim  = fmtISO(dias[4]);
 
   document.getElementById('periodo-label').textContent =
     `${DIAS[0]}, ${fmtBR(dias[0])} — ${DIAS[4]}, ${fmtBR(dias[4])}`;
@@ -323,12 +773,12 @@ function agendamentosVisiveis() {
 
 // ── Renderizar grade ────────────────────────────────────────
 function renderGrade(dias) {
-  const visíveis = agendamentosVisiveis();
+  const visiveis = agendamentosVisiveis();
   const grade = document.getElementById('grade');
 
   grade.innerHTML = dias.map((dia, i) => {
     const dataStr = fmtISO(dia);
-    const ags = visíveis.filter(ag => ag.data === dataStr);
+    const ags = visiveis.filter(ag => ag.data === dataStr);
 
     const cards = ags.length
       ? ags.map(cardHTML).join('')
@@ -339,20 +789,22 @@ function renderGrade(dias) {
         <div class="coluna-header">
           <div>
             <div class="dia-nome">${DIAS[i]}</div>
-            <div class="dia-data ${isHoje(dia)?'hoje':''}">${fmtBR(dia)}</div>
+            <div class="dia-data ${isHoje(dia) ? 'hoje' : ''}">${fmtBR(dia)}</div>
           </div>
-          ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento">+</button>`}
+          ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento"><i data-lucide="plus"></i></button>`}
         </div>
         <div class="coluna-body">${cards}</div>
       </div>`;
   }).join('');
+
+  lucide.createIcons();
 }
 
 // ── Card de agendamento ─────────────────────────────────────
 function cardHTML(ag) {
   const status = ag.status || 'confirmado';
 
-  let primario = ag.tecnico?.nome || '—';
+  let primario   = ag.tecnico?.nome  || '—';
   let secundario = ag.auxiliar?.nome || null;
 
   if (filtroEquipe !== 'todas' && ag.auxiliar_id) {
@@ -365,23 +817,29 @@ function cardHTML(ag) {
     }
   }
 
-  const tecs    = secundario ? `${primario} e (${secundario})` : primario;
+  const tecs    = secundario ? `${primario} + ${secundario}` : primario;
   const cliente = ag.obras?.nome_cliente || '—';
   const end     = ag.obras?.endereco || '';
   const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
 
+  const iconMap = {
+    map: 'map-pin',
+    tool: 'wrench',
+    car: 'car',
+  };
+
   return `
-    <div class="card-ag card-${status}" ${modoVisualizacao ? '' : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`} style="${modoVisualizacao ? 'cursor:default' : 'cursor:pointer'}">
-      <div class="ag-tecs">${hora ? hora+' · ' : ''}${tecs}</div>
+    <div class="card-ag card-${status}" ${modoVisualizacao ? '' : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`} style="${modoVisualizacao ? 'cursor:default' : ''}">
+      <div class="ag-tecs">${hora ? hora + ' · ' : ''}${tecs}</div>
       <div class="ag-cliente">${cliente}</div>
-      ${end ? `<div class="ag-detalhe">📍 ${end}</div>` : ''}
-      ${ag.servico ? `<div class="ag-detalhe">🔧 ${ag.servico}</div>` : ''}
-      ${ag.veiculo ? `<div class="ag-detalhe">🚗 ${ag.veiculo}</div>` : ''}
-      <span class="ag-badge badge-${status}">${STATUS_LABEL[status]||status}</span>
+      ${end ? `<div class="ag-detalhe"><i data-lucide="map-pin"></i>${end}</div>` : ''}
+      ${ag.servico ? `<div class="ag-detalhe"><i data-lucide="wrench"></i>${ag.servico}</div>` : ''}
+      ${ag.veiculo ? `<div class="ag-detalhe"><i data-lucide="car"></i>${ag.veiculo}</div>` : ''}
+      <span class="ag-badge badge-${status}">${STATUS_LABEL[status] || status}</span>
     </div>`;
 }
 
-// ── Navegação de semana ─────────────────────────────────────
+// ── Navegação ────────────────────────────────────────────────
 function mudarSemana(delta) {
   semanaOffset += delta;
   carregarAgenda();
@@ -400,7 +858,8 @@ function preencherModal() {
     const sel = document.getElementById(id);
     tecnicos.forEach(t => {
       const opt = document.createElement('option');
-      opt.value = t.id; opt.textContent = `${t.nome} (${t.funcao})`;
+      opt.value = t.id;
+      opt.textContent = t.funcao ? `${t.nome} (${t.funcao})` : t.nome;
       sel.appendChild(opt);
     });
   });
@@ -408,7 +867,8 @@ function preencherModal() {
 
 function abrirModal(data = '') {
   agEditandoId = null;
-  document.querySelector('.modal h2').textContent = '📅 Novo Agendamento';
+  document.getElementById('modal-titulo').textContent = 'Novo Agendamento';
+  document.querySelector('.modal-header-icon i').setAttribute('data-lucide', 'calendar');
   document.getElementById('f-obra').value     = '';
   document.getElementById('f-tecnico').value  = '';
   document.getElementById('f-auxiliar').value = '';
@@ -420,13 +880,14 @@ function abrirModal(data = '') {
   document.getElementById('f-data').value     = data || fmtISO(new Date());
   document.getElementById('btn-excluir').style.display = 'none';
   document.getElementById('overlay').classList.add('aberto');
+  lucide.createIcons();
 }
 
 function editarAgendamento(id) {
   const ag = agendamentos.find(a => a.id === id);
   if (!ag) return;
   agEditandoId = id;
-  document.querySelector('.modal h2').textContent = '✏️ Editar Agendamento';
+  document.getElementById('modal-titulo').textContent = 'Editar Agendamento';
   document.getElementById('f-obra').value     = ag.obra_id     || '';
   document.getElementById('f-tecnico').value  = ag.tecnico_id  || '';
   document.getElementById('f-auxiliar').value = ag.auxiliar_id || '';
@@ -436,7 +897,7 @@ function editarAgendamento(id) {
   document.getElementById('f-fim').value      = ag.hora_fim    ? ag.hora_fim.slice(0,5)    : '';
   document.getElementById('f-veiculo').value  = ag.veiculo     || '';
   document.getElementById('f-servico').value  = ag.servico     || '';
-  document.getElementById('btn-excluir').style.display = 'block';
+  document.getElementById('btn-excluir').style.display = 'flex';
   document.getElementById('overlay').classList.add('aberto');
 }
 
@@ -451,7 +912,8 @@ function fecharModalFora(e) {
 
 async function salvarAgendamento() {
   const btn = document.getElementById('btn-salvar');
-  btn.disabled = true; btn.textContent = 'Salvando...';
+  btn.disabled = true;
+  btn.innerHTML = 'Salvando...';
 
   const obraId  = document.getElementById('f-obra').value;
   const tecId   = document.getElementById('f-tecnico').value;
@@ -464,8 +926,10 @@ async function salvarAgendamento() {
   const servico = document.getElementById('f-servico').value;
 
   if (!obraId || !tecId || !data) {
-    alert('Preencha obra, técnico e data!');
-    btn.disabled = false; btn.textContent = 'Salvar';
+    alert('Preencha obra, tecnico e data!');
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="save"></i> Salvar';
+    lucide.createIcons();
     return;
   }
 
@@ -493,7 +957,10 @@ async function salvarAgendamento() {
     fecharModal();
     await carregarAgenda();
   }
-  btn.disabled = false; btn.textContent = 'Salvar';
+
+  btn.disabled = false;
+  btn.innerHTML = '<i data-lucide="save"></i> Salvar';
+  lucide.createIcons();
 }
 
 async function excluirAgendamento() {
@@ -518,5 +985,6 @@ document.querySelectorAll('.filtro-btn').forEach(btn => {
 // ── Iniciar ─────────────────────────────────────────────────
 init();
 </script>
+<script>lucide.createIcons();</script>
 </body>
 </html>
