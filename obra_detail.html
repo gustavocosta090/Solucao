@@ -196,14 +196,27 @@ async function carregarObra() {
     return;
   }
 
-  // Busca OS da obra
-  const { data: osList } = await db
-    .from('ordens_de_servico')
-    .select('*, tecnicos(nome)')
-    .eq('obra_id', obraId)
-    .order('criado_em', { ascending: false });
+  // Busca OS da obra e técnicos separadamente (evita ambiguidade de FK)
+  const [{ data: osList, error: osErr }, { data: tecList }] = await Promise.all([
+    db.from('ordens_de_servico')
+      .select('*')
+      .eq('obra_id', obraId)
+      .order('criado_em', { ascending: false }),
+    db.from('tecnicos').select('id, nome')
+  ]);
 
-  todasOS = osList || [];
+  if (osErr) {
+    console.error('Erro ao buscar OS:', osErr.message);
+  }
+
+  // Mapear técnicos por id
+  const tecMap = {};
+  (tecList || []).forEach(t => { tecMap[t.id] = t; });
+
+  todasOS = (osList || []).map(o => ({
+    ...o,
+    tecnicos: o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null
+  }));
 
   // Monta todas as fotos para lightbox
   todasFotos = [];
