@@ -396,13 +396,19 @@ async function carregarAgendamentosHoje() {
   passado.setDate(passado.getDate() - 14);
   const dataInicio = passado.toISOString().split('T')[0];
 
-  const { data, error } = await db
-    .from('agendamentos')
-    .select('*, obras(id, nome_cliente, endereco, consultores(id))')
-    .gte('data', dataInicio)
-    .or(`tecnico_id.eq.${tecnicoLogado.id},auxiliar_id.eq.${tecnicoLogado.id}`)
-    .order('data', { ascending: true })
-    .order('hora_inicio', { ascending: true });
+  // Busca agendamentos E OSs do técnico em paralelo
+  const [{ data, error }, { data: minhasOS }] = await Promise.all([
+    db.from('agendamentos')
+      .select('*, obras(id, nome_cliente, endereco, consultores(id))')
+      .gte('data', dataInicio)
+      .or(`tecnico_id.eq.${tecnicoLogado.id},auxiliar_id.eq.${tecnicoLogado.id}`)
+      .order('data', { ascending: true })
+      .order('hora_inicio', { ascending: true }),
+    db.from('ordens_de_servico')
+      .select('obra_id, status_aprovacao, data_servico, criado_em')
+      .eq('tecnico_id', tecnicoLogado.id)
+      .gte('criado_em', dataInicio + 'T00:00:00')
+  ]);
 
   const lista = document.getElementById('lista-agendamentos');
 
@@ -414,6 +420,20 @@ async function carregarAgendamentosHoje() {
     return;
   }
 
+  // Monta mapa: "obra_id|data" → status_aprovacao
+  const osMap = {};
+  (minhasOS || []).forEach(os => {
+    const dataRef = os.data_servico || (os.criado_em ? os.criado_em.slice(0,10) : null);
+    if (os.obra_id && dataRef) {
+      const chave = `${os.obra_id}|${dataRef}`;
+      // Se já existir, prioriza reprovada > pendente > aprovada
+      const prioridade = { reprovada: 3, pendente: 2, aprovada: 1 };
+      if (!osMap[chave] || (prioridade[os.status_aprovacao] || 0) > (prioridade[osMap[chave]] || 0)) {
+        osMap[chave] = os.status_aprovacao;
+      }
+    }
+  });
+
   // Agrupa por data
   const porData = {};
   data.forEach(ag => {
@@ -424,34 +444,64 @@ async function carregarAgendamentosHoje() {
   const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-  lista.innerHTML = Object.entries(porData).map(([data, ags]) => {
-    const d = new Date(data + 'T12:00:00');
-    const isHoje    = data === hoje;
-    const isPassado = data < hoje;
-    const labelData = isHoje
-      ? '📅 Hoje'
-      : isPassado
-        ? `⚠️ ${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]} (OS pendente)`
-        : `${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]}`;
-    const corLabel = isHoje ? '#3b5bdb' : isPassado ? '#f59e0b' : '#7c85b0';
+  let html = '';
+  Object.entries(porData).forEach(([dataAg, ags]) => {
+    const d = new Date(dataAg + 'T12:00:00');
+    const isHoje    = dataAg === hoje;
+    const isPassado = dataAg < hoje;
 
-    const cards = ags.map(ag => {
+    // Verifica cards desta data que não foram aprovados
+    const cardsHtml = ags.map(ag => {
+      const obraId = ag.obras?.id;
+      const chave  = `${obraId}|${dataAg}`;
+      const statusOS = obraId ? osMap[chave] : undefined;
+
+      // OS aprovada → não mostra o card
+      if (statusOS === 'aprovada') return '';
+
       const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
       const cliente = ag.obras?.nome_cliente || '—';
       const end     = ag.obras?.endereco || '';
       const icon    = {confirmado:'✅',nao_confirmado:'🟡',viagem:'🟢',cuiaba:'🔵'}[ag.status]||'📋';
+
+      let badge = '';
+      if (statusOS === 'reprovada') {
+        badge = `<div style="margin-top:6px;font-size:.72rem;font-weight:700;color:#fca5a5;background:#450a0a;padding:3px 8px;border-radius:6px;display:inline-block;">❌ OS reprovada — precisa ser refeita</div>`;
+      } else if (statusOS === 'pendente') {
+        badge = `<div style="margin-top:6px;font-size:.72rem;font-weight:700;color:#fbbf24;background:#3d2700;padding:3px 8px;border-radius:6px;display:inline-block;">⏳ OS enviada — aguardando aprovação</div>`;
+      }
+
       return `
-        <div class="card-agenda" onclick="abrirFormulario(${ag.id})">
+        <div class="card-agenda" onclick="${statusOS === 'pendente' ? '' : `abrirFormulario(${ag.id})`}" style="${statusOS === 'pendente' ? 'opacity:0.7;cursor:default;' : ''}">
           <div class="ca-cliente">${icon} ${cliente}</div>
           <div class="ca-detalhe">${hora ? hora+' · ' : ''}${end || 'Endereço não informado'}</div>
           ${ag.servico ? `<div class="ca-servico">🔧 ${ag.servico}</div>` : ''}
+          ${badge}
         </div>`;
     }).join('');
 
-    return `
+    // Se todos os cards desta data foram aprovados, não mostra a seção do dia
+    if (!cardsHtml.trim()) return;
+
+    // Verifica se há OS pendente neste dia para o label
+    const temPendente = ags.some(ag => {
+      const chave = `${ag.obras?.id}|${dataAg}`;
+      return isPassado && !osMap[chave];
+    });
+
+    const labelData = isHoje
+      ? '📅 Hoje'
+      : isPassado && temPendente
+        ? `⚠️ ${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]} (OS pendente)`
+        : `${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]}`;
+    const corLabel = isHoje ? '#3b5bdb' : (isPassado && temPendente) ? '#f59e0b' : '#7c85b0';
+
+    html += `
       <div style="font-size:.75rem;font-weight:700;color:${corLabel};text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px">${labelData}</div>
-      ${cards}`;
-  }).join('');
+      ${cardsHtml}`;
+  });
+
+  lista.innerHTML = html || `<div class="lista-vazia">Todos os agendamentos já foram concluídos.<br><small>Use "+ OS sem agendamento" se necessário.</small></div>`;
 }
 
 // ── Tela 2 → 3 ───────────────────────────────────────────────
