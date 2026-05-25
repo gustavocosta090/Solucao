@@ -36,92 +36,52 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Topbar ── */
-    header {
+    /* ── Topbar (padrão universal) ── */
+    .topbar {
       background: var(--surface-1);
       border-bottom: 1px solid var(--border);
       height: 56px;
-      padding: 0 32px;
+      padding: 0 24px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
       position: sticky;
       top: 0;
-      z-index: 50;
+      z-index: 100;
     }
-
-    .header-brand {
-      font-size: 0.95rem;
+    .topbar-logo {
+      font-size: 15px;
       font-weight: 700;
       color: var(--text-1);
-      letter-spacing: -0.01em;
+      letter-spacing: -0.2px;
+      flex: 1;
+    }
+    .topbar-greeting {
+      font-size: 13px;
+      color: var(--text-2);
+      margin-right: 16px;
+    }
+    .topbar-links {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 4px;
     }
-
-    .header-brand-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--primary);
-      flex-shrink: 0;
-    }
-
-    nav {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-    }
-
-    nav a {
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 0.82rem;
-      font-weight: 500;
+    .topbar-links a {
       color: var(--text-2);
       text-decoration: none;
-      transition: color 150ms, background 150ms;
-    }
-
-    nav a:hover {
-      color: var(--text-1);
-      background: rgba(255,255,255,0.05);
-    }
-
-    nav a.ativo {
-      color: var(--text-1);
-      background: rgba(255,255,255,0.07);
-    }
-
-    .btn-logout {
+      font-size: 13px;
+      font-weight: 500;
       padding: 6px 12px;
       border-radius: 6px;
-      font-size: 0.82rem;
-      font-weight: 500;
+      transition: color 0.15s, background 0.15s;
+    }
+    .topbar-links a:hover { color: var(--text-1); background: rgba(255,255,255,0.06); }
+    .topbar-links a.active { color: var(--text-1); background: rgba(255,255,255,0.07); }
+    .topbar-links a.nav-sair {
       color: var(--text-2);
-      background: none;
-      border: none;
-      cursor: pointer;
-      transition: color 150ms, background 150ms;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-family: inherit;
+      border: 1px solid rgba(255,255,255,0.12);
+      margin-left: 8px;
     }
-
-    .btn-logout:hover {
-      color: #fca5a5;
-      background: rgba(239,68,68,0.08);
-    }
-
-    .nav-divider {
-      width: 1px;
-      height: 16px;
-      background: var(--border);
-      margin: 0 6px;
-    }
+    .topbar-links a.nav-sair:hover { color: var(--text-1); background: rgba(255,255,255,0.06); }
 
     /* ── Main ── */
     main {
@@ -591,22 +551,10 @@
 </head>
 <body>
 
-<header>
-  <div class="header-brand">
-    <span class="header-brand-dot"></span>
-    Solução Técnica
-  </div>
-  <nav>
-    <a href="obras.html" class="ativo">Obras</a>
-    <a href="agenda.html">Agenda</a>
-    <a href="os.html">OS</a>
-    <div class="nav-divider"></div>
-    <span id="topbar-greeting" style="font-size:13px;color:var(--text-2);"></span>
-    <button class="btn-logout" onclick="logout()">
-      <i data-lucide="log-out"></i>
-      Sair
-    </button>
-  </nav>
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
 <main>
@@ -749,12 +697,7 @@
     const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
     userRole = eu?.role || 'tecnico';
 
-    // Saudação
-    const _h = new Date().getHours();
-    const _s = _h < 12 ? 'Bom dia' : _h < 18 ? 'Boa tarde' : 'Boa noite';
-    const _nome = (eu?.nome || '').split(' ')[0];
-    const _greet = document.getElementById('topbar-greeting');
-    if (_greet && _nome) _greet.textContent = `${_s}, ${_nome}`;
+    renderTopbar(eu?.nome, eu?.role, 'obras');
 
     // Técnicos só visualizam — esconder botão Nova Obra
     if (userRole === 'tecnico') {
@@ -948,6 +891,31 @@
     document.getElementById('alertErro').textContent = msg;
     document.getElementById('alertErro').style.display = 'block';
     document.getElementById('alertSucesso').style.display = 'none';
+  }
+
+  function renderTopbar(nome, role, paginaAtiva) {
+    const h = new Date().getHours();
+    const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+    const primeiro = (nome || '').split(' ')[0];
+    const greetEl = document.getElementById('topbar-greeting');
+    if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
+
+    const links = [
+      { href: 'obras.html',             label: 'Obras',     id: 'obras',      roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento'] },
+      { href: 'agenda.html',            label: 'Agenda',    id: 'agenda',     roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar'] },
+      { href: 'supervisor.html',        label: 'Supervisor',id: 'supervisor', roles: ['supervisor','coordenador','agendamento'] },
+      { href: 'admin.html',             label: 'Admin',     id: 'admin',      roles: ['coordenador'] },
+      { href: 'tecnico_dashboard.html', label: 'Minhas OSs',id: 'minhas-os', roles: ['tecnico','auxiliar'] },
+    ];
+
+    const nav = document.getElementById('topbar-nav');
+    if (!nav) return;
+    nav.innerHTML = links
+      .filter(l => l.roles.includes(role))
+      .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
+      .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
   async function logout() {

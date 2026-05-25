@@ -61,6 +61,12 @@
     text-decoration: none;
   }
 
+  .topbar-greeting {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-right: 16px;
+  }
+
   .topbar-links {
     display: flex;
     align-items: center;
@@ -831,13 +837,8 @@
 <!-- Topbar -->
 <header class="topbar">
   <span class="topbar-logo">Solução Técnica</span>
-  <span id="topbar-greeting" style="font-size:13px;color:var(--text-2);margin-left:auto;margin-right:16px;"></span>
-  <nav class="topbar-links">
-    <a href="obras.html">Obras</a>
-    <a href="agenda.html">Agenda</a>
-    <a href="admin.html">Admin</a>
-    <a href="#" class="nav-sair" onclick="logout()">Sair</a>
-  </nav>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
 <!-- Stats -->
@@ -964,12 +965,7 @@ let osSendoVisualizada = null;
     return;
   }
 
-  // Saudação
-  const h = new Date().getHours();
-  const saudacaoTxt = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const primeiroNome = (eu.nome || '').split(' ')[0];
-  const greetEl = document.getElementById('topbar-greeting');
-  if (greetEl && primeiroNome) greetEl.textContent = `${saudacaoTxt}, ${primeiroNome}`;
+  renderTopbar(eu.nome, eu.role, 'supervisor');
 
   await Promise.all([carregarOSs(), carregarTecnicos()]);
 })();
@@ -1009,8 +1005,8 @@ async function carregarOSs() {
 
   // Stats
   document.getElementById('sTot').textContent = todasOSs.length;
-  document.getElementById('sPend').textContent = todasOSs.filter(o => o.status_aprovacao === 'pendente' || !o.status_aprovacao).length;
-  document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida').length;
+  document.getElementById('sPend').textContent = todasOSs.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
+  document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
   document.getElementById('sFotos').textContent = todasOSs.filter(o => o.fotos_urls?.length > 0).length;
 
   document.getElementById('loadingEl').style.display = 'none';
@@ -1028,7 +1024,8 @@ function filtrar() {
 
   filtradas = todasOSs.filter(o => {
     const matchTec = !fTec || String(o.tecnicos?.id) === fTec;
-    const stOS = o.status_aprovacao || 'pendente';
+    const stRaw = o.status_aprovacao || 'pendente';
+    const stOS = (stRaw === 'aprovada' || stRaw === 'concluida') ? 'concluida' : 'pendente';
     const matchSt = !fSt || stOS === fSt;
     const matchDi = !fDi || !o.data_servico || o.data_servico >= fDi;
     const matchDf = !fDf || !o.data_servico || o.data_servico <= fDf;
@@ -1077,14 +1074,15 @@ function renderTabela() {
   tbody.innerHTML = pagina.map(o => {
     const dataRef = o.data_servico || (o.criado_em ? o.criado_em.slice(0,10) : null);
     const data = dataRef ? new Date(dataRef + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—';
-    const statusBadge = o.status_aprovacao === 'concluida'
+    const _stNorm = (o.status_aprovacao === 'aprovada' || o.status_aprovacao === 'concluida') ? 'concluida' : 'pendente';
+    const statusBadge = _stNorm === 'concluida'
       ? '<span class="badge badge-aprovada">Concluída</span>'
       : '<span class="badge badge-pendente">Pendente</span>';
     const nFotos = o.fotos_urls?.length || 0;
 
-    const btnAcao = o.status_aprovacao === 'pendente'
-      ? `<button class="btn-aprovar" onclick="event.stopPropagation();concluirOS(${o.id})">Concluir</button>`
-      : `<button class="btn-reprovar" onclick="event.stopPropagation();reabrirOS(${o.id})">Reabrir</button>`;
+    const btnAcao = _stNorm === 'concluida'
+      ? `<button class="btn-reprovar" onclick="event.stopPropagation();reabrirOS(${o.id})">Reabrir</button>`
+      : `<button class="btn-aprovar" onclick="event.stopPropagation();concluirOS(${o.id})">Concluir</button>`;
 
     return `
     <tr style="cursor:pointer;" onclick="verOS(${o.id})">
@@ -1137,7 +1135,8 @@ function verOS(id) {
 
   const dataRefModal = os.data_servico || (os.criado_em ? os.criado_em.slice(0,10) : null);
   const data = dataRefModal ? new Date(dataRefModal + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) : '—';
-  const statusLabel = os.status_aprovacao === 'concluida' ? 'Concluída' : 'Pendente';
+  const _stM = (os.status_aprovacao === 'aprovada' || os.status_aprovacao === 'concluida') ? 'concluida' : 'pendente';
+  const statusLabel = _stM === 'concluida' ? 'Concluída' : 'Pendente';
 
   let html = `
   <div class="detail-grid">
@@ -1155,7 +1154,7 @@ function verOS(id) {
     </div>
     <div class="detail-item">
       <label>Status</label>
-      <span><span class="badge badge-${os.status_aprovacao === 'concluida' ? 'aprovada' : 'pendente'}">${statusLabel}</span></span>
+      <span><span class="badge badge-${_stM === 'concluida' ? 'aprovada' : 'pendente'}">${statusLabel}</span></span>
     </div>
     ${os.tipo_servico ? `<div class="detail-item"><label>Tipo de serviço</label><span>${os.tipo_servico.replace(/_/g,' ')}</span></div>` : ''}
     ${os.nome_cliente_local ? `<div class="detail-item"><label>Responsável no local</label><span>${os.nome_cliente_local}</span></div>` : ''}
@@ -1185,7 +1184,7 @@ function verOS(id) {
   }
 
   // Ação
-  if (os.status_aprovacao !== 'concluida') {
+  if (_stM !== 'concluida') {
     html += `
     <div class="aprovacao-box">
       <h3><i data-lucide="check-circle"></i> Marcar como concluída</h3>
@@ -1249,8 +1248,8 @@ async function mudarStatusOS(id, status, obs) {
   if (os) { os.status_aprovacao = status; os.observacao_supervisor = obs || null; }
 
   // Re-render stats
-  document.getElementById('sPend').textContent = todasOSs.filter(o => o.status_aprovacao === 'pendente').length;
-  document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida').length;
+  document.getElementById('sPend').textContent = todasOSs.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
+  document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
 
   filtrar();
 }
@@ -1314,6 +1313,26 @@ function exportarExcel() {
 document.getElementById('modalOS').addEventListener('click', e => {
   if (e.target === document.getElementById('modalOS')) fecharModal();
 });
+
+function renderTopbar(nome, role, paginaAtiva) {
+  const h = new Date().getHours();
+  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = (nome || '').split(' ')[0];
+  const greetEl = document.getElementById('topbar-greeting');
+  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
+  const links = [
+    { href:'obras.html',             label:'Obras',      id:'obras',      roles:['tecnico','auxiliar','supervisor','coordenador','agendamento'] },
+    { href:'agenda.html',            label:'Agenda',     id:'agenda',     roles:['supervisor','coordenador','agendamento','tecnico','auxiliar'] },
+    { href:'supervisor.html',        label:'Supervisor', id:'supervisor', roles:['supervisor','coordenador','agendamento'] },
+    { href:'admin.html',             label:'Admin',      id:'admin',      roles:['coordenador'] },
+    { href:'tecnico_dashboard.html', label:'Minhas OSs', id:'minhas-os',  roles:['tecnico','auxiliar'] },
+  ];
+  const nav = document.getElementById('topbar-nav');
+  if (!nav) return;
+  nav.innerHTML = links.filter(l => l.roles.includes(role))
+    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
+    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
+}
 
 async function logout() {
   await db.auth.signOut();

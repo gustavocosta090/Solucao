@@ -36,87 +36,16 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Header ── */
-    header {
-      background: var(--surface-1);
-      border-bottom: 1px solid var(--border);
-      height: 56px;
-      padding: 0 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      position: sticky;
-      top: 0;
-      z-index: 50;
-    }
-
-    .header-brand {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--text-1);
-      letter-spacing: -0.01em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .header-brand-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--primary);
-      flex-shrink: 0;
-    }
-
-    nav {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-    }
-
-    nav a {
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 0.82rem;
-      font-weight: 500;
-      color: var(--text-2);
-      text-decoration: none;
-      transition: color 150ms, background 150ms;
-    }
-
-    nav a:hover {
-      color: var(--text-1);
-      background: rgba(255,255,255,0.05);
-    }
-
-    .btn-logout {
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 0.82rem;
-      font-weight: 500;
-      color: var(--text-2);
-      background: none;
-      border: none;
-      cursor: pointer;
-      transition: color 150ms, background 150ms;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-family: inherit;
-    }
-
-    .btn-logout:hover {
-      color: #fca5a5;
-      background: rgba(239,68,68,0.08);
-    }
-
-    .nav-divider {
-      width: 1px;
-      height: 16px;
-      background: var(--border);
-      margin: 0 6px;
-    }
+    /* ── Topbar ── */
+    .topbar { background:var(--surface-1); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:100; }
+    .topbar-logo { font-size:15px; font-weight:700; color:var(--text-1); letter-spacing:-0.2px; flex:1; }
+    .topbar-greeting { font-size:13px; color:var(--text-2); margin-right:16px; }
+    .topbar-links { display:flex; align-items:center; gap:4px; }
+    .topbar-links a { color:var(--text-2); text-decoration:none; font-size:13px; font-weight:500; padding:6px 12px; border-radius:6px; transition:color .15s,background .15s; }
+    .topbar-links a:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
+    .topbar-links a.active { color:var(--text-1); background:rgba(255,255,255,0.07); }
+    .topbar-links a.nav-sair { color:var(--text-2); border:1px solid rgba(255,255,255,0.12); margin-left:8px; }
+    .topbar-links a.nav-sair:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
 
     /* ── Main ── */
     main {
@@ -210,6 +139,25 @@
       color: var(--text-3);
       flex-shrink: 0;
     }
+
+    /* ── Inline edit fields ── */
+    .inline-select {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-1);
+      font-size: 0.82rem;
+      font-family: inherit;
+      padding: 5px 10px;
+      cursor: pointer;
+      outline: none;
+      transition: border-color .15s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .inline-select:focus { border-color: rgba(62,207,142,0.5); }
+    .inline-select option { background: var(--surface-2); }
+    .edit-field { gap: 8px; }
 
     /* ── Stats ── */
     .stats {
@@ -531,19 +479,10 @@
 </head>
 <body>
 
-<header>
-  <div class="header-brand">
-    <span class="header-brand-dot"></span>
-    Solução Técnica
-  </div>
-  <nav id="nav-links">
-    <a href="obras.html">Obras</a>
-    <div class="nav-divider"></div>
-    <button class="btn-logout" onclick="logout()">
-      <i data-lucide="log-out"></i>
-      Sair
-    </button>
-  </nav>
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
 <main>
@@ -615,37 +554,36 @@ const STATUS_LABELS = {
 };
 
 let osSendoVisualizada = null;
+let roleAtual = 'tecnico';
+
+function renderTopbar(nome, role, paginaAtiva) {
+  const h = new Date().getHours();
+  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = (nome || '').split(' ')[0];
+  const greetEl = document.getElementById('topbar-greeting');
+  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
+  const links = [
+    { href:'obras.html',             label:'Obras',      id:'obras',      roles:['tecnico','auxiliar','supervisor','coordenador','agendamento'] },
+    { href:'agenda.html',            label:'Agenda',     id:'agenda',     roles:['supervisor','coordenador','agendamento','tecnico','auxiliar'] },
+    { href:'supervisor.html',        label:'Supervisor', id:'supervisor', roles:['supervisor','coordenador','agendamento'] },
+    { href:'admin.html',             label:'Admin',      id:'admin',      roles:['coordenador'] },
+    { href:'tecnico_dashboard.html', label:'Minhas OSs', id:'minhas-os',  roles:['tecnico','auxiliar'] },
+  ];
+  const nav = document.getElementById('topbar-nav');
+  if (!nav) return;
+  nav.innerHTML = links.filter(l => l.roles.includes(role))
+    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
+    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
+}
 
 async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
   const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
-  const role = eu?.role || 'tecnico';
-  const nav = document.getElementById('nav-links');
+  roleAtual = eu?.role || 'tecnico';
 
-  // Saudação
-  const _hd = new Date().getHours();
-  const _sd = _hd < 12 ? 'Bom dia' : _hd < 18 ? 'Boa tarde' : 'Boa noite';
-  const _nd = (eu?.nome || '').split(' ')[0];
-  const greetSpan = `<span style="font-size:13px;color:var(--text-2);">${_nd ? `${_sd}, ${_nd}` : ''}</span>`;
-
-  if (role === 'tecnico') {
-    nav.innerHTML = `
-      <a href="obras.html">Obras</a>
-      <a href="os.html">OS</a>
-      <div class="nav-divider"></div>
-      ${greetSpan}
-      <button class="btn-logout" onclick="logout()"><i data-lucide="log-out"></i> Sair</button>`;
-  } else {
-    nav.innerHTML = `
-      <a href="obras.html">Obras</a>
-      <a href="agenda.html">Agenda</a>
-      <a href="supervisor.html">Supervisor</a>
-      <div class="nav-divider"></div>
-      ${greetSpan}
-      <button class="btn-logout" onclick="logout()"><i data-lucide="log-out"></i> Sair</button>`;
-  }
+  renderTopbar(eu?.nome, roleAtual, 'obras');
   lucide.createIcons();
 
   if (!obraId) {
@@ -659,6 +597,30 @@ async function init() {
 async function logout() {
   await db.auth.signOut();
   window.location.href = 'login.html';
+}
+
+async function salvarCampo(campo, valor) {
+  if (!obraId) return;
+  const { error } = await db.from('obras').update({ [campo]: valor }).eq('id', obraId);
+  if (error) {
+    alert('Erro ao salvar: ' + error.message);
+    return;
+  }
+  // Feedback visual
+  const ind = document.getElementById('save-indicator');
+  if (ind) {
+    ind.style.display = 'inline';
+    setTimeout(() => { ind.style.display = 'none'; }, 2000);
+  }
+  // Atualizar badge da fase no header da obra
+  if (campo === 'fase_atual') {
+    const faseLabel = FASES[valor] || valor;
+    const badgeEl = document.querySelector('.obra-meta .badge');
+    if (badgeEl) {
+      badgeEl.className = `badge badge-${valor}`;
+      badgeEl.textContent = faseLabel;
+    }
+  }
 }
 
 async function carregarObra() {
@@ -733,13 +695,38 @@ function renderPagina(obra) {
         </div>
         <div class="obra-info-item">
           <div class="obra-info-label">Status Compra</div>
-          <div class="obra-info-value"><i data-lucide="shopping-cart"></i>${obra.status_compra || '—'}</div>
+          ${['coordenador','supervisor','agendamento'].includes(roleAtual) ? `
+          <div class="obra-info-value edit-field">
+            <i data-lucide="shopping-cart"></i>
+            <select id="sel-compra" class="inline-select" onchange="salvarCampo('status_compra', this.value)">
+              <option value="">— Selecione —</option>
+              <option value="Aguardando orçamento" ${obra.status_compra==='Aguardando orçamento'?'selected':''}>Aguardando orçamento</option>
+              <option value="Orçamento aprovado" ${obra.status_compra==='Orçamento aprovado'?'selected':''}>Orçamento aprovado</option>
+              <option value="Compra realizada" ${obra.status_compra==='Compra realizada'?'selected':''}>Compra realizada</option>
+              <option value="Material entregue" ${obra.status_compra==='Material entregue'?'selected':''}>Material entregue</option>
+              <option value="Sem pendência" ${obra.status_compra==='Sem pendência'?'selected':''}>Sem pendência</option>
+            </select>
+          </div>` : `
+          <div class="obra-info-value"><i data-lucide="shopping-cart"></i>${obra.status_compra || '—'}</div>`}
         </div>
         ${obra.cod_shankya ? `<div class="obra-info-item">
           <div class="obra-info-label">Cod. Shankya</div>
           <div class="obra-info-value"><i data-lucide="hash"></i>${obra.cod_shankya}</div>
         </div>` : ''}
       </div>
+      ${['coordenador','supervisor','agendamento'].includes(roleAtual) ? `
+      <div class="edit-row" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.4px;">Etapa da Obra</div>
+        <select id="sel-fase" class="inline-select" onchange="salvarCampo('fase_atual', this.value)">
+          <option value="em_andamento"   ${obra.fase_atual==='em_andamento'  ?'selected':''}>Em andamento</option>
+          <option value="concluida"      ${obra.fase_atual==='concluida'     ?'selected':''}>Concluída</option>
+          <option value="pausada"        ${obra.fase_atual==='pausada'       ?'selected':''}>Pausada</option>
+          <option value="pre_vistoria"   ${obra.fase_atual==='pre_vistoria'  ?'selected':''}>Pré-vistoria</option>
+          <option value="pos_vistoria"   ${obra.fase_atual==='pos_vistoria'  ?'selected':''}>Pós-vistoria</option>
+          <option value="entregue"       ${obra.fase_atual==='entregue'      ?'selected':''}>Entregue</option>
+        </select>
+        <span id="save-indicator" style="font-size:12px;color:var(--primary);display:none;">✓ Salvo</span>
+      </div>` : ''}
     </div>
 
     <div class="stats">

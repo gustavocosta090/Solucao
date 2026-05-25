@@ -38,113 +38,15 @@
   }
 
   /* ── Topbar ── */
-  .topbar {
-    background: var(--surface-1);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    height: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .topbar-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .topbar-logo-mark {
-    width: 30px;
-    height: 30px;
-    background: var(--primary-muted);
-    border: 1px solid rgba(62, 207, 142, 0.2);
-    border-radius: 7px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--primary);
-    flex-shrink: 0;
-  }
-
-  .topbar-logo-mark i {
-    width: 15px;
-    height: 15px;
-  }
-
-  .topbar-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-1);
-    letter-spacing: -0.2px;
-  }
-
-  .topbar-divider {
-    width: 1px;
-    height: 18px;
-    background: var(--border-strong);
-    margin: 0 4px;
-  }
-
-  .topbar-nav {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-  }
-
-  .topbar-nav a {
-    color: var(--text-2);
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 6px 10px;
-    border-radius: 6px;
-    transition: color 0.15s, background 0.15s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .topbar-nav a i {
-    width: 14px;
-    height: 14px;
-  }
-
-  .topbar-nav a:hover {
-    color: var(--text-1);
-    background: var(--surface-2);
-  }
-
-  .btn-logout {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: transparent;
-    color: var(--text-2);
-    font-size: 13px;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-    text-decoration: none;
-  }
-
-  .btn-logout i {
-    width: 14px;
-    height: 14px;
-  }
-
-  .btn-logout:hover {
-    color: var(--text-1);
-    border-color: var(--border-strong);
-    background: var(--surface-2);
-  }
+  .topbar { background:var(--surface-1); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:100; }
+  .topbar-logo { font-size:15px; font-weight:700; color:var(--text-1); letter-spacing:-0.2px; flex:1; }
+  .topbar-greeting { font-size:13px; color:var(--text-2); margin-right:16px; }
+  .topbar-links { display:flex; align-items:center; gap:4px; }
+  .topbar-links a { color:var(--text-2); text-decoration:none; font-size:13px; font-weight:500; padding:6px 12px; border-radius:6px; transition:color .15s,background .15s; }
+  .topbar-links a:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
+  .topbar-links a.active { color:var(--text-1); background:rgba(255,255,255,0.07); }
+  .topbar-links a.nav-sair { color:var(--text-2); border:1px solid rgba(255,255,255,0.12); margin-left:8px; }
+  .topbar-links a.nav-sair:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
 
   /* ── Layout ── */
   .container {
@@ -507,25 +409,11 @@
 <body>
 
 <!-- Topbar -->
-<div class="topbar">
-  <div class="topbar-left">
-    <div class="topbar-logo-mark">
-      <i data-lucide="hard-hat"></i>
-    </div>
-    <span class="topbar-title">Solução Técnica</span>
-    <div class="topbar-divider"></div>
-    <nav class="topbar-nav">
-      <a href="obras.html"><i data-lucide="layout-list"></i> Obras</a>
-      <a href="agenda.html"><i data-lucide="calendar"></i> Agenda</a>
-      <a href="supervisor.html"><i data-lucide="users"></i> Supervisor</a>
-    </nav>
-  </div>
-  <span id="topbar-greeting" style="font-size:13px;color:var(--text-2);margin-right:12px;"></span>
-  <button class="btn-logout" onclick="logout()">
-    <i data-lucide="log-out"></i>
-    Sair
-  </button>
-</div>
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
+</header>
 
 <div class="container">
 
@@ -656,12 +544,7 @@ let resetUserId = null;
     return;
   }
 
-  // Saudação
-  const _he = new Date().getHours();
-  const _se = _he < 12 ? 'Bom dia' : _he < 18 ? 'Boa tarde' : 'Boa noite';
-  const _ne = (eu.nome || '').split(' ')[0];
-  const _ge = document.getElementById('topbar-greeting');
-  if (_ge && _ne) _ge.textContent = `${_se}, ${_ne}`;
+  renderTopbar(eu.nome, eu.role, 'admin');
 
   await carregarDados();
 })();
@@ -830,6 +713,26 @@ function mostrarErro(msg) {
   el.textContent = msg;
   el.style.display = 'block';
   document.getElementById('alertSuccess').style.display = 'none';
+}
+
+function renderTopbar(nome, role, paginaAtiva) {
+  const h = new Date().getHours();
+  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = (nome || '').split(' ')[0];
+  const greetEl = document.getElementById('topbar-greeting');
+  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
+  const links = [
+    { href:'obras.html',             label:'Obras',      id:'obras',      roles:['tecnico','auxiliar','supervisor','coordenador','agendamento'] },
+    { href:'agenda.html',            label:'Agenda',     id:'agenda',     roles:['supervisor','coordenador','agendamento','tecnico','auxiliar'] },
+    { href:'supervisor.html',        label:'Supervisor', id:'supervisor', roles:['supervisor','coordenador','agendamento'] },
+    { href:'admin.html',             label:'Admin',      id:'admin',      roles:['coordenador'] },
+    { href:'tecnico_dashboard.html', label:'Minhas OSs', id:'minhas-os',  roles:['tecnico','auxiliar'] },
+  ];
+  const nav = document.getElementById('topbar-nav');
+  if (!nav) return;
+  nav.innerHTML = links.filter(l => l.roles.includes(role))
+    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
+    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
 }
 
 async function logout() {

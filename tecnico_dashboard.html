@@ -19,90 +19,16 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* ── Header ── */
-  header {
-    background: #111111;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    height: 56px;
-    padding: 0 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-  }
-
-  .header-brand {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #FFFFFF;
-    letter-spacing: -0.01em;
-    white-space: nowrap;
-  }
-
-  nav {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-  }
-
-  nav a {
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: #A1A1AA;
-    text-decoration: none;
-    transition: color 0.15s, background 0.15s;
-    white-space: nowrap;
-  }
-
-  nav a:hover { color: #FFFFFF; background: rgba(255,255,255,0.06); }
-  nav a.ativo { color: #FFFFFF; background: rgba(255,255,255,0.08); }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .btn-nova-os {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: #FFFFFF;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.15);
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-    white-space: nowrap;
-  }
-  .btn-nova-os:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.04); }
-  .btn-nova-os i { width: 14px; height: 14px; }
-
-  .btn-logout {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: #A1A1AA;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: color 0.15s, background 0.15s;
-    white-space: nowrap;
-  }
-  .btn-logout:hover { color: #FFFFFF; background: rgba(255,255,255,0.06); }
-  .btn-logout i { width: 14px; height: 14px; }
+  /* ── Topbar (padrão universal) ── */
+  .topbar { background:var(--surface-1,#111111); border-bottom:1px solid rgba(255,255,255,0.08); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:100; }
+  .topbar-logo { font-size:15px; font-weight:700; color:#fff; letter-spacing:-0.2px; flex:1; }
+  .topbar-greeting { font-size:13px; color:#A1A1AA; margin-right:16px; }
+  .topbar-links { display:flex; align-items:center; gap:4px; }
+  .topbar-links a { color:#A1A1AA; text-decoration:none; font-size:13px; font-weight:500; padding:6px 12px; border-radius:6px; transition:color .15s,background .15s; }
+  .topbar-links a:hover { color:#fff; background:rgba(255,255,255,0.06); }
+  .topbar-links a.active { color:#fff; background:rgba(255,255,255,0.08); }
+  .topbar-links a.nav-sair { color:#A1A1AA; border:1px solid rgba(255,255,255,0.12); margin-left:8px; }
+  .topbar-links a.nav-sair:hover { color:#fff; background:rgba(255,255,255,0.06); }
 
   /* ── Layout principal ── */
   main { max-width: 1100px; margin: 0 auto; padding: 32px 20px; }
@@ -630,25 +556,10 @@
 </head>
 <body>
 
-<header>
-  <span class="header-brand">Solução Técnica</span>
-  <nav>
-    <a href="obras.html">Obras</a>
-    <a href="agenda.html">Agenda</a>
-    <a href="os.html">OS</a>
-    <a href="tecnico_dashboard.html" class="ativo">Minhas OSs</a>
-  </nav>
-  <div class="header-actions">
-    <span id="topbar-greeting" style="font-size:13px;color:var(--text-2);"></span>
-    <button class="btn-nova-os" onclick="window.location.href='os.html'">
-      <i data-lucide="plus"></i>
-      Nova OS
-    </button>
-    <button class="btn-logout" onclick="logout()">
-      <i data-lucide="log-out"></i>
-      Sair
-    </button>
-  </div>
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
 <main>
@@ -755,6 +666,26 @@ let todasOSs = [];
 let filtroStatus = 'todos';
 let tecnicoAtual = null;
 
+function renderTopbar(nome, role, paginaAtiva) {
+  const h = new Date().getHours();
+  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = (nome || '').split(' ')[0];
+  const greetEl = document.getElementById('topbar-greeting');
+  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
+  const links = [
+    { href:'obras.html',             label:'Obras',      id:'obras',      roles:['tecnico','auxiliar','supervisor','coordenador','agendamento'] },
+    { href:'agenda.html',            label:'Agenda',     id:'agenda',     roles:['supervisor','coordenador','agendamento','tecnico','auxiliar'] },
+    { href:'supervisor.html',        label:'Supervisor', id:'supervisor', roles:['supervisor','coordenador','agendamento'] },
+    { href:'admin.html',             label:'Admin',      id:'admin',      roles:['coordenador'] },
+    { href:'tecnico_dashboard.html', label:'Minhas OSs', id:'minhas-os',  roles:['tecnico','auxiliar'] },
+  ];
+  const nav = document.getElementById('topbar-nav');
+  if (!nav) return;
+  nav.innerHTML = links.filter(l => l.roles.includes(role))
+    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
+    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
+}
+
 async function logout() {
   await db.auth.signOut();
   window.location.href = 'login.html';
@@ -772,13 +703,7 @@ async function logout() {
   if (tec.role !== 'tecnico') { window.location.href = 'supervisor.html'; return; }
 
   tecnicoAtual = tec;
-
-  // Saudação
-  const _h2 = new Date().getHours();
-  const _s2 = _h2 < 12 ? 'Bom dia' : _h2 < 18 ? 'Boa tarde' : 'Boa noite';
-  const _primeiroNome2 = (tec.nome || '').split(' ')[0];
-  const _greet2 = document.getElementById('topbar-greeting');
-  if (_greet2 && _primeiroNome2) _greet2.textContent = `${_s2}, ${_primeiroNome2}`;
+  renderTopbar(tec.nome, tec.role, 'minhas-os');
 
   const hoje = new Date();
   const inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 90);

@@ -36,32 +36,15 @@
     }
 
     /* ─── Topbar ─── */
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      height: 56px;
-      background: var(--surface-1);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 24px;
-      gap: 12px;
-    }
-
-    .header-brand {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--text-1);
-      letter-spacing: -0.01em;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    .topbar { background:var(--surface-1); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:100; }
+    .topbar-logo { font-size:15px; font-weight:700; color:var(--text-1); letter-spacing:-0.2px; flex:1; }
+    .topbar-greeting { font-size:13px; color:var(--text-2); margin-right:16px; }
+    .topbar-links { display:flex; align-items:center; gap:4px; }
+    .topbar-links a { color:var(--text-2); text-decoration:none; font-size:13px; font-weight:500; padding:6px 12px; border-radius:6px; transition:color .15s,background .15s; }
+    .topbar-links a:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
+    .topbar-links a.active { color:var(--text-1); background:rgba(255,255,255,0.07); }
+    .topbar-links a.nav-sair { color:var(--text-2); border:1px solid rgba(255,255,255,0.12); margin-left:8px; }
+    .topbar-links a.nav-sair:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
 
     .btn-outline {
       display: inline-flex;
@@ -606,24 +589,10 @@
 </head>
 <body>
 
-<header>
-  <span class="header-brand">Solução Técnica</span>
-  <nav id="header-nav" style="display:none;gap:4px;align-items:center;">
-    <a href="obras.html" style="padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;color:#A1A1AA;text-decoration:none;transition:color .15s,background .15s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.color='#A1A1AA';this.style.background='transparent'">Obras</a>
-    <a href="agenda.html" style="padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;color:#A1A1AA;text-decoration:none;transition:color .15s,background .15s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.color='#A1A1AA';this.style.background='transparent'">Agenda</a>
-    <a href="supervisor.html" style="padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;color:#A1A1AA;text-decoration:none;transition:color .15s,background .15s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.color='#A1A1AA';this.style.background='transparent'">OS</a>
-  </nav>
-  <div class="header-actions">
-    <button class="btn-outline" id="btn-minhas-os" onclick="irHistorico()">
-      <i data-lucide="list"></i>
-      Minhas OSs
-    </button>
-    <button class="btn-primary" onclick="abrirFormulario(null)">
-      <i data-lucide="plus"></i>
-      Nova OS
-    </button>
-    <button class="btn-ghost" onclick="sair()">Sair</button>
-  </div>
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
 <!-- TELA 1: CARREGANDO / IDENTIFICAÇÃO -->
@@ -865,8 +834,7 @@ async function init() {
     return;
   }
 
-  // Mostrar nav com links para Obras e Agenda para todos os perfis
-  document.getElementById('header-nav').style.display = 'flex';
+  renderTopbar(tec.nome, tec.role, 'os');
 
   tecnicoLogado = tec;
 
@@ -899,11 +867,33 @@ async function init() {
   carregarAgendamentosHoje();
 }
 
+// ── Topbar ────────────────────────────────────────────────────
+function renderTopbar(nome, role, paginaAtiva) {
+  const h = new Date().getHours();
+  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = (nome || '').split(' ')[0];
+  const greetEl = document.getElementById('topbar-greeting');
+  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
+  const links = [
+    { href:'obras.html',             label:'Obras',      id:'obras',      roles:['tecnico','auxiliar','supervisor','coordenador','agendamento'] },
+    { href:'agenda.html',            label:'Agenda',     id:'agenda',     roles:['supervisor','coordenador','agendamento','tecnico','auxiliar'] },
+    { href:'supervisor.html',        label:'Supervisor', id:'supervisor', roles:['supervisor','coordenador','agendamento'] },
+    { href:'admin.html',             label:'Admin',      id:'admin',      roles:['coordenador'] },
+    { href:'tecnico_dashboard.html', label:'Minhas OSs', id:'minhas-os',  roles:['tecnico','auxiliar'] },
+  ];
+  const nav = document.getElementById('topbar-nav');
+  if (!nav) return;
+  nav.innerHTML = links.filter(l => l.roles.includes(role))
+    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
+    .join('') + `<a href="#" class="nav-sair" onclick="sair()">Sair</a>`;
+}
+
 // ── Tela 1 → logout ──────────────────────────────────────────
 async function sair() {
   await db.auth.signOut();
   window.location.href = 'login.html';
 }
+function logout() { sair(); }
 
 // ── Agendamentos do dia ──────────────────────────────────────
 async function carregarAgendamentosHoje() {
@@ -945,10 +935,10 @@ async function carregarAgendamentosHoje() {
     const dataRef = os.data_servico || (os.criado_em ? os.criado_em.slice(0,10) : null);
     if (os.obra_id && dataRef) {
       const chave = `${os.obra_id}|${dataRef}`;
-      // Se já existir, prioriza aprovada > pendente > reprovada
-      const prioridade = { aprovada: 3, pendente: 2, reprovada: 1 };
+      // Prioriza concluida > pendente
+      const prioridade = { concluida: 3, aprovada: 3, pendente: 2, reprovada: 1 };
       if (!osMap[chave] || (prioridade[os.status_aprovacao] || 0) > (prioridade[osMap[chave]] || 0)) {
-        osMap[chave] = os.status_aprovacao;
+        osMap[chave] = os.status_aprovacao === 'aprovada' ? 'concluida' : os.status_aprovacao;
       }
     }
   });
@@ -1195,7 +1185,7 @@ async function enviarOS() {
       observacoes:         document.getElementById('f-obs').value || null,
       fotos_urls:          fotoUrls.length > 0 ? fotoUrls : null,
       data_servico:        agendamentoSelecionado?.data || new Date().toISOString().split('T')[0],
-      status_aprovacao:    'pendente',
+      status_aprovacao:    'concluida',
       criado_em:           new Date().toISOString(),
     };
 
