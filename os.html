@@ -426,8 +426,8 @@ async function carregarAgendamentosHoje() {
     const dataRef = os.data_servico || (os.criado_em ? os.criado_em.slice(0,10) : null);
     if (os.obra_id && dataRef) {
       const chave = `${os.obra_id}|${dataRef}`;
-      // Se já existir, prioriza reprovada > pendente > aprovada
-      const prioridade = { reprovada: 3, pendente: 2, aprovada: 1 };
+      // Se já existir, prioriza aprovada > pendente > reprovada
+      const prioridade = { aprovada: 3, pendente: 2, reprovada: 1 };
       if (!osMap[chave] || (prioridade[os.status_aprovacao] || 0) > (prioridade[osMap[chave]] || 0)) {
         osMap[chave] = os.status_aprovacao;
       }
