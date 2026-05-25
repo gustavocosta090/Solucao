@@ -484,11 +484,6 @@ async function carregarOSs() {
     tecnicos: o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null
   }));
 
-  if (error) {
-    console.error('Erro ao carregar OSs:', error);
-    document.getElementById('loadingEl').innerHTML = `<div style="color:red;padding:20px;">Erro ao carregar OS: ${error.message}</div>`;
-    return;
-  }
   todasOSs = finalData;
 
   // Stats

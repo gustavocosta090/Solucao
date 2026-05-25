@@ -606,7 +606,15 @@ async function enviarOS() {
     };
 
     btn.textContent = '💾 Salvando...';
-    const { error } = await db.from('ordens_de_servico').insert(payload);
+    let { error } = await db.from('ordens_de_servico').insert(payload);
+
+    // Fallback: se data_servico não existe no banco, tenta sem ela
+    if (error && error.message && error.message.includes('data_servico')) {
+      const payloadSemData = { ...payload };
+      delete payloadSemData.data_servico;
+      const res2 = await db.from('ordens_de_servico').insert(payloadSemData);
+      error = res2.error;
+    }
 
     if (error) { alert('Erro ao enviar OS: ' + error.message); return; }
 
