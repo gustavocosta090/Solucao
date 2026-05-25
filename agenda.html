@@ -216,15 +216,18 @@ const STATUS_LABEL = {
 };
 
 // ── Auth check ──────────────────────────────────────────────
+let modoVisualizacao = false; // true = técnico, só lê
+
 async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
-  // Técnicos não gerenciam agenda — só visualizam via os.html
   const { data: eu } = await db.from('tecnicos').select('role').eq('auth_user_id', session.user.id).single();
   if (eu && eu.role === 'tecnico') {
-    window.location.href = 'os.html';
-    return;
+    modoVisualizacao = true;
+    // Esconde botão de novo agendamento
+    const btnNovo = document.querySelector('.btn-novo');
+    if (btnNovo) btnNovo.style.display = 'none';
   }
 
   await Promise.all([carregarObras(), carregarTecnicos()]);
@@ -338,7 +341,7 @@ function renderGrade(dias) {
             <div class="dia-nome">${DIAS[i]}</div>
             <div class="dia-data ${isHoje(dia)?'hoje':''}">${fmtBR(dia)}</div>
           </div>
-          <button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento">+</button>
+          ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento">+</button>`}
         </div>
         <div class="coluna-body">${cards}</div>
       </div>`;
@@ -368,7 +371,7 @@ function cardHTML(ag) {
   const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
 
   return `
-    <div class="card-ag card-${status}" onclick="editarAgendamento(${ag.id})" title="Clique para editar">
+    <div class="card-ag card-${status}" ${modoVisualizacao ? '' : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`} style="${modoVisualizacao ? 'cursor:default' : 'cursor:pointer'}">
       <div class="ag-tecs">${hora ? hora+' · ' : ''}${tecs}</div>
       <div class="ag-cliente">${cliente}</div>
       ${end ? `<div class="ag-detalhe">📍 ${end}</div>` : ''}

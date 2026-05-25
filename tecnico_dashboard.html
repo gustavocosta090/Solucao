@@ -3,265 +3,186 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Minhas Ordens de Serviço</title>
+<title>Solução Técnica — Minhas OSs</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6fa; color: #222; }
-  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: white; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
 
-  .header {
-    background: linear-gradient(135deg, #1a1a2e, #0f3460);
-    color: white;
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-  .header h1 { font-size: 17px; font-weight: 700; flex: 1; }
-  .header-sub { font-size: 12px; opacity: 0.7; }
-  .btn-back {
-    background: rgba(255,255,255,0.15);
-    border: none; color: white;
-    padding: 6px 10px; border-radius: 8px;
-    cursor: pointer; font-size: 16px;
-  }
-  .btn-back:hover { background: rgba(255,255,255,0.25); }
-  .btn-nova {
-    background: #e94560;
-    border: none; color: white;
-    padding: 7px 13px; border-radius: 8px;
-    cursor: pointer; font-size: 13px; font-weight: 700;
-  }
+  /* ── Header ── */
+  header{background:#1a1d2e;border-bottom:1px solid #2d3148;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  header h1{font-size:1.2rem;font-weight:700;color:#fff}
+  nav{display:flex;gap:6px;align-items:center}
+  nav a{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;text-decoration:none;transition:all .2s}
+  nav a:hover,nav a.ativo{background:#3b5bdb;color:#fff}
+  .btn-logout{padding:6px 14px;border-radius:8px;font-size:0.82rem;color:#9ba3cc;background:none;border:none;cursor:pointer;transition:all .2s}
+  .btn-logout:hover{background:#7f1d1d;color:#fca5a5}
 
-  /* Stats */
-  .stats-bar {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0;
-    border-bottom: 1px solid #e0e0e0;
-  }
-  .stat-item {
-    padding: 14px 12px;
-    text-align: center;
-    border-right: 1px solid #e0e0e0;
-  }
-  .stat-item:last-child { border-right: none; }
-  .stat-num { font-size: 22px; font-weight: 700; color: #0f3460; }
-  .stat-label { font-size: 11px; color: #888; margin-top: 2px; }
+  /* ── Layout principal ── */
+  main{max-width:1100px;margin:0 auto;padding:24px 20px}
 
-  /* Filtros */
-  .filtros {
-    padding: 12px 16px;
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    border-bottom: 1px solid #e8e8e8;
-    -webkit-overflow-scrolling: touch;
-  }
-  .filtros::-webkit-scrollbar { display: none; }
-  .chip {
-    white-space: nowrap;
-    padding: 7px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    border: 1.5px solid #e0e0e0;
-    background: white;
-    cursor: pointer;
-    color: #555;
-    transition: all 0.15s;
-  }
-  .chip.active { background: #0f3460; color: white; border-color: #0f3460; }
-  .chip:hover { border-color: #0f3460; }
+  /* ── Stats ── */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+  .stat-card{background:#1a1d2e;border:1px solid #2d3148;border-radius:10px;padding:16px;text-align:center}
+  .stat-num{font-size:2rem;font-weight:700;color:#3b5bdb}
+  .stat-num.verde{color:#22c55e}
+  .stat-num.amarelo{color:#f59e0b}
+  .stat-label{font-size:0.72rem;color:#7c85b0;margin-top:4px}
 
-  /* Input de busca de data */
-  .date-filter {
-    padding: 10px 16px;
-    display: flex;
-    gap: 8px;
-    border-bottom: 1px solid #e8e8e8;
-    background: #fafafa;
-  }
-  .date-filter input {
-    flex: 1;
-    padding: 8px 12px;
-    border: 1.5px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 13px;
-    outline: none;
-    background: white;
-  }
-  .date-filter input:focus { border-color: #0f3460; }
-  .date-filter label { font-size: 12px; color: #888; align-self: center; }
+  /* ── Filtros ── */
+  .filtros-wrap{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;padding:16px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{padding:6px 14px;border-radius:20px;border:1px solid #2d3148;background:#12152a;color:#9ba3cc;font-size:0.78rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+  .chip:hover,.chip.ativo{background:#3b5bdb;border-color:#3b5bdb;color:#fff}
+  .date-group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .date-group label{font-size:0.78rem;color:#7c85b0}
+  .date-group input{background:#12152a;border:1px solid #2d3148;border-radius:8px;padding:7px 10px;color:#e2e8f0;font-size:0.82rem;outline:none}
+  .date-group input:focus{border-color:#3b5bdb}
 
-  /* Lista de OSs */
-  .os-lista { padding: 12px 16px; }
-  .os-card {
-    border: 1.5px solid #e8e8e8;
-    border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .os-card:hover { border-color: #0f3460; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-  .os-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
-  .os-obra { font-size: 15px; font-weight: 700; color: #1a1a2e; }
-  .os-data { font-size: 12px; color: #888; }
-  .os-tipo { font-size: 12px; color: #666; margin-bottom: 6px; }
-  .os-desc {
-    font-size: 13px;
-    color: #555;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    margin-bottom: 8px;
-  }
-  .os-footer { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  /* ── Tabela desktop ── */
+  .tabela-wrap{background:#1a1d2e;border:1px solid #2d3148;border-radius:12px;overflow:hidden;margin-bottom:20px}
+  table{width:100%;border-collapse:collapse;font-size:0.83rem}
+  th{background:#12152a;padding:10px 16px;text-align:left;font-size:0.7rem;font-weight:700;color:#7c85b0;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #2d3148}
+  td{padding:12px 16px;border-bottom:1px solid #1e2240;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#1e2240;cursor:pointer}
+  .empty-table{text-align:center;padding:40px;color:#4a5080;font-size:0.88rem}
 
-  .badge-status {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 700;
+  /* ── Cards mobile ── */
+  .cards-lista{display:none}
+  .os-card{background:#1a1d2e;border:1px solid #2d3148;border-radius:10px;padding:16px;margin-bottom:10px;cursor:pointer;transition:border-color .2s}
+  .os-card:hover{border-color:#3b5bdb}
+  .os-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
+  .os-obra{font-size:0.95rem;font-weight:700;color:#fff}
+  .os-data{font-size:0.75rem;color:#7c85b0;white-space:nowrap}
+  .os-obs{font-size:0.8rem;color:#a0aec0;margin:6px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .os-footer{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+
+  /* ── Badges ── */
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:0.7rem;font-weight:700}
+  .badge-pendente{background:#3d2700;color:#fbbf24}
+  .badge-aprovado,.badge-aprovada{background:#14532d;color:#86efac}
+  .badge-rejeitado,.badge-reprovada{background:#450a0a;color:#fca5a5}
+
+  /* ── Spinner ── */
+  .spinner-wrap{text-align:center;padding:40px;color:#4a5080}
+  .spinner{width:28px;height:28px;border:3px solid #2d3148;border-top-color:#3b5bdb;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── Modal detalhe ── */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;padding:16px}
+  .overlay.aberto{display:flex}
+  .modal{background:#1a1d2e;border:1px solid #2d3148;border-radius:16px;padding:28px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto}
+  .modal h2{font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:20px}
+  .detail-row{margin-bottom:14px}
+  .detail-label{font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#7c85b0;letter-spacing:.06em;margin-bottom:3px}
+  .detail-value{font-size:0.88rem;color:#e2e8f0}
+  .obs-supervisor{background:#3d2700;border:1px solid #f59e0b;border-radius:8px;padding:10px 12px;font-size:0.82rem;color:#fbbf24;margin:8px 0}
+  .btn-fechar{width:100%;padding:12px;background:#2d3148;border:none;border-radius:8px;color:#e2e8f0;font-size:0.9rem;font-weight:600;cursor:pointer;margin-top:16px}
+  .btn-fechar:hover{background:#3b5bdb}
+
+  /* ── Fotos no modal ── */
+  .fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:8px}
+  .foto-item{aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;background:#12152a}
+  .foto-item img{width:100%;height:100%;object-fit:cover;transition:transform .2s}
+  .foto-item:hover img{transform:scale(1.05)}
+
+  /* ── Lightbox ── */
+  .lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;align-items:center;justify-content:center}
+  .lightbox.aberto{display:flex}
+  .lightbox img{max-width:90vw;max-height:85vh;border-radius:8px;object-fit:contain}
+  .lb-close{position:absolute;top:16px;right:20px;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer}
+
+  /* ── Responsive ── */
+  @media(max-width:700px){
+    main{padding:16px 12px}
+    .stats{grid-template-columns:repeat(3,1fr);gap:8px}
+    .stat-num{font-size:1.4rem}
+    .tabela-wrap{display:none}          /* esconde tabela no mobile */
+    .cards-lista{display:block}         /* mostra cards no mobile */
+    .filtros-wrap{padding:12px}
+    .date-group{width:100%}
   }
-  .badge-pendente    { background: #fef3c7; color: #92400e; }
-  .badge-aprovada    { background: #d1fae5; color: #065f46; }
-  .badge-reprovada   { background: #fee2e2; color: #991b1b; }
-  .badge-concluido   { background: #eff6ff; color: #1d4ed8; }
-  .badge-parcial     { background: #fff7ed; color: #c2410c; }
-
-  .fotos-count {
-    font-size: 11px;
-    color: #888;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-  }
-
-  .empty { text-align: center; padding: 48px 24px; color: #999; }
-  .empty .icon { font-size: 48px; margin-bottom: 12px; }
-  .empty p { font-size: 14px; }
-
-  .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: #888; gap: 12px; }
-  .spinner { width: 28px; height: 28px; border: 3px solid #e0e0e0; border-top-color: #0f3460; border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Modal detalhe OS */
-  .modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.55);
-    display: none;
-    align-items: flex-end;
-    z-index: 1000;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: white;
-    border-radius: 16px 16px 0 0;
-    padding: 24px 20px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-  }
-  .modal-handle {
-    width: 40px; height: 4px;
-    background: #ddd; border-radius: 2px;
-    margin: 0 auto 16px;
-  }
-  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
-
-  .detail-row { margin-bottom: 14px; }
-  .detail-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #999; letter-spacing: 0.5px; margin-bottom: 3px; }
-  .detail-value { font-size: 14px; color: #222; }
-
-  .fotos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
-  .foto-item { aspect-ratio: 1; border-radius: 8px; overflow: hidden; cursor: pointer; }
-  .foto-item img { width: 100%; height: 100%; object-fit: cover; }
-
-  /* Lightbox */
-  .lightbox {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.9);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-  }
-  .lightbox.open { display: flex; }
-  .lightbox img { max-width: 95%; max-height: 90vh; border-radius: 8px; }
-  .lightbox-close {
-    position: absolute; top: 16px; right: 20px;
-    color: white; font-size: 28px; cursor: pointer; background: none; border: none;
-  }
-
-  .obs-supervisor {
-    background: #fff7ed;
-    border: 1px solid #fbbf24;
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 13px;
-    color: #92400e;
-    margin-top: 8px;
+  @media(min-width:701px){
+    .tabela-wrap{display:block}         /* tabela no desktop */
+    .cards-lista{display:none}          /* esconde cards no desktop */
   }
 </style>
 </head>
 <body>
-<div class="app">
-  <div class="header">
-    <button class="btn-back" onclick="window.location.href='os.html'">←</button>
-    <div style="flex:1">
-      <div class="header-sub">Histórico</div>
-      <h1>Minhas OSs</h1>
+
+<header>
+  <h1>Solução Técnica</h1>
+  <nav>
+    <a href="obras.html">Obras</a>
+    <a href="agenda.html">Agenda</a>
+    <a href="os.html">OS</a>
+    <a href="tecnico_dashboard.html" class="ativo">Minhas OSs</a>
+    <button class="btn-logout" onclick="logout()">↩ Sair</button>
+  </nav>
+</header>
+
+<main>
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card"><div class="stat-num" id="statTotal">—</div><div class="stat-label">Total</div></div>
+    <div class="stat-card"><div class="stat-num verde" id="statAprovadas">—</div><div class="stat-label">Aprovadas</div></div>
+    <div class="stat-card"><div class="stat-num amarelo" id="statPendentes">—</div><div class="stat-label">Pendentes</div></div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filtros-wrap">
+    <div class="chips">
+      <div class="chip ativo" onclick="setFiltro('todos',this)">Todas</div>
+      <div class="chip" onclick="setFiltro('pendente',this)">⏳ Pendentes</div>
+      <div class="chip" onclick="setFiltro('aprovado',this)">✅ Aprovadas</div>
+      <div class="chip" onclick="setFiltro('rejeitado',this)">❌ Rejeitadas</div>
     </div>
-    <button class="btn-nova" onclick="window.location.href='os.html'">➕ Nova OS</button>
+    <div class="date-group">
+      <label>De:</label>
+      <input type="date" id="dataInicio" onchange="filtrar()">
+      <label>Até:</label>
+      <input type="date" id="dataFim" onchange="filtrar()">
+    </div>
   </div>
 
-  <div class="stats-bar" id="statsBar">
-    <div class="stat-item"><div class="stat-num" id="statTotal">—</div><div class="stat-label">Total</div></div>
-    <div class="stat-item"><div class="stat-num" id="statAprovadas">—</div><div class="stat-label">Aprovadas</div></div>
-    <div class="stat-item"><div class="stat-num" id="statPendentes">—</div><div class="stat-label">Pendentes</div></div>
+  <!-- Tabela (desktop) -->
+  <div class="tabela-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Obra / Cliente</th>
+          <th>Observações</th>
+          <th>Status</th>
+          <th>Fotos</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaBody">
+        <tr><td colspan="5" class="empty-table"><div class="spinner"></div> Carregando...</td></tr>
+      </tbody>
+    </table>
   </div>
 
-  <div class="filtros" id="filtros">
-    <div class="chip active" onclick="setFiltro('todos', this)">Todas</div>
-    <div class="chip" onclick="setFiltro('pendente', this)">⏳ Pendentes</div>
-    <div class="chip" onclick="setFiltro('aprovada', this)">✅ Aprovadas</div>
-    <div class="chip" onclick="setFiltro('reprovada', this)">❌ Reprovadas</div>
+  <!-- Cards (mobile) -->
+  <div class="cards-lista" id="cardLista">
+    <div class="spinner-wrap"><div class="spinner"></div><p>Carregando...</p></div>
   </div>
+</main>
 
-  <div class="date-filter">
-    <label>De:</label>
-    <input type="date" id="dataInicio" onchange="filtrar()">
-    <label>Até:</label>
-    <input type="date" id="dataFim" onchange="filtrar()">
-  </div>
-
-  <div class="os-lista" id="osLista">
-    <div class="loading"><div class="spinner"></div> Carregando...</div>
-  </div>
-</div>
-
-<!-- Modal detalhe -->
-<div class="modal-overlay" id="modalOS">
+<!-- Modal detalhe OS -->
+<div class="overlay" id="modalOverlay" onclick="fecharModal(event)">
   <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-title" id="modalOSTitulo"></div>
-    <div id="modalOSConteudo"></div>
-    <button onclick="fecharModal()" style="width:100%;padding:14px;background:#f3f4f6;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:16px;">Fechar</button>
+    <h2 id="modalTitulo"></h2>
+    <div id="modalConteudo"></div>
+    <button class="btn-fechar" onclick="fecharModal()">Fechar</button>
   </div>
 </div>
 
-<!-- Lightbox fotos -->
-<div class="lightbox" id="lightbox" onclick="fecharLightbox()">
-  <button class="lightbox-close" onclick="fecharLightbox()">✕</button>
-  <img id="lightboxImg" src="" alt="">
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" onclick="fecharLightbox()">✕</button>
+  <img id="lbImg" src="" alt="">
 </div>
 
 <script>
@@ -273,22 +194,24 @@ let todasOSs = [];
 let filtroStatus = 'todos';
 let tecnicoAtual = null;
 
+async function logout() {
+  await db.auth.signOut();
+  window.location.href = 'login.html';
+}
+
 (async () => {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
   const { data: tec } = await db
-    .from('tecnicos')
-    .select('id, nome, role')
-    .eq('auth_user_id', session.user.id)
-    .single();
+    .from('tecnicos').select('id, nome, role')
+    .eq('auth_user_id', session.user.id).single();
 
   if (!tec) { window.location.href = 'login.html'; return; }
   if (tec.role !== 'tecnico') { window.location.href = 'supervisor.html'; return; }
 
   tecnicoAtual = tec;
 
-  // Datas padrão: últimos 90 dias
   const hoje = new Date();
   const inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 90);
   document.getElementById('dataInicio').value = inicio.toISOString().split('T')[0];
@@ -300,16 +223,20 @@ let tecnicoAtual = null;
 async function carregarOSs() {
   const { data, error } = await db
     .from('ordens_de_servico')
-    .select('*, obras(nome_cliente, endereco), tecnicos!ordens_de_servico_tecnico_id_fkey(nome)')
+    .select('*, obras(nome_cliente, endereco)')
     .eq('tecnico_id', tecnicoAtual.id)
     .order('created_at', { ascending: false });
 
-  if (error) { console.error(error); return; }
+  if (error) {
+    document.getElementById('tabelaBody').innerHTML =
+      `<tr><td colspan="5" class="empty-table">Erro: ${error.message}</td></tr>`;
+    return;
+  }
+
   todasOSs = data || [];
 
-  // Stats
-  document.getElementById('statTotal').textContent = todasOSs.length;
-  document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'aprovada').length;
+  document.getElementById('statTotal').textContent     = todasOSs.length;
+  document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'aprovado').length;
   document.getElementById('statPendentes').textContent = todasOSs.filter(o => o.status_aprovacao === 'pendente').length;
 
   filtrar();
@@ -317,122 +244,128 @@ async function carregarOSs() {
 
 function setFiltro(status, el) {
   filtroStatus = status;
-  document.querySelectorAll('.filtros .chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('ativo'));
+  el.classList.add('ativo');
   filtrar();
 }
 
 function filtrar() {
   const dataInicio = document.getElementById('dataInicio').value;
-  const dataFim = document.getElementById('dataFim').value;
+  const dataFim    = document.getElementById('dataFim').value;
 
-  let filtradas = todasOSs.filter(o => {
+  const filtradas = todasOSs.filter(o => {
     const dataOS = (o.created_at || '').slice(0, 10);
-    const matchStatus = filtroStatus === 'todos' || o.status_aprovacao === filtroStatus;
-    const matchInicio = !dataInicio || dataOS >= dataInicio;
-    const matchFim = !dataFim || dataOS <= dataFim;
+    const matchStatus  = filtroStatus === 'todos' || o.status_aprovacao === filtroStatus;
+    const matchInicio  = !dataInicio || dataOS >= dataInicio;
+    const matchFim     = !dataFim    || dataOS <= dataFim;
     return matchStatus && matchInicio && matchFim;
   });
 
-  renderLista(filtradas);
+  renderTabela(filtradas);
+  renderCards(filtradas);
 }
 
-function renderLista(lista) {
-  const container = document.getElementById('osLista');
-  if (lista.length === 0) {
-    container.innerHTML = `<div class="empty"><div class="icon">📋</div><p>Nenhuma OS encontrada</p></div>`;
+function fmtData(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function badgeHTML(status) {
+  const map = {
+    pendente:  '<span class="badge badge-pendente">⏳ Pendente</span>',
+    aprovado:  '<span class="badge badge-aprovado">✅ Aprovado</span>',
+    rejeitado: '<span class="badge badge-rejeitado">❌ Rejeitado</span>',
+  };
+  return map[status] || `<span class="badge">${status || '—'}</span>`;
+}
+
+/* ── Tabela (desktop) ── */
+function renderTabela(lista) {
+  const tbody = document.getElementById('tabelaBody');
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-table">Nenhuma OS encontrada.</td></tr>';
     return;
   }
-
-  container.innerHTML = lista.map(os => {
-    const data = new Date(os.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
-    const nFotos = os.fotos_urls?.length || 0;
-    const statusLabel = { pendente: '⏳ Aguardando', aprovada: '✅ Aprovada', reprovada: '❌ Reprovada' }[os.status_aprovacao] || '';
-    const servicoLabel = { concluido: 'Concluído', parcial: 'Parcial', aguardando_material: 'Aguard. Material' }[os.status_servico] || '';
-
-    return `
-    <div class="os-card" onclick="verDetalhe(${os.id})">
-      <div class="os-header">
-        <div class="os-obra">${os.obras?.nome_cliente || 'Obra'}</div>
-        <div class="os-data">${data}</div>
-      </div>
-      ${os.tipo_servico ? `<div class="os-tipo">🔧 ${os.tipo_servico.replace(/_/g,' ')}</div>` : ''}
-      <div class="os-desc">${os.descricao_servicos || ''}</div>
-      <div class="os-footer">
-        <span class="badge-status badge-${os.status_aprovacao}">${statusLabel}</span>
-        ${servicoLabel ? `<span class="badge-status badge-${os.status_servico}">${servicoLabel}</span>` : ''}
-        ${nFotos > 0 ? `<span class="fotos-count">📸 ${nFotos}</span>` : ''}
-      </div>
-    </div>`;
+  tbody.innerHTML = lista.map(os => {
+    const nFotos = (os.fotos_urls || []).length;
+    return `<tr onclick="verDetalhe(${os.id})">
+      <td style="color:#7c85b0;white-space:nowrap">${fmtData(os.created_at)}</td>
+      <td><strong>${os.obras?.nome_cliente || '—'}</strong>
+        ${os.obras?.endereco ? `<div style="font-size:.72rem;color:#7c85b0">${os.obras.endereco}</div>` : ''}</td>
+      <td style="color:#a0aec0;max-width:280px">${(os.observacoes || os.servicos_realizados || '—').slice(0,80)}</td>
+      <td>${badgeHTML(os.status_aprovacao)}</td>
+      <td style="color:#7c85b0">${nFotos > 0 ? `📸 ${nFotos}` : '—'}</td>
+    </tr>`;
   }).join('');
 }
 
+/* ── Cards (mobile) ── */
+function renderCards(lista) {
+  const container = document.getElementById('cardLista');
+  if (!lista.length) {
+    container.innerHTML = '<div class="spinner-wrap" style="padding:40px;text-align:center;color:#4a5080">Nenhuma OS encontrada.</div>';
+    return;
+  }
+  container.innerHTML = lista.map(os => `
+    <div class="os-card" onclick="verDetalhe(${os.id})">
+      <div class="os-card-header">
+        <div class="os-obra">${os.obras?.nome_cliente || '—'}</div>
+        <div class="os-data">${fmtData(os.created_at)}</div>
+      </div>
+      <div class="os-obs">${os.observacoes || os.servicos_realizados || 'Sem observações'}</div>
+      <div class="os-footer">
+        ${badgeHTML(os.status_aprovacao)}
+        ${(os.fotos_urls||[]).length > 0 ? `<span class="badge" style="background:#1e3a5f;color:#93c5fd">📸 ${os.fotos_urls.length} foto(s)</span>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+/* ── Modal detalhe ── */
 function verDetalhe(id) {
   const os = todasOSs.find(o => o.id === id);
   if (!os) return;
 
-  const data = new Date(os.created_at).toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-  const statusLabel = { pendente: '⏳ Aguardando aprovação', aprovada: '✅ Aprovada', reprovada: '❌ Reprovada' }[os.status_aprovacao] || '';
+  document.getElementById('modalTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
 
   let html = `
-    <div class="detail-row">
-      <div class="detail-label">Obra</div>
-      <div class="detail-value">${os.obras?.nome_cliente || '—'}</div>
-      ${os.obras?.endereco ? `<div style="font-size:12px;color:#888;margin-top:2px;">📍 ${os.obras.endereco}</div>` : ''}
-    </div>
-    <div class="detail-row">
-      <div class="detail-label">Data</div>
-      <div class="detail-value">${data}</div>
-    </div>
-    <div class="detail-row">
-      <div class="detail-label">Status de aprovação</div>
-      <div class="detail-value"><span class="badge-status badge-${os.status_aprovacao}">${statusLabel}</span></div>
-    </div>
+    <div class="detail-row"><div class="detail-label">Data</div><div class="detail-value">${fmtData(os.created_at)}</div></div>
+    <div class="detail-row"><div class="detail-label">Obra / Endereço</div><div class="detail-value">${os.obras?.nome_cliente || '—'}${os.obras?.endereco ? ` · 📍 ${os.obras.endereco}` : ''}</div></div>
+    <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value">${badgeHTML(os.status_aprovacao)}</div></div>
     ${os.observacao_supervisor ? `<div class="obs-supervisor">💬 Supervisor: "${os.observacao_supervisor}"</div>` : ''}
-    ${os.tipo_servico ? `<div class="detail-row"><div class="detail-label">Tipo de serviço</div><div class="detail-value">${os.tipo_servico.replace(/_/g,' ')}</div></div>` : ''}
-    <div class="detail-row">
-      <div class="detail-label">Descrição dos serviços</div>
-      <div class="detail-value">${os.descricao_servicos || '—'}</div>
-    </div>
-    ${os.materiais_utilizados ? `<div class="detail-row"><div class="detail-label">Materiais utilizados</div><div class="detail-value">${os.materiais_utilizados}</div></div>` : ''}
-    ${os.pendencias ? `<div class="detail-row"><div class="detail-label">Pendências</div><div class="detail-value">${os.pendencias}</div></div>` : ''}
+    ${os.servicos_realizados ? `<div class="detail-row"><div class="detail-label">Serviços realizados</div><div class="detail-value">${os.servicos_realizados}</div></div>` : ''}
     ${os.observacoes ? `<div class="detail-row"><div class="detail-label">Observações</div><div class="detail-value">${os.observacoes}</div></div>` : ''}
-    ${os.veiculo ? `<div class="detail-row"><div class="detail-label">Veículo / KM</div><div class="detail-value">${os.veiculo}${os.km_percorrido ? ' · ' + os.km_percorrido + ' km' : ''}</div></div>` : ''}
+    ${os.proximas_atividades ? `<div class="detail-row"><div class="detail-label">Próximas atividades</div><div class="detail-value">${os.proximas_atividades}</div></div>` : ''}
+    ${os.houve_problema ? `<div class="detail-row"><div class="detail-label">Problema reportado</div><div class="detail-value">${os.descricao_problema || 'Sim'}</div></div>` : ''}
   `;
 
-  // Fotos
   if (os.fotos_urls && os.fotos_urls.length > 0) {
     html += `<div class="detail-row">
       <div class="detail-label">Fotos (${os.fotos_urls.length})</div>
       <div class="fotos-grid">
-        ${os.fotos_urls.map(url => `
-          <div class="foto-item" onclick="abrirLightbox('${url}')">
-            <img src="${url}" alt="foto OS" loading="lazy">
-          </div>`).join('')}
-      </div>
-    </div>`;
+        ${os.fotos_urls.map(url => `<div class="foto-item" onclick="event.stopPropagation();abrirLightbox('${url}')"><img src="${url}" loading="lazy" alt="foto"></div>`).join('')}
+      </div></div>`;
   }
 
-  document.getElementById('modalOSTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
-  document.getElementById('modalOSConteudo').innerHTML = html;
-  document.getElementById('modalOS').classList.add('open');
+  document.getElementById('modalConteudo').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('aberto');
 }
 
-function fecharModal() {
-  document.getElementById('modalOS').classList.remove('open');
+function fecharModal(e) {
+  if (!e || e.target === document.getElementById('modalOverlay') || e.target.classList.contains('btn-fechar')) {
+    document.getElementById('modalOverlay').classList.remove('aberto');
+  }
 }
 
 function abrirLightbox(url) {
-  document.getElementById('lightboxImg').src = url;
-  document.getElementById('lightbox').classList.add('open');
+  document.getElementById('lbImg').src = url;
+  document.getElementById('lightbox').classList.add('aberto');
 }
 function fecharLightbox() {
-  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightbox').classList.remove('aberto');
 }
 
-// Fechar modal clicando fora
-document.getElementById('modalOS').addEventListener('click', e => {
-  if (e.target === document.getElementById('modalOS')) fecharModal();
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { fecharModal(); fecharLightbox(); }
 });
 </script>
 </body>
