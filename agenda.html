@@ -36,7 +36,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Topbar (padrão universal) ── */
+    /* ── Topbar ── */
     .topbar { background:var(--surface-1); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:100; }
     .topbar-logo { font-size:15px; font-weight:700; color:var(--text-1); letter-spacing:-0.2px; flex:1; }
     .topbar-greeting { font-size:13px; color:var(--text-2); margin-right:16px; }
@@ -148,13 +148,8 @@
       gap: 10px;
     }
 
-    @media (max-width: 900px) {
-      .grade { grid-template-columns: repeat(3, 1fr); }
-    }
-
-    @media (max-width: 600px) {
-      .grade { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 900px) { .grade { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 600px) { .grade { grid-template-columns: 1fr; } }
 
     /* ── Coluna do dia ── */
     .coluna {
@@ -210,12 +205,7 @@
     }
 
     .btn-add i { width: 14px; height: 14px; }
-
-    .btn-add:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-      background: rgba(62,207,142,0.08);
-    }
+    .btn-add:hover { border-color: var(--primary); color: var(--primary); background: rgba(62,207,142,0.08); }
 
     .coluna-body {
       padding: 10px;
@@ -236,7 +226,7 @@
     .card-ag {
       border-radius: 8px;
       padding: 10px 12px;
-      border-left: 2px solid;
+      border-left: 3px solid;
       cursor: pointer;
       transition: opacity 150ms, transform 150ms;
       font-size: 0.78rem;
@@ -245,11 +235,14 @@
 
     .card-ag:hover { opacity: 0.85; transform: translateX(2px); }
 
-    .card-confirmado   { background: rgba(34,197,94,0.07);   border-color: #22c55e; }
+    /* confirmado = AZUL */
+    .card-confirmado   { background: rgba(59,130,246,0.07);  border-color: #3b82f6; }
+    /* nao_confirmado = AMARELO */
     .card-nao_confirmado { background: rgba(234,179,8,0.07); border-color: #eab308; }
-    .card-viagem       { background: rgba(74,222,128,0.07);  border-color: #4ade80; }
+    /* viagem = VERDE */
+    .card-viagem       { background: rgba(34,197,94,0.07);   border-color: #22c55e; }
 
-    .ag-tecs { font-weight: 700; color: var(--text-1); margin-bottom: 3px; }
+    .ag-tecs    { font-weight: 700; color: var(--text-1); margin-bottom: 3px; }
     .ag-cliente { font-weight: 600; color: var(--text-2); margin-bottom: 2px; }
     .ag-detalhe { color: var(--text-3); font-size: 0.72rem; display: flex; align-items: center; gap: 4px; margin-top: 2px; }
     .ag-detalhe i { width: 11px; height: 11px; flex-shrink: 0; }
@@ -264,28 +257,14 @@
       letter-spacing: 0.04em;
     }
 
-    .badge-confirmado     { background: rgba(22,101,52,0.6);  color: #bbf7d0; }
-    .badge-nao_confirmado { background: rgba(113,63,18,0.6);  color: #fef08a; }
-    .badge-viagem         { background: rgba(20,83,45,0.6);   color: #86efac; }
+    /* badges */
+    .badge-confirmado     { background: rgba(30,58,138,0.6);   color: #bfdbfe; }
+    .badge-nao_confirmado { background: rgba(113,63,18,0.6);   color: #fef08a; }
+    .badge-viagem         { background: rgba(20,83,45,0.6);    color: #86efac; }
 
     /* ── Spinner ── */
-    .spinner-wrap {
-      grid-column: 1/-1;
-      text-align: center;
-      padding: 60px;
-      color: var(--text-3);
-    }
-
-    .spinner {
-      width: 32px;
-      height: 32px;
-      border: 2px solid var(--border);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      margin: 0 auto 14px;
-    }
-
+    .spinner-wrap { grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-3); }
+    .spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 14px; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Modal ── */
@@ -309,8 +288,8 @@
       border-radius: 14px;
       padding: 28px;
       width: 100%;
-      max-width: 520px;
-      max-height: 90vh;
+      max-width: 540px;
+      max-height: 92vh;
       overflow-y: auto;
     }
 
@@ -353,6 +332,11 @@
       letter-spacing: 0.01em;
     }
 
+    .form-group label .label-hint {
+      color: var(--text-3);
+      font-weight: 400;
+    }
+
     .form-group input,
     .form-group select,
     .form-group textarea {
@@ -382,6 +366,141 @@
 
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+    /* ── Separador de seção ── */
+    .form-section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 20px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Equipe multi-select ── */
+    .equipe-select { position: relative; }
+
+    .equipe-trigger {
+      width: 100%;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      padding: 7px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      min-height: 40px;
+      gap: 8px;
+      transition: border-color 150ms, box-shadow 150ms;
+      user-select: none;
+    }
+
+    .equipe-trigger:hover { border-color: var(--border-hover); }
+
+    .equipe-trigger.aberto {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(62,207,142,0.1);
+    }
+
+    .equipe-chips-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .equipe-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(62,207,142,0.12);
+      border: 1px solid rgba(62,207,142,0.25);
+      border-radius: 4px;
+      padding: 2px 7px 2px 9px;
+      font-size: 0.75rem;
+      color: var(--primary);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .equipe-chip-del {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--primary);
+      padding: 0 1px;
+      line-height: 1;
+      font-size: 15px;
+      opacity: 0.6;
+      display: flex;
+      align-items: center;
+    }
+
+    .equipe-chip-del:hover { opacity: 1; }
+
+    .equipe-placeholder { color: var(--text-3); font-size: 0.84rem; }
+
+    .equipe-arrow {
+      width: 16px;
+      height: 16px;
+      color: var(--text-3);
+      flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+
+    .equipe-arrow.rotated { transform: rotate(180deg); }
+
+    .equipe-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: var(--surface-2);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius-input);
+      z-index: 300;
+      max-height: 210px;
+      overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      display: none;
+    }
+
+    .equipe-dropdown.aberto { display: block; }
+
+    .equipe-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      transition: background 120ms;
+      font-size: 0.82rem;
+    }
+
+    .equipe-item:hover { background: rgba(255,255,255,0.04); }
+    .equipe-item.selecionado { background: rgba(62,207,142,0.06); }
+
+    .equipe-item input[type="checkbox"] {
+      accent-color: var(--primary);
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .equipe-item-nome { color: var(--text-1); font-weight: 500; flex: 1; }
+    .equipe-item-funcao {
+      color: var(--text-3);
+      font-size: 0.72rem;
+      background: rgba(255,255,255,0.05);
+      border-radius: 4px;
+      padding: 1px 7px;
+    }
+
+    /* ── Footer do modal ── */
     .modal-footer {
       display: flex;
       gap: 8px;
@@ -466,9 +585,9 @@
   <div class="filtros-equipe">
     <button class="filtro-btn ativo" data-equipe="todas">Todas equipes</button>
     <button class="filtro-btn" data-equipe="1">Cabeamento</button>
-    <button class="filtro-btn" data-equipe="2">Eletrica</button>
-    <button class="filtro-btn" data-equipe="3">Audio e Video</button>
-    <button class="filtro-btn" data-equipe="4">Automacao</button>
+    <button class="filtro-btn" data-equipe="2">Elétrica</button>
+    <button class="filtro-btn" data-equipe="3">Áudio e Vídeo</button>
+    <button class="filtro-btn" data-equipe="4">Automação</button>
   </div>
 
   <button class="btn-novo" onclick="abrirModal()">
@@ -497,31 +616,50 @@
 
     <div id="modal-erro" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:16px;"></div>
 
+    <!-- OBRA / CLIENTE -->
+    <div class="form-section-label">Obra / Cliente</div>
+
     <div class="form-group">
-      <label>Obra / Cliente</label>
-      <select id="f-obra"><option value="">Selecione a obra...</option></select>
+      <label>Obra</label>
+      <select id="f-obra" onchange="onObraChange()">
+        <option value="">Selecione a obra...</option>
+        <option value="outro">— Outro (assistência / avulso) —</option>
+      </select>
     </div>
 
-    <div class="form-row">
+    <!-- Campos para "Outro" -->
+    <div id="outro-fields" style="display:none">
       <div class="form-group">
-        <label>Tecnico principal</label>
-        <select id="f-tecnico"><option value="">Selecione...</option></select>
-      </div>
-      <div class="form-group">
-        <label>Auxiliar 1</label>
-        <select id="f-auxiliar"><option value="">Nenhum</option></select>
+        <label>Nome do cliente</label>
+        <input type="text" id="f-nome-outro" placeholder="Nome do cliente para assistência..."/>
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Auxiliar 2</label>
-        <select id="f-auxiliar2"><option value="">Nenhum</option></select>
-      </div>
-      <div class="form-group">
-        <label>Auxiliar 3</label>
-        <select id="f-auxiliar3"><option value="">Nenhum</option></select>
+
+    <div class="form-group">
+      <label>Endereço <span class="label-hint">(preenchido da obra, editável)</span></label>
+      <input type="text" id="f-endereco" placeholder="Endereço do serviço..."/>
+    </div>
+
+    <!-- EQUIPE -->
+    <div class="form-section-label">Equipe</div>
+
+    <div class="form-group">
+      <label>Quem vai <span class="label-hint">(selecione todos)</span></label>
+      <div class="equipe-select" id="equipe-select">
+        <div class="equipe-trigger" id="equipe-trigger" onclick="toggleEquipeDropdown()">
+          <div class="equipe-chips-wrap" id="equipe-chips-wrap">
+            <span id="equipe-placeholder" class="equipe-placeholder">Selecione a equipe...</span>
+          </div>
+          <svg id="equipe-arrow" class="equipe-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="equipe-dropdown" id="equipe-dropdown">
+          <div id="equipe-lista"></div>
+        </div>
       </div>
     </div>
+
+    <!-- AGENDAMENTO -->
+    <div class="form-section-label">Agendamento</div>
 
     <div class="form-row">
       <div class="form-group">
@@ -540,7 +678,7 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label>Hora inicio</label>
+        <label>Hora início</label>
         <input type="time" id="f-inicio"/>
       </div>
       <div class="form-group">
@@ -550,13 +688,13 @@
     </div>
 
     <div class="form-group">
-      <label>Veiculo (placa)</label>
+      <label>Veículo (placa)</label>
       <input type="text" id="f-veiculo" placeholder="Ex: STRADA-TYR7C97"/>
     </div>
 
     <div class="form-group">
-      <label>Servico a realizar</label>
-      <textarea id="f-servico" rows="3" placeholder="Descreva o servico..."></textarea>
+      <label>Serviço a realizar</label>
+      <textarea id="f-servico" rows="3" placeholder="Descreva o serviço..."></textarea>
     </div>
 
     <div class="modal-footer">
@@ -581,15 +719,18 @@ const db = createClient(
 );
 
 // ── Estado ──────────────────────────────────────────────────
-let semanaOffset = 0;
-let filtroEquipe = 'todas';
-let agendamentos = [];
-let obras        = [];
-let tecnicos     = [];
-let tecnicoEquipes = [];
-let agEditandoId = null;
+let semanaOffset      = 0;
+let filtroEquipe      = 'todas';
+let agendamentos      = [];
+let obras             = [];
+let tecnicos          = [];
+let tecnicoEquipes    = [];
+let agEditandoId      = null;
+let equipesSelecionadas = []; // array de IDs (string)
+let equipeDropdownAberto = false;
+let modoVisualizacao  = false;
 
-const DIAS  = ['Segunda','Terca','Quarta','Quinta','Sexta'];
+const DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 const STATUS_LABEL = {
@@ -598,14 +739,12 @@ const STATUS_LABEL = {
   viagem:         'Viagem',
 };
 
-let modoVisualizacao = false;
-
+// ── Init ─────────────────────────────────────────────────────
 async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
   const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
-
   renderTopbar(eu?.nome, eu?.role, 'agenda');
 
   if (eu && eu.role === 'tecnico') {
@@ -615,7 +754,7 @@ async function init() {
   }
 
   await Promise.all([carregarObras(), carregarTecnicos()]);
-  preencherModal();
+  preencherSelects();
   await carregarAgenda();
 }
 
@@ -625,6 +764,7 @@ function renderTopbar(nome, role, paginaAtiva) {
   const primeiro = (nome || '').split(' ')[0];
   const greetEl = document.getElementById('topbar-greeting');
   if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
+
   const links = [
     { href:'obras.html',                label:'Obras',       id:'obras',                roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos'] },
     { href:'agenda.html',               label:'Agenda',      id:'agenda',               roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
@@ -647,7 +787,7 @@ async function logout() {
   window.location.href = 'login.html';
 }
 
-// ── Datas da semana ─────────────────────────────────────────
+// ── Datas ────────────────────────────────────────────────────
 function getSegunda(offset = 0) {
   const hoje = new Date();
   const dia  = hoje.getDay() || 7;
@@ -674,7 +814,7 @@ function isHoje(d) {
   return d.getDate()===h.getDate() && d.getMonth()===h.getMonth() && d.getFullYear()===h.getFullYear();
 }
 
-// ── Carregar dados ──────────────────────────────────────────
+// ── Carregar dados ───────────────────────────────────────────
 async function carregarObras() {
   const { data } = await db.from('obras').select('id, nome_cliente, endereco').order('nome_cliente');
   obras = data || [];
@@ -701,7 +841,7 @@ async function carregarAgenda() {
 
   const { data, error } = await db
     .from('agendamentos')
-    .select(`*, obras(nome_cliente, endereco), tecnico:tecnicos!agendamentos_tecnico_id_fkey(id,nome), auxiliar:tecnicos!agendamentos_auxiliar_id_fkey(id,nome)`)
+    .select('*, obras(nome_cliente, endereco)')
     .gte('data', ini)
     .lte('data', fim)
     .order('hora_inicio');
@@ -716,7 +856,7 @@ async function carregarAgenda() {
   renderGrade(dias);
 }
 
-// ── Filtro por equipe ───────────────────────────────────────
+// ── Filtro por equipe ────────────────────────────────────────
 function tecnicosDaEquipe(equipeId) {
   return tecnicoEquipes.filter(te => te.equipe_id === equipeId).map(te => te.tecnico_id);
 }
@@ -732,14 +872,14 @@ function agendamentosVisiveis() {
   );
 }
 
-// ── Renderizar grade ────────────────────────────────────────
+// ── Renderizar grade ─────────────────────────────────────────
 function renderGrade(dias) {
   const visiveis = agendamentosVisiveis();
-  const grade = document.getElementById('grade');
+  const grade    = document.getElementById('grade');
 
   grade.innerHTML = dias.map((dia, i) => {
     const dataStr = fmtISO(dia);
-    const ags = visiveis.filter(ag => ag.data === dataStr);
+    const ags     = visiveis.filter(ag => ag.data === dataStr);
 
     const cards = ags.length
       ? ags.map(cardHTML).join('')
@@ -761,33 +901,25 @@ function renderGrade(dias) {
   lucide.createIcons();
 }
 
-// ── Card de agendamento ─────────────────────────────────────
-function nomeTecnico(id) {
-  if (!id) return null;
-  // Tenta pegar do objeto ag (FK join) ou do array tecnicos
-  const t = tecnicos.find(t => t.id === id);
-  return t ? t.nome : null;
-}
-
+// ── Card de agendamento ──────────────────────────────────────
 function cardHTML(ag) {
   const status = ag.status || 'confirmado';
 
-  // Monta lista de nomes: tecnico principal + auxiliares não nulos
-  const nomes = [
-    ag.tecnico?.nome || nomeTecnico(ag.tecnico_id),
-    ag.auxiliar?.nome || nomeTecnico(ag.auxiliar_id),
-    nomeTecnico(ag.auxiliar2_id),
-    nomeTecnico(ag.auxiliar3_id),
-  ].filter(Boolean);
+  // Monta nomes da equipe a partir do array local de técnicos
+  const ids   = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+  const nomes = ids.map(id => {
+    const t = tecnicos.find(t => t.id === id);
+    return t ? t.nome.split(' ')[0] : null; // primeiro nome para caber no card
+  }).filter(Boolean);
 
-  const tecs    = nomes.join(' + ');
-  const cliente = ag.obras?.nome_cliente || '—';
-  const end     = ag.obras?.endereco || '';
+  const tecs    = nomes.join(' · ') || '—';
+  const cliente = ag.obras?.nome_cliente || ag.cliente_outro || '—';
+  const end     = ag.endereco_outro || ag.obras?.endereco || '';
   const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
 
   return `
     <div class="card-ag card-${status}" ${modoVisualizacao ? '' : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`} style="${modoVisualizacao ? 'cursor:default' : ''}">
-      <div class="ag-tecs">${hora ? hora + ' · ' : ''}${tecs || '—'}</div>
+      <div class="ag-tecs">${hora ? hora + ' · ' : ''}${tecs}</div>
       <div class="ag-cliente">${cliente}</div>
       ${end ? `<div class="ag-detalhe"><i data-lucide="map-pin"></i>${end}</div>` : ''}
       ${ag.servico ? `<div class="ag-detalhe"><i data-lucide="wrench"></i>${ag.servico}</div>` : ''}
@@ -796,48 +928,130 @@ function cardHTML(ag) {
     </div>`;
 }
 
-// ── Navegação ────────────────────────────────────────────────
+// ── Navegação de semana ──────────────────────────────────────
 function mudarSemana(delta) {
   semanaOffset += delta;
   carregarAgenda();
 }
 
-// ── Modal ───────────────────────────────────────────────────
-function preencherSelects() {
-  // Obras
-  const selObra = document.getElementById('f-obra');
-  const obraVal = selObra.value;
-  selObra.innerHTML = '<option value="">Selecione a obra...</option>';
-  obras.forEach(o => {
-    const opt = document.createElement('option');
-    opt.value = String(o.id); opt.textContent = o.nome_cliente;
-    selObra.appendChild(opt);
-  });
-  if (obraVal) selObra.value = obraVal;
+// ── Equipe multi-select ──────────────────────────────────────
+function toggleEquipeDropdown() {
+  equipeDropdownAberto = !equipeDropdownAberto;
+  const dropdown = document.getElementById('equipe-dropdown');
+  const trigger  = document.getElementById('equipe-trigger');
+  const arrow    = document.getElementById('equipe-arrow');
+  dropdown.classList.toggle('aberto', equipeDropdownAberto);
+  trigger.classList.toggle('aberto', equipeDropdownAberto);
+  if (arrow) arrow.classList.toggle('rotated', equipeDropdownAberto);
+}
 
-  // Técnicos (todos os selects de pessoa)
-  ['f-tecnico','f-auxiliar','f-auxiliar2','f-auxiliar3'].forEach(id => {
-    const sel = document.getElementById(id);
-    const val = sel.value;
-    const defaultLabel = id === 'f-tecnico' ? 'Selecione...' : 'Nenhum';
-    sel.innerHTML = `<option value="">${defaultLabel}</option>`;
-    tecnicos.forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = String(t.id);
-      opt.textContent = t.funcao ? `${t.nome} (${t.funcao})` : t.nome;
-      sel.appendChild(opt);
-    });
-    if (val) sel.value = val;
+function fecharEquipeDropdown() {
+  equipeDropdownAberto = false;
+  const dropdown = document.getElementById('equipe-dropdown');
+  const trigger  = document.getElementById('equipe-trigger');
+  const arrow    = document.getElementById('equipe-arrow');
+  if (dropdown) dropdown.classList.remove('aberto');
+  if (trigger)  trigger.classList.remove('aberto');
+  if (arrow)    arrow.classList.remove('rotated');
+}
+
+function toggleTecnicoEquipe(idStr, evt) {
+  if (evt) evt.stopPropagation();
+  const idx = equipesSelecionadas.indexOf(idStr);
+  if (idx === -1) {
+    equipesSelecionadas.push(idStr);
+  } else {
+    equipesSelecionadas.splice(idx, 1);
+  }
+  renderEquipeChips();
+  renderEquipeDropdownItems();
+}
+
+function removerDaEquipe(idStr) {
+  equipesSelecionadas = equipesSelecionadas.filter(x => x !== idStr);
+  renderEquipeChips();
+  renderEquipeDropdownItems();
+}
+
+function renderEquipeChips() {
+  const wrap        = document.getElementById('equipe-chips-wrap');
+  const placeholder = document.getElementById('equipe-placeholder');
+  if (!wrap) return;
+
+  // Remove chips existentes
+  wrap.querySelectorAll('.equipe-chip').forEach(c => c.remove());
+
+  if (equipesSelecionadas.length === 0) {
+    if (placeholder) placeholder.style.display = '';
+    return;
+  }
+  if (placeholder) placeholder.style.display = 'none';
+
+  equipesSelecionadas.forEach(idStr => {
+    const t = tecnicos.find(t => String(t.id) === idStr);
+    if (!t) return;
+    const chip = document.createElement('span');
+    chip.className = 'equipe-chip';
+    chip.innerHTML = `${t.nome.split(' ')[0]} <button type="button" class="equipe-chip-del" onclick="event.stopPropagation();removerDaEquipe('${idStr}')">×</button>`;
+    wrap.appendChild(chip);
   });
 }
 
-// Compatibilidade — mantém o nome antigo caso chamado de outro lugar
-function preencherModal() { preencherSelects(); }
+function renderEquipeDropdownItems() {
+  const lista = document.getElementById('equipe-lista');
+  if (!lista) return;
 
+  lista.innerHTML = tecnicos.map(t => {
+    const idStr      = String(t.id);
+    const selecionado = equipesSelecionadas.includes(idStr);
+    return `
+      <div class="equipe-item ${selecionado ? 'selecionado' : ''}"
+           onclick="toggleTecnicoEquipe('${idStr}', event)">
+        <input type="checkbox" ${selecionado ? 'checked' : ''}
+               onclick="event.stopPropagation();toggleTecnicoEquipe('${idStr}', event)"/>
+        <span class="equipe-item-nome">${t.nome}</span>
+        ${t.funcao ? `<span class="equipe-item-funcao">${t.funcao}</span>` : ''}
+      </div>`;
+  }).join('');
+}
+
+// ── Obra select — auto-preenche endereço ─────────────────────
+function onObraChange() {
+  const val         = document.getElementById('f-obra').value;
+  const outroFields = document.getElementById('outro-fields');
+  const endInput    = document.getElementById('f-endereco');
+
+  outroFields.style.display = val === 'outro' ? 'block' : 'none';
+
+  if (val && val !== 'outro') {
+    const obra = obras.find(o => String(o.id) === val);
+    if (obra && obra.endereco) {
+      endInput.value = obra.endereco;
+    }
+  } else if (!val) {
+    endInput.value = '';
+  }
+}
+
+// ── Preencher select de obras ────────────────────────────────
+function preencherSelects() {
+  const selObra = document.getElementById('f-obra');
+  selObra.innerHTML = '<option value="">Selecione a obra...</option><option value="outro">— Outro (assistência / avulso) —</option>';
+  obras.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value       = String(o.id);
+    opt.textContent = o.nome_cliente;
+    selObra.appendChild(opt);
+  });
+  renderEquipeDropdownItems();
+}
+
+// ── Abrir modal (novo) ───────────────────────────────────────
 async function abrirModal(data = '') {
   agEditandoId = null;
+  equipesSelecionadas = [];
+  fecharEquipeDropdown();
 
-  // Garante que obras e técnicos estão carregados
   if (!obras.length || !tecnicos.length) {
     await Promise.all([
       obras.length    ? Promise.resolve() : carregarObras(),
@@ -845,31 +1059,31 @@ async function abrirModal(data = '') {
     ]);
   }
   preencherSelects();
+  renderEquipeChips();
 
-  document.getElementById('modal-titulo').textContent = 'Novo Agendamento';
-  document.getElementById('modal-erro').style.display = 'none';
-  document.getElementById('f-obra').value      = '';
-  document.getElementById('f-tecnico').value   = '';
-  document.getElementById('f-auxiliar').value  = '';
-  document.getElementById('f-auxiliar2').value = '';
-  document.getElementById('f-auxiliar3').value = '';
-  document.getElementById('f-status').value    = 'confirmado';
-  document.getElementById('f-inicio').value    = '';
-  document.getElementById('f-fim').value       = '';
-  document.getElementById('f-veiculo').value   = '';
-  document.getElementById('f-servico').value   = '';
-  document.getElementById('f-data').value      = data || fmtISO(new Date());
-  document.getElementById('btn-excluir').style.display = 'none';
+  document.getElementById('modal-titulo').textContent   = 'Novo Agendamento';
+  document.getElementById('modal-erro').style.display   = 'none';
+  document.getElementById('f-obra').value               = '';
+  document.getElementById('f-endereco').value           = '';
+  document.getElementById('outro-fields').style.display = 'none';
+  document.getElementById('f-nome-outro').value         = '';
+  document.getElementById('f-status').value             = 'confirmado';
+  document.getElementById('f-inicio').value             = '';
+  document.getElementById('f-fim').value                = '';
+  document.getElementById('f-veiculo').value            = '';
+  document.getElementById('f-servico').value            = '';
+  document.getElementById('f-data').value               = data || fmtISO(new Date());
+  document.getElementById('btn-excluir').style.display  = 'none';
   document.getElementById('overlay').classList.add('aberto');
   lucide.createIcons();
 }
 
+// ── Abrir modal (editar) ─────────────────────────────────────
 async function editarAgendamento(id) {
   const ag = agendamentos.find(a => a.id === id);
   if (!ag) return;
   agEditandoId = id;
 
-  // Garante que obras e técnicos estão carregados
   if (!obras.length || !tecnicos.length) {
     await Promise.all([
       obras.length    ? Promise.resolve() : carregarObras(),
@@ -878,76 +1092,105 @@ async function editarAgendamento(id) {
   }
   preencherSelects();
 
+  // Reconstrói equipe a partir dos 4 campos
+  equipesSelecionadas = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id]
+    .filter(Boolean)
+    .map(String);
+  renderEquipeChips();
+  renderEquipeDropdownItems();
+  fecharEquipeDropdown();
+
   document.getElementById('modal-titulo').textContent = 'Editar Agendamento';
   document.getElementById('modal-erro').style.display = 'none';
 
-  // Usa String() para garantir compatibilidade com o valor dos <option>
-  document.getElementById('f-obra').value      = ag.obra_id      ? String(ag.obra_id)      : '';
-  document.getElementById('f-tecnico').value   = ag.tecnico_id   ? String(ag.tecnico_id)   : '';
-  document.getElementById('f-auxiliar').value  = ag.auxiliar_id  ? String(ag.auxiliar_id)  : '';
-  document.getElementById('f-auxiliar2').value = ag.auxiliar2_id ? String(ag.auxiliar2_id) : '';
-  document.getElementById('f-auxiliar3').value = ag.auxiliar3_id ? String(ag.auxiliar3_id) : '';
-  document.getElementById('f-data').value      = ag.data         || '';
-  document.getElementById('f-status').value    = ag.status       || 'confirmado';
-  document.getElementById('f-inicio').value    = ag.hora_inicio  ? ag.hora_inicio.slice(0,5) : '';
-  document.getElementById('f-fim').value       = ag.hora_fim     ? ag.hora_fim.slice(0,5)    : '';
-  document.getElementById('f-veiculo').value   = ag.veiculo      || '';
-  document.getElementById('f-servico').value   = ag.servico      || '';
+  const obraVal = ag.obra_id ? String(ag.obra_id) : (ag.cliente_outro ? 'outro' : '');
+  document.getElementById('f-obra').value               = obraVal;
+  document.getElementById('outro-fields').style.display = ag.cliente_outro ? 'block' : 'none';
+  document.getElementById('f-nome-outro').value         = ag.cliente_outro || '';
+
+  // Endereço: prioriza override salvo, senão pega da obra
+  const obraLocal = obras.find(o => String(o.id) === String(ag.obra_id));
+  document.getElementById('f-endereco').value = ag.endereco_outro || obraLocal?.endereco || '';
+
+  document.getElementById('f-data').value    = ag.data            || '';
+  document.getElementById('f-status').value  = ag.status          || 'confirmado';
+  document.getElementById('f-inicio').value  = ag.hora_inicio     ? ag.hora_inicio.slice(0,5) : '';
+  document.getElementById('f-fim').value     = ag.hora_fim        ? ag.hora_fim.slice(0,5)    : '';
+  document.getElementById('f-veiculo').value = ag.veiculo         || '';
+  document.getElementById('f-servico').value = ag.servico         || '';
   document.getElementById('btn-excluir').style.display = 'flex';
   document.getElementById('overlay').classList.add('aberto');
+  lucide.createIcons();
 }
 
+// ── Fechar modal ─────────────────────────────────────────────
 function fecharModal() {
   document.getElementById('overlay').classList.remove('aberto');
   agEditandoId = null;
+  fecharEquipeDropdown();
 }
 
 function fecharModalFora(e) {
   if (e.target === document.getElementById('overlay')) fecharModal();
 }
 
+// ── Salvar agendamento ───────────────────────────────────────
 async function salvarAgendamento() {
   const btn    = document.getElementById('btn-salvar');
   const erroEl = document.getElementById('modal-erro');
   btn.disabled = true;
-  btn.innerHTML = 'Salvando...';
+  btn.textContent = 'Salvando...';
   erroEl.style.display = 'none';
 
-  const obraId  = document.getElementById('f-obra').value;
-  const tecId   = document.getElementById('f-tecnico').value;
-  const auxId   = document.getElementById('f-auxiliar').value;
-  const aux2Id  = document.getElementById('f-auxiliar2').value;
-  const aux3Id  = document.getElementById('f-auxiliar3').value;
-  const data    = document.getElementById('f-data').value;
-  const status  = document.getElementById('f-status').value;
-  const inicio  = document.getElementById('f-inicio').value;
-  const fim     = document.getElementById('f-fim').value;
-  const veiculo = document.getElementById('f-veiculo').value;
-  const servico = document.getElementById('f-servico').value;
+  const obraVal   = document.getElementById('f-obra').value;
+  const nomeOutro = document.getElementById('f-nome-outro').value.trim();
+  const endereco  = document.getElementById('f-endereco').value.trim();
+  const data      = document.getElementById('f-data').value;
+  const status    = document.getElementById('f-status').value;
+  const inicio    = document.getElementById('f-inicio').value;
+  const fim       = document.getElementById('f-fim').value;
+  const veiculo   = document.getElementById('f-veiculo').value;
+  const servico   = document.getElementById('f-servico').value;
 
-  if (!obraId || !tecId || !data) {
-    erroEl.textContent = 'Preencha obra, tecnico principal e data.';
-    erroEl.style.display = 'block';
-    btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="save"></i> Salvar';
-    lucide.createIcons();
-    return;
+  // Validações
+  if (!obraVal) {
+    mostrarErroModal('Selecione a obra ou escolha "Outro".'); return;
+  }
+  if (obraVal === 'outro' && !nomeOutro) {
+    mostrarErroModal('Informe o nome do cliente.'); return;
+  }
+  if (equipesSelecionadas.length === 0) {
+    mostrarErroModal('Selecione pelo menos uma pessoa para a equipe.'); return;
+  }
+  if (!data) {
+    mostrarErroModal('Selecione a data.'); return;
   }
 
+  function mostrarErroModal(msg) {
+    erroEl.textContent      = msg;
+    erroEl.style.display    = 'block';
+    btn.disabled            = false;
+    btn.innerHTML           = '<i data-lucide="save"></i> Salvar';
+    lucide.createIcons();
+  }
+
+  // Mapeia equipe → colunas DB (max 4)
+  const [id0, id1, id2, id3] = equipesSelecionadas;
+
   const payload = {
-    obra_id:      parseInt(obraId),
-    tecnico_id:   parseInt(tecId),
-    auxiliar_id:  auxId  ? parseInt(auxId)  : null,
-    auxiliar2_id: aux2Id ? parseInt(aux2Id) : null,
-    auxiliar3_id: aux3Id ? parseInt(aux3Id) : null,
+    obra_id:        obraVal !== 'outro' ? parseInt(obraVal) : null,
+    cliente_outro:  obraVal === 'outro' ? nomeOutro          : null,
+    endereco_outro: endereco || null,
+    tecnico_id:     id0 ? parseInt(id0) : null,
+    auxiliar_id:    id1 ? parseInt(id1) : null,
+    auxiliar2_id:   id2 ? parseInt(id2) : null,
+    auxiliar3_id:   id3 ? parseInt(id3) : null,
     data, status,
     hora_inicio: inicio  || null,
     hora_fim:    fim     || null,
     veiculo:     veiculo || null,
     servico:     servico || null,
   };
-
-  let error;
 
   const tentarSalvar = async (p) => {
     if (agEditandoId) {
@@ -957,29 +1200,43 @@ async function salvarAgendamento() {
     }
   };
 
-  error = await tentarSalvar(payload);
+  let error = await tentarSalvar(payload);
 
-  // Se falhou por coluna inexistente (SQL ainda não rodado), tenta sem aux2/aux3
-  if (error && (error.message.includes('auxiliar2_id') || error.message.includes('auxiliar3_id'))) {
-    const payloadSimples = { ...payload };
-    delete payloadSimples.auxiliar2_id;
-    delete payloadSimples.auxiliar3_id;
-    error = await tentarSalvar(payloadSimples);
+  // Fallback gracioso se colunas novas ainda não existem no banco
+  if (error && (
+    error.message.includes('auxiliar2_id') ||
+    error.message.includes('auxiliar3_id') ||
+    error.message.includes('cliente_outro') ||
+    error.message.includes('endereco_outro')
+  )) {
+    const fallback = {
+      obra_id:     payload.obra_id,
+      tecnico_id:  payload.tecnico_id,
+      auxiliar_id: payload.auxiliar_id,
+      data:        payload.data,
+      status:      payload.status,
+      hora_inicio: payload.hora_inicio,
+      hora_fim:    payload.hora_fim,
+      veiculo:     payload.veiculo,
+      servico:     payload.servico,
+    };
+    error = await tentarSalvar(fallback);
   }
 
   if (error) {
-    erroEl.textContent = 'Erro ao salvar: ' + error.message;
+    erroEl.textContent   = 'Erro ao salvar: ' + error.message;
     erroEl.style.display = 'block';
   } else {
     fecharModal();
     await carregarAgenda();
   }
 
-  btn.disabled = false;
+  btn.disabled  = false;
   btn.innerHTML = '<i data-lucide="save"></i> Salvar';
   lucide.createIcons();
 }
 
+// ── Excluir agendamento ──────────────────────────────────────
 async function excluirAgendamento() {
   if (!agEditandoId) return;
   if (!confirm('Tem certeza que quer excluir este agendamento?')) return;
@@ -989,7 +1246,7 @@ async function excluirAgendamento() {
   await carregarAgenda();
 }
 
-// ── Filtros de equipe ───────────────────────────────────────
+// ── Filtros de equipe ────────────────────────────────────────
 document.querySelectorAll('.filtro-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
@@ -999,7 +1256,13 @@ document.querySelectorAll('.filtro-btn').forEach(btn => {
   });
 });
 
-// ── Iniciar ─────────────────────────────────────────────────
+// Fecha dropdown da equipe ao clicar fora
+document.addEventListener('click', function(e) {
+  const sel = document.getElementById('equipe-select');
+  if (sel && !sel.contains(e.target)) fecharEquipeDropdown();
+});
+
+// ── Iniciar ──────────────────────────────────────────────────
 init();
 </script>
 <script>lucide.createIcons();</script>
