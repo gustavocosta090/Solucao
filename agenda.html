@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -565,6 +566,67 @@
     .btn-excluir:hover { background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.35); }
     .btn-excluir i { width: 14px; height: 14px; }
 
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a1a1a;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.85rem;
+      color: #fff;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      z-index: 9999;
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s;
+      opacity: 0;
+      white-space: nowrap;
+    }
+    .toast.visivel { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .toast-icon.ok { background: rgba(62,207,142,0.15); color: #3ECF8E; }
+    .toast-icon.err { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .toast-icon svg { width: 12px; height: 12px; }
+
+    /* ── Card de agenda (renderizado pelo html2canvas, fora da tela) ── */
+    #agenda-card {
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: 560px;
+      background: #ffffff;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .ac-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      padding: 24px 28px 20px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .ac-brand { font-size: 13px; font-weight: 700; color: #3ECF8E; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
+    .ac-titulo { font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; line-height: 1.1; }
+    .ac-data { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 6px; font-weight: 500; }
+    .ac-icon { width: 40px; height: 40px; background: rgba(62,207,142,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #3ECF8E; font-size: 20px; flex-shrink: 0; }
+    .ac-body { padding: 20px 24px; }
+    .ac-atendimento { background: #f8fafc; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 12px; }
+    .ac-atendimento:last-child { margin-bottom: 0; }
+    .ac-at-num { background: #1e293b; padding: 8px 16px; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; }
+    .ac-campos { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .ac-campo { display: flex; align-items: flex-start; gap: 0; }
+    .ac-campo-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; width: 68px; flex-shrink: 0; padding-top: 1px; }
+    .ac-campo-valor { font-size: 13px; font-weight: 500; color: #0f172a; line-height: 1.45; flex: 1; }
+    .ac-campo-valor.destaque { font-weight: 700; font-size: 14px; color: #0f172a; }
+    .ac-footer { padding: 14px 24px; background: #f1f5f9; border-top: 1px solid #e2e8f0; text-align: center; }
+    .ac-footer-txt { font-size: 11px; color: #94a3b8; font-weight: 500; letter-spacing: 0.03em; }
+
     /* ── Botão WhatsApp ── */
     .btn-whatsapp {
       display: inline-flex;
@@ -611,11 +673,11 @@
   </div>
 
   <div style="display:flex;gap:8px;align-items:center">
-    <button class="btn-whatsapp" id="btn-whatsapp" onclick="dispararAgendaWhatsapp()" style="display:none" title="Disparar agenda do dia no WhatsApp">
+    <button class="btn-whatsapp" id="btn-whatsapp" onclick="dispararAgendaWhatsapp()" style="display:none" title="Gerar imagem da agenda e copiar pro clipboard">
       <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
       </svg>
-      Disparar agenda do dia
+      <span>Disparar agenda do dia</span>
     </button>
 
     <button class="btn-novo" id="btn-novo" onclick="abrirModal()">
@@ -631,6 +693,17 @@
     <div class="spinner"></div>
     <p>Carregando agenda...</p>
   </div>
+</div>
+
+<!-- Card oculto para geração de imagem -->
+<div id="agenda-card"></div>
+
+<!-- Toast de feedback -->
+<div class="toast" id="toast">
+  <div class="toast-icon ok" id="toast-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+  </div>
+  <span id="toast-msg">Imagem copiada! Cole no WhatsApp (Ctrl+V)</span>
 </div>
 
 <!-- Modal -->
@@ -1379,67 +1452,134 @@ document.addEventListener('click', function(e) {
   if (sel && !sel.contains(e.target)) fecharEquipeDropdown();
 });
 
-// ── Disparar agenda do dia no WhatsApp ───────────────────────
-function dispararAgendaWhatsapp() {
-  const hoje     = fmtISO(new Date());
-  const agHoje   = agendamentos.filter(ag => ag.data === hoje);
+// ── Toast helper ─────────────────────────────────────────────
+let toastTimer = null;
+function mostrarToast(msg, tipo = 'ok') {
+  const el   = document.getElementById('toast');
+  const icon = document.getElementById('toast-icon');
+  document.getElementById('toast-msg').textContent = msg;
+  icon.className = `toast-icon ${tipo}`;
+  icon.innerHTML = tipo === 'ok'
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  el.classList.add('visivel');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('visivel'), 4500);
+}
+
+// ── Disparar agenda do dia como IMAGEM ───────────────────────
+async function dispararAgendaWhatsapp() {
+  const btn  = document.getElementById('btn-whatsapp');
+  const hoje = fmtISO(new Date());
+  const agHoje = agendamentos.filter(ag => ag.data === hoje);
+
+  if (agHoje.length === 0) {
+    mostrarToast('Não há agendamentos para hoje.', 'err');
+    return;
+  }
+
+  btn.style.opacity = '0.5';
+  btn.style.pointerEvents = 'none';
+  btn.querySelector('span') && (btn.querySelector('span').textContent = 'Gerando...');
 
   const DIAS_PT  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
   const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const d        = new Date();
-  const dataFormatada = `${DIAS_PT[d.getDay()]}, ${d.getDate()} de ${MESES_PT[d.getMonth()]}`;
+  const dataFmt  = `${DIAS_PT[d.getDay()]}, ${d.getDate()} de ${MESES_PT[d.getMonth()]} de ${d.getFullYear()}`;
 
-  if (agHoje.length === 0) {
-    alert('Não há agendamentos para hoje.');
-    return;
-  }
+  // Ordena todos os agendamentos de hoje por horário
+  const ordenados = [...agHoje].sort((a, b) =>
+    (a.hora_inicio || '00:00').localeCompare(b.hora_inicio || '00:00')
+  );
 
-  // Agrupa por equipe (usa a chave dos IDs ordenados para identificar equipe única)
-  const grupos = {};
-  agHoje.forEach(ag => {
-    const ids = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id]
-      .filter(Boolean).sort().join('_');
-    if (!grupos[ids]) grupos[ids] = { ids, ags: [] };
-    grupos[ids].ags.push(ag);
-  });
+  // Monta HTML do card — um bloco por agendamento com todos os campos
+  const atendimentosHTML = ordenados.map((ag, idx) => {
+    const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
+    const cliente = ag.obras?.nome_cliente || ag.cliente_outro || '—';
+    const end     = ag.endereco_outro || ag.obras?.endereco || '';
+    const serv    = ag.servico || '';
+    const veiculo = ag.veiculo || '';
 
-  let msg = `📋 *Agenda do dia — ${dataFormatada}*\n`;
-
-  Object.values(grupos).forEach(grupo => {
-    // Monta nomes da equipe
-    const idList = grupo.ids.split('_').map(Number);
-    const nomes  = idList.map(id => {
+    const equipeIds  = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+    const equipeNomes = equipeIds.map(id => {
       const t = tecnicos.find(t => t.id === id);
       return t ? t.nome : null;
-    }).filter(Boolean);
+    }).filter(Boolean).join(' · ');
 
-    msg += `\n━━━━━━━━━━━━━━━━\n`;
-    msg += `👥 *${nomes.join(' · ')}*\n`;
+    const campo = (label, valor) => valor
+      ? `<div class="ac-campo">
+           <span class="ac-campo-label">${label}</span>
+           <span class="ac-campo-valor${label === 'Cliente' ? ' destaque' : ''}">${valor}</span>
+         </div>`
+      : '';
 
-    // Ordena atendimentos pelo horário
-    const ordenados = [...grupo.ags].sort((a, b) =>
-      (a.hora_inicio || '00:00').localeCompare(b.hora_inicio || '00:00')
-    );
+    return `
+      <div class="ac-atendimento">
+        <div class="ac-at-num">Atendimento ${idx + 1}</div>
+        <div class="ac-campos">
+          ${campo('Horario', hora)}
+          ${campo('Equipe', equipeNomes)}
+          ${campo('Cliente', cliente)}
+          ${end ? campo('Endereco', end) : ''}
+          ${campo('Servico', serv)}
+          ${campo('Veiculo', veiculo)}
+        </div>
+      </div>`;
+  }).join('');
 
-    ordenados.forEach(ag => {
-      const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
-      const cliente = ag.obras?.nome_cliente || ag.cliente_outro || '—';
-      const end     = ag.endereco_outro || ag.obras?.endereco || '';
-      const serv    = ag.servico || '';
+  const gruposHTML = atendimentosHTML;
 
-      msg += `\n`;
-      if (hora) msg += `🕐 *${hora}*\n`;
-      msg += `🏠 ${cliente}\n`;
-      if (end)  msg += `📍 ${end}\n`;
-      if (serv) msg += `🔧 ${serv}\n`;
+  const card = document.getElementById('agenda-card');
+  card.innerHTML = `
+    <div class="ac-header">
+      <div>
+        <div class="ac-brand">Solução Técnica</div>
+        <div class="ac-titulo">Agenda do dia</div>
+        <div class="ac-data">${dataFmt}</div>
+      </div>
+      <div class="ac-icon">📋</div>
+    </div>
+    <div class="ac-body">${gruposHTML}</div>
+    <div class="ac-footer">
+      <div class="ac-footer-txt">Solução Técnica · sistema de gestão</div>
+    </div>`;
+
+  try {
+    // Garante que a fonte carregou antes de renderizar
+    await document.fonts.ready;
+
+    const canvas = await html2canvas(card, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
     });
-  });
 
-  msg += `\n━━━━━━━━━━━━━━━━\n`;
-  msg += `_Enviado via sistema Solução Técnica_`;
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 
-  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank');
+    // Tenta copiar pro clipboard (requer permissão / HTTPS)
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      mostrarToast('✅ Imagem copiada! Abra o WhatsApp e cole (Ctrl+V) no grupo.', 'ok');
+      setTimeout(() => window.open('https://web.whatsapp.com', '_blank'), 800);
+    } catch (clipErr) {
+      // Fallback: download da imagem
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      a.href     = url;
+      a.download = `agenda-${hoje}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setTimeout(() => window.open('https://web.whatsapp.com', '_blank'), 400);
+      mostrarToast('Imagem baixada! Anexe no grupo do WhatsApp.', 'ok');
+    }
+  } catch (err) {
+    mostrarToast('Erro ao gerar imagem: ' + err.message, 'err');
+    console.error(err);
+  } finally {
+    btn.style.opacity = '';
+    btn.style.pointerEvents = '';
+  }
 }
 
 // ── Iniciar ──────────────────────────────────────────────────
