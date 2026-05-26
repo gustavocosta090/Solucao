@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -225,6 +227,10 @@
     gap: 7px;
     white-space: nowrap;
     transition: background 0.15s, border-color 0.15s;
+  }
+
+  .btn-exportar + .btn-exportar {
+    margin-left: 0;
   }
 
   .btn-exportar:hover {
@@ -891,6 +897,10 @@
     <i data-lucide="download"></i>
     Exportar Excel
   </button>
+  <button class="btn-exportar" onclick="exportarPDF()">
+    <i data-lucide="file-text"></i>
+    Exportar PDF
+  </button>
 </div>
 
 <div class="container">
@@ -1336,6 +1346,197 @@ function exportarExcel() {
 
   const hoje = new Date().toISOString().split('T')[0];
   XLSX.writeFile(wb, `ordens_de_servico_${hoje}.xlsx`);
+}
+
+// ===== EXPORTAR PDF =====
+function formatarDataBR(dataISO) {
+  if (!dataISO) return '—';
+  return new Date(dataISO + 'T12:00:00').toLocaleDateString('pt-BR');
+}
+
+function statusOSLabel(o) {
+  return (o.status_aprovacao === 'aprovada' || o.status_aprovacao === 'concluida')
+    ? 'Concluída'
+    : 'Pendente';
+}
+
+function valorPDF(v) {
+  return (v === null || v === undefined || v === '') ? '—' : String(v);
+}
+
+function textoPDF(doc, label, value, x, y, maxWidth) {
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(82, 82, 91);
+  doc.text(label.toUpperCase(), x, y);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(24, 24, 27);
+  const linhas = doc.splitTextToSize(valorPDF(value), maxWidth);
+  doc.text(linhas, x, y + 5);
+  return y + 8 + (linhas.length * 4);
+}
+
+function exportarPDF() {
+  if (filtradas.length === 0) { alert('Nenhuma OS para exportar.'); return; }
+  if (!window.jspdf?.jsPDF) {
+    alert('Biblioteca de PDF não carregou. Verifique a conexão e tente novamente.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const hoje = new Date();
+  const geradoEm = hoje.toLocaleString('pt-BR');
+  const periodo = [
+    document.getElementById('fDataInicio').value ? formatarDataBR(document.getElementById('fDataInicio').value) : null,
+    document.getElementById('fDataFim').value ? formatarDataBR(document.getElementById('fDataFim').value) : null,
+  ].filter(Boolean).join(' até ') || 'Todos os períodos';
+  const statusFiltro = document.getElementById('fStatus').selectedOptions[0]?.textContent || 'Todos os status';
+  const tecnicoFiltro = document.getElementById('fTecnico').selectedOptions[0]?.textContent || 'Todos os técnicos';
+
+  function aplicarRodapes() {
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let page = 1; page <= totalPages; page++) {
+      doc.setPage(page);
+      doc.setDrawColor(228, 228, 231);
+      doc.line(margin, pageH - 13, pageW - margin, pageH - 13);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(113, 113, 122);
+      doc.text(`Solução Técnica · gerado em ${geradoEm}`, margin, pageH - 8);
+      doc.text(`Página ${page} de ${totalPages}`, pageW - margin, pageH - 8, { align: 'right' });
+    }
+  }
+
+  function cabecalhoPagina() {
+    doc.setFontSize(8);
+    doc.setTextColor(113, 113, 122);
+    doc.text('Relatório de Ordens de Serviço', margin, 10);
+  }
+
+  function novaPaginaSePreciso(y, altura = 30) {
+    if (y + altura <= pageH - 16) return y;
+    doc.addPage();
+    cabecalhoPagina();
+    return 18;
+  }
+
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, pageW, 34, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text('Relatório de Ordens de Serviço', margin, 16);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(212, 212, 216);
+  doc.text(`${filtradas.length} OS exportada(s) · ${periodo}`, margin, 24);
+
+  const concluidas = filtradas.filter(o => statusOSLabel(o) === 'Concluída').length;
+  const pendentes = filtradas.length - concluidas;
+  const noturnas = filtradas.filter(isAgendaNoturna).length;
+  const comFotos = filtradas.filter(o => o.fotos_urls?.length > 0).length;
+
+  doc.autoTable({
+    startY: 42,
+    theme: 'plain',
+    styles: { font: 'helvetica', fontSize: 10, cellPadding: 4, lineColor: [228, 228, 231], lineWidth: 0.1 },
+    headStyles: { fillColor: [62, 207, 142], textColor: [10, 10, 10], fontStyle: 'bold' },
+    head: [['Total', 'Concluídas', 'Pendentes', 'Agenda noturna', 'Com fotos']],
+    body: [[filtradas.length, concluidas, pendentes, noturnas, comFotos]],
+  });
+
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 6,
+    theme: 'grid',
+    styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.5, lineColor: [228, 228, 231], lineWidth: 0.1 },
+    headStyles: { fillColor: [24, 24, 27], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [249, 250, 251] },
+    head: [['Data', 'Equipe', 'Obra', 'Horário', 'Status', 'Alerta']],
+    body: filtradas.map(o => [
+      formatarDataBR(o.data_servico || (o.criado_em ? o.criado_em.slice(0,10) : '')),
+      o.equipeNomes?.join(', ') || '—',
+      o.obras?.nome_cliente || '—',
+      [o.horario_inicio?.slice(0,5), o.horario_fim?.slice(0,5)].filter(Boolean).join(' - ') || '—',
+      statusOSLabel(o),
+      isAgendaNoturna(o) ? 'Agenda noturna' : '',
+    ]),
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 42 },
+      2: { cellWidth: 48 },
+      3: { cellWidth: 24 },
+      4: { cellWidth: 23 },
+      5: { cellWidth: 28 },
+    },
+  });
+
+  let y = doc.lastAutoTable.finalY + 10;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(24, 24, 27);
+  y = novaPaginaSePreciso(y, 18);
+  doc.text('Detalhamento das OS', margin, y);
+  y += 8;
+
+  filtradas.forEach((o, idx) => {
+    const horario = [o.horario_inicio?.slice(0,5), o.horario_fim?.slice(0,5)].filter(Boolean).join(' - ') || '—';
+    const detalhes = [
+      ['Serviço planejado', o.servico_planejado],
+      ['Serviços realizados', o.servicos_realizados],
+      ['Problema reportado', o.houve_problema ? (o.descricao_problema || 'Sim') : 'Não'],
+      ['Material faltante', o.faltou_material ? o.lista_material : 'Não'],
+      ['Material retornado', o.retornou_material ? o.lista_retorno : 'Não'],
+      ['Equipamento retornado', o.retorno_equipamento ? o.lista_equipamentos : 'Não'],
+      ['Próximas atividades', o.proximas_atividades],
+      ['Observações finais', o.observacoes],
+      ['Obs. supervisor', o.observacao_supervisor],
+    ];
+
+    const linhasPrevistas = detalhes.reduce((acc, [, v]) => acc + doc.splitTextToSize(valorPDF(v), pageW - (margin * 2) - 8).length, 0);
+    y = novaPaginaSePreciso(y, Math.min(92, 26 + linhasPrevistas * 4));
+
+    doc.setFillColor(250, 250, 250);
+    doc.setDrawColor(228, 228, 231);
+    doc.roundedRect(margin, y - 4, pageW - margin * 2, 22, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(24, 24, 27);
+    doc.text(`${idx + 1}. ${o.obras?.nome_cliente || 'Obra sem nome'}`, margin + 4, y + 3);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(82, 82, 91);
+    doc.text(`Data: ${formatarDataBR(o.data_servico || (o.criado_em ? o.criado_em.slice(0,10) : ''))}`, margin + 4, y + 10);
+    doc.text(`Equipe: ${o.equipeNomes?.join(', ') || '—'}`, margin + 42, y + 10);
+    doc.text(`Horário: ${horario}`, margin + 4, y + 16);
+    doc.text(`Status: ${statusOSLabel(o)}${isAgendaNoturna(o) ? ' · Agenda noturna' : ''}`, margin + 42, y + 16);
+
+    y += 27;
+    y = textoPDF(doc, 'Endereço', o.obras?.endereco, margin, y, pageW - margin * 2);
+
+    detalhes.forEach(([label, value]) => {
+      if (!value && !['Problema reportado', 'Material faltante', 'Material retornado', 'Equipamento retornado'].includes(label)) return;
+      y = novaPaginaSePreciso(y, 20);
+      y = textoPDF(doc, label, value, margin, y, pageW - margin * 2);
+    });
+
+    if (o.fotos_urls?.length) {
+      y = novaPaginaSePreciso(y, 14);
+      y = textoPDF(doc, 'Fotos', `${o.fotos_urls.length} foto(s) anexada(s)`, margin, y, pageW - margin * 2);
+    }
+
+    y += 6;
+  });
+
+  aplicarRodapes();
+  doc.save(`ordens_de_servico_${hoje.toISOString().split('T')[0]}.pdf`);
 }
 
 // Fechar modal fora
