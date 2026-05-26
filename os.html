@@ -853,20 +853,38 @@ async function enviarOS() {
     btn.textContent = 'Salvando...';
     let error;
 
+    // Helper: remove colunas que podem não existir ainda no schema
+    function payloadSemColunasNovas(p) {
+      const f = { ...p };
+      delete f.agendamento_id; delete f.cliente_outro;
+      delete f.auxiliar2_id;   delete f.auxiliar3_id;
+      return f;
+    }
+
+    function erroColuna(e) {
+      if (!e) return false;
+      const msg = e.message || '';
+      return msg.includes('auxiliar2_id') || msg.includes('auxiliar3_id') ||
+             msg.includes('agendamento_id') || msg.includes('cliente_outro') ||
+             msg.includes('schema cache') || msg.includes('column');
+    }
+
     if (osSelecionadaId) {
       // UPDATE da OS pendente existente (criada automaticamente pela agenda)
       const res = await db.from('ordens_de_servico').update(payload).eq('id', osSelecionadaId);
       error = res.error;
+      // Fallback: tenta sem colunas novas caso não existam ainda
+      if (erroColuna(error)) {
+        const r2 = await db.from('ordens_de_servico').update(payloadSemColunasNovas(payload)).eq('id', osSelecionadaId);
+        error = r2.error;
+      }
     } else {
       // INSERT novo (fluxo sem criação automática, ou retorno de OS sem agendamento_id)
       const res = await db.from('ordens_de_servico').insert(payload);
       error = res.error;
       // Fallback: sem colunas novas
-      if (error && (error.message.includes('agendamento_id') || error.message.includes('cliente_outro') || error.message.includes('auxiliar2_id'))) {
-        const fallback = { ...payload };
-        delete fallback.agendamento_id; delete fallback.cliente_outro;
-        delete fallback.auxiliar2_id;   delete fallback.auxiliar3_id;
-        const r2 = await db.from('ordens_de_servico').insert(fallback);
+      if (erroColuna(error)) {
+        const r2 = await db.from('ordens_de_servico').insert(payloadSemColunasNovas(payload));
         error = r2.error;
       }
     }
