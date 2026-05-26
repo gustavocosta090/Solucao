@@ -728,6 +728,7 @@
 
     if (error) { mostrarErro(error); return; }
     todasObras = data;
+    aplicarFiltroSalvo(); // pré-selecionar filtro se veio de obra_detail
     renderizar();
   }
 
@@ -819,6 +820,25 @@
       renderizar();
     });
   });
+
+  // ── Pré-selecionar filtro ao voltar de obra_detail ──────────
+  function aplicarFiltroSalvo() {
+    try {
+      const savedFase = sessionStorage.getItem('obraFaseFilter');
+      if (!savedFase) return;
+      sessionStorage.removeItem('obraFaseFilter');
+      const btn = document.querySelector(`.filtro-btn[data-fase="${savedFase}"]`);
+      if (btn) {
+        document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
+        btn.classList.add('ativo');
+        faseFiltro = savedFase;
+        // pisca o botão para indicar o filtro ativo
+        btn.style.transition = 'none';
+        btn.style.transform = 'scale(1.08)';
+        setTimeout(() => { btn.style.transform = ''; btn.style.transition = ''; }, 300);
+      }
+    } catch(e) {}
+  }
 
   // ── Modal Nova Obra ─────────────────────────────────────────
   function abrirModal() {

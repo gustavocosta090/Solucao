@@ -414,22 +414,17 @@ let roleAtual   = 'tecnico';
 let consultoresLista = [];
 let tabAtiva    = 'os';
 
-// ── Valores válidos do DB (com acento/hífen conforme check constraint) ──
+// ── Valores exatos do check constraint "obras_fase_atual_check" ──
 const FASES_OBRA = {
-  'em_andamento': 'Em andamento',
-  'concluída':    'Concluída',
-  'pausada':      'Pausada',
-  'pré-vistoria': 'Pré-vistoria',
-  'pós-vistoria': 'Pós-vistoria',
-  'entregue':     'Entregue',
-};
-
-const FASES_TECNICA = {
-  '':            '— Não definida —',
-  'cabeamento':  'Cabeamento',
-  'eletrica':    'Elétrica',
-  'audio_video': 'Áudio e Vídeo',
-  'automacao':   'Automação',
+  'nao_iniciado':     'Não Iniciado',
+  'projeto_iniciado': 'Projeto Iniciado',
+  'projeto_concluido':'Projeto Concluído',
+  'cabeamento':       'Cabeamento',
+  'eletrica':         'Elétrica',
+  'audio_video':      'Áudio e Vídeo',
+  'automacao':        'Automação',
+  'em_finalizacao':   'Em Finalização',
+  'entrega_comercial':'Entrega Comercial',
 };
 
 const STATUS_LABELS = {
@@ -498,11 +493,16 @@ async function salvarCampo(campo, valor) {
   }
   mostrarSalvo('save-indicator-' + campo);
 
-  // Atualizar badge da fase no header
+  // Atualizar badge da fase no header dinamicamente
   if (campo === 'fase_atual') {
     const label = FASES_OBRA[valor] || valor;
-    const badgeEl = document.querySelector('.obra-meta .badge');
-    if (badgeEl) { badgeEl.className = `badge badge-${valor}`; badgeEl.textContent = label; }
+    const badgeEl = document.querySelector('.badge-fase-principal');
+    if (badgeEl) {
+      badgeEl.className = `badge badge-${valor} badge-fase-principal`;
+      badgeEl.textContent = label;
+    }
+    // Salvar no sessionStorage para obras.html pré-selecionar o filtro
+    try { sessionStorage.setItem('obraFaseFilter', valor); } catch(e) {}
   }
   return true;
 }
@@ -633,15 +633,6 @@ function renderPagina(obra) {
         <span id="save-indicator-fase_atual" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓ Salvo</span>
       </div>
       <div class="edit-row-group">
-        <span class="edit-row-label">Fase Técnica</span>
-        <select class="inline-select" onchange="salvarCampo('fase_tecnica', this.value || null)">
-          ${Object.entries(FASES_TECNICA).map(([v, l]) =>
-            `<option value="${v}" ${(obra.fase_tecnica || '') === v ? 'selected' : ''}>${l}</option>`
-          ).join('')}
-        </select>
-        <span id="save-indicator-fase_tecnica" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓ Salvo</span>
-      </div>
-      <div class="edit-row-group">
         <span class="edit-row-label">Status Compra</span>
         <select class="inline-select" onchange="salvarCampo('status_compra', this.value)">
           <option value="">— Selecione —</option>
@@ -655,23 +646,12 @@ function renderPagina(obra) {
       </div>
     </div>` : '';
 
-  // ── Fase técnica badge (leitura) ──
-  const faseTecnicaBadge = obra.fase_tecnica
-    ? `<div class="obra-info-item">
-        <div class="obra-info-label">Fase Técnica</div>
-        <div class="obra-info-value">
-          <span class="badge badge-${obra.fase_tecnica}">${FASES_TECNICA[obra.fase_tecnica] || obra.fase_tecnica}</span>
-        </div>
-       </div>`
-    : '';
-
   document.getElementById('conteudo').innerHTML = `
     <div class="obra-card">
       <div class="obra-title">${obra.nome_cliente || obra.nome || '—'}</div>
       <div class="obra-meta">
         #${String(obra.id).padStart(3,'0')}
-        <span class="badge badge-${faseClass}">${faseLabel}</span>
-        ${obra.fase_tecnica ? `<span class="badge badge-${obra.fase_tecnica}" style="margin-left:4px;">${FASES_TECNICA[obra.fase_tecnica] || obra.fase_tecnica}</span>` : ''}
+        <span class="badge badge-${faseClass} badge-fase-principal">${faseLabel}</span>
       </div>
 
       <div class="obra-infos">
