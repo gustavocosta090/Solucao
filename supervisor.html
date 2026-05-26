@@ -894,7 +894,7 @@
         <thead>
           <tr>
             <th onclick="ordenar('data_servico')">Data <span class="sort-icon">↕</span></th>
-            <th onclick="ordenar('tecnico')">Técnico <span class="sort-icon">↕</span></th>
+            <th onclick="ordenar('tecnico')">Equipe <span class="sort-icon">↕</span></th>
             <th onclick="ordenar('obra')">Obra <span class="sort-icon">↕</span></th>
             <th>Tipo</th>
             <th onclick="ordenar('status_aprovacao')">Status</th>
@@ -996,10 +996,17 @@ async function carregarOSs() {
   // Montar mapa de técnicos e juntar manualmente
   const tecMap = {};
   (tecList || []).forEach(t => { tecMap[t.id] = t; });
-  const finalData = (osData || []).map(o => ({
-    ...o,
-    tecnicos: o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null
-  }));
+  const finalData = (osData || []).map(o => {
+    const equipe = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id]
+      .filter(Boolean)
+      .map(tid => tecMap[tid]?.nome)
+      .filter(Boolean);
+    return {
+      ...o,
+      tecnicos: o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null,
+      equipeNomes: equipe,
+    };
+  });
 
   todasOSs = finalData;
 
@@ -1023,7 +1030,7 @@ function filtrar() {
   const fBusca = document.getElementById('fBusca').value.toLowerCase();
 
   filtradas = todasOSs.filter(o => {
-    const matchTec = !fTec || String(o.tecnicos?.id) === fTec;
+    const matchTec = !fTec || String(o.tecnico_id) === fTec || String(o.auxiliar_id) === fTec || String(o.auxiliar2_id) === fTec || String(o.auxiliar3_id) === fTec;
     const stRaw = o.status_aprovacao || 'pendente';
     const stOS = (stRaw === 'aprovada' || stRaw === 'concluida') ? 'concluida' : 'pendente';
     const matchSt = !fSt || stOS === fSt;
@@ -1031,7 +1038,7 @@ function filtrar() {
     const matchDf = !fDf || !o.data_servico || o.data_servico <= fDf;
     const matchBusca = !fBusca ||
       (o.obras?.nome_cliente || '').toLowerCase().includes(fBusca) ||
-      (o.tecnicos?.nome || '').toLowerCase().includes(fBusca);
+      (o.equipeNomes || []).some(n => n.toLowerCase().includes(fBusca));
     return matchTec && matchSt && matchDi && matchDf && matchBusca;
   });
 
@@ -1087,7 +1094,7 @@ function renderTabela() {
     return `
     <tr style="cursor:pointer;" onclick="verOS(${o.id})">
       <td>${data}</td>
-      <td>${o.tecnicos?.nome || '—'}</td>
+      <td>${o.equipeNomes?.join(', ') || '—'}</td>
       <td title="${o.obras?.endereco || ''}">${o.obras?.nome_cliente || '—'}</td>
       <td class="td-muted">${(o.tipo_servico || '').replace(/_/g,' ')}</td>
       <td>${statusBadge}</td>
@@ -1141,8 +1148,8 @@ function verOS(id) {
   let html = `
   <div class="detail-grid">
     <div class="detail-item">
-      <label>Técnico</label>
-      <span>${os.tecnicos?.nome || '—'}</span>
+      <label>Equipe</label>
+      <span>${os.equipeNomes?.join(' · ') || os.tecnicos?.nome || '—'}</span>
     </div>
     <div class="detail-item">
       <label>Data do serviço</label>
@@ -1278,7 +1285,7 @@ function exportarExcel() {
 
   const rows = filtradas.map(o => ({
     'Data': o.data_servico,
-    'Técnico': o.tecnicos?.nome || '',
+    'Equipe': o.equipeNomes?.join(', ') || '',
     'Obra': o.obras?.nome_cliente || '',
     'Endereço': o.obras?.endereco || '',
     'Tipo de serviço': (o.tipo_servico || '').replace(/_/g,' '),

@@ -1192,15 +1192,20 @@ async function salvarAgendamento() {
     servico:     servico || null,
   };
 
+  // Retorna { error, id } — id é o agendamento inserido/editado
   const tentarSalvar = async (p) => {
     if (agEditandoId) {
-      return (await db.from('agendamentos').update(p).eq('id', agEditandoId)).error;
+      const res = await db.from('agendamentos').update(p).eq('id', agEditandoId);
+      return { error: res.error, id: agEditandoId };
     } else {
-      return (await db.from('agendamentos').insert(p)).error;
+      const res = await db.from('agendamentos').insert(p).select('id').single();
+      return { error: res.error, id: res.data?.id };
     }
   };
 
-  let error = await tentarSalvar(payload);
+  let result = await tentarSalvar(payload);
+  let error  = result.error;
+  let savedAgId = result.id;
 
   // Fallback gracioso se colunas novas ainda não existem no banco
   if (error && (
@@ -1220,13 +1225,39 @@ async function salvarAgendamento() {
       veiculo:     payload.veiculo,
       servico:     payload.servico,
     };
-    error = await tentarSalvar(fallback);
+    result    = await tentarSalvar(fallback);
+    error     = result.error;
+    savedAgId = result.id;
   }
 
   if (error) {
     erroEl.textContent   = 'Erro ao salvar: ' + error.message;
     erroEl.style.display = 'block';
   } else {
+    // ── Cria OS pendente para novos agendamentos ──────────────────
+    // Só faz no INSERT (não no editar), e apenas se não for viagem
+    if (!agEditandoId && savedAgId && status !== 'viagem') {
+      const osPayload = {
+        agendamento_id:   savedAgId,
+        obra_id:          payload.obra_id,
+        cliente_outro:    payload.cliente_outro   || null,
+        endereco_servico: endereco                || null,
+        tecnico_id:       payload.tecnico_id,
+        auxiliar_id:      payload.auxiliar_id     || null,
+        auxiliar2_id:     payload.auxiliar2_id    || null,
+        auxiliar3_id:     payload.auxiliar3_id    || null,
+        data_servico:     data,
+        servico_planejado: servico                || null,
+        status_aprovacao: 'pendente',
+        criado_em:        new Date().toISOString(),
+      };
+      // Silencioso: se agendamento_id ou outras colunas não existirem, ignora
+      const { error: osErr } = await db.from('ordens_de_servico').insert(osPayload);
+      if (osErr && !osErr.message.includes('agendamento_id') && !osErr.message.includes('endereco_servico')) {
+        console.warn('OS pendente não criada:', osErr.message);
+      }
+    }
+
     fecharModal();
     await carregarAgenda();
   }

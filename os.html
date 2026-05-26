@@ -8,32 +8,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:        #0A0A0A;
-      --surface-1: #111111;
-      --surface-2: #161616;
-      --surface-3: #1B1B1B;
-      --primary:   #3ECF8E;
-      --secondary: #4F46E5;
-      --text-1:    #FFFFFF;
-      --text-2:    #A1A1AA;
-      --text-3:    #52525B;
-      --border:    rgba(255,255,255,0.08);
-      --border-hover: rgba(255,255,255,0.16);
-      --radius-card:  8px;
-      --radius-input: 6px;
+      --bg:#0A0A0A; --surface-1:#111111; --surface-2:#161616; --surface-3:#1B1B1B;
+      --primary:#3ECF8E; --text-1:#FFFFFF; --text-2:#A1A1AA; --text-3:#52525B;
+      --border:rgba(255,255,255,0.08); --border-hover:rgba(255,255,255,0.16);
+      --radius-card:8px; --radius-input:6px;
     }
-
-    html, body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text-1);
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-    }
+    html, body { font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:var(--bg); color:var(--text-1); min-height:100vh; -webkit-font-smoothing:antialiased; }
 
     /* ─── Topbar ─── */
     .topbar { background:var(--surface-1); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:100; }
@@ -46,545 +30,136 @@
     .topbar-links a.nav-sair { color:var(--text-2); border:1px solid rgba(255,255,255,0.12); margin-left:8px; }
     .topbar-links a.nav-sair:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
 
-    .btn-outline {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-input);
-      background: transparent;
-      color: var(--text-2);
-      font-size: 0.8rem;
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      text-decoration: none;
-      transition: border-color 0.15s, color 0.15s;
-    }
-    .btn-outline:hover {
-      border-color: var(--border-hover);
-      color: var(--text-1);
-    }
-
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      background: var(--primary);
-      border: none;
-      border-radius: var(--radius-input);
-      color: #0A0A0A;
-      font-size: 0.8rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
-    .btn-primary:hover { opacity: 0.88; }
-    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .btn-ghost {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: transparent;
-      border: none;
-      border-radius: var(--radius-input);
-      color: var(--text-3);
-      font-size: 0.8rem;
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      transition: color 0.15s, background 0.15s;
-    }
-    .btn-ghost:hover { color: var(--text-2); background: var(--surface-2); }
+    /* ─── Botões ─── */
+    .btn-primary { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; background:var(--primary); border:none; border-radius:var(--radius-input); color:#0A0A0A; font-size:0.8rem; font-weight:600; font-family:inherit; cursor:pointer; transition:opacity 0.15s; }
+    .btn-primary:hover { opacity:0.88; }
+    .btn-primary:disabled { opacity:0.4; cursor:not-allowed; }
 
     /* ─── Telas ─── */
-    .tela { display: none; max-width: 640px; margin: 0 auto; padding: 32px 16px 64px; }
-    .tela.ativa { display: block; }
+    .tela { display:none; max-width:640px; margin:0 auto; padding:32px 16px 64px; }
+    .tela.ativa { display:block; }
 
-    /* ─── Tela Login / Loading ─── */
-    .login-box {
-      background: var(--surface-1);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 48px 32px;
-      text-align: center;
-      margin-top: 32px;
-    }
-    .login-box .login-icon {
-      width: 48px;
-      height: 48px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--surface-3);
-      border-radius: 12px;
-      margin: 0 auto 20px;
-      color: var(--primary);
-    }
-    .login-box h2 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--text-1);
-      margin-bottom: 6px;
-    }
-    .login-box p {
-      color: var(--text-2);
-      font-size: 0.85rem;
-      line-height: 1.5;
-    }
-    .spinner-inline {
-      width: 24px;
-      height: 24px;
-      border: 2px solid var(--border);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      margin: 20px auto 0;
-    }
+    /* ─── Loading ─── */
+    .login-box { background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:48px 32px; text-align:center; margin-top:32px; }
+    .login-box h2 { font-size:1.1rem; font-weight:700; color:var(--text-1); margin-bottom:6px; }
+    .login-box p { color:var(--text-2); font-size:0.85rem; line-height:1.5; }
+    .spinner-inline { width:24px; height:24px; border:2px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin 0.7s linear infinite; margin:20px auto 0; }
 
-    /* ─── Tela Lista ─── */
-    .greeting-block {
-      margin-bottom: 28px;
-    }
-    .greeting-block h2 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--text-1);
-      letter-spacing: -0.02em;
-    }
-    .greeting-block .greeting-date {
-      font-size: 0.85rem;
-      color: var(--text-2);
-      margin-top: 4px;
-    }
+    /* ─── Lista ─── */
+    .greeting-block { margin-bottom:28px; }
+    .greeting-block h2 { font-size:1.5rem; font-weight:700; letter-spacing:-0.02em; }
+    .greeting-block .greeting-date { font-size:0.85rem; color:var(--text-2); margin-top:4px; }
 
-    .list-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-bottom: 24px;
-    }
+    .date-group-label { font-size:11px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:0.6px; margin:20px 0 8px; display:flex; align-items:center; gap:8px; }
+    .date-group-label:first-child { margin-top:0; }
 
-    .date-group-label {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-3);
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      margin: 20px 0 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .date-group-label:first-child { margin-top: 0; }
+    .badge-pendente-label { font-size:10px; font-weight:700; color:#F59E0B; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.2); padding:2px 7px; border-radius:999px; }
 
-    .badge-pendente-label {
-      font-size: 10px;
-      font-weight: 700;
-      color: #F59E0B;
-      background: rgba(245,158,11,0.1);
-      border: 1px solid rgba(245,158,11,0.2);
-      padding: 2px 7px;
-      border-radius: 999px;
-      letter-spacing: 0.4px;
-    }
+    .card-agenda { background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:8px; cursor:pointer; transition:border-color 0.15s; }
+    .card-agenda:hover { border-color:var(--border-hover); }
+    .card-agenda.feito { opacity:0.6; cursor:default; }
+    .card-agenda.feito:hover { border-color:var(--border); }
 
-    .card-agenda {
-      background: var(--surface-1);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      transition: border-color 0.15s;
-    }
-    .card-agenda:hover { border-color: var(--border-hover); }
-    .card-agenda.disabled { opacity: 0.65; cursor: default; }
-    .card-agenda.disabled:hover { border-color: var(--border); }
+    .ca-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+    .ca-cliente { font-weight:600; color:var(--text-1); font-size:0.9rem; }
+    .ca-detalhe { font-size:0.8rem; color:var(--text-2); margin-top:3px; }
+    .ca-endereco { font-size:0.75rem; color:var(--text-3); margin-top:4px; display:flex; align-items:center; gap:4px; }
+    .ca-endereco i { width:11px; height:11px; flex-shrink:0; }
+    .ca-equipe { font-size:0.73rem; color:var(--text-3); margin-top:4px; }
+    .ca-servico { font-size:0.75rem; color:var(--text-3); margin-top:6px; }
+    .ca-badge-row { margin-top:10px; }
 
-    .ca-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 8px;
-    }
-    .ca-cliente {
-      font-weight: 600;
-      color: var(--text-1);
-      font-size: 0.9rem;
-    }
-    .ca-detalhe {
-      font-size: 0.8rem;
-      color: var(--text-2);
-      margin-top: 3px;
-    }
-    .ca-servico {
-      font-size: 0.75rem;
-      color: var(--text-3);
-      margin-top: 6px;
-    }
-    .ca-badge-row { margin-top: 10px; }
+    .badge-status { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; font-size:0.7rem; font-weight:600; }
+    .badge-status i { width:12px; height:12px; }
+    .badge-concluida { background:rgba(62,207,142,0.1); color:var(--primary); border:1px solid rgba(62,207,142,0.2); }
+    .badge-pendente  { background:rgba(245,158,11,0.1); color:#F59E0B; border:1px solid rgba(245,158,11,0.2); }
 
-    /* Status badges inline */
-    .badge-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 3px 9px;
-      border-radius: 999px;
-      font-size: 0.7rem;
-      font-weight: 600;
-    }
-    .badge-status i { width: 12px; height: 12px; }
-    .badge-aprovada {
-      background: rgba(62,207,142,0.1);
-      color: var(--primary);
-      border: 1px solid rgba(62,207,142,0.2);
-    }
-    .badge-reprovada {
-      background: rgba(239,68,68,0.1);
-      color: #EF4444;
-      border: 1px solid rgba(239,68,68,0.2);
-    }
-    .badge-pendente {
-      background: rgba(245,158,11,0.1);
-      color: #F59E0B;
-      border: 1px solid rgba(245,158,11,0.2);
-    }
+    .status-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+    .dot-confirmado { background:var(--primary); }
+    .dot-nao_confirmado { background:#F59E0B; }
+    .dot-viagem { background:#3B82F6; }
 
-    /* Card status dot (confirmado etc.) */
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      margin-top: 5px;
-    }
-    .dot-confirmado { background: var(--primary); }
-    .dot-nao_confirmado { background: #F59E0B; }
-    .dot-viagem { background: #3B82F6; }
-    .dot-cuiaba { background: #8B5CF6; }
-    .dot-default { background: var(--text-3); }
+    .lista-vazia { text-align:center; padding:56px 24px; color:var(--text-3); }
+    .lista-vazia i { width:40px; height:40px; margin-bottom:12px; display:block; margin-left:auto; margin-right:auto; }
+    .lista-vazia p { font-size:0.9rem; color:var(--text-2); margin-bottom:4px; }
+    .lista-vazia small { font-size:0.8rem; color:var(--text-3); }
 
-    /* Lista vazia */
-    .lista-vazia {
-      text-align: center;
-      padding: 56px 24px;
-      color: var(--text-3);
-    }
-    .lista-vazia i { width: 40px; height: 40px; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto; }
-    .lista-vazia p { font-size: 0.9rem; color: var(--text-2); margin-bottom: 4px; }
-    .lista-vazia small { font-size: 0.8rem; color: var(--text-3); }
+    /* ─── Formulário ─── */
+    .btn-back { display:inline-flex; align-items:center; gap:6px; background:none; border:none; color:var(--text-3); font-size:0.82rem; font-weight:500; font-family:inherit; cursor:pointer; margin-bottom:20px; padding:0; transition:color 0.15s; }
+    .btn-back:hover { color:var(--text-2); }
+    .btn-back i { width:14px; height:14px; }
 
-    /* ─── Tela Formulário ─── */
-    .btn-back {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: none;
-      border: none;
-      color: var(--text-3);
-      font-size: 0.82rem;
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      margin-bottom: 20px;
-      padding: 0;
-      transition: color 0.15s;
-    }
-    .btn-back:hover { color: var(--text-2); }
-    .btn-back i { width: 14px; height: 14px; }
+    .os-header { background:var(--surface-1); border:1px solid var(--border); border-radius:var(--radius-card); padding:16px 20px; margin-bottom:16px; }
+    .os-numero { font-size:0.7rem; font-weight:600; color:var(--primary); letter-spacing:0.6px; text-transform:uppercase; margin-bottom:4px; }
+    .os-cliente { font-size:1rem; font-weight:700; color:var(--text-1); }
+    .os-meta { font-size:0.78rem; color:var(--text-2); margin-top:3px; }
+    .os-endereco-row { font-size:0.75rem; color:var(--text-3); margin-top:5px; display:flex; align-items:center; gap:5px; }
+    .os-endereco-row i { width:11px; height:11px; flex-shrink:0; }
 
-    .os-header {
-      background: var(--surface-1);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-card);
-      padding: 16px 20px;
-      margin-bottom: 16px;
-    }
-    .os-numero {
-      font-size: 0.7rem;
-      font-weight: 600;
-      color: var(--primary);
-      letter-spacing: 0.6px;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-    .os-cliente {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--text-1);
-    }
-    .os-meta {
-      font-size: 0.78rem;
-      color: var(--text-2);
-      margin-top: 3px;
-    }
+    /* Equipe info (read-only) */
+    .equipe-info-bloco { background:var(--surface-3); border:1px solid var(--border); border-radius:var(--radius-input); padding:10px 14px; margin-bottom:12px; }
+    .equipe-info-label { font-size:11px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px; }
+    .equipe-chips-ro { display:flex; flex-wrap:wrap; gap:6px; }
+    .equipe-chip-ro { display:inline-flex; align-items:center; gap:5px; background:rgba(62,207,142,0.08); border:1px solid rgba(62,207,142,0.2); border-radius:4px; padding:3px 10px; font-size:0.75rem; color:var(--primary); font-weight:500; }
+    .equipe-chip-ro i { width:11px; height:11px; }
 
-    .secao {
-      background: var(--surface-1);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-card);
-      padding: 20px;
-      margin-bottom: 12px;
-    }
-    .secao-titulo {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-3);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 16px;
-    }
+    .secao { background:var(--surface-1); border:1px solid var(--border); border-radius:var(--radius-card); padding:20px; margin-bottom:12px; }
+    .secao-titulo { font-size:11px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:16px; }
 
-    .form-group { margin-bottom: 12px; }
-    .form-group:last-child { margin-bottom: 0; }
-
-    .form-group label {
-      display: block;
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--text-2);
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-      margin-bottom: 6px;
-    }
-
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-input);
-      padding: 10px 12px;
-      color: var(--text-1);
-      font-size: 0.85rem;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.15s;
-      appearance: none;
-    }
-    .form-group input:focus,
-    .form-group select:focus,
-    .form-group textarea:focus {
-      border-color: rgba(62,207,142,0.5);
-    }
-    .form-group select { cursor: pointer; }
-    .form-group select option { background: var(--surface-2); }
-    .form-group textarea { resize: vertical; min-height: 72px; }
-    .form-group input[type="time"] { color-scheme: dark; }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
+    .form-group { margin-bottom:12px; }
+    .form-group:last-child { margin-bottom:0; }
+    .form-group label { display:block; font-size:11px; font-weight:500; color:var(--text-2); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px; }
+    .form-group input, .form-group select, .form-group textarea { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-input); padding:10px 12px; color:var(--text-1); font-size:0.85rem; font-family:inherit; outline:none; transition:border-color 0.15s; appearance:none; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:rgba(62,207,142,0.5); }
+    .form-group select option { background:var(--surface-2); }
+    .form-group textarea { resize:vertical; min-height:72px; }
+    .form-group input[type="time"] { color-scheme:dark; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
     /* Toggle sim/não */
-    .toggle-group {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-    .toggle-btn {
-      flex: 1;
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      background: var(--bg);
-      color: var(--text-3);
-      font-size: 0.8rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.15s;
-    }
-    .toggle-btn:hover { border-color: var(--border-hover); color: var(--text-2); }
-    .toggle-btn.ativo-sim {
-      background: var(--primary);
-      border-color: var(--primary);
-      color: #0A0A0A;
-    }
-    .toggle-btn.ativo-nao {
-      background: var(--surface-2);
-      border-color: var(--border);
-      color: var(--text-2);
-    }
+    .toggle-group { display:flex; gap:6px; margin-bottom:8px; }
+    .toggle-btn { flex:1; padding:8px 12px; border:1px solid var(--border); border-radius:999px; background:var(--bg); color:var(--text-3); font-size:0.8rem; font-weight:600; font-family:inherit; cursor:pointer; text-align:center; transition:all 0.15s; }
+    .toggle-btn:hover { border-color:var(--border-hover); color:var(--text-2); }
+    .toggle-btn.ativo-sim { background:var(--primary); border-color:var(--primary); color:#0A0A0A; }
+    .toggle-btn.ativo-nao { background:var(--surface-2); border-color:var(--border); color:var(--text-2); }
 
-    .campo-condicional { display: none; margin-top: 8px; }
-    .campo-condicional.visivel { display: block; }
+    .campo-condicional { display:none; margin-top:8px; }
+    .campo-condicional.visivel { display:block; }
 
     /* Upload de fotos */
-    .upload-area {
-      border: 1px dashed rgba(255,255,255,0.12);
-      border-radius: var(--radius-input);
-      padding: 28px 20px;
-      text-align: center;
-      cursor: pointer;
-      background: var(--bg);
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .upload-area:hover,
-    .upload-area.dragover {
-      border-color: rgba(62,207,142,0.3);
-      background: rgba(62,207,142,0.03);
-    }
-    .upload-area i { width: 24px; height: 24px; color: var(--text-3); margin-bottom: 8px; }
-    .upload-texto {
-      font-size: 0.82rem;
-      font-weight: 500;
-      color: var(--text-2);
-    }
-    .upload-sub {
-      font-size: 0.72rem;
-      color: var(--text-3);
-      margin-top: 3px;
-    }
-    #foto-input { display: none; }
+    .upload-area { border:1px dashed rgba(255,255,255,0.12); border-radius:var(--radius-input); padding:28px 20px; text-align:center; cursor:pointer; background:var(--bg); transition:border-color 0.15s,background 0.15s; }
+    .upload-area:hover, .upload-area.dragover { border-color:rgba(62,207,142,0.3); background:rgba(62,207,142,0.03); }
+    .upload-area i { width:24px; height:24px; color:var(--text-3); margin-bottom:8px; }
+    .upload-texto { font-size:0.82rem; font-weight:500; color:var(--text-2); }
+    .upload-sub { font-size:0.72rem; color:var(--text-3); margin-top:3px; }
+    #foto-input { display:none; }
 
-    .fotos-grid {
-      display: grid;
-      grid-template-columns: repeat(4,1fr);
-      gap: 8px;
-      margin-top: 12px;
-    }
-    .foto-thumb {
-      position: relative;
-      aspect-ratio: 1;
-      border-radius: var(--radius-input);
-      overflow: hidden;
-      background: var(--surface-2);
-    }
-    .foto-thumb img { width: 100%; height: 100%; object-fit: cover; }
-    .foto-thumb .remover {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      background: rgba(0,0,0,0.75);
-      color: #EF4444;
-      border: none;
-      border-radius: 4px;
-      width: 20px;
-      height: 20px;
-      font-size: 10px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.15s;
-    }
-    .foto-thumb .remover:hover { background: rgba(239,68,68,0.3); }
-    .foto-uploading {
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,0.65);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.7rem;
-      color: var(--text-1);
-      font-weight: 700;
-    }
+    .fotos-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
+    .foto-thumb { position:relative; aspect-ratio:1; border-radius:var(--radius-input); overflow:hidden; background:var(--surface-2); }
+    .foto-thumb img { width:100%; height:100%; object-fit:cover; }
+    .foto-thumb .remover { position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.75); color:#EF4444; border:none; border-radius:4px; width:20px; height:20px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.15s; }
+    .foto-thumb .remover:hover { background:rgba(239,68,68,0.3); }
+    .foto-uploading { position:absolute; inset:0; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; font-size:0.7rem; color:var(--text-1); font-weight:700; }
 
     /* Botão enviar */
-    .btn-enviar {
-      width: 100%;
-      height: 44px;
-      background: var(--primary);
-      border: none;
-      border-radius: var(--radius-input);
-      color: #0A0A0A;
-      font-size: 0.9rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      margin-top: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: opacity 0.15s;
-    }
-    .btn-enviar:hover { opacity: 0.88; }
-    .btn-enviar:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-enviar i { width: 16px; height: 16px; }
+    .btn-enviar { width:100%; height:44px; background:var(--primary); border:none; border-radius:var(--radius-input); color:#0A0A0A; font-size:0.9rem; font-weight:600; font-family:inherit; cursor:pointer; margin-top:8px; display:flex; align-items:center; justify-content:center; gap:8px; transition:opacity 0.15s; }
+    .btn-enviar:hover { opacity:0.88; }
+    .btn-enviar:disabled { opacity:0.4; cursor:not-allowed; }
+    .btn-enviar i { width:16px; height:16px; }
 
-    /* ─── Tela Sucesso ─── */
-    .sucesso-box {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      padding: 64px 24px;
-    }
-    .sucesso-icon {
-      width: 64px;
-      height: 64px;
-      background: rgba(62,207,142,0.1);
-      border: 1px solid rgba(62,207,142,0.2);
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 20px;
-      color: var(--primary);
-    }
-    .sucesso-icon i { width: 32px; height: 32px; }
-    .sucesso-box h2 {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--text-1);
-      margin-bottom: 8px;
-      letter-spacing: -0.01em;
-    }
-    .sucesso-box p {
-      color: var(--text-2);
-      font-size: 0.875rem;
-      line-height: 1.5;
-      margin-bottom: 28px;
-      max-width: 320px;
-    }
-    .sucesso-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    .btn-sucesso-secondary {
-      padding: 9px 18px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-input);
-      background: transparent;
-      color: var(--text-2);
-      font-size: 0.85rem;
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
-    }
-    .btn-sucesso-secondary:hover { border-color: var(--border-hover); color: var(--text-1); }
-    .btn-sucesso-primary {
-      padding: 9px 18px;
-      background: var(--primary);
-      border: none;
-      border-radius: var(--radius-input);
-      color: #0A0A0A;
-      font-size: 0.85rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
-    .btn-sucesso-primary:hover { opacity: 0.88; }
+    /* ─── Sucesso ─── */
+    .sucesso-box { display:flex; flex-direction:column; align-items:center; text-align:center; padding:64px 24px; }
+    .sucesso-icon { width:64px; height:64px; background:rgba(62,207,142,0.1); border:1px solid rgba(62,207,142,0.2); border-radius:16px; display:flex; align-items:center; justify-content:center; margin-bottom:20px; color:var(--primary); }
+    .sucesso-icon i { width:32px; height:32px; }
+    .sucesso-box h2 { font-size:1.2rem; font-weight:700; color:var(--text-1); margin-bottom:8px; letter-spacing:-0.01em; }
+    .sucesso-box p { color:var(--text-2); font-size:0.875rem; line-height:1.5; margin-bottom:28px; max-width:320px; }
+    .sucesso-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+    .btn-sucesso-secondary { padding:9px 18px; border:1px solid var(--border); border-radius:var(--radius-input); background:transparent; color:var(--text-2); font-size:0.85rem; font-weight:500; font-family:inherit; cursor:pointer; transition:border-color 0.15s,color 0.15s; }
+    .btn-sucesso-secondary:hover { border-color:var(--border-hover); color:var(--text-1); }
+    .btn-sucesso-primary { padding:9px 18px; background:var(--primary); border:none; border-radius:var(--radius-input); color:#0A0A0A; font-size:0.85rem; font-weight:600; font-family:inherit; cursor:pointer; transition:opacity 0.15s; }
+    .btn-sucesso-primary:hover { opacity:0.88; }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin { to { transform:rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -595,12 +170,9 @@
   <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
-<!-- TELA 1: CARREGANDO / IDENTIFICAÇÃO -->
+<!-- TELA 1: CARREGANDO -->
 <div class="tela ativa" id="tela-login">
   <div class="login-box">
-    <div class="login-icon">
-      <i data-lucide="hard-hat"></i>
-    </div>
     <h2>Ordem de Serviço</h2>
     <p id="login-msg">Verificando autenticação...</p>
     <div class="spinner-inline" id="login-spinner"></div>
@@ -626,25 +198,22 @@
   <div class="os-header" id="os-cabecalho">
     <div class="os-numero" id="os-numero">Nova OS</div>
     <div class="os-cliente" id="os-cliente">—</div>
-    <div class="os-meta" id="os-meta">—</div>
+    <div class="os-meta" id="os-meta"></div>
+    <div class="os-endereco-row" id="os-endereco-row" style="display:none">
+      <i data-lucide="map-pin"></i>
+      <span id="os-endereco-txt"></span>
+    </div>
   </div>
 
-  <!-- Identificação -->
+  <!-- Equipe da agenda (read-only) -->
+  <div class="equipe-info-bloco" id="equipe-info-bloco" style="display:none">
+    <div class="equipe-info-label">Equipe nesta visita</div>
+    <div class="equipe-chips-ro" id="equipe-info-chips"></div>
+  </div>
+
+  <!-- Horários -->
   <div class="secao">
-    <div class="secao-titulo">Informações gerais</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Tipo de serviço</label>
-        <select id="f-tipo">
-          <option value="execucao">Execução de projeto</option>
-          <option value="assistencia">Assistência técnica</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Auxiliar (opcional)</label>
-        <select id="f-auxiliar"><option value="">Nenhum</option></select>
-      </div>
-    </div>
+    <div class="secao-titulo">Horários</div>
     <div class="form-row">
       <div class="form-group">
         <label>Horário início</label>
@@ -661,8 +230,8 @@
   <div class="secao">
     <div class="secao-titulo">Serviços</div>
     <div class="form-group">
-      <label>O que foi realizar</label>
-      <textarea id="f-planejado" rows="2" placeholder="Descreva o serviço planejado..."></textarea>
+      <label>O que foi planejado</label>
+      <textarea id="f-planejado" rows="2" placeholder="Serviço planejado para esta visita..."></textarea>
     </div>
     <div class="form-group">
       <label>O que foi realizado</label>
@@ -780,7 +349,7 @@
     <p id="sucesso-msg">A ordem de serviço foi registrada.</p>
     <div class="sucesso-actions">
       <button class="btn-sucesso-secondary" onclick="irHistorico()">Ver minhas OSs</button>
-      <button class="btn-sucesso-primary" onclick="novaOS()">Nova OS</button>
+      <button class="btn-sucesso-primary" onclick="novaOS()">Voltar à lista</button>
     </div>
   </div>
 </div>
@@ -792,76 +361,52 @@ const db = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
 );
 
-// ── Estado ───────────────────────────────────────────────────
-let tecnicoLogado = null;
+// ── Estado ────────────────────────────────────────────────────
+let tecnicoLogado          = null;
 let agendamentoSelecionado = null;
-let tecnicos = [];
-let fotosSelecionadas = []; // {file, preview, id}
+let osSelecionadaId        = null;  // ID da OS pendente existente (para UPDATE)
+let tecnicos               = [];
+let fotosSelecionadas      = [];
 
-// ── Init via Supabase Auth ───────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────
 async function init() {
   const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
 
-  if (!session) {
-    window.location.href = 'login.html';
-    return;
-  }
-
-  // Supervisores/coordenadores → redirecionar
-  const { data: tec, error: tecError } = await db
+  const { data: tec } = await db
     .from('tecnicos')
     .select('id, nome, funcao, role')
     .eq('auth_user_id', session.user.id)
     .single();
 
   if (!tec) {
-    // Se não encontrou o técnico, verificar se é supervisor/coordenador pelo email
-    // (pode ter sido criado via Auth mas auth_user_id não vinculado ainda)
-    const userEmail = session.user.email || '';
-    const loginMsg = document.getElementById('login-msg');
-    const spinner  = document.getElementById('login-spinner');
-    spinner.style.display = 'none';
-    loginMsg.innerHTML = `
-      Conta não vinculada ao cadastro de técnicos.<br>
-      <small style="color:#A1A1AA">Se você é supervisor ou coordenador,
-      <a href="supervisor.html" style="color:#3ECF8E">clique aqui para ir ao painel</a>.
-      Caso seja técnico, contate o coordenador para vincular sua conta.</small>`;
+    document.getElementById('login-spinner').style.display = 'none';
+    document.getElementById('login-msg').innerHTML =
+      `Conta não vinculada. Se for supervisor, <a href="supervisor.html" style="color:var(--primary)">clique aqui</a>.`;
     return;
   }
 
-  if (tec.role && tec.role !== 'tecnico' && tec.role !== 'auxiliar') {
+  if (tec.role && !['tecnico','auxiliar'].includes(tec.role)) {
     window.location.href = 'supervisor.html';
     return;
   }
 
   renderTopbar(tec.nome, tec.role, 'os');
-
   tecnicoLogado = tec;
 
-  // Carregar lista de técnicos para o auxiliar
-  let { data: todos, error: eAux } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
-  if (eAux || !todos) {
-    const { data: todos2 } = await db.from('tecnicos').select('id, nome').order('nome');
-    todos = (todos2 || []).map(x => ({ ...x, funcao: '' }));
-  }
+  // Carrega todos os técnicos (para mostrar nome nos chips de equipe)
+  const { data: todos } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
   tecnicos = todos || [];
-
-  const aux = document.getElementById('f-auxiliar');
-  tecnicos.filter(t => t.id !== tecnicoLogado.id).forEach(t => {
-    const o = document.createElement('option');
-    o.value = t.id; o.textContent = t.funcao ? `${t.nome} (${t.funcao})` : t.nome;
-    aux.appendChild(o);
-  });
 
   const h = new Date().getHours();
   const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
   document.getElementById('saudacao').textContent = `${saudacao}, ${tecnicoLogado.nome.split(' ')[0]}`;
 
   const hoje = new Date();
-  const DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const DIAS_PT  = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   document.getElementById('data-hoje').textContent =
-    `${DIAS[hoje.getDay()]}, ${hoje.getDate()} de ${MESES[hoje.getMonth()]} de ${hoje.getFullYear()}`;
+    `${DIAS_PT[hoje.getDay()]}, ${hoje.getDate()} de ${MESES_PT[hoje.getMonth()]} de ${hoje.getFullYear()}`;
 
   mostrarTela('tela-lista');
   carregarAgendamentosHoje();
@@ -875,14 +420,14 @@ function renderTopbar(nome, role, paginaAtiva) {
   const greetEl = document.getElementById('topbar-greeting');
   if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
   const links = [
-    { href:'obras.html',                label:'Obras',       id:'obras',                roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'agenda.html',               label:'Agenda',      id:'agenda',               roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'supervisor.html',           label:'Supervisor',  id:'supervisor',           roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href:'admin.html',                label:'Admin',       id:'admin',                roles:['coordenador'] },
-    { href:'tecnico_dashboard.html',    label:'Minhas OSs',  id:'minhas-os',            roles:['tecnico','auxiliar'] },
-    { href:'gerente_comercial.html',    label:'Comercial',   id:'comercial',            roles:['gerente_comercial'] },
-    { href:'projetista.html',           label:'Meu Painel',  id:'projetista',           roles:['projetista'] },
-    { href:'coordenador_projetos.html', label:'Projetos',    id:'coordenador-projetos', roles:['coordenador_projetos'] },
+    { href:'obras.html',             label:'Obras',      id:'obras',     roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'agenda.html',            label:'Agenda',     id:'agenda',    roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'supervisor.html',        label:'Supervisor', id:'supervisor',roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
+    { href:'admin.html',             label:'Admin',      id:'admin',     roles:['coordenador'] },
+    { href:'tecnico_dashboard.html', label:'Minhas OSs', id:'minhas-os', roles:['tecnico','auxiliar'] },
+    { href:'gerente_comercial.html', label:'Comercial',  id:'comercial', roles:['gerente_comercial'] },
+    { href:'projetista.html',        label:'Meu Painel', id:'projetista',roles:['projetista'] },
+    { href:'coordenador_projetos.html',label:'Projetos', id:'coordenador-projetos',roles:['coordenador_projetos'] },
   ];
   const nav = document.getElementById('topbar-nav');
   if (!nav) return;
@@ -891,64 +436,73 @@ function renderTopbar(nome, role, paginaAtiva) {
     .join('') + `<a href="#" class="nav-sair" onclick="sair()">Sair</a>`;
 }
 
-// ── Tela 1 → logout ──────────────────────────────────────────
-async function sair() {
-  await db.auth.signOut();
-  window.location.href = 'login.html';
-}
-function logout() { sair(); }
+async function sair() { await db.auth.signOut(); window.location.href = 'login.html'; }
 
-// ── Agendamentos do dia ──────────────────────────────────────
+// ── Carregar agendamentos + OSs ───────────────────────────────
 async function carregarAgendamentosHoje() {
-  const hoje = new Date().toISOString().split('T')[0];
-  const passado = new Date();
-  passado.setDate(passado.getDate() - 14);
+  const hoje    = new Date().toISOString().split('T')[0];
+  const passado = new Date(); passado.setDate(passado.getDate() - 14);
   const dataInicio = passado.toISOString().split('T')[0];
+  const id = tecnicoLogado.id;
 
-  // Busca agendamentos E OSs do técnico em paralelo
-  const [{ data, error }, { data: minhasOS }] = await Promise.all([
-    db.from('agendamentos')
-      .select('*, obras(id, nome_cliente, endereco, consultores(id))')
-      .gte('data', dataInicio)
-      .or(`tecnico_id.eq.${tecnicoLogado.id},auxiliar_id.eq.${tecnicoLogado.id}`)
-      .order('data', { ascending: true })
-      .order('hora_inicio', { ascending: true }),
+  // Busca agendamentos onde o técnico está em qualquer campo da equipe
+  const agQuery = db.from('agendamentos')
+    .select('*, obras(id, nome_cliente, endereco)')
+    .gte('data', dataInicio)
+    .order('data', { ascending: true })
+    .order('hora_inicio', { ascending: true });
+
+  // Supabase: OR nos 4 campos
+  const [{ data: agsRaw }, { data: osRaw }] = await Promise.all([
+    agQuery.or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`),
+    // Busca OSs onde o técnico está em qualquer campo
     db.from('ordens_de_servico')
-      .select('obra_id, status_aprovacao, data_servico, criado_em')
-      .eq('tecnico_id', tecnicoLogado.id)
+      .select('id, agendamento_id, obra_id, status_aprovacao, data_servico, criado_em')
+      .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`)
       .gte('criado_em', dataInicio + 'T00:00:00')
   ]);
 
   const lista = document.getElementById('lista-agendamentos');
 
-  if (error || !data || data.length === 0) {
+  if (!agsRaw || agsRaw.length === 0) {
     lista.innerHTML = `
       <div class="lista-vazia">
         <i data-lucide="calendar-x"></i>
-        <p>Nenhum agendamento a partir de hoje.</p>
-        <small>Use "+ Nova OS" se necessário.</small>
+        <p>Nenhum agendamento nos últimos 14 dias.</p>
+        <small>Verifique a agenda com seu coordenador.</small>
       </div>`;
     lucide.createIcons();
     return;
   }
 
-  // Monta mapa: "obra_id|data" → status_aprovacao
+  // ── osMap: agendamento_id → { status, osId } ─────────────────
+  // Também aceita chave por obra_id|data para backward compat
   const osMap = {};
-  (minhasOS || []).forEach(os => {
+  const prioridade = { concluida:4, aprovada:4, pendente:2, reprovada:1 };
+
+  (osRaw || []).forEach(os => {
+    const stNorm = (os.status_aprovacao === 'aprovada') ? 'concluida' : (os.status_aprovacao || 'pendente');
+    const entry = { status: stNorm, osId: os.id };
+
+    if (os.agendamento_id) {
+      const k = `ag_${os.agendamento_id}`;
+      if (!osMap[k] || prioridade[stNorm] > prioridade[osMap[k].status]) osMap[k] = entry;
+    }
     const dataRef = os.data_servico || (os.criado_em ? os.criado_em.slice(0,10) : null);
     if (os.obra_id && dataRef) {
-      const chave = `${os.obra_id}|${dataRef}`;
-      // Prioriza concluida > pendente
-      const prioridade = { concluida: 3, aprovada: 3, pendente: 2, reprovada: 1 };
-      if (!osMap[chave] || (prioridade[os.status_aprovacao] || 0) > (prioridade[osMap[chave]] || 0)) {
-        osMap[chave] = os.status_aprovacao === 'aprovada' ? 'concluida' : os.status_aprovacao;
-      }
+      const k = `o_${os.obra_id}|${dataRef}`;
+      if (!osMap[k] || prioridade[stNorm] > prioridade[osMap[k].status]) osMap[k] = entry;
     }
   });
 
-  // Agrupa por data
+  // Função para pegar status/osId de um agendamento
+  function getOSEntry(ag) {
+    return osMap[`ag_${ag.id}`] || osMap[`o_${ag.obras?.id}|${ag.data}`] || null;
+  }
+
+  // ── Agrupar por data ─────────────────────────────────────────
   const porData = {};
-  data.forEach(ag => {
+  agsRaw.forEach(ag => {
     if (!porData[ag.data]) porData[ag.data] = [];
     porData[ag.data].push(ag);
   });
@@ -958,45 +512,62 @@ async function carregarAgendamentosHoje() {
 
   let html = '';
   Object.entries(porData).forEach(([dataAg, ags]) => {
-    const d = new Date(dataAg + 'T12:00:00');
-    const isHoje    = dataAg === hoje;
-    const isPassado = dataAg < hoje;
+    const d          = new Date(dataAg + 'T12:00:00');
+    const isHoje     = dataAg === hoje;
+    const isPassado  = dataAg < hoje;
 
-    // Verifica cards desta data que não foram aprovados
     const cardsHtml = ags.map(ag => {
-      const obraId = ag.obras?.id;
-      const chave  = `${obraId}|${dataAg}`;
-      const statusOS = obraId ? osMap[chave] : undefined;
+      const entry    = getOSEntry(ag);
+      const statusOS = entry?.status;
+      const osId     = entry?.osId;
 
-      // OS aprovada → não mostra o card
-      if (statusOS === 'aprovada') return '';
+      const hora     = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
+      const cliente  = ag.obras?.nome_cliente || ag.cliente_outro || '—';
+      const end      = ag.endereco_outro || ag.obras?.endereco || '';
+      const dotClass = { confirmado:'dot-confirmado', nao_confirmado:'dot-nao_confirmado', viagem:'dot-viagem' }[ag.status] || 'dot-confirmado';
 
-      const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
-      const cliente = ag.obras?.nome_cliente || '—';
-      const end     = ag.obras?.endereco || '';
+      // Montar nomes da equipe
+      const equipeIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+      const equipeNomes = equipeIds.map(eid => {
+        const t = tecnicos.find(t => t.id === eid);
+        return t ? t.nome.split(' ')[0] : null;
+      }).filter(Boolean);
 
-      const dotClass = {
-        confirmado: 'dot-confirmado',
-        nao_confirmado: 'dot-nao_confirmado',
-        viagem: 'dot-viagem',
-        cuiaba: 'dot-cuiaba'
-      }[ag.status] || 'dot-default';
-
-      let badgeHtml = '';
-      if (statusOS === 'reprovada') {
-        badgeHtml = `<div class="ca-badge-row"><span class="badge-status badge-reprovada"><i data-lucide="x-circle"></i>OS reprovada — refazer</span></div>`;
-      } else if (statusOS === 'pendente') {
-        badgeHtml = `<div class="ca-badge-row"><span class="badge-status badge-pendente"><i data-lucide="clock"></i>Aguardando aprovação</span></div>`;
+      // OS concluída/aprovada → mostra como feito, não clicável
+      if (statusOS === 'concluida' || statusOS === 'aprovada') {
+        return `
+          <div class="card-agenda feito">
+            <div class="ca-top">
+              <div>
+                <div class="ca-cliente">${cliente}</div>
+                <div class="ca-detalhe">${hora ? hora + ' · ' : ''}${dataAg}</div>
+                ${end ? `<div class="ca-endereco"><i data-lucide="map-pin"></i>${end}</div>` : ''}
+                ${equipeNomes.length ? `<div class="ca-equipe">👥 ${equipeNomes.join(' · ')}</div>` : ''}
+              </div>
+              <span class="status-dot ${dotClass}"></span>
+            </div>
+            <div class="ca-badge-row">
+              <span class="badge-status badge-concluida"><i data-lucide="check-circle-2"></i>OS Concluída</span>
+            </div>
+          </div>`;
       }
 
-      const isPendente = statusOS === 'pendente';
+      // Não clicável se pendente aguardando (OS existe mas foi criada automaticamente — tech ainda não preencheu)
+      const onclick = `onclick="abrirFormulario(${ag.id}, ${osId || 'null'})"`;
+
+      let badgeHtml = '';
+      if (statusOS === 'pendente' && osId) {
+        badgeHtml = `<div class="ca-badge-row"><span class="badge-status badge-pendente"><i data-lucide="clock"></i>OS pendente — clique para preencher</span></div>`;
+      }
 
       return `
-        <div class="card-agenda${isPendente ? ' disabled' : ''}" ${isPendente ? '' : `onclick="abrirFormulario(${ag.id})"`}>
+        <div class="card-agenda" ${onclick}>
           <div class="ca-top">
             <div>
               <div class="ca-cliente">${cliente}</div>
-              <div class="ca-detalhe">${hora ? hora + ' &middot; ' : ''}${end || 'Endereço não informado'}</div>
+              <div class="ca-detalhe">${hora ? hora + ' · ' : ''}${dataAg}</div>
+              ${end ? `<div class="ca-endereco"><i data-lucide="map-pin"></i>${end}</div>` : ''}
+              ${equipeNomes.length ? `<div class="ca-equipe">👥 ${equipeNomes.join(' · ')}</div>` : ''}
               ${ag.servico ? `<div class="ca-servico">${ag.servico}</div>` : ''}
             </div>
             <span class="status-dot ${dotClass}"></span>
@@ -1005,101 +576,129 @@ async function carregarAgendamentosHoje() {
         </div>`;
     }).join('');
 
-    // Se todos os cards desta data foram aprovados, não mostra a seção do dia
     if (!cardsHtml.trim()) return;
 
-    // Verifica se há OS pendente neste dia para o label
-    const temPendente = ags.some(ag => {
-      const chave = `${ag.obras?.id}|${dataAg}`;
-      return isPassado && !osMap[chave];
+    const temPendenteSemOS = ags.some(ag => {
+      const entry = getOSEntry(ag);
+      return isPassado && !entry;
     });
 
-    let labelData = '';
-    let labelExtra = '';
+    let labelData  = isHoje ? 'Hoje' : `${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]}`;
+    let labelExtra = (isPassado && temPendenteSemOS) ? `<span class="badge-pendente-label">PENDENTE</span>` : '';
 
-    if (isHoje) {
-      labelData = 'Hoje';
-    } else if (isPassado && temPendente) {
-      labelData = `${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]}`;
-      labelExtra = `<span class="badge-pendente-label">PENDENTE</span>`;
-    } else {
-      labelData = `${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]}`;
-    }
-
-    html += `
-      <div class="date-group-label">${labelData}${labelExtra}</div>
-      ${cardsHtml}`;
+    html += `<div class="date-group-label">${labelData}${labelExtra}</div>${cardsHtml}`;
   });
 
   lista.innerHTML = html || `
     <div class="lista-vazia">
       <i data-lucide="calendar-check"></i>
       <p>Todos os agendamentos foram concluídos.</p>
-      <small>Use "+ Nova OS" se necessário.</small>
     </div>`;
 
   lucide.createIcons();
 }
 
-// ── Tela 2 → 3 ───────────────────────────────────────────────
-async function abrirFormulario(agId) {
+// ── Abrir formulário ─────────────────────────────────────────
+async function abrirFormulario(agId, osId = null) {
   agendamentoSelecionado = null;
+  osSelecionadaId        = osId;
   resetarForm();
 
   if (agId) {
-    const { data } = await db
+    const { data: ag } = await db
       .from('agendamentos')
       .select('*, obras(id, nome_cliente, endereco, consultores(nome, id))')
       .eq('id', agId)
       .single();
 
-    if (data) {
-      agendamentoSelecionado = data;
-      const obra = data.obras;
-      document.getElementById('os-cliente').textContent = obra?.nome_cliente || '—';
+    if (ag) {
+      agendamentoSelecionado = ag;
+      const obra     = ag.obras;
+      const cliente  = obra?.nome_cliente || ag.cliente_outro || '—';
+      const endereco = ag.endereco_outro || obra?.endereco || '';
+
+      document.getElementById('os-cliente').textContent = cliente;
       document.getElementById('os-meta').textContent =
-        [obra?.endereco, obra?.consultores?.nome ? 'Consultor: '+obra.consultores.nome : '']
-        .filter(Boolean).join(' · ');
-      if (data.servico) document.getElementById('f-planejado').value = data.servico;
+        [obra?.consultores?.nome ? 'Consultor: ' + obra.consultores.nome : ''].filter(Boolean).join(' · ');
+
+      // Endereço automático
+      if (endereco) {
+        document.getElementById('os-endereco-txt').textContent = endereco;
+        document.getElementById('os-endereco-row').style.display = 'flex';
+      }
+
+      // Equipe read-only
+      const equipeIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+      const chipsEl   = document.getElementById('equipe-info-chips');
+      if (equipeIds.length > 0) {
+        chipsEl.innerHTML = equipeIds.map(eid => {
+          const t = tecnicos.find(t => t.id === eid);
+          return t ? `<span class="equipe-chip-ro"><i data-lucide="user"></i>${t.nome}</span>` : '';
+        }).join('');
+        document.getElementById('equipe-info-bloco').style.display = 'block';
+      }
+
+      // Pré-preenche horário da agenda
+      if (ag.hora_inicio) document.getElementById('f-inicio').value = ag.hora_inicio.slice(0,5);
+      if (ag.hora_fim)    document.getElementById('f-fim').value    = ag.hora_fim.slice(0,5);
+
+      // Pré-preenche serviço planejado
+      if (ag.servico) document.getElementById('f-planejado').value = ag.servico;
     }
-  } else {
-    document.getElementById('os-cliente').textContent = 'OS sem agendamento';
-    document.getElementById('os-meta').textContent = tecnicoLogado?.nome || '';
   }
 
-  // Gerar número OS temporário
-  const { count } = await db.from('ordens_de_servico').select('*', {count:'exact',head:true});
-  document.getElementById('os-numero').textContent = `OS-${String((count||0)+1).padStart(4,'0')}`;
+  // Se existe OS pendente, carrega dados parcialmente preenchidos
+  if (osId) {
+    const { data: os } = await db.from('ordens_de_servico').select('*').eq('id', osId).single();
+    if (os) {
+      if (os.servico_planejado && !document.getElementById('f-planejado').value)
+        document.getElementById('f-planejado').value = os.servico_planejado;
+      if (os.servicos_realizados) document.getElementById('f-realizado').value    = os.servicos_realizados;
+      if (os.proximas_atividades) document.getElementById('f-proximas').value     = os.proximas_atividades;
+      if (os.observacoes)         document.getElementById('f-obs').value          = os.observacoes;
+      if (os.sistema_automacao)   document.getElementById('f-automacao').value    = os.sistema_automacao;
+      if (os.horario_inicio)      document.getElementById('f-inicio').value       = os.horario_inicio.slice(0,5);
+      if (os.horario_fim)         document.getElementById('f-fim').value          = os.horario_fim.slice(0,5);
+    }
+  }
 
-  const agora = new Date().toTimeString().slice(0,5);
-  document.getElementById('f-inicio').value = agora;
+  // Número OS
+  const { count } = await db.from('ordens_de_servico').select('*', { count:'exact', head:true });
+  document.getElementById('os-numero').textContent = osId
+    ? `OS-${String(osId).padStart(4,'0')}`
+    : `OS-${String((count||0)+1).padStart(4,'0')}`;
+
+  if (!document.getElementById('f-inicio').value) {
+    document.getElementById('f-inicio').value = new Date().toTimeString().slice(0,5);
+  }
 
   mostrarTela('tela-form');
+  lucide.createIcons();
 }
 
-// ── Toggles sim/não ──────────────────────────────────────────
-const toggleState = {prob:'nao', mat:'nao', ret:'nao', eqp:'nao'};
+// ── Toggles ──────────────────────────────────────────────────
+const toggleState = { prob:'nao', mat:'nao', ret:'nao', eqp:'nao' };
 function toggle(campo, valor) {
   toggleState[campo] = valor;
-  document.getElementById(`${campo}-sim`).className = 'toggle-btn' + (valor==='sim'?' ativo-sim':'');
-  document.getElementById(`${campo}-nao`).className = 'toggle-btn' + (valor==='nao'?' ativo-nao':'');
-  const cond = document.getElementById(`campo-${campo}`);
-  cond.classList.toggle('visivel', valor==='sim');
+  document.getElementById(`${campo}-sim`).className = 'toggle-btn' + (valor==='sim' ? ' ativo-sim' : '');
+  document.getElementById(`${campo}-nao`).className = 'toggle-btn' + (valor==='nao' ? ' ativo-nao' : '');
+  document.getElementById(`campo-${campo}`).classList.toggle('visivel', valor==='sim');
 }
 
 function resetarForm() {
   ['prob','mat','ret','eqp'].forEach(c => toggle(c,'nao'));
   ['f-planejado','f-realizado','f-problema','f-material','f-retorno','f-equipamentos','f-proximas','f-obs']
-    .forEach(id => document.getElementById(id).value = '');
-  document.getElementById('f-auxiliar').value = '';
-  document.getElementById('f-tipo').value = 'execucao';
-  document.getElementById('f-automacao').value = '';
-  document.getElementById('f-inicio').value = '';
-  document.getElementById('f-fim').value = '';
-  document.getElementById('os-numero').textContent = 'Nova OS';
-  document.getElementById('os-cliente').textContent = '—';
-  document.getElementById('os-meta').textContent = '—';
-  // Reset fotos
+    .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('f-automacao').value          = '';
+  document.getElementById('f-inicio').value             = '';
+  document.getElementById('f-fim').value                = '';
+  document.getElementById('os-numero').textContent      = 'Nova OS';
+  document.getElementById('os-cliente').textContent     = '—';
+  document.getElementById('os-meta').textContent        = '';
+  document.getElementById('os-endereco-row').style.display = 'none';
+  document.getElementById('os-endereco-txt').textContent   = '';
+  document.getElementById('equipe-info-bloco').style.display = 'none';
+  document.getElementById('equipe-info-chips').innerHTML     = '';
   fotosSelecionadas = [];
   document.getElementById('fotos-grid').innerHTML = '';
 }
@@ -1110,8 +709,7 @@ function adicionarFotos(files) {
     if (file.size > 10 * 1024 * 1024) { alert(`${file.name} é maior que 10MB.`); return; }
     const reader = new FileReader();
     reader.onload = e => {
-      const entry = { file, preview: e.target.result, id: Date.now() + Math.random() };
-      fotosSelecionadas.push(entry);
+      fotosSelecionadas.push({ file, preview: e.target.result, id: Date.now() + Math.random() });
       renderFotos();
     };
     reader.readAsDataURL(file);
@@ -1123,8 +721,7 @@ function renderFotos() {
     <div class="foto-thumb" id="thumb-${f.id}">
       <img src="${f.preview}" alt="foto">
       <button class="remover" onclick="removerFoto(${f.id})">&#x2715;</button>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function removerFoto(id) {
@@ -1135,13 +732,11 @@ function removerFoto(id) {
 async function uploadFotos(obraId) {
   const urls = [];
   for (let i = 0; i < fotosSelecionadas.length; i++) {
-    const f = fotosSelecionadas[i];
+    const f   = fotosSelecionadas[i];
     const ext = f.file.name.split('.').pop().toLowerCase() || 'jpg';
     const path = `obras/${obraId}/${Date.now()}_${i}.${ext}`;
-
     const thumb = document.getElementById(`thumb-${f.id}`);
     if (thumb) thumb.innerHTML += `<div class="foto-uploading">${i+1}/${fotosSelecionadas.length}</div>`;
-
     const { error } = await db.storage.from('fotos-os').upload(path, f.file, { contentType: f.file.type });
     if (!error) {
       const { data: urlData } = db.storage.from('fotos-os').getPublicUrl(path);
@@ -1151,76 +746,92 @@ async function uploadFotos(obraId) {
   return urls;
 }
 
-// ── Enviar OS ────────────────────────────────────────────────
+// ── Enviar OS ─────────────────────────────────────────────────
 async function enviarOS() {
   const btn = document.getElementById('btn-enviar');
-  btn.disabled = true; btn.textContent = 'Enviando...';
+  btn.disabled    = true;
+  btn.textContent = 'Enviando...';
 
   try {
-    // Upload de fotos
-    let fotoUrls = [];
     const obraId = agendamentoSelecionado?.obras?.id || null;
+    let fotoUrls = [];
     if (fotosSelecionadas.length > 0 && obraId) {
       btn.textContent = `Enviando ${fotosSelecionadas.length} foto(s)...`;
       fotoUrls = await uploadFotos(obraId);
     }
 
+    // Auxiliares vêm do agendamento (não do form)
+    const ag = agendamentoSelecionado;
     const payload = {
       obra_id:             obraId,
-      tecnico_id:          tecnicoLogado?.id || null,
-      auxiliar_id:         document.getElementById('f-auxiliar').value || null,
-      consultor_id:        agendamentoSelecionado?.obras?.consultores?.id || null,
-      tipo_servico:        document.getElementById('f-tipo').value,
-      horario_inicio:      document.getElementById('f-inicio').value || null,
-      horario_fim:         document.getElementById('f-fim').value || null,
+      cliente_outro:       ag?.cliente_outro                      || null,
+      agendamento_id:      ag?.id                                 || null,
+      tecnico_id:          tecnicoLogado?.id                      || null,
+      auxiliar_id:         ag?.auxiliar_id                        || null,
+      auxiliar2_id:        ag?.auxiliar2_id                       || null,
+      auxiliar3_id:        ag?.auxiliar3_id                       || null,
+      consultor_id:        ag?.obras?.consultores?.id             || null,
+      tipo_servico:        'execucao',
+      horario_inicio:      document.getElementById('f-inicio').value    || null,
+      horario_fim:         document.getElementById('f-fim').value       || null,
       servico_planejado:   document.getElementById('f-planejado').value || null,
       servicos_realizados: document.getElementById('f-realizado').value || null,
       houve_problema:      toggleState.prob === 'sim',
       descricao_problema:  toggleState.prob === 'sim' ? document.getElementById('f-problema').value : null,
       faltou_material:     toggleState.mat  === 'sim',
-      lista_material:      toggleState.mat  === 'sim' ? document.getElementById('f-material').value : null,
+      lista_material:      toggleState.mat  === 'sim' ? document.getElementById('f-material').value  : null,
       retornou_material:   toggleState.ret  === 'sim',
-      lista_retorno:       toggleState.ret  === 'sim' ? document.getElementById('f-retorno').value : null,
+      lista_retorno:       toggleState.ret  === 'sim' ? document.getElementById('f-retorno').value   : null,
       sistema_automacao:   document.getElementById('f-automacao').value || null,
       retorno_equipamento: toggleState.eqp  === 'sim',
       lista_equipamentos:  toggleState.eqp  === 'sim' ? document.getElementById('f-equipamentos').value : null,
-      proximas_atividades: document.getElementById('f-proximas').value || null,
-      observacoes:         document.getElementById('f-obs').value || null,
+      proximas_atividades: document.getElementById('f-proximas').value  || null,
+      observacoes:         document.getElementById('f-obs').value       || null,
       fotos_urls:          fotoUrls.length > 0 ? fotoUrls : null,
-      data_servico:        agendamentoSelecionado?.data || new Date().toISOString().split('T')[0],
+      data_servico:        ag?.data || new Date().toISOString().split('T')[0],
       status_aprovacao:    'concluida',
       criado_em:           new Date().toISOString(),
     };
 
     btn.textContent = 'Salvando...';
-    let { error } = await db.from('ordens_de_servico').insert(payload);
+    let error;
 
-    // Fallback: se data_servico não existe no banco, tenta sem ela
-    if (error && error.message && error.message.includes('data_servico')) {
-      const payloadSemData = { ...payload };
-      delete payloadSemData.data_servico;
-      const res2 = await db.from('ordens_de_servico').insert(payloadSemData);
-      error = res2.error;
+    if (osSelecionadaId) {
+      // UPDATE da OS pendente existente (criada automaticamente pela agenda)
+      const res = await db.from('ordens_de_servico').update(payload).eq('id', osSelecionadaId);
+      error = res.error;
+    } else {
+      // INSERT novo (fluxo sem criação automática, ou retorno de OS sem agendamento_id)
+      const res = await db.from('ordens_de_servico').insert(payload);
+      error = res.error;
+      // Fallback: sem colunas novas
+      if (error && (error.message.includes('agendamento_id') || error.message.includes('cliente_outro') || error.message.includes('auxiliar2_id'))) {
+        const fallback = { ...payload };
+        delete fallback.agendamento_id; delete fallback.cliente_outro;
+        delete fallback.auxiliar2_id;   delete fallback.auxiliar3_id;
+        const r2 = await db.from('ordens_de_servico').insert(fallback);
+        error = r2.error;
+      }
     }
 
     if (error) { alert('Erro ao enviar OS: ' + error.message); return; }
 
     const num = document.getElementById('os-numero').textContent;
     document.getElementById('sucesso-msg').textContent =
-      `${num} registrada com sucesso para ${agendamentoSelecionado?.obras?.nome_cliente || 'o cliente'}.`
+      `${num} registrada para ${ag?.obras?.nome_cliente || ag?.cliente_outro || 'o cliente'}.`
       + (fotoUrls.length > 0 ? ` ${fotoUrls.length} foto(s) anexada(s).` : '');
     mostrarTela('tela-sucesso');
 
   } finally {
-    btn.disabled = false;
+    btn.disabled  = false;
     btn.innerHTML = '<i data-lucide="send"></i> Enviar Ordem de Serviço';
     lucide.createIcons();
   }
 }
 
-function novaOS() { mostrarTela('tela-lista'); }
-function voltarLista() { mostrarTela('tela-lista'); }
-function irHistorico() { window.location.href = 'tecnico_dashboard.html'; }
+function novaOS()       { mostrarTela('tela-lista'); carregarAgendamentosHoje(); }
+function voltarLista()  { mostrarTela('tela-lista'); }
+function irHistorico()  { window.location.href = 'tecnico_dashboard.html'; }
 
 function mostrarTela(id) {
   document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
@@ -1230,13 +841,11 @@ function mostrarTela(id) {
 
 // Drag & drop
 const uploadArea = document.getElementById('upload-area');
-uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragover',  e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
 uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-uploadArea.addEventListener('drop', e => { e.preventDefault(); uploadArea.classList.remove('dragover'); adicionarFotos(e.dataTransfer.files); });
+uploadArea.addEventListener('drop',      e => { e.preventDefault(); uploadArea.classList.remove('dragover'); adicionarFotos(e.dataTransfer.files); });
 
 init();
 </script>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<script>lucide.createIcons();</script>
 </body>
 </html>

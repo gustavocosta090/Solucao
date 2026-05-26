@@ -703,7 +703,7 @@ async function logout() {
     .eq('auth_user_id', session.user.id).single();
 
   if (!tec) { window.location.href = 'login.html'; return; }
-  if (tec.role !== 'tecnico') { window.location.href = 'supervisor.html'; return; }
+  if (tec.role !== 'tecnico' && tec.role !== 'auxiliar') { window.location.href = 'supervisor.html'; return; }
 
   tecnicoAtual = tec;
   renderTopbar(tec.nome, tec.role, 'minhas-os');
@@ -717,10 +717,11 @@ async function logout() {
 })();
 
 async function carregarOSs() {
+  const id = tecnicoAtual.id;
   const { data, error } = await db
     .from('ordens_de_servico')
     .select('*, obras(nome_cliente, endereco)')
-    .eq('tecnico_id', tecnicoAtual.id)
+    .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`)
     .order('criado_em', { ascending: false });
 
   if (error) {
@@ -732,8 +733,8 @@ async function carregarOSs() {
   todasOSs = data || [];
 
   document.getElementById('statTotal').textContent     = todasOSs.length;
-  document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida').length;
-  document.getElementById('statPendentes').textContent = todasOSs.filter(o => o.status_aprovacao === 'pendente').length;
+  document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
+  document.getElementById('statPendentes').textContent = todasOSs.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
 
   filtrar();
 }
