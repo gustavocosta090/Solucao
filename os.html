@@ -420,14 +420,15 @@ function renderTopbar(nome, role, paginaAtiva) {
   const greetEl = document.getElementById('topbar-greeting');
   if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
   const links = [
-    { href:'obras.html',             label:'Obras',      id:'obras',     roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'agenda.html',            label:'Agenda',     id:'agenda',    roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'supervisor.html',        label:'Supervisor', id:'supervisor',roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href:'admin.html',             label:'Admin',      id:'admin',     roles:['coordenador'] },
-    { href:'tecnico_dashboard.html', label:'Minhas OSs', id:'minhas-os', roles:['tecnico','auxiliar'] },
-    { href:'gerente_comercial.html', label:'Comercial',  id:'comercial', roles:['gerente_comercial'] },
-    { href:'projetista.html',        label:'Meu Painel', id:'projetista',roles:['projetista'] },
-    { href:'coordenador_projetos.html',label:'Projetos', id:'coordenador-projetos',roles:['coordenador_projetos'] },
+    { href:'obras.html',                label:'Obras',       id:'obras',                roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'agenda.html',               label:'Agenda',      id:'agenda',               roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'os.html',                   label:'Fazer OS',    id:'os',                   roles:['tecnico','auxiliar'] },
+    { href:'supervisor.html',           label:'Supervisor',  id:'supervisor',           roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
+    { href:'admin.html',                label:'Admin',       id:'admin',                roles:['coordenador'] },
+    { href:'tecnico_dashboard.html',    label:'Minhas OSs',  id:'minhas-os',            roles:['tecnico','auxiliar'] },
+    { href:'gerente_comercial.html',    label:'Comercial',   id:'comercial',            roles:['gerente_comercial'] },
+    { href:'projetista.html',           label:'Meu Painel',  id:'projetista',           roles:['projetista'] },
+    { href:'coordenador_projetos.html', label:'Projetos',    id:'coordenador-projetos', roles:['coordenador_projetos'] },
   ];
   const nav = document.getElementById('topbar-nav');
   if (!nav) return;
@@ -614,6 +615,31 @@ async function abrirFormulario(agId, osId = null) {
 
     if (ag) {
       agendamentoSelecionado = ag;
+
+      // ── Busca OS pendente no banco (garantia contra falha do osMap) ──
+      if (!osSelecionadaId) {
+        // Tentativa 1: por agendamento_id
+        const { data: osPorAg } = await db
+          .from('ordens_de_servico')
+          .select('id')
+          .eq('agendamento_id', agId)
+          .eq('status_aprovacao', 'pendente')
+          .maybeSingle();
+
+        if (osPorAg?.id) {
+          osSelecionadaId = osPorAg.id;
+        } else if (ag.obras?.id && ag.data) {
+          // Tentativa 2: por obra_id + data_servico
+          const { data: osPorData } = await db
+            .from('ordens_de_servico')
+            .select('id')
+            .eq('obra_id', ag.obras.id)
+            .eq('data_servico', ag.data)
+            .eq('status_aprovacao', 'pendente')
+            .maybeSingle();
+          if (osPorData?.id) osSelecionadaId = osPorData.id;
+        }
+      }
       const obra     = ag.obras;
       const cliente  = obra?.nome_cliente || ag.cliente_outro || '—';
       const endereco = ag.endereco_outro || obra?.endereco || '';
