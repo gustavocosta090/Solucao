@@ -784,11 +784,8 @@
         <label>Hora início</label>
         <input type="time" id="f-inicio"/>
       </div>
-      <div class="form-group">
-        <label>Hora fim</label>
-        <input type="time" id="f-fim"/>
-      </div>
     </div>
+    <input type="hidden" id="f-fim"/>
 
     <div class="form-group">
       <label>Veículo (placa)</label>
@@ -1229,7 +1226,7 @@ async function editarAgendamento(id) {
   document.getElementById('f-data').value    = ag.data            || '';
   document.getElementById('f-status').value  = ag.status          || 'confirmado';
   document.getElementById('f-inicio').value  = ag.hora_inicio     ? ag.hora_inicio.slice(0,5) : '';
-  document.getElementById('f-fim').value     = ag.hora_fim        ? ag.hora_fim.slice(0,5)    : '';
+  document.getElementById('f-fim').value     = '';
   document.getElementById('f-veiculo').value = ag.veiculo         || '';
   document.getElementById('f-servico').value = ag.servico         || '';
   document.getElementById('btn-excluir').style.display = 'flex';
@@ -1262,7 +1259,7 @@ async function salvarAgendamento() {
   const data      = document.getElementById('f-data').value;
   const status    = document.getElementById('f-status').value;
   const inicio    = document.getElementById('f-inicio').value;
-  const fim       = document.getElementById('f-fim').value;
+  const fim       = '';
   const veiculo   = document.getElementById('f-veiculo').value;
   const servico   = document.getElementById('f-servico').value;
 
@@ -1301,7 +1298,7 @@ async function salvarAgendamento() {
     auxiliar3_id:   id3 ? parseInt(id3) : null,
     data, status,
     hora_inicio: inicio  || null,
-    hora_fim:    fim     || null,
+    hora_fim:    null,
     veiculo:     veiculo || null,
     servico:     servico || null,
   };
@@ -1348,43 +1345,43 @@ async function salvarAgendamento() {
     erroEl.textContent   = 'Erro ao salvar: ' + error.message;
     erroEl.style.display = 'block';
   } else {
-    // ── Cria OS pendente para novos agendamentos ──────────────────
-    // Só faz no INSERT (não no editar), e apenas se não for viagem
+    // ── Cria uma OS pendente individual para cada pessoa da equipe ───
+    // A unificação acontece depois, no os.html, quando o técnico marca quem participou.
     if (!agEditandoId && savedAgId && status !== 'viagem') {
-      const osPayload = {
-        agendamento_id:   savedAgId,
-        obra_id:          payload.obra_id,
-        cliente_outro:    payload.cliente_outro   || null,
-        endereco_servico: endereco                || null,
-        tecnico_id:       payload.tecnico_id,
-        auxiliar_id:      payload.auxiliar_id     || null,
-        auxiliar2_id:     payload.auxiliar2_id    || null,
-        auxiliar3_id:     payload.auxiliar3_id    || null,
-        data_servico:     data,
-        servico_planejado: servico                || null,
-        status_aprovacao: 'pendente',
-        criado_em:        new Date().toISOString(),
-      };
-      // Nível 1: payload completo (inclui colunas novas)
-      let { error: osErr } = await db.from('ordens_de_servico').insert(osPayload);
+      const equipeOS = [payload.tecnico_id, payload.auxiliar_id, payload.auxiliar2_id, payload.auxiliar3_id]
+        .filter(Boolean)
+        .filter((id, idx, arr) => arr.indexOf(id) === idx);
 
-      if (osErr) {
-        // Nível 2: sem agendamento_id / endereco_servico / cliente_outro (podem não existir)
-        const { agendamento_id: _a, endereco_servico: _e, cliente_outro: _c, ...l2 } = osPayload;
-        const r2 = await db.from('ordens_de_servico').insert(l2);
+      for (const tecnicoId of equipeOS) {
+        const osPayload = {
+          agendamento_id:   savedAgId,
+          obra_id:          payload.obra_id,
+          cliente_outro:    payload.cliente_outro   || null,
+          endereco_servico: endereco                || null,
+          tecnico_id:       tecnicoId,
+          data_servico:     data,
+          servico_planejado: servico                || null,
+          status_aprovacao: 'pendente',
+          criado_em:        new Date().toISOString(),
+        };
 
-        if (r2.error) {
-          // Nível 3: mínimo absoluto — só colunas que definitivamente existem
-          const r3 = await db.from('ordens_de_servico').insert({
-            obra_id:          payload.obra_id,
-            tecnico_id:       payload.tecnico_id,
-            auxiliar_id:      payload.auxiliar_id || null,
-            data_servico:     data,
-            servico_planejado: servico || null,
-            status_aprovacao: 'pendente',
-            criado_em:        new Date().toISOString(),
-          });
-          if (r3.error) console.warn('OS pendente não criada:', r3.error.message);
+        let { error: osErr } = await db.from('ordens_de_servico').insert(osPayload);
+
+        if (osErr) {
+          const { agendamento_id: _a, endereco_servico: _e, cliente_outro: _c, ...l2 } = osPayload;
+          const r2 = await db.from('ordens_de_servico').insert(l2);
+
+          if (r2.error) {
+            const r3 = await db.from('ordens_de_servico').insert({
+              obra_id:          payload.obra_id,
+              tecnico_id:       tecnicoId,
+              data_servico:     data,
+              servico_planejado: servico || null,
+              status_aprovacao: 'pendente',
+              criado_em:        new Date().toISOString(),
+            });
+            if (r3.error) console.warn('OS pendente não criada:', r3.error.message);
+          }
         }
       }
     }

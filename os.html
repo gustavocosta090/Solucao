@@ -676,6 +676,7 @@ async function abrirFormulario(agId, osId = null) {
           .from('ordens_de_servico')
           .select('id')
           .eq('agendamento_id', agId)
+          .eq('tecnico_id', tecnicoLogado.id)
           .eq('status_aprovacao', 'pendente')
           .maybeSingle();
 
@@ -688,6 +689,7 @@ async function abrirFormulario(agId, osId = null) {
             .select('id')
             .eq('obra_id', ag.obras.id)
             .eq('data_servico', ag.data)
+            .eq('tecnico_id', tecnicoLogado.id)
             .eq('status_aprovacao', 'pendente')
             .maybeSingle();
           if (osPorData?.id) osSelecionadaId = osPorData.id;
@@ -711,9 +713,7 @@ async function abrirFormulario(agId, osId = null) {
       equipeFull = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
       renderEquipeCheckboxes();
 
-      // Pré-preenche horário da agenda
-      if (ag.hora_inicio) document.getElementById('f-inicio').value = ag.hora_inicio.slice(0,5);
-      if (ag.hora_fim)    document.getElementById('f-fim').value    = ag.hora_fim.slice(0,5);
+      // Horários da OS são preenchidos pelo técnico, independentemente da agenda.
 
       // Pré-preenche serviço planejado
       if (ag.servico) document.getElementById('f-planejado').value = ag.servico;
@@ -740,10 +740,6 @@ async function abrirFormulario(agId, osId = null) {
   document.getElementById('os-numero').textContent = osId
     ? `OS-${String(osId).padStart(4,'0')}`
     : `OS-${String((count||0)+1).padStart(4,'0')}`;
-
-  if (!document.getElementById('f-inicio').value) {
-    document.getElementById('f-inicio').value = new Date().toTimeString().slice(0,5);
-  }
 
   mostrarTela('tela-form');
   lucide.createIcons();
@@ -864,10 +860,13 @@ async function enviarOS() {
       document.querySelectorAll('.equipe-check-input:checked')
     ).map(cb => parseInt(cb.value)).filter(Boolean);
 
-    // Se nenhum checkbox existe (agendamento sem equipe definida), usa o próprio técnico
-    const participantes = checkedIds.length > 0 ? checkedIds : [tecnicoLogado?.id].filter(Boolean);
+    const selfId = tecnicoLogado?.id;
+    const participantes = [
+      selfId,
+      ...checkedIds.filter(id => id !== selfId)
+    ].filter(Boolean).filter((id, idx, arr) => arr.indexOf(id) === idx);
 
-    // IDs dos não-marcados (precisarão de OS própria)
+    const outrosIncluidos = participantes.filter(id => id !== selfId);
     const naoIncluidos = equipeFull.filter(id => !participantes.includes(id));
 
     // Mapeia participantes para as colunas do banco
@@ -945,6 +944,18 @@ async function enviarOS() {
 
     if (error) { alert('Erro ao enviar OS: ' + error.message); return; }
 
+    // Quem foi marcado entra nesta OS unificada; removemos a pendente individual dele.
+    if (outrosIncluidos.length > 0 && ag?.id) {
+      for (const uid of outrosIncluidos) {
+        await db
+          .from('ordens_de_servico')
+          .delete()
+          .eq('agendamento_id', ag.id)
+          .eq('tecnico_id', uid)
+          .eq('status_aprovacao', 'pendente');
+      }
+    }
+
     // ── Para quem não foi incluído: garantir OS pendente individual ──
     if (naoIncluidos.length > 0 && ag?.id) {
       for (const uid of naoIncluidos) {
@@ -957,7 +968,7 @@ async function enviarOS() {
           .eq('status_aprovacao', 'pendente')
           .maybeSingle();
 
-        if (!jaExiste) {
+        if (!jaExiste && uid !== tecnicoLogado?.id) {
           // Cria OS pendente individual para esse técnico
           const osPendente = {
             agendamento_id:   ag.id,

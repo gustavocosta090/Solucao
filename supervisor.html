@@ -122,6 +122,11 @@
     flex: 1;
   }
 
+  .stat-card.alerta {
+    border-color: rgba(245,158,11,0.32);
+    background: rgba(245,158,11,0.05);
+  }
+
   .stat-num {
     font-size: 28px;
     font-weight: 700;
@@ -859,6 +864,10 @@
     <div class="stat-num" id="sFotos" style="color: var(--secondary);">—</div>
     <div class="stat-label">Com fotos</div>
   </div>
+  <div class="stat-card alerta">
+    <div class="stat-num" id="sNoturna" style="color: var(--amber);">—</div>
+    <div class="stat-label">Agenda noturna</div>
+  </div>
 </div>
 
 <!-- Filtros -->
@@ -870,6 +879,7 @@
     <option value="">Todos os status</option>
     <option value="pendente">Pendente</option>
     <option value="concluida">Concluída</option>
+    <option value="noturna">Agenda noturna</option>
   </select>
   <input type="date" id="fDataInicio" onchange="filtrar()" title="Data início">
   <input type="date" id="fDataFim" onchange="filtrar()" title="Data fim">
@@ -1015,11 +1025,16 @@ async function carregarOSs() {
   document.getElementById('sPend').textContent = todasOSs.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
   document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
   document.getElementById('sFotos').textContent = todasOSs.filter(o => o.fotos_urls?.length > 0).length;
+  document.getElementById('sNoturna').textContent = todasOSs.filter(isAgendaNoturna).length;
 
   document.getElementById('loadingEl').style.display = 'none';
   document.getElementById('tabelaEl').style.display = 'block';
 
   filtrar();
+}
+
+function isAgendaNoturna(o) {
+  return !!(o.data_servico && o.horario_fim && o.horario_fim.slice(0,5) > '17:30');
 }
 
 function filtrar() {
@@ -1033,7 +1048,7 @@ function filtrar() {
     const matchTec = !fTec || String(o.tecnico_id) === fTec || String(o.auxiliar_id) === fTec || String(o.auxiliar2_id) === fTec || String(o.auxiliar3_id) === fTec;
     const stRaw = o.status_aprovacao || 'pendente';
     const stOS = (stRaw === 'aprovada' || stRaw === 'concluida') ? 'concluida' : 'pendente';
-    const matchSt = !fSt || stOS === fSt;
+    const matchSt = !fSt || (fSt === 'noturna' ? isAgendaNoturna(o) : stOS === fSt);
     const matchDi = !fDi || !o.data_servico || o.data_servico >= fDi;
     const matchDf = !fDf || !o.data_servico || o.data_servico <= fDf;
     const matchBusca = !fBusca ||
@@ -1085,6 +1100,9 @@ function renderTabela() {
     const statusBadge = _stNorm === 'concluida'
       ? '<span class="badge badge-aprovada">Concluída</span>'
       : '<span class="badge badge-pendente">Pendente</span>';
+    const noturnaBadge = isAgendaNoturna(o)
+      ? '<span class="badge badge-pendente" title="Atendimento finalizado após 17:30">Agenda noturna</span>'
+      : '';
     const nFotos = o.fotos_urls?.length || 0;
 
     const btnAcao = _stNorm === 'concluida'
@@ -1097,7 +1115,7 @@ function renderTabela() {
       <td>${o.equipeNomes?.join(', ') || '—'}</td>
       <td title="${o.obras?.endereco || ''}">${o.obras?.nome_cliente || '—'}</td>
       <td class="td-muted">${(o.tipo_servico || '').replace(/_/g,' ')}</td>
-      <td>${statusBadge}</td>
+      <td>${statusBadge} ${noturnaBadge}</td>
       <td class="td-center">${nFotos > 0 ? `<span class="fotos-chip"><i data-lucide="image"></i>${nFotos}</span>` : '<span style="color:var(--text-3);">—</span>'}</td>
       <td style="white-space:nowrap;" onclick="event.stopPropagation()">
         ${btnAcao}
@@ -1151,12 +1169,14 @@ function verOS(id) {
 
   const nomeEquipe = os.equipeNomes?.join(' · ') || os.tecnicos?.nome || '—';
   const horario    = [os.horario_inicio?.slice(0,5), os.horario_fim?.slice(0,5)].filter(Boolean).join(' – ') || null;
+  const alertaNoturna = isAgendaNoturna(os);
 
   let html = `
   <div class="detail-grid">
     ${DI('Equipe', nomeEquipe)}
     ${DI('Data do serviço', data)}
     ${horario ? DI('Horário', horario) : ''}
+    ${alertaNoturna ? DI('Alerta', 'Agenda noturna - finalizou após 17:30') : ''}
     <div class="detail-item full">
       <label>Obra</label>
       <span><strong>${os.obras?.nome_cliente || '—'}</strong>${os.obras?.endereco ? `<span class="detail-address"><i data-lucide="map-pin"></i>${os.obras.endereco}</span>` : ''}</span>
@@ -1258,6 +1278,7 @@ async function mudarStatusOS(id, status, obs) {
   // Re-render stats
   document.getElementById('sPend').textContent = todasOSs.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
   document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
+  document.getElementById('sNoturna').textContent = todasOSs.filter(isAgendaNoturna).length;
 
   filtrar();
 }
