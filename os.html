@@ -442,30 +442,53 @@ async function sair() { await db.auth.signOut(); window.location.href = 'login.h
 // ── Carregar agendamentos + OSs ───────────────────────────────
 async function carregarAgendamentosHoje() {
   const hoje    = new Date().toISOString().split('T')[0];
-  const passado = new Date(); passado.setDate(passado.getDate() - 14);
+  // Busca até 60 dias atrás para pegar OSs pendentes antigas, mas nunca datas futuras
+  const passado = new Date(); passado.setDate(passado.getDate() - 60);
   const dataInicio = passado.toISOString().split('T')[0];
   const id = tecnicoLogado.id;
 
   // Busca agendamentos onde o técnico está em qualquer campo da equipe
+  // lte('data', hoje) → nunca mostra agendamentos futuros aqui
   const agQuery = db.from('agendamentos')
     .select('*, obras(id, nome_cliente, endereco)')
     .gte('data', dataInicio)
+    .lte('data', hoje)
     .order('data', { ascending: true })
     .order('hora_inicio', { ascending: true });
 
   // Supabase: OR nos 4 campos
-  // Agendamentos: OR nos 4 campos
-  const agRes = await agQuery.or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`);
-  const agsRaw = agRes.data;
+  // Agendamentos — fallback em cascata (auxiliar2/3 podem não existir na tabela)
+  let agsRaw = null;
+  const agR1 = await agQuery.or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`);
+  if (!agR1.error) {
+    agsRaw = agR1.data;
+  } else {
+    const agR2 = await db.from('agendamentos')
+      .select('*, obras(id, nome_cliente, endereco)')
+      .gte('data', dataInicio)
+      .lte('data', hoje)
+      .order('data', { ascending: true })
+      .order('hora_inicio', { ascending: true })
+      .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id}`);
+    if (!agR2.error) {
+      agsRaw = agR2.data;
+    } else {
+      const agR3 = await db.from('agendamentos')
+        .select('*, obras(id, nome_cliente, endereco)')
+        .gte('data', dataInicio)
+        .lte('data', hoje)
+        .order('data', { ascending: true })
+        .eq('tecnico_id', id);
+      agsRaw = agR3.data || [];
+    }
+  }
 
-  // OSs: fallback em cascata caso colunas novas não existam ainda
+  // OSs: busca sem limite de data para pegar OSs pendentes antigas também
   let osRaw = null;
-  const osBase = db.from('ordens_de_servico').gte('criado_em', dataInicio + 'T00:00:00');
 
   const osR1 = await db.from('ordens_de_servico')
     .select('id, agendamento_id, obra_id, status_aprovacao, data_servico, criado_em')
-    .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`)
-    .gte('criado_em', dataInicio + 'T00:00:00');
+    .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`);
 
   if (!osR1.error) {
     osRaw = osR1.data;
@@ -473,9 +496,16 @@ async function carregarAgendamentosHoje() {
     // Fallback 2: sem auxiliar2/3
     const osR2 = await db.from('ordens_de_servico')
       .select('id, obra_id, status_aprovacao, data_servico, criado_em')
-      .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id}`)
-      .gte('criado_em', dataInicio + 'T00:00:00');
-    osRaw = osR2.data || [];
+      .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id}`);
+    if (!osR2.error) {
+      osRaw = osR2.data;
+    } else {
+      // Fallback 3: mínimo — só tecnico_id
+      const osR3 = await db.from('ordens_de_servico')
+        .select('id, obra_id, status_aprovacao, data_servico, criado_em')
+        .eq('tecnico_id', id);
+      osRaw = osR3.data || [];
+    }
   }
 
   const lista = document.getElementById('lista-agendamentos');
