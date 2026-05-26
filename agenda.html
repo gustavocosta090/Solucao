@@ -564,6 +564,26 @@
 
     .btn-excluir:hover { background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.35); }
     .btn-excluir i { width: 14px; height: 14px; }
+
+    /* ── Botão WhatsApp ── */
+    .btn-whatsapp {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 16px;
+      background: rgba(37,211,102,0.12);
+      border: 1px solid rgba(37,211,102,0.3);
+      border-radius: var(--radius-input);
+      color: #25D366;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 150ms, border-color 150ms, transform 150ms;
+      font-family: inherit;
+    }
+    .btn-whatsapp:hover { background: rgba(37,211,102,0.2); border-color: rgba(37,211,102,0.5); transform: translateY(-1px); }
+    .btn-whatsapp svg { width: 15px; height: 15px; flex-shrink: 0; }
   </style>
 </head>
 <body>
@@ -590,10 +610,19 @@
     <button class="filtro-btn" data-equipe="4">Automação</button>
   </div>
 
-  <button class="btn-novo" onclick="abrirModal()">
-    <i data-lucide="plus"></i>
-    Novo agendamento
-  </button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn-whatsapp" id="btn-whatsapp" onclick="dispararAgendaWhatsapp()" style="display:none" title="Disparar agenda do dia no WhatsApp">
+      <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+      </svg>
+      Disparar agenda do dia
+    </button>
+
+    <button class="btn-novo" id="btn-novo" onclick="abrirModal()">
+      <i data-lucide="plus"></i>
+      Novo agendamento
+    </button>
+  </div>
 </div>
 
 <!-- Grade semanal -->
@@ -729,6 +758,7 @@ let agEditandoId      = null;
 let equipesSelecionadas = []; // array de IDs (string)
 let equipeDropdownAberto = false;
 let modoVisualizacao  = false;
+let roleAtual         = null;
 
 const DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -746,11 +776,20 @@ async function init() {
 
   const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
   renderTopbar(eu?.nome, eu?.role, 'agenda');
+  roleAtual = eu?.role;
 
-  if (eu && eu.role === 'tecnico') {
+  const podeEditar = ['agendamento', 'coordenador', 'supervisor'].includes(roleAtual);
+  const podeDisparar = ['agendamento', 'coordenador'].includes(roleAtual);
+
+  if (!podeEditar) {
     modoVisualizacao = true;
-    const btnNovo = document.querySelector('.btn-novo');
+    const btnNovo = document.getElementById('btn-novo');
     if (btnNovo) btnNovo.style.display = 'none';
+  }
+
+  if (podeDisparar) {
+    const btnWa = document.getElementById('btn-whatsapp');
+    if (btnWa) btnWa.style.display = 'inline-flex';
   }
 
   await Promise.all([carregarObras(), carregarTecnicos()]);
@@ -1339,6 +1378,69 @@ document.addEventListener('click', function(e) {
   const sel = document.getElementById('equipe-select');
   if (sel && !sel.contains(e.target)) fecharEquipeDropdown();
 });
+
+// ── Disparar agenda do dia no WhatsApp ───────────────────────
+function dispararAgendaWhatsapp() {
+  const hoje     = fmtISO(new Date());
+  const agHoje   = agendamentos.filter(ag => ag.data === hoje);
+
+  const DIAS_PT  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const d        = new Date();
+  const dataFormatada = `${DIAS_PT[d.getDay()]}, ${d.getDate()} de ${MESES_PT[d.getMonth()]}`;
+
+  if (agHoje.length === 0) {
+    alert('Não há agendamentos para hoje.');
+    return;
+  }
+
+  // Agrupa por equipe (usa a chave dos IDs ordenados para identificar equipe única)
+  const grupos = {};
+  agHoje.forEach(ag => {
+    const ids = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id]
+      .filter(Boolean).sort().join('_');
+    if (!grupos[ids]) grupos[ids] = { ids, ags: [] };
+    grupos[ids].ags.push(ag);
+  });
+
+  let msg = `📋 *Agenda do dia — ${dataFormatada}*\n`;
+
+  Object.values(grupos).forEach(grupo => {
+    // Monta nomes da equipe
+    const idList = grupo.ids.split('_').map(Number);
+    const nomes  = idList.map(id => {
+      const t = tecnicos.find(t => t.id === id);
+      return t ? t.nome : null;
+    }).filter(Boolean);
+
+    msg += `\n━━━━━━━━━━━━━━━━\n`;
+    msg += `👥 *${nomes.join(' · ')}*\n`;
+
+    // Ordena atendimentos pelo horário
+    const ordenados = [...grupo.ags].sort((a, b) =>
+      (a.hora_inicio || '00:00').localeCompare(b.hora_inicio || '00:00')
+    );
+
+    ordenados.forEach(ag => {
+      const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
+      const cliente = ag.obras?.nome_cliente || ag.cliente_outro || '—';
+      const end     = ag.endereco_outro || ag.obras?.endereco || '';
+      const serv    = ag.servico || '';
+
+      msg += `\n`;
+      if (hora) msg += `🕐 *${hora}*\n`;
+      msg += `🏠 ${cliente}\n`;
+      if (end)  msg += `📍 ${end}\n`;
+      if (serv) msg += `🔧 ${serv}\n`;
+    });
+  });
+
+  msg += `\n━━━━━━━━━━━━━━━━\n`;
+  msg += `_Enviado via sistema Solução Técnica_`;
+
+  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
 
 // ── Iniciar ──────────────────────────────────────────────────
 init();
