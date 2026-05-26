@@ -1145,16 +1145,18 @@ function verOS(id) {
   const _stM = (os.status_aprovacao === 'aprovada' || os.status_aprovacao === 'concluida') ? 'concluida' : 'pendente';
   const statusLabel = _stM === 'concluida' ? 'Concluída' : 'Pendente';
 
+  const DI = (label, valor, full = false) => valor
+    ? `<div class="detail-item ${full ? 'full' : ''}"><label>${label}</label><span style="white-space:pre-line">${valor}</span></div>`
+    : '';
+
+  const nomeEquipe = os.equipeNomes?.join(' · ') || os.tecnicos?.nome || '—';
+  const horario    = [os.horario_inicio?.slice(0,5), os.horario_fim?.slice(0,5)].filter(Boolean).join(' – ') || null;
+
   let html = `
   <div class="detail-grid">
-    <div class="detail-item">
-      <label>Equipe</label>
-      <span>${os.equipeNomes?.join(' · ') || os.tecnicos?.nome || '—'}</span>
-    </div>
-    <div class="detail-item">
-      <label>Data do serviço</label>
-      <span>${data}</span>
-    </div>
+    ${DI('Equipe', nomeEquipe)}
+    ${DI('Data do serviço', data)}
+    ${horario ? DI('Horário', horario) : ''}
     <div class="detail-item full">
       <label>Obra</label>
       <span><strong>${os.obras?.nome_cliente || '—'}</strong>${os.obras?.endereco ? `<span class="detail-address"><i data-lucide="map-pin"></i>${os.obras.endereco}</span>` : ''}</span>
@@ -1163,17 +1165,16 @@ function verOS(id) {
       <label>Status</label>
       <span><span class="badge badge-${_stM === 'concluida' ? 'aprovada' : 'pendente'}">${statusLabel}</span></span>
     </div>
-    ${os.tipo_servico ? `<div class="detail-item"><label>Tipo de serviço</label><span>${os.tipo_servico.replace(/_/g,' ')}</span></div>` : ''}
-    ${os.nome_cliente_local ? `<div class="detail-item"><label>Responsável no local</label><span>${os.nome_cliente_local}</span></div>` : ''}
-    ${os.veiculo ? `<div class="detail-item"><label>Veículo / KM</label><span>${os.veiculo}${os.km_percorrido ? ' · ' + os.km_percorrido + ' km' : ''}</span></div>` : ''}
-    <div class="detail-item full">
-      <label>Descrição dos serviços</label>
-      <span style="white-space:pre-line;">${os.descricao_servicos || '—'}</span>
-    </div>
-    ${os.materiais_utilizados ? `<div class="detail-item full"><label>Materiais utilizados</label><span style="white-space:pre-line;">${os.materiais_utilizados}</span></div>` : ''}
-    ${os.pendencias ? `<div class="detail-item full"><label>Pendências</label><span style="white-space:pre-line;">${os.pendencias}</span></div>` : ''}
-    ${os.observacoes ? `<div class="detail-item full"><label>Observações</label><span style="white-space:pre-line;">${os.observacoes}</span></div>` : ''}
-    ${os.observacao_supervisor ? `<div class="detail-item full"><label>Observação do supervisor</label><span class="obs-supervisor">${os.observacao_supervisor}</span></div>` : ''}
+    ${DI('Serviço planejado', os.servico_planejado, true)}
+    ${DI('Serviços realizados', os.servicos_realizados, true)}
+    ${os.houve_problema ? DI('Problema reportado', os.descricao_problema || 'Sim', true) : ''}
+    ${os.faltou_material ? DI('Material faltante', os.lista_material, true) : ''}
+    ${os.retornou_material ? DI('Material retornado', os.lista_retorno, true) : ''}
+    ${os.retorno_equipamento ? DI('Equipamento retornado', os.lista_equipamentos, true) : ''}
+    ${DI('Sistema de automação', os.sistema_automacao)}
+    ${DI('Próximas atividades', os.proximas_atividades, true)}
+    ${DI('Observações finais', os.observacoes, true)}
+    ${os.observacao_supervisor ? `<div class="detail-item full"><label>Obs. do supervisor</label><span class="obs-supervisor">${os.observacao_supervisor}</span></div>` : ''}
   </div>`;
 
   // Fotos

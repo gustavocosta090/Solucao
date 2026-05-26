@@ -411,6 +411,7 @@ let lbIndex     = 0;
 let filtroStatus = 'todos';
 let todasOS     = [];
 let roleAtual   = 'tecnico';
+let tecMap      = {};  // id → { nome } — preenchido no carregamento
 let consultoresLista = [];
 let tabAtiva    = 'os';
 
@@ -562,7 +563,6 @@ async function carregarObra() {
 
   if (osErr) console.error('Erro ao buscar OS:', osErr.message);
 
-  const tecMap = {};
   (tecList || []).forEach(t => { tecMap[t.id] = t; });
 
   todasOS = (osList || []).map(o => ({
@@ -831,36 +831,62 @@ function filtrarOS(btn, status) {
   lucide.createIcons();
 }
 
-function verDetalheOS(id) {
-  const os = todasOS.find(o => o.id === id);
-  if (!os) return;
+// ── Helper: HTML completo da OS ───────────────────────────────
+function buildOSDetalheHTML(os, onFotoClick) {
+  const L = (label, valor, full = false, cor = 'var(--text-2)') => valor
+    ? `<div style="grid-column:${full ? '1/-1' : 'auto'}">
+         <label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">${label}</label>
+         <span style="color:${cor};white-space:pre-line;font-size:0.85rem;line-height:1.5">${valor}</span>
+       </div>` : '';
 
   const stKey = normStatus(os.status_aprovacao);
   const st    = STATUS_LABELS[stKey] || { label: stKey, cls: '' };
   const dataRef = os.data_servico || os.criado_em;
-  const data  = dataRef ? new Date(dataRef + (dataRef.length === 10 ? 'T12:00' : '')).toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) : '—';
-  const tec   = os.tecnicos?.nome || '—';
+  const dataFmt = dataRef ? new Date(dataRef + (dataRef.length === 10 ? 'T12:00' : '')).toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) : '—';
+  const horario = [os.horario_inicio?.slice(0,5), os.horario_fim?.slice(0,5)].filter(Boolean).join(' – ') || null;
 
-  let html = `
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;">
-    <div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Técnico</label><span style="color:var(--text-1);font-weight:600">${tec}</span></div>
-    <div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Data</label><span style="color:var(--text-1)">${data}</span></div>
+  const equipeIds   = [os.tecnico_id, os.auxiliar_id, os.auxiliar2_id, os.auxiliar3_id].filter(Boolean);
+  const equipeNomes = equipeIds.map(id => tecMap[id]?.nome || `#${id}`).join(' · ') || '—';
+
+  let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;margin-bottom:4px;">
+    ${L('Equipe', equipeNomes, true, 'var(--text-1)')}
+    ${L('Data do serviço', dataFmt)}
+    ${L('Horário', horario)}
     <div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Status</label><span class="badge ${st.cls}">${st.label}</span></div>
-    ${os.tipo_servico ? `<div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Tipo de serviço</label><span style="color:var(--text-2)">${os.tipo_servico.replace(/_/g,' ')}</span></div>` : ''}
-    ${os.nome_cliente_local ? `<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Responsável no local</label><span style="color:var(--text-2)">${os.nome_cliente_local}</span></div>` : ''}
-    ${os.descricao_servicos ? `<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Descrição dos serviços</label><span style="color:var(--text-2);white-space:pre-line">${os.descricao_servicos}</span></div>` : ''}
-    ${os.materiais_utilizados ? `<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Materiais utilizados</label><span style="color:var(--text-2);white-space:pre-line">${os.materiais_utilizados}</span></div>` : ''}
-    ${os.pendencias ? `<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Pendências</label><span style="color:#F59E0B;white-space:pre-line">${os.pendencias}</span></div>` : ''}
-    ${os.observacoes ? `<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Observações</label><span style="color:var(--text-2);white-space:pre-line">${os.observacoes}</span></div>` : ''}
-    ${os.veiculo ? `<div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Veículo / KM</label><span style="color:var(--text-2)">${os.veiculo}${os.km_percorrido ? ' · ' + os.km_percorrido + ' km' : ''}</span></div>` : ''}
+    ${L('Serviço planejado', os.servico_planejado, true)}
+    ${L('Serviços realizados', os.servicos_realizados, true, 'var(--text-1)')}
+    ${os.houve_problema ? L('Problema reportado', os.descricao_problema || 'Sim', true, '#F59E0B') : ''}
+    ${os.faltou_material ? L('Material faltante', os.lista_material, true) : ''}
+    ${os.retornou_material ? L('Material retornado', os.lista_retorno, true) : ''}
+    ${os.retorno_equipamento ? L('Equipamento retornado', os.lista_equipamentos, true) : ''}
+    ${L('Sistema de automação', os.sistema_automacao)}
+    ${L('Próximas atividades', os.proximas_atividades, true)}
+    ${L('Observações finais', os.observacoes, true)}
+    ${os.observacao_supervisor ? L('Obs. do supervisor', os.observacao_supervisor, true, '#F59E0B') : ''}
   </div>`;
 
   if (os.fotos_urls && os.fotos_urls.length > 0) {
-    html += `<div style="margin-top:20px;"><div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Fotos (${os.fotos_urls.length})</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
-      ${os.fotos_urls.map((url, i) => `<img src="${url}" alt="foto ${i+1}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);" onclick="abrirLightboxFromModal(${JSON.stringify(os.fotos_urls)}, ${i})">`).join('')}
-    </div></div>`;
+    const fotosHtml = os.fotos_urls.map((url, i) =>
+      `<img src="${url}" alt="foto ${i+1}" loading="lazy"
+        style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);"
+        onclick="${onFotoClick(i, os.fotos_urls)}">`
+    ).join('');
+    html += `<div style="margin-top:20px;">
+      <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Fotos (${os.fotos_urls.length})</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;">${fotosHtml}</div>
+    </div>`;
   }
+
+  return html;
+}
+
+function verDetalheOS(id) {
+  const os = todasOS.find(o => o.id === id);
+  if (!os) return;
+
+  const html = buildOSDetalheHTML(os, (i, fotos) =>
+    `abrirLightboxFromModal(${JSON.stringify(fotos).replace(/"/g,"'")}, ${i})`
+  );
 
   let modal = document.getElementById('modal-os-detalhe');
   if (!modal) {

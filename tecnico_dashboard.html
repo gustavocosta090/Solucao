@@ -665,6 +665,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let todasOSs = [];
 let filtroStatus = 'todos';
 let tecnicoAtual = null;
+let tdTecMap = {};  // id → { nome } para exibir equipe completa
 
 function renderTopbar(nome, role, paginaAtiva) {
   const h = new Date().getHours();
@@ -709,10 +710,15 @@ async function logout() {
   tecnicoAtual = tec;
   renderTopbar(tec.nome, tec.role, 'minhas-os');
 
+  // Carrega todos os técnicos para mostrar equipe completa no modal
+  const { data: todosT } = await db.from('tecnicos').select('id, nome');
+  (todosT || []).forEach(t => { tdTecMap[t.id] = t; });
+
   const hoje = new Date();
   const inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 90);
+  const futuro = new Date(hoje); futuro.setDate(futuro.getDate() + 60);
   document.getElementById('dataInicio').value = inicio.toISOString().split('T')[0];
-  document.getElementById('dataFim').value = hoje.toISOString().split('T')[0];
+  document.getElementById('dataFim').value = futuro.toISOString().split('T')[0];
 
   await carregarOSs();
 })();
@@ -867,23 +873,36 @@ function renderCards(lista) {
   lucide.createIcons();
 }
 
-/* ── Modal detalhe ── */
+/* ── Modal detalhe (OS completa) ── */
 function verDetalhe(id) {
   const os = todasOSs.find(o => o.id === id);
   if (!os) return;
 
-  document.getElementById('modalTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
+  const DR = (label, valor) => valor
+    ? `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value" style="white-space:pre-line">${valor}</div></div>`
+    : '';
+
+  const equipeIds   = [os.tecnico_id, os.auxiliar_id, os.auxiliar2_id, os.auxiliar3_id].filter(Boolean);
+  const equipeNomes = equipeIds.map(id => tdTecMap[id]?.nome || `#${id}`).join(' · ') || '—';
+  const horario     = [os.horario_inicio?.slice(0,5), os.horario_fim?.slice(0,5)].filter(Boolean).join(' – ') || null;
 
   let html = `
-    ${os.data_servico ? `<div class="detail-row"><div class="detail-label">Data do serviço</div><div class="detail-value">${fmtData(os.data_servico + 'T12:00')}</div></div>` : ''}
-    <div class="detail-row"><div class="detail-label">OS enviada em</div><div class="detail-value">${fmtData(os.criado_em)}</div></div>
-    <div class="detail-row"><div class="detail-label">Obra / Endereço</div><div class="detail-value">${os.obras?.nome_cliente || '—'}${os.obras?.endereco ? ` · ${os.obras.endereco}` : ''}</div></div>
+    ${DR('Equipe', equipeNomes)}
+    ${os.data_servico ? DR('Data do serviço', fmtData(os.data_servico + 'T12:00')) : ''}
+    ${DR('Horário', horario)}
+    <div class="detail-row"><div class="detail-label">Obra</div><div class="detail-value">${os.obras?.nome_cliente || '—'}${os.obras?.endereco ? `<br><span style="color:#52525B;font-size:0.78rem">${os.obras.endereco}</span>` : ''}</div></div>
     <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value">${badgeHTML(os.status_aprovacao)}</div></div>
-    ${os.observacao_supervisor ? `<div class="obs-supervisor"><div class="obs-sup-label">Observação do supervisor</div>${os.observacao_supervisor}</div>` : ''}
-    ${os.servicos_realizados ? `<div class="detail-row"><div class="detail-label">Serviços realizados</div><div class="detail-value">${os.servicos_realizados}</div></div>` : ''}
-    ${os.observacoes ? `<div class="detail-row"><div class="detail-label">Observações</div><div class="detail-value">${os.observacoes}</div></div>` : ''}
-    ${os.proximas_atividades ? `<div class="detail-row"><div class="detail-label">Próximas atividades</div><div class="detail-value">${os.proximas_atividades}</div></div>` : ''}
-    ${os.houve_problema ? `<div class="detail-row"><div class="detail-label">Problema reportado</div><div class="detail-value">${os.descricao_problema || 'Sim'}</div></div>` : ''}
+    ${os.observacao_supervisor ? `<div class="obs-supervisor"><div class="obs-sup-label">Obs. do supervisor</div>${os.observacao_supervisor}</div>` : ''}
+    <div class="modal-section-divider"></div>
+    ${DR('Serviço planejado', os.servico_planejado)}
+    ${DR('Serviços realizados', os.servicos_realizados)}
+    ${os.houve_problema ? DR('Problema reportado', os.descricao_problema || 'Sim') : ''}
+    ${os.faltou_material ? DR('Material faltante', os.lista_material) : ''}
+    ${os.retornou_material ? DR('Material retornado', os.lista_retorno) : ''}
+    ${os.retorno_equipamento ? DR('Equipamento retornado', os.lista_equipamentos) : ''}
+    ${DR('Sistema de automação', os.sistema_automacao)}
+    ${DR('Próximas atividades', os.proximas_atividades)}
+    ${DR('Observações finais', os.observacoes)}
   `;
 
   if (os.fotos_urls && os.fotos_urls.length > 0) {
@@ -892,9 +911,11 @@ function verDetalhe(id) {
       <div class="detail-label">Fotos (${os.fotos_urls.length})</div>
       <div class="fotos-grid">
         ${os.fotos_urls.map(url => `<div class="foto-item" onclick="event.stopPropagation();abrirLightbox('${url}')"><img src="${url}" loading="lazy" alt="foto"></div>`).join('')}
-      </div></div>`;
+      </div>
+    </div>`;
   }
 
+  document.getElementById('modalTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
   document.getElementById('modalConteudo').innerHTML = html;
   document.getElementById('modalOverlay').classList.add('aberto');
   lucide.createIcons();

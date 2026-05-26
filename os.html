@@ -96,12 +96,18 @@
     .os-endereco-row { font-size:0.75rem; color:var(--text-3); margin-top:5px; display:flex; align-items:center; gap:5px; }
     .os-endereco-row i { width:11px; height:11px; flex-shrink:0; }
 
-    /* Equipe info (read-only) */
-    .equipe-info-bloco { background:var(--surface-3); border:1px solid var(--border); border-radius:var(--radius-input); padding:10px 14px; margin-bottom:12px; }
-    .equipe-info-label { font-size:11px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px; }
-    .equipe-chips-ro { display:flex; flex-wrap:wrap; gap:6px; }
-    .equipe-chip-ro { display:inline-flex; align-items:center; gap:5px; background:rgba(62,207,142,0.08); border:1px solid rgba(62,207,142,0.2); border-radius:4px; padding:3px 10px; font-size:0.75rem; color:var(--primary); font-weight:500; }
-    .equipe-chip-ro i { width:11px; height:11px; }
+    /* Equipe — checkboxes interativos */
+    .equipe-check-bloco { background:var(--surface-3); border:1px solid var(--border); border-radius:var(--radius-input); padding:12px 14px; margin-bottom:12px; }
+    .equipe-check-label { font-size:11px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:10px; }
+    .equipe-check-hint { font-size:11px; color:var(--text-3); margin-top:6px; line-height:1.5; }
+    .equipe-check-lista { display:flex; flex-direction:column; gap:6px; }
+    .equipe-check-item { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:6px; background:var(--bg); border:1px solid var(--border); cursor:pointer; transition:border-color .15s; }
+    .equipe-check-item:hover { border-color:var(--border-hover); }
+    .equipe-check-item.is-self { border-color:rgba(62,207,142,0.3); background:rgba(62,207,142,0.04); cursor:default; }
+    .equipe-check-item input[type="checkbox"] { accent-color:var(--primary); width:15px; height:15px; flex-shrink:0; cursor:pointer; }
+    .equipe-check-item.is-self input { cursor:default; }
+    .equipe-check-nome { font-size:0.82rem; font-weight:500; color:var(--text-1); flex:1; }
+    .equipe-check-tag { font-size:0.7rem; color:var(--primary); background:rgba(62,207,142,0.1); border:1px solid rgba(62,207,142,0.2); border-radius:4px; padding:1px 6px; }
 
     .secao { background:var(--surface-1); border:1px solid var(--border); border-radius:var(--radius-card); padding:20px; margin-bottom:12px; }
     .secao-titulo { font-size:11px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:16px; }
@@ -205,10 +211,11 @@
     </div>
   </div>
 
-  <!-- Equipe da agenda (read-only) -->
-  <div class="equipe-info-bloco" id="equipe-info-bloco" style="display:none">
-    <div class="equipe-info-label">Equipe nesta visita</div>
-    <div class="equipe-chips-ro" id="equipe-info-chips"></div>
+  <!-- Equipe — quem entra nesta OS -->
+  <div class="equipe-check-bloco" id="equipe-check-bloco" style="display:none">
+    <div class="equipe-check-label">Quem participou desta OS?</div>
+    <div class="equipe-check-lista" id="equipe-check-lista"></div>
+    <div class="equipe-check-hint">Marque quem fez parte deste serviço. Quem não for marcado ficará com OS pendente para preencher a sua.</div>
   </div>
 
   <!-- Horários -->
@@ -367,6 +374,7 @@ let agendamentoSelecionado = null;
 let osSelecionadaId        = null;  // ID da OS pendente existente (para UPDATE)
 let tecnicos               = [];
 let fotosSelecionadas      = [];
+let equipeFull             = []; // todos os IDs da equipe do agendamento
 
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
@@ -684,16 +692,9 @@ async function abrirFormulario(agId, osId = null) {
         document.getElementById('os-endereco-row').style.display = 'flex';
       }
 
-      // Equipe read-only
-      const equipeIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-      const chipsEl   = document.getElementById('equipe-info-chips');
-      if (equipeIds.length > 0) {
-        chipsEl.innerHTML = equipeIds.map(eid => {
-          const t = tecnicos.find(t => t.id === eid);
-          return t ? `<span class="equipe-chip-ro"><i data-lucide="user"></i>${t.nome}</span>` : '';
-        }).join('');
-        document.getElementById('equipe-info-bloco').style.display = 'block';
-      }
+      // Equipe — checkboxes interativos
+      equipeFull = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+      renderEquipeCheckboxes();
 
       // Pré-preenche horário da agenda
       if (ag.hora_inicio) document.getElementById('f-inicio').value = ag.hora_inicio.slice(0,5);
@@ -733,6 +734,28 @@ async function abrirFormulario(agId, osId = null) {
   lucide.createIcons();
 }
 
+// ── Equipe checkboxes ─────────────────────────────────────────
+function renderEquipeCheckboxes() {
+  const lista   = document.getElementById('equipe-check-lista');
+  const bloco   = document.getElementById('equipe-check-bloco');
+  if (!lista || equipeFull.length === 0) return;
+
+  lista.innerHTML = equipeFull.map(eid => {
+    const t      = tecnicos.find(t => t.id === eid);
+    const nome   = t ? t.nome : `Técnico #${eid}`;
+    const isSelf = eid === tecnicoLogado?.id;
+    return `
+      <label class="equipe-check-item ${isSelf ? 'is-self' : ''}">
+        <input type="checkbox" class="equipe-check-input"
+               value="${eid}" ${isSelf ? 'checked disabled' : ''}>
+        <span class="equipe-check-nome">${nome}</span>
+        ${isSelf ? '<span class="equipe-check-tag">você</span>' : ''}
+      </label>`;
+  }).join('');
+
+  bloco.style.display = 'block';
+}
+
 // ── Toggles ──────────────────────────────────────────────────
 const toggleState = { prob:'nao', mat:'nao', ret:'nao', eqp:'nao' };
 function toggle(campo, valor) {
@@ -754,8 +777,9 @@ function resetarForm() {
   document.getElementById('os-meta').textContent        = '';
   document.getElementById('os-endereco-row').style.display = 'none';
   document.getElementById('os-endereco-txt').textContent   = '';
-  document.getElementById('equipe-info-bloco').style.display = 'none';
-  document.getElementById('equipe-info-chips').innerHTML     = '';
+  document.getElementById('equipe-check-bloco').style.display = 'none';
+  document.getElementById('equipe-check-lista').innerHTML     = '';
+  equipeFull = [];
   fotosSelecionadas = [];
   document.getElementById('fotos-grid').innerHTML = '';
 }
@@ -817,16 +841,31 @@ async function enviarOS() {
       fotoUrls = await uploadFotos(obraId);
     }
 
-    // Auxiliares vêm do agendamento (não do form)
+    // Auxiliares vêm dos checkboxes selecionados
     const ag = agendamentoSelecionado;
+
+    // Lê quem foi marcado nos checkboxes
+    const checkedIds = Array.from(
+      document.querySelectorAll('.equipe-check-input:checked')
+    ).map(cb => parseInt(cb.value)).filter(Boolean);
+
+    // Se nenhum checkbox existe (agendamento sem equipe definida), usa o próprio técnico
+    const participantes = checkedIds.length > 0 ? checkedIds : [tecnicoLogado?.id].filter(Boolean);
+
+    // IDs dos não-marcados (precisarão de OS própria)
+    const naoIncluidos = equipeFull.filter(id => !participantes.includes(id));
+
+    // Mapeia participantes para as colunas do banco
+    const [pid0, pid1, pid2, pid3] = participantes;
+
     const payload = {
       obra_id:             obraId,
       cliente_outro:       ag?.cliente_outro                      || null,
       agendamento_id:      ag?.id                                 || null,
-      tecnico_id:          tecnicoLogado?.id                      || null,
-      auxiliar_id:         ag?.auxiliar_id                        || null,
-      auxiliar2_id:        ag?.auxiliar2_id                       || null,
-      auxiliar3_id:        ag?.auxiliar3_id                       || null,
+      tecnico_id:          pid0                                   || tecnicoLogado?.id || null,
+      auxiliar_id:         pid1                                   || null,
+      auxiliar2_id:        pid2                                   || null,
+      auxiliar3_id:        pid3                                   || null,
       consultor_id:        ag?.obras?.consultores?.id             || null,
       tipo_servico:        'execucao',
       horario_inicio:      document.getElementById('f-inicio').value    || null,
@@ -890,6 +929,40 @@ async function enviarOS() {
     }
 
     if (error) { alert('Erro ao enviar OS: ' + error.message); return; }
+
+    // ── Para quem não foi incluído: garantir OS pendente individual ──
+    if (naoIncluidos.length > 0 && ag?.id) {
+      for (const uid of naoIncluidos) {
+        // Verifica se já existe uma OS pendente própria para ele
+        const { data: jaExiste } = await db
+          .from('ordens_de_servico')
+          .select('id')
+          .eq('agendamento_id', ag.id)
+          .eq('tecnico_id', uid)
+          .eq('status_aprovacao', 'pendente')
+          .maybeSingle();
+
+        if (!jaExiste) {
+          // Cria OS pendente individual para esse técnico
+          const osPendente = {
+            agendamento_id:   ag.id,
+            obra_id:          obraId,
+            cliente_outro:    ag.cliente_outro || null,
+            tecnico_id:       uid,
+            data_servico:     ag.data || new Date().toISOString().split('T')[0],
+            servico_planejado: ag.servico || null,
+            status_aprovacao: 'pendente',
+            criado_em:        new Date().toISOString(),
+          };
+          // Tenta com agendamento_id, fallback sem
+          const r = await db.from('ordens_de_servico').insert(osPendente);
+          if (r.error) {
+            const { agendamento_id: _a, cliente_outro: _c, ...fallback } = osPendente;
+            await db.from('ordens_de_servico').insert(fallback);
+          }
+        }
+      }
+    }
 
     const num = document.getElementById('os-numero').textContent;
     document.getElementById('sucesso-msg').textContent =
