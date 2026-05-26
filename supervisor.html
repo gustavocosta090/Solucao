@@ -1049,8 +1049,64 @@ async function carregarOSs() {
   filtrar();
 }
 
+function minutosDoHorario(horario) {
+  const valor = String(horario || '').slice(0, 5);
+  const [h, m] = valor.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
+}
+
+function agendaNoturnaInfo(o) {
+  const fim = minutosDoHorario(o.horario_fim);
+  if (fim === null) return null;
+
+  if (fim >= (17 * 60 + 30) && fim <= (21 * 60)) {
+    return { tipo: 'meia', label: 'Meia agenda noturna', valor: 75 };
+  }
+
+  if (fim >= (21 * 60 + 1) || fim <= (5 * 60)) {
+    return { tipo: 'completa', label: 'Agenda noturna completa', valor: 150 };
+  }
+
+  return null;
+}
+
 function isAgendaNoturna(o) {
-  return !!(o.data_servico && o.horario_fim && o.horario_fim.slice(0,5) > '17:30');
+  return !!agendaNoturnaInfo(o);
+}
+
+function formatarMoeda(valor) {
+  return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function resumoAgendaNoturna(lista) {
+  const porTecnico = {};
+  let meia = 0;
+  let completa = 0;
+  let total = 0;
+
+  lista.forEach(o => {
+    const info = agendaNoturnaInfo(o);
+    if (!info) return;
+
+    if (info.tipo === 'meia') meia += 1;
+    if (info.tipo === 'completa') completa += 1;
+
+    const nomes = o.equipeNomes?.length ? o.equipeNomes : ['Sem técnico'];
+    nomes.forEach(nome => {
+      if (!porTecnico[nome]) porTecnico[nome] = { tecnico: nome, meia: 0, completa: 0, total: 0 };
+      porTecnico[nome][info.tipo] += 1;
+      porTecnico[nome].total += info.valor;
+      total += info.valor;
+    });
+  });
+
+  return {
+    meia,
+    completa,
+    total,
+    porTecnico: Object.values(porTecnico).sort((a, b) => a.tecnico.localeCompare(b.tecnico, 'pt-BR')),
+  };
 }
 
 function filtrar() {
@@ -1116,8 +1172,9 @@ function renderTabela() {
     const statusBadge = _stNorm === 'concluida'
       ? '<span class="badge badge-aprovada">Concluída</span>'
       : '<span class="badge badge-pendente">Pendente</span>';
-    const noturnaBadge = isAgendaNoturna(o)
-      ? '<span class="badge badge-pendente" title="Atendimento finalizado após 17:30">Agenda noturna</span>'
+    const noturnaInfo = agendaNoturnaInfo(o);
+    const noturnaBadge = noturnaInfo
+      ? `<span class="badge badge-pendente" title="${escHtml(noturnaInfo.label)}">${escHtml(noturnaInfo.label)}</span>`
       : '';
     const nFotos = o.fotos_urls?.length || 0;
 
@@ -1185,14 +1242,14 @@ function verOS(id) {
 
   const nomeEquipe = os.equipeNomes?.join(' · ') || os.tecnicos?.nome || '—';
   const horario    = [os.horario_inicio?.slice(0,5), os.horario_fim?.slice(0,5)].filter(Boolean).join(' – ') || null;
-  const alertaNoturna = isAgendaNoturna(os);
+  const alertaNoturna = agendaNoturnaInfo(os);
 
   let html = `
   <div class="detail-grid">
     ${DI('Equipe', nomeEquipe)}
     ${DI('Data do serviço', data)}
     ${horario ? DI('Horário', horario) : ''}
-    ${alertaNoturna ? DI('Alerta', 'Agenda noturna - finalizou após 17:30') : ''}
+    ${alertaNoturna ? DI('Agenda noturna', `${alertaNoturna.label} · ${formatarMoeda(alertaNoturna.valor)} por técnico`) : ''}
     <div class="detail-item full">
       <label>Obra</label>
       <span><strong>${escHtml(os.obras?.nome_cliente || '—')}</strong>${os.obras?.endereco ? `<span class="detail-address"><i data-lucide="map-pin"></i>${escHtml(os.obras.endereco)}</span>` : ''}</span>
@@ -1321,7 +1378,9 @@ document.getElementById('lightbox').addEventListener('click', e => {
 function exportarExcel() {
   if (filtradas.length === 0) { alert('Nenhuma OS para exportar.'); return; }
 
-  const rows = filtradas.map(o => ({
+  const rows = filtradas.map(o => {
+    const noturna = agendaNoturnaInfo(o);
+    return {
     'Data': o.data_servico,
     'Equipe': o.equipeNomes?.join(', ') || '',
     'Obra': o.obras?.nome_cliente || '',
@@ -1337,8 +1396,12 @@ function exportarExcel() {
     'Veículo': o.veiculo || '',
     'KM': o.km_percorrido || '',
     'Qtd Fotos': o.fotos_urls?.length || 0,
+    'Agenda noturna': noturna?.label || '',
+    'Valor por técnico': noturna ? formatarMoeda(noturna.valor) : '',
+    'Total da equipe': noturna ? formatarMoeda(noturna.valor * (o.equipeNomes?.length || 1)) : '',
     'ID': o.id,
-  }));
+  };
+  });
 
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
@@ -1445,7 +1508,8 @@ function exportarPDF() {
 
   const concluidas = filtradas.filter(o => statusOSLabel(o) === 'Concluída').length;
   const pendentes = filtradas.length - concluidas;
-  const noturnas = filtradas.filter(isAgendaNoturna).length;
+  const resumoNoturna = resumoAgendaNoturna(filtradas);
+  const noturnas = resumoNoturna.meia + resumoNoturna.completa;
   const comFotos = filtradas.filter(o => o.fotos_urls?.length > 0).length;
 
   doc.autoTable({
@@ -1453,9 +1517,25 @@ function exportarPDF() {
     theme: 'plain',
     styles: { font: 'helvetica', fontSize: 10, cellPadding: 4, lineColor: [228, 228, 231], lineWidth: 0.1 },
     headStyles: { fillColor: [62, 207, 142], textColor: [10, 10, 10], fontStyle: 'bold' },
-    head: [['Total', 'Concluídas', 'Pendentes', 'Agenda noturna', 'Com fotos']],
-    body: [[filtradas.length, concluidas, pendentes, noturnas, comFotos]],
+    head: [['Total', 'Concluídas', 'Pendentes', 'Meia noturna', 'Noturna completa', 'Total a pagar']],
+    body: [[filtradas.length, concluidas, pendentes, resumoNoturna.meia, resumoNoturna.completa, formatarMoeda(resumoNoturna.total)]],
   });
+
+  if (resumoNoturna.porTecnico.length) {
+    const totalMeiasTecnico = resumoNoturna.porTecnico.reduce((acc, r) => acc + r.meia, 0);
+    const totalCompletasTecnico = resumoNoturna.porTecnico.reduce((acc, r) => acc + r.completa, 0);
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 6,
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.5, lineColor: [228, 228, 231], lineWidth: 0.1 },
+      headStyles: { fillColor: [62, 207, 142], textColor: [10, 10, 10], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [249, 250, 251] },
+      head: [['Técnico', 'Meia agenda', 'Completa', 'Valor a pagar']],
+      body: resumoNoturna.porTecnico.map(r => [r.tecnico, r.meia, r.completa, formatarMoeda(r.total)]),
+      foot: [['Total geral', totalMeiasTecnico, totalCompletasTecnico, formatarMoeda(resumoNoturna.total)]],
+      footStyles: { fillColor: [24, 24, 27], textColor: [255, 255, 255], fontStyle: 'bold' },
+    });
+  }
 
   doc.autoTable({
     startY: doc.lastAutoTable.finalY + 6,
@@ -1463,15 +1543,18 @@ function exportarPDF() {
     styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.5, lineColor: [228, 228, 231], lineWidth: 0.1 },
     headStyles: { fillColor: [24, 24, 27], textColor: [255, 255, 255], fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [249, 250, 251] },
-    head: [['Data', 'Equipe', 'Obra', 'Horário', 'Status', 'Alerta']],
-    body: filtradas.map(o => [
+    head: [['Data', 'Equipe', 'Obra', 'Horário', 'Status', 'Agenda noturna']],
+    body: filtradas.map(o => {
+      const noturna = agendaNoturnaInfo(o);
+      return [
       formatarDataBR(o.data_servico || (o.criado_em ? o.criado_em.slice(0,10) : '')),
       o.equipeNomes?.join(', ') || '—',
       o.obras?.nome_cliente || '—',
       [o.horario_inicio?.slice(0,5), o.horario_fim?.slice(0,5)].filter(Boolean).join(' - ') || '—',
       statusOSLabel(o),
-      isAgendaNoturna(o) ? 'Agenda noturna' : '',
-    ]),
+      noturna ? `${noturna.label} (${formatarMoeda(noturna.valor)} por técnico)` : '',
+    ];
+    }),
     columnStyles: {
       0: { cellWidth: 20 },
       1: { cellWidth: 42 },
@@ -1522,7 +1605,8 @@ function exportarPDF() {
     doc.text(`Data: ${formatarDataBR(o.data_servico || (o.criado_em ? o.criado_em.slice(0,10) : ''))}`, margin + 4, y + 10);
     doc.text(`Equipe: ${o.equipeNomes?.join(', ') || '—'}`, margin + 42, y + 10);
     doc.text(`Horário: ${horario}`, margin + 4, y + 16);
-    doc.text(`Status: ${statusOSLabel(o)}${isAgendaNoturna(o) ? ' · Agenda noturna' : ''}`, margin + 42, y + 16);
+    const noturna = agendaNoturnaInfo(o);
+    doc.text(`Status: ${statusOSLabel(o)}${noturna ? ` · ${noturna.label} · ${formatarMoeda(noturna.valor)} por técnico` : ''}`, margin + 42, y + 16);
 
     y += 27;
     y = textoPDF(doc, 'Endereço', o.obras?.endereco, margin, y, pageW - margin * 2);

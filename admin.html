@@ -358,6 +358,24 @@
     background: var(--surface-2);
   }
 
+  .btn-edit {
+    color: #67E8F9;
+    border: 1px solid rgba(6, 182, 212, 0.22);
+    background: rgba(6, 182, 212, 0.08);
+  }
+
+  .btn-delete {
+    color: #F87171;
+    border: 1px solid rgba(239, 68, 68, 0.22);
+    background: rgba(239, 68, 68, 0.08);
+  }
+
+  .btn-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
   .table-empty {
     text-align: center;
     color: var(--text-3);
@@ -450,9 +468,11 @@
     <div class="form-grid">
       <div class="form-group">
         <label>Nome *</label>
-        <select id="selectTecnico">
-          <option value="">Selecione o nome...</option>
-        </select>
+        <input type="text" id="novoNome" placeholder="Ex: Lucas Amorim">
+      </div>
+      <div class="form-group">
+        <label>E-mail *</label>
+        <input type="email" id="novoEmailContato" placeholder="email@empresa.com">
       </div>
       <div class="form-group">
         <label>Perfil *</label>
@@ -469,7 +489,7 @@
       </div>
       <div class="form-group">
         <label>Usuário *</label>
-        <input type="text" id="novoEmail" placeholder="alex.silva" autocapitalize="none">
+        <input type="text" id="novoUsuario" placeholder="alex.silva" autocapitalize="none">
       </div>
       <div class="form-group">
         <label>Senha inicial *</label>
@@ -508,6 +528,7 @@
               <th>Nome</th>
               <th>Equipe(s)</th>
               <th>Perfil</th>
+              <th>E-mail</th>
               <th>Usuário</th>
               <th>Status</th>
               <th>Ações</th>
@@ -519,6 +540,49 @@
     </div>
   </div>
 
+</div>
+
+<!-- Modal de edição -->
+<div class="modal-overlay" id="modalEditar">
+  <div class="modal">
+    <div class="modal-header">
+      <i data-lucide="pencil"></i>
+      <h3>Editar Usuário</h3>
+    </div>
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="editNome">
+    </div>
+    <div class="form-group">
+      <label>E-mail</label>
+      <input type="email" id="editEmail">
+    </div>
+    <div class="form-group">
+      <label>Perfil</label>
+      <select id="editRole">
+        <option value="tecnico">Técnico</option>
+        <option value="auxiliar">Auxiliar</option>
+        <option value="supervisor">Supervisor</option>
+        <option value="coordenador">Coordenador</option>
+        <option value="agendamento">Agendamento</option>
+        <option value="gerente_comercial">Gerente Comercial</option>
+        <option value="projetista">Projetista</option>
+        <option value="coordenador_projetos">Coordenador de Projetos</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Usuário</label>
+      <input type="text" id="editUsuario" autocapitalize="none">
+    </div>
+    <div class="form-group">
+      <label>Nova senha, se quiser alterar</label>
+      <input type="text" id="editSenha" placeholder="Deixe vazio para manter">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="fecharModalEditar()">Cancelar</button>
+      <button class="btn-primary" onclick="confirmarEdicao()" style="margin-top:0;">Salvar</button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal de reset de senha -->
@@ -549,6 +613,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let tecnicos = [];
 let resetUserId = null;
+let editandoUsuario = null;
 
 function escHtml(v) {
   return String(v ?? '').replace(/[&<>"']/g, c => ({
@@ -609,19 +674,8 @@ async function chamarAdminFunction(payload) {
 })();
 
 async function carregarDados() {
-  const { data } = await db
-    .from('tecnicos')
-    .select('id, nome, role, email, auth_user_id, tecnico_equipes(equipes(nome))')
-    .order('nome');
-
-  tecnicos = data || [];
-
-  // Preencher select de pessoas sem conta
-  const select = document.getElementById('selectTecnico');
-  select.innerHTML = '<option value="">Selecione o nome...</option>';
-  tecnicos.filter(t => !t.auth_user_id).forEach(t => {
-    select.innerHTML += `<option value="${t.id}">${escHtml(t.nome)}</option>`;
-  });
+  const resultado = await chamarAdminFunction({ action: 'list_users' });
+  tecnicos = resultado.users || [];
 
   // Preencher tabela
   const tbody = document.getElementById('tabelaBody');
@@ -634,7 +688,11 @@ async function carregarDados() {
       : '<span class="badge badge-sem-conta">Sem conta</span>';
 
     const acoes = t.auth_user_id
-      ? `<button class="btn-sm btn-reset" data-user-id="${escHtml(t.auth_user_id)}" data-nome="${escHtml(t.nome)}" onclick="abrirReset(this.dataset.userId, this.dataset.nome)" title="Redefinir senha"><i data-lucide="key-round"></i> Redefinir senha</button>`
+      ? `<div class="btn-actions">
+          <button class="btn-sm btn-edit" onclick="abrirEditar(${t.id})" title="Editar usuário"><i data-lucide="pencil"></i> Editar</button>
+          <button class="btn-sm btn-reset" data-user-id="${escHtml(t.auth_user_id)}" data-nome="${escHtml(t.nome)}" onclick="abrirReset(this.dataset.userId, this.dataset.nome)" title="Redefinir senha"><i data-lucide="key-round"></i> Senha</button>
+          <button class="btn-sm btn-delete" onclick="apagarUsuario(${t.id})" title="Apagar acesso"><i data-lucide="trash-2"></i> Apagar</button>
+        </div>`
       : `<span style="color:var(--text-3);font-size:12px;">—</span>`;
 
     tbody.innerHTML += `
@@ -642,7 +700,8 @@ async function carregarDados() {
         <td class="td-name">${escHtml(t.nome)}</td>
         <td style="font-size:12px;">${escHtml(equipes)}</td>
         <td>${badgeRole}</td>
-        <td style="font-size:12px;">${escHtml(emailParaUsuario(t.email) || '—')}</td>
+        <td style="font-size:12px;">${escHtml(t.email || '—')}</td>
+        <td style="font-size:12px;">${escHtml(t.username || emailParaUsuario(t.email) || '—')}</td>
         <td>${status}</td>
         <td>${acoes}</td>
       </tr>`;
@@ -656,12 +715,13 @@ async function carregarDados() {
 }
 
 async function criarUsuario() {
-  const tecnicoId = document.getElementById('selectTecnico').value;
+  const nome = document.getElementById('novoNome').value.trim();
+  const email = document.getElementById('novoEmailContato').value.trim();
   const role = document.getElementById('selectRole').value;
-  const usuario = normalizarUsuario(document.getElementById('novoEmail').value);
+  const usuario = normalizarUsuario(document.getElementById('novoUsuario').value);
   const senha = document.getElementById('novaSenha').value;
 
-  if (!tecnicoId || !usuario || !senha) {
+  if (!nome || !email || !usuario || !senha) {
     mostrarErro('Preencha todos os campos obrigatórios.');
     return;
   }
@@ -676,19 +736,97 @@ async function criarUsuario() {
   try {
     await chamarAdminFunction({
       action: 'create_user',
-      tecnicoId,
+      nome,
+      email,
       role,
       username: usuario,
       password: senha,
     });
 
     mostrarSucesso(`Conta criada com sucesso. Usuário: ${usuario}. Entregue a senha temporária por um canal seguro.`);
-    document.getElementById('novoEmail').value = '';
+    document.getElementById('novoNome').value = '';
+    document.getElementById('novoEmailContato').value = '';
+    document.getElementById('novoUsuario').value = '';
     document.getElementById('novaSenha').value = '';
     await carregarDados();
 
   } catch (err) {
     mostrarErro(err.message || 'Erro ao criar usuário.');
+  }
+}
+
+function abrirEditar(tecnicoId) {
+  const usuario = tecnicos.find(t => Number(t.id) === Number(tecnicoId));
+  if (!usuario) return;
+
+  editandoUsuario = usuario;
+  document.getElementById('editNome').value = usuario.nome || '';
+  document.getElementById('editEmail').value = usuario.email || '';
+  document.getElementById('editRole').value = usuario.role || 'tecnico';
+  document.getElementById('editUsuario').value = usuario.username || '';
+  document.getElementById('editSenha').value = '';
+  document.getElementById('modalEditar').classList.add('open');
+}
+
+function fecharModalEditar() {
+  document.getElementById('modalEditar').classList.remove('open');
+  editandoUsuario = null;
+}
+
+async function confirmarEdicao() {
+  if (!editandoUsuario) return;
+
+  const nome = document.getElementById('editNome').value.trim();
+  const email = document.getElementById('editEmail').value.trim();
+  const role = document.getElementById('editRole').value;
+  const username = normalizarUsuario(document.getElementById('editUsuario').value);
+  const password = document.getElementById('editSenha').value;
+
+  if (!nome || !email || !username) {
+    alert('Preencha nome, e-mail e usuário.');
+    return;
+  }
+
+  try {
+    await chamarAdminFunction({
+      action: 'update_user',
+      tecnicoId: editandoUsuario.id,
+      userId: editandoUsuario.auth_user_id,
+      nome,
+      email,
+      role,
+      username,
+      password,
+    });
+
+    fecharModalEditar();
+    mostrarSucesso('Usuário atualizado com sucesso.');
+    await carregarDados();
+  } catch (err) {
+    alert('Erro: ' + (err.message || 'Não foi possível editar o usuário.'));
+  }
+}
+
+async function apagarUsuario(tecnicoId) {
+  const usuario = tecnicos.find(t => Number(t.id) === Number(tecnicoId));
+  if (!usuario?.auth_user_id) return;
+
+  if (!confirm(`Apagar o acesso de ${usuario.nome}? O histórico de OS ficará preservado, mas essa pessoa não conseguirá mais entrar no sistema.`)) {
+    return;
+  }
+
+  try {
+    await chamarAdminFunction({
+      action: 'delete_user',
+      tecnicoId: usuario.id,
+      userId: usuario.auth_user_id,
+      nome: usuario.nome,
+    });
+
+    mostrarSucesso('Acesso apagado com sucesso.');
+    await carregarDados();
+  } catch (err) {
+    mostrarErro(err.message || 'Erro ao apagar usuário.');
   }
 }
 
@@ -788,6 +926,15 @@ async function logout() {
   await db.auth.signOut();
   window.location.href = 'login.html';
 }
+
+document.getElementById('novoNome').addEventListener('blur', () => {
+  const usuarioEl = document.getElementById('novoUsuario');
+  if (!usuarioEl.value.trim()) usuarioEl.value = normalizarUsuario(document.getElementById('novoNome').value);
+});
+
+document.getElementById('modalEditar').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalEditar')) fecharModalEditar();
+});
 </script>
 
 <script>
