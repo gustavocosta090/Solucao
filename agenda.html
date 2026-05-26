@@ -618,7 +618,8 @@
     .ac-body { padding: 20px 24px; }
     .ac-atendimento { background: #f8fafc; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 12px; }
     .ac-atendimento:last-child { margin-bottom: 0; }
-    .ac-at-num { background: #1e293b; padding: 8px 16px; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; }
+    .ac-at-header { padding: 9px 16px; font-size: 11px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 0.09em; display: flex; align-items: center; gap: 7px; }
+    .ac-at-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.5); flex-shrink: 0; }
     .ac-campos { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
     .ac-campo { display: flex; align-items: flex-start; gap: 0; }
     .ac-campo-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; width: 68px; flex-shrink: 0; padding-top: 1px; }
@@ -1487,40 +1488,65 @@ async function dispararAgendaWhatsapp() {
   const d        = new Date();
   const dataFmt  = `${DIAS_PT[d.getDay()]}, ${d.getDate()} de ${MESES_PT[d.getMonth()]} de ${d.getFullYear()}`;
 
+  // Mapa de equipes: id → { nome, cor }
+  const EQUIPE_INFO = {
+    1: { nome: 'Cabeamento',   cor: '#1D4ED8' }, // azul
+    2: { nome: 'Eletrica',     cor: '#B45309' }, // âmbar escuro
+    3: { nome: 'Audio e Video', cor: '#6D28D9' }, // roxo
+    4: { nome: 'Automacao',    cor: '#065F46' }, // verde escuro
+  };
+  const COR_PADRAO = '#1e293b';
+
+  // Descobre a equipe principal de um agendamento pelo técnico líder
+  function equipeDoAg(ag) {
+    const ids = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+    for (const tid of ids) {
+      const te = tecnicoEquipes.find(e => e.tecnico_id === tid);
+      if (te && EQUIPE_INFO[te.equipe_id]) return EQUIPE_INFO[te.equipe_id];
+    }
+    return null;
+  }
+
   // Ordena todos os agendamentos de hoje por horário
   const ordenados = [...agHoje].sort((a, b) =>
     (a.hora_inicio || '00:00').localeCompare(b.hora_inicio || '00:00')
   );
 
   // Monta HTML do card — um bloco por agendamento com todos os campos
-  const atendimentosHTML = ordenados.map((ag, idx) => {
+  const atendimentosHTML = ordenados.map((ag) => {
     const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
     const cliente = ag.obras?.nome_cliente || ag.cliente_outro || '—';
     const end     = ag.endereco_outro || ag.obras?.endereco || '';
     const serv    = ag.servico || '';
     const veiculo = ag.veiculo || '';
 
-    const equipeIds  = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+    const equipeIds   = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
     const equipeNomes = equipeIds.map(id => {
       const t = tecnicos.find(t => t.id === id);
       return t ? t.nome : null;
     }).filter(Boolean).join(' · ');
 
-    const campo = (label, valor) => valor
+    const eq     = equipeDoAg(ag);
+    const cor    = eq ? eq.cor : COR_PADRAO;
+    const label  = eq ? `Equipe ${eq.nome}` : (equipeNomes ? equipeNomes.split(' · ')[0] : 'Equipe');
+
+    const campo = (lbl, valor, extra = '') => valor
       ? `<div class="ac-campo">
-           <span class="ac-campo-label">${label}</span>
-           <span class="ac-campo-valor${label === 'Cliente' ? ' destaque' : ''}">${valor}</span>
+           <span class="ac-campo-label">${lbl}</span>
+           <span class="ac-campo-valor${extra}">${valor}</span>
          </div>`
       : '';
 
     return `
       <div class="ac-atendimento">
-        <div class="ac-at-num">Atendimento ${idx + 1}</div>
+        <div class="ac-at-header" style="background:${cor}">
+          <span class="ac-at-dot"></span>${label}
+        </div>
         <div class="ac-campos">
           ${campo('Horario', hora)}
           ${campo('Equipe', equipeNomes)}
-          ${campo('Cliente', cliente)}
-          ${end ? campo('Endereco', end) : ''}
+          ${campo('Cliente', cliente, ' destaque')}
+          ${campo('Endereco', end)}
           ${campo('Servico', serv)}
           ${campo('Veiculo', veiculo)}
         </div>
