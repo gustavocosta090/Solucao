@@ -495,7 +495,7 @@ async function carregarAgendamentosHoje() {
   let osRaw = null;
 
   const osR1 = await db.from('ordens_de_servico')
-    .select('id, agendamento_id, obra_id, status_aprovacao, data_servico, criado_em')
+    .select('id, agendamento_id, obra_id, status_aprovacao, data_servico, criado_em, tecnico_id')
     .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`);
 
   if (!osR1.error) {
@@ -503,14 +503,14 @@ async function carregarAgendamentosHoje() {
   } else {
     // Fallback 2: sem auxiliar2/3
     const osR2 = await db.from('ordens_de_servico')
-      .select('id, obra_id, status_aprovacao, data_servico, criado_em')
+      .select('id, obra_id, status_aprovacao, data_servico, criado_em, tecnico_id')
       .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id}`);
     if (!osR2.error) {
       osRaw = osR2.data;
     } else {
       // Fallback 3: mínimo — só tecnico_id
       const osR3 = await db.from('ordens_de_servico')
-        .select('id, obra_id, status_aprovacao, data_servico, criado_em')
+        .select('id, obra_id, status_aprovacao, data_servico, criado_em, tecnico_id')
         .eq('tecnico_id', id);
       osRaw = osR3.data || [];
     }
@@ -529,29 +529,44 @@ async function carregarAgendamentosHoje() {
     return;
   }
 
-  // ── osMap: agendamento_id → { status, osId } ─────────────────
-  // Também aceita chave por obra_id|data para backward compat
-  const osMap = {};
-  const prioridade = { concluida:4, aprovada:4, pendente:2, reprovada:1 };
+  // ── osMap: separado em "minha própria" (sou tecnico_id) e "incluída" (sou auxiliar) ──
+  // Isso garante que se eu tenho uma OS pendente como técnico principal,
+  // ela aparece mesmo que outra OS do mesmo agendamento (onde sou auxiliar) já esteja concluída.
+  const minhaPropria  = {}; // keyed by ag_X ou o_obraId|data — OSs onde eu sou tecnico_id
+  const minhaIncluida = {}; // OSs onde sou auxiliar
+  const prioridade    = { concluida:4, aprovada:4, pendente:2, reprovada:1 };
 
   (osRaw || []).forEach(os => {
-    const stNorm = (os.status_aprovacao === 'aprovada') ? 'concluida' : (os.status_aprovacao || 'pendente');
-    const entry = { status: stNorm, osId: os.id };
+    const stNorm  = (os.status_aprovacao === 'aprovada') ? 'concluida' : (os.status_aprovacao || 'pendente');
+    const entry   = { status: stNorm, osId: os.id };
+    const isPropria = os.tecnico_id === id;
+    const map     = isPropria ? minhaPropria : minhaIncluida;
 
     if (os.agendamento_id) {
       const k = `ag_${os.agendamento_id}`;
-      if (!osMap[k] || prioridade[stNorm] > prioridade[osMap[k].status]) osMap[k] = entry;
+      if (!map[k] || prioridade[stNorm] > prioridade[map[k].status]) map[k] = entry;
     }
     const dataRef = os.data_servico || (os.criado_em ? os.criado_em.slice(0,10) : null);
     if (os.obra_id && dataRef) {
       const k = `o_${os.obra_id}|${dataRef}`;
-      if (!osMap[k] || prioridade[stNorm] > prioridade[osMap[k].status]) osMap[k] = entry;
+      if (!map[k] || prioridade[stNorm] > prioridade[map[k].status]) map[k] = entry;
     }
   });
 
-  // Função para pegar status/osId de um agendamento
+  // Função para pegar status/osId de um agendamento.
+  // Prioridade: se eu tenho OS própria pendente → sempre mostra (para eu poder preencher).
+  // Se minha própria já está concluída/aprovada → usa esse status.
+  // Se não tenho própria → usa a incluída (para mostrar status do grupo).
   function getOSEntry(ag) {
-    return osMap[`ag_${ag.id}`] || osMap[`o_${ag.obras?.id}|${ag.data}`] || null;
+    const propria  = minhaPropria[`ag_${ag.id}`]  || minhaPropria[`o_${ag.obras?.id}|${ag.data}`]  || null;
+    const incluida = minhaIncluida[`ag_${ag.id}`] || minhaIncluida[`o_${ag.obras?.id}|${ag.data}`] || null;
+
+    if (propria) {
+      // Tenho uma OS própria: sempre uso ela (seja pendente ou concluída)
+      return propria;
+    }
+    // Não tenho OS própria: uso a incluída (para refletir status do grupo)
+    return incluida;
   }
 
   // ── Agrupar por data ─────────────────────────────────────────
