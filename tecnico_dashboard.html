@@ -718,16 +718,41 @@ async function logout() {
 
 async function carregarOSs() {
   const id = tecnicoAtual.id;
-  const { data, error } = await db
+  let data = null;
+
+  // Tentativa 1 — OR nos 4 campos (inclui auxiliar2_id/auxiliar3_id)
+  const r1 = await db
     .from('ordens_de_servico')
     .select('*, obras(nome_cliente, endereco)')
     .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`)
     .order('criado_em', { ascending: false });
 
-  if (error) {
-    document.getElementById('tabelaBody').innerHTML =
-      `<tr><td colspan="5" class="empty-table">Erro: ${error.message}</td></tr>`;
-    return;
+  if (!r1.error) {
+    data = r1.data;
+  } else {
+    // Tentativa 2 — OR nos 2 campos básicos (sem auxiliar2/3, caso não existam)
+    const r2 = await db
+      .from('ordens_de_servico')
+      .select('*, obras(nome_cliente, endereco)')
+      .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id}`)
+      .order('criado_em', { ascending: false });
+
+    if (!r2.error) {
+      data = r2.data;
+    } else {
+      // Tentativa 3 — mínimo absoluto: só tecnico_id
+      const r3 = await db
+        .from('ordens_de_servico')
+        .select('*, obras(nome_cliente, endereco)')
+        .eq('tecnico_id', id)
+        .order('criado_em', { ascending: false });
+      if (r3.error) {
+        document.getElementById('tabelaBody').innerHTML =
+          `<tr><td colspan="5" class="empty-table">Erro ao carregar OSs: ${r3.error.message}</td></tr>`;
+        return;
+      }
+      data = r3.data;
+    }
   }
 
   todasOSs = data || [];

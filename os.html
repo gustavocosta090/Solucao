@@ -453,14 +453,29 @@ async function carregarAgendamentosHoje() {
     .order('hora_inicio', { ascending: true });
 
   // Supabase: OR nos 4 campos
-  const [{ data: agsRaw }, { data: osRaw }] = await Promise.all([
-    agQuery.or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`),
-    // Busca OSs onde o técnico está em qualquer campo
-    db.from('ordens_de_servico')
-      .select('id, agendamento_id, obra_id, status_aprovacao, data_servico, criado_em')
-      .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`)
-      .gte('criado_em', dataInicio + 'T00:00:00')
-  ]);
+  // Agendamentos: OR nos 4 campos
+  const agRes = await agQuery.or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`);
+  const agsRaw = agRes.data;
+
+  // OSs: fallback em cascata caso colunas novas não existam ainda
+  let osRaw = null;
+  const osBase = db.from('ordens_de_servico').gte('criado_em', dataInicio + 'T00:00:00');
+
+  const osR1 = await db.from('ordens_de_servico')
+    .select('id, agendamento_id, obra_id, status_aprovacao, data_servico, criado_em')
+    .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`)
+    .gte('criado_em', dataInicio + 'T00:00:00');
+
+  if (!osR1.error) {
+    osRaw = osR1.data;
+  } else {
+    // Fallback 2: sem auxiliar2/3
+    const osR2 = await db.from('ordens_de_servico')
+      .select('id, obra_id, status_aprovacao, data_servico, criado_em')
+      .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id}`)
+      .gte('criado_em', dataInicio + 'T00:00:00');
+    osRaw = osR2.data || [];
+  }
 
   const lista = document.getElementById('lista-agendamentos');
 

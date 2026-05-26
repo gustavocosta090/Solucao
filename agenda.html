@@ -1251,13 +1251,27 @@ async function salvarAgendamento() {
         status_aprovacao: 'pendente',
         criado_em:        new Date().toISOString(),
       };
-      // Tenta criar com todos os campos; se falhar por colunas novas, retenta sem elas
+      // Nível 1: payload completo (inclui colunas novas)
       let { error: osErr } = await db.from('ordens_de_servico').insert(osPayload);
+
       if (osErr) {
-        // Retry sem colunas que podem não existir ainda no banco
-        const { agendamento_id: _a, endereco_servico: _e, cliente_outro: _c, ...basicOsPayload } = osPayload;
-        const r2 = await db.from('ordens_de_servico').insert(basicOsPayload);
-        if (r2.error) console.warn('OS pendente não criada:', r2.error.message);
+        // Nível 2: sem agendamento_id / endereco_servico / cliente_outro (podem não existir)
+        const { agendamento_id: _a, endereco_servico: _e, cliente_outro: _c, ...l2 } = osPayload;
+        const r2 = await db.from('ordens_de_servico').insert(l2);
+
+        if (r2.error) {
+          // Nível 3: mínimo absoluto — só colunas que definitivamente existem
+          const r3 = await db.from('ordens_de_servico').insert({
+            obra_id:          payload.obra_id,
+            tecnico_id:       payload.tecnico_id,
+            auxiliar_id:      payload.auxiliar_id || null,
+            data_servico:     data,
+            servico_planejado: servico || null,
+            status_aprovacao: 'pendente',
+            criado_em:        new Date().toISOString(),
+          });
+          if (r3.error) console.warn('OS pendente não criada:', r3.error.message);
+        }
       }
     }
 
