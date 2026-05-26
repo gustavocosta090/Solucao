@@ -18,12 +18,15 @@
       --surface-2:    #161616;
       --surface-3:    #1B1B1B;
       --primary:      #3ECF8E;
+      --primary-hover:#2EBF7E;
+      --primary-muted:rgba(62,207,142,0.1);
       --secondary:    #4F46E5;
       --text-1:       #FFFFFF;
       --text-2:       #A1A1AA;
       --text-3:       #52525B;
       --border:       rgba(255,255,255,0.08);
       --border-hover: rgba(255,255,255,0.16);
+      --border-focus: rgba(62,207,142,0.4);
       --radius-card:  12px;
       --radius-input: 6px;
     }
@@ -48,31 +51,16 @@
     .topbar-links a.nav-sair:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
 
     /* ── Main ── */
-    main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 32px 24px;
-    }
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
 
     /* ── Voltar ── */
     .btn-voltar {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      color: var(--text-3);
-      font-size: 0.82rem;
-      font-weight: 500;
-      background: none;
-      border: none;
-      cursor: pointer;
-      margin-bottom: 24px;
-      padding: 0;
-      font-family: inherit;
-      transition: color 150ms;
+      display: inline-flex; align-items: center; gap: 7px;
+      color: var(--text-3); font-size: 0.82rem; font-weight: 500;
+      background: none; border: none; cursor: pointer;
+      margin-bottom: 24px; padding: 0; font-family: inherit; transition: color 150ms;
     }
-
     .btn-voltar i { width: 14px; height: 14px; }
-
     .btn-voltar:hover { color: var(--text-2); }
 
     /* ── Card da obra ── */
@@ -84,28 +72,17 @@
       margin-bottom: 24px;
     }
 
-    .obra-title {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: var(--text-1);
-      letter-spacing: -0.02em;
-      margin-bottom: 4px;
-    }
+    .obra-title { font-size: 1.3rem; font-weight: 700; color: var(--text-1); letter-spacing: -0.02em; margin-bottom: 4px; }
 
     .obra-meta {
-      font-size: 0.75rem;
-      color: var(--text-3);
-      font-weight: 500;
-      letter-spacing: 0.03em;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      font-size: 0.75rem; color: var(--text-3); font-weight: 500;
+      letter-spacing: 0.03em; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 8px;
     }
 
     .obra-infos {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 10px;
     }
 
@@ -117,30 +94,18 @@
     }
 
     .obra-info-label {
-      font-size: 0.68rem;
-      color: var(--text-3);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      margin-bottom: 4px;
+      font-size: 0.68rem; color: var(--text-3); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px;
     }
 
     .obra-info-value {
-      font-size: 0.85rem;
-      color: var(--text-2);
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      font-size: 0.85rem; color: var(--text-2);
+      display: flex; align-items: center; gap: 6px;
     }
 
-    .obra-info-value i {
-      width: 13px;
-      height: 13px;
-      color: var(--text-3);
-      flex-shrink: 0;
-    }
+    .obra-info-value i { width: 13px; height: 13px; color: var(--text-3); flex-shrink: 0; }
 
-    /* ── Inline edit fields ── */
+    /* ── Inline edit controls ── */
     .inline-select {
       background: var(--surface-2);
       border: 1px solid var(--border);
@@ -155,9 +120,49 @@
       appearance: none;
       -webkit-appearance: none;
     }
-    .inline-select:focus { border-color: rgba(62,207,142,0.5); }
+    .inline-select:focus { border-color: var(--border-focus); }
     .inline-select option { background: var(--surface-2); }
+
+    .inline-input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-1);
+      font-size: 0.82rem;
+      font-family: inherit;
+      padding: 5px 8px;
+      outline: none;
+      transition: border-color .15s;
+      flex: 1;
+      min-width: 0;
+      width: 100%;
+    }
+    .inline-input:focus { border-color: var(--border-focus); }
+    .inline-input::placeholder { color: var(--text-3); }
+
     .edit-field { gap: 8px; }
+
+    .save-indicator {
+      font-size: 11px; color: var(--primary);
+      opacity: 0; transition: opacity .3s;
+    }
+    .save-indicator.show { opacity: 1; }
+
+    /* ── Edit row (bottom of obra-card) ── */
+    .edit-row {
+      margin-top: 16px; padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    }
+
+    .edit-row-group {
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .edit-row-label {
+      font-size: 11px; font-weight: 600; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;
+    }
 
     /* ── Stats ── */
     .stats {
@@ -177,76 +182,59 @@
       text-align: center;
     }
 
-    .stat-num {
-      font-size: 1.8rem;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      color: var(--text-1);
+    .stat-num { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.03em; color: var(--text-1); }
+    .stat-label { font-size: 0.72rem; color: var(--text-3); margin-top: 4px; font-weight: 500; }
+
+    /* ── Tabs system ── */
+    .tabs-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+      gap: 0;
     }
 
-    .stat-label {
-      font-size: 0.72rem;
-      color: var(--text-3);
-      margin-top: 4px;
+    .tab-btn {
+      padding: 10px 18px;
+      font-size: 13px;
       font-weight: 500;
-    }
-
-    /* ── Section title ── */
-    .section-header {
+      font-family: inherit;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-3);
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+      margin-bottom: -1px;
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 14px;
+      gap: 7px;
     }
 
-    .section-title {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--text-1);
-      letter-spacing: -0.01em;
-    }
+    .tab-btn i { width: 14px; height: 14px; }
+    .tab-btn:hover { color: var(--text-2); }
+    .tab-btn.tab-active { color: var(--text-1); border-bottom-color: var(--primary); }
 
+    .tab-panel { display: none; }
+    .tab-panel.tab-visible { display: block; }
+
+    /* ── Section title ── */
+    .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .section-title { font-size: 0.9rem; font-weight: 700; color: var(--text-1); letter-spacing: -0.01em; }
     .section-count {
-      font-size: 0.7rem;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      color: var(--text-3);
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-weight: 600;
+      font-size: 0.7rem; background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--text-3); padding: 2px 8px; border-radius: 999px; font-weight: 600;
     }
 
     /* ── Filtros ── */
-    .filtros {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
+    .filtros { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
 
     .filtro-btn {
-      padding: 5px 14px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text-2);
-      font-size: 0.78rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 150ms;
-      font-family: inherit;
+      padding: 5px 14px; border-radius: 999px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-2); font-size: 0.78rem;
+      font-weight: 500; cursor: pointer; transition: all 150ms; font-family: inherit;
     }
-
-    .filtro-btn:hover {
-      border-color: var(--border-hover);
-      color: var(--text-1);
-    }
-
-    .filtro-btn.ativo {
-      background: rgba(62,207,142,0.12);
-      border-color: rgba(62,207,142,0.35);
-      color: var(--primary);
-    }
+    .filtro-btn:hover { border-color: var(--border-hover); color: var(--text-1); }
+    .filtro-btn.ativo { background: rgba(62,207,142,0.12); border-color: rgba(62,207,142,0.35); color: var(--primary); }
 
     /* ── Tabela OS ── */
     .os-table-wrap {
@@ -254,227 +242,123 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-card);
       overflow: hidden;
-      margin-bottom: 32px;
+      margin-bottom: 8px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.82rem;
-    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 
     th {
-      background: var(--surface-2);
-      padding: 10px 16px;
-      text-align: left;
-      font-size: 0.68rem;
-      font-weight: 700;
-      color: var(--text-3);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      border-bottom: 1px solid var(--border);
+      background: var(--surface-2); padding: 10px 16px; text-align: left;
+      font-size: 0.68rem; font-weight: 700; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.07em; border-bottom: 1px solid var(--border);
     }
 
-    td {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-      color: var(--text-2);
-    }
-
+    td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text-2); }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: rgba(255,255,255,0.02); }
 
     /* ── Badges ── */
     .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 3px 9px;
-      border-radius: 999px;
-      font-size: 0.69rem;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      white-space: nowrap;
+      display: inline-flex; align-items: center;
+      padding: 3px 9px; border-radius: 999px;
+      font-size: 0.69rem; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap;
     }
 
     .badge-pend  { background: rgba(245,158,11,0.12); color: #F59E0B; border: 1px solid rgba(245,158,11,0.22); }
     .badge-aprov { background: rgba(62,207,142,0.12);  color: var(--primary); border: 1px solid rgba(62,207,142,0.22); }
-    .badge-rejt  { background: rgba(239,68,68,0.1);    color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
 
-    /* Badges de fase */
-    .badge-projeto_iniciado  { background: rgba(99,102,241,0.15);  color: #818CF8; border: 1px solid rgba(99,102,241,0.25); }
+    /* Badges de fase obra */
+    .badge-em_andamento      { background: rgba(99,102,241,0.15);  color: #818CF8; border: 1px solid rgba(99,102,241,0.25); }
+    .badge-entregue          { background: rgba(62,207,142,0.15);  color: var(--primary); border: 1px solid rgba(62,207,142,0.25); }
+    .badge-pausada           { background: rgba(245,158,11,0.12);  color: #F59E0B; border: 1px solid rgba(245,158,11,0.22); }
+    .badge-concluída         { background: rgba(79,70,229,0.15);   color: #818CF8; border: 1px solid rgba(79,70,229,0.25); }
+    .badge-pré-vistoria      { background: rgba(234,88,12,0.12);   color: #FB923C; border: 1px solid rgba(234,88,12,0.2); }
+    .badge-pós-vistoria      { background: rgba(6,182,212,0.12);   color: #67E8F9; border: 1px solid rgba(6,182,212,0.2); }
+
+    /* Badges de fase técnica */
     .badge-cabeamento        { background: rgba(245,158,11,0.12);  color: #F59E0B; border: 1px solid rgba(245,158,11,0.22); }
     .badge-eletrica          { background: rgba(251,191,36,0.12);  color: #FBBF24; border: 1px solid rgba(251,191,36,0.22); }
     .badge-audio_video       { background: rgba(167,139,250,0.12); color: #A78BFA; border: 1px solid rgba(167,139,250,0.22); }
     .badge-automacao         { background: rgba(62,207,142,0.12);  color: var(--primary); border: 1px solid rgba(62,207,142,0.22); }
-    .badge-em_finalizacao    { background: rgba(45,212,191,0.12);  color: #2DD4BF; border: 1px solid rgba(45,212,191,0.22); }
-    .badge-nao_iniciado      { background: rgba(82,82,91,0.2);     color: var(--text-2); border: 1px solid rgba(82,82,91,0.3); }
-    .badge-projeto_concluido { background: rgba(79,70,229,0.15);   color: #818CF8; border: 1px solid rgba(79,70,229,0.25); }
-    .badge-entrega_comercial { background: rgba(62,207,142,0.15);  color: var(--primary); border: 1px solid rgba(62,207,142,0.25); }
-    .badge-em_andamento      { background: rgba(99,102,241,0.15);  color: #818CF8; border: 1px solid rgba(99,102,241,0.25); }
-    .badge-entregue          { background: rgba(62,207,142,0.15);  color: var(--primary); border: 1px solid rgba(62,207,142,0.25); }
-    .badge-pausada           { background: rgba(245,158,11,0.12);  color: #F59E0B; border: 1px solid rgba(245,158,11,0.22); }
-    .badge-planejamento      { background: rgba(167,139,250,0.12); color: #A78BFA; border: 1px solid rgba(167,139,250,0.22); }
 
     /* ── Fotos mini ── */
     .fotos-mini { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
-
-    .foto-mini {
-      width: 34px;
-      height: 34px;
-      border-radius: 4px;
-      object-fit: cover;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      transition: border-color 200ms;
-    }
-
+    .foto-mini { width: 34px; height: 34px; border-radius: 4px; object-fit: cover; cursor: pointer; border: 1px solid var(--border); transition: border-color 200ms; }
     .foto-mini:hover { border-color: var(--primary); }
 
-    /* ── Galeria de fotos ── */
-    .galeria-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 10px;
-      margin-bottom: 32px;
-    }
+    /* ── Galeria ── */
+    .galeria-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 
-    .galeria-item {
-      position: relative;
-      aspect-ratio: 1;
-      border-radius: 8px;
-      overflow: hidden;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      cursor: pointer;
-    }
-
-    .galeria-item img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 200ms;
-    }
-
+    .galeria-item { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--surface-2); border: 1px solid var(--border); cursor: pointer; }
+    .galeria-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 200ms; }
     .galeria-item:hover img { transform: scale(1.04); }
+    .galeria-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.85)); padding: 10px 8px 6px; font-size: 0.68rem; color: var(--text-2); }
 
-    .galeria-info {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: linear-gradient(transparent, rgba(0,0,0,0.85));
-      padding: 10px 8px 6px;
-      font-size: 0.68rem;
-      color: var(--text-2);
+    /* ── Observações tab ── */
+    .obs-wrap {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
     }
+
+    .obs-wrap h3 { font-size: 14px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; }
+    .obs-wrap p { font-size: 13px; color: var(--text-3); margin-bottom: 16px; }
+
+    .obs-textarea {
+      width: 100%;
+      min-height: 200px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-1);
+      font-size: 14px;
+      font-family: inherit;
+      padding: 14px;
+      resize: vertical;
+      outline: none;
+      transition: border-color .15s;
+      line-height: 1.7;
+    }
+    .obs-textarea:focus { border-color: var(--border-focus); }
+    .obs-textarea::placeholder { color: var(--text-3); }
+
+    .obs-footer { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+
+    .btn-salvar-obs {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 18px;
+      background: var(--primary); color: #0A0A0A;
+      border: none; border-radius: 7px;
+      font-size: 13px; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: background .15s;
+    }
+    .btn-salvar-obs:hover { background: var(--primary-hover); }
+    .btn-salvar-obs i { width: 14px; height: 14px; }
+
+    .obs-saved-msg { font-size: 12px; color: var(--primary); display: none; }
 
     /* ── Empty state ── */
-    .empty {
-      text-align: center;
-      padding: 48px 20px;
-      color: var(--text-3);
-      font-size: 0.85rem;
-    }
-
-    .empty i {
-      width: 36px;
-      height: 36px;
-      margin: 0 auto 12px;
-      display: block;
-      color: var(--text-3);
-    }
+    .empty { text-align: center; padding: 48px 20px; color: var(--text-3); font-size: 0.85rem; }
+    .empty i { width: 36px; height: 36px; margin: 0 auto 12px; display: block; color: var(--text-3); }
 
     /* ── Spinner ── */
-    .spinner-wrap {
-      text-align: center;
-      padding: 60px;
-      color: var(--text-3);
-    }
-
-    .spinner {
-      width: 32px;
-      height: 32px;
-      border: 2px solid var(--border);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      margin: 0 auto 14px;
-    }
-
+    .spinner-wrap { text-align: center; padding: 60px; color: var(--text-3); }
+    .spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 14px; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Lightbox ── */
-    .lightbox {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.94);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 16px;
-      backdrop-filter: blur(8px);
-    }
-
+    .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.94); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; gap: 16px; backdrop-filter: blur(8px); }
     .lightbox.aberto { display: flex; }
-
-    .lightbox img {
-      max-width: 90vw;
-      max-height: 78vh;
-      border-radius: 8px;
-      object-fit: contain;
-      border: 1px solid var(--border);
-    }
-
-    .lightbox-close {
-      position: absolute;
-      top: 20px;
-      right: 24px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text-2);
-      width: 36px;
-      height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: border-color 150ms, color 150ms;
-    }
-
+    .lightbox img { max-width: 90vw; max-height: 78vh; border-radius: 8px; object-fit: contain; border: 1px solid var(--border); }
+    .lightbox-close { position: absolute; top: 20px; right: 24px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; color: var(--text-2); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 150ms, color 150ms; }
     .lightbox-close:hover { border-color: var(--border-hover); color: var(--text-1); }
     .lightbox-close i { width: 16px; height: 16px; }
-
-    .lightbox-nav {
-      display: flex;
-      gap: 10px;
-    }
-
-    .lightbox-nav button {
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      color: var(--text-2);
-      padding: 8px 18px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.82rem;
-      font-family: inherit;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: border-color 150ms, color 150ms;
-    }
-
+    .lightbox-nav { display: flex; gap: 10px; }
+    .lightbox-nav button { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-family: inherit; display: flex; align-items: center; gap: 6px; transition: border-color 150ms, color 150ms; }
     .lightbox-nav button:hover { border-color: var(--border-hover); color: var(--text-1); }
     .lightbox-nav button i { width: 14px; height: 14px; }
-
-    .lightbox-caption {
-      color: var(--text-3);
-      font-size: 0.78rem;
-    }
+    .lightbox-caption { color: var(--text-3); font-size: 0.78rem; }
   </style>
 </head>
 <body>
@@ -507,7 +391,7 @@
   <img id="lb-img" src="" alt="">
   <div class="lightbox-nav">
     <button onclick="navLightbox(-1)"><i data-lucide="arrow-left"></i> Anterior</button>
-    <button onclick="navLightbox(1)">Proxima <i data-lucide="arrow-right"></i></button>
+    <button onclick="navLightbox(1)">Próxima <i data-lucide="arrow-right"></i></button>
   </div>
   <div class="lightbox-caption" id="lb-caption"></div>
 </div>
@@ -519,42 +403,44 @@ const db = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
 );
 
-const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+const params = new URLSearchParams(location.search);
+const obraId = parseInt(params.get('id'));
 
-const params  = new URLSearchParams(location.search);
-const obraId  = parseInt(params.get('id'));
-
-let todasFotos = [];
-let lbIndex    = 0;
+let todasFotos  = [];
+let lbIndex     = 0;
 let filtroStatus = 'todos';
-let todasOS = [];
+let todasOS     = [];
+let roleAtual   = 'tecnico';
+let consultoresLista = [];
+let tabAtiva    = 'os';
 
-const FASES = {
-  planejamento:     'Planejamento',
-  em_andamento:     'Em andamento',
-  entregue:         'Entregue',
-  pausada:          'Pausada',
-  projeto_iniciado: 'Projeto Iniciado',
-  cabeamento:       'Cabeamento',
-  eletrica:         'Eletrica',
-  audio_video:      'Audio e Video',
-  automacao:        'Automacao',
-  em_finalizacao:   'Em Finalizacao',
-  nao_iniciado:     'Nao Iniciado',
-  projeto_concluido:'Projeto Concluido',
-  entrega_comercial:'Entrega Comercial',
+// ── Valores válidos do DB (com acento/hífen conforme check constraint) ──
+const FASES_OBRA = {
+  'em_andamento': 'Em andamento',
+  'concluída':    'Concluída',
+  'pausada':      'Pausada',
+  'pré-vistoria': 'Pré-vistoria',
+  'pós-vistoria': 'Pós-vistoria',
+  'entregue':     'Entregue',
+};
+
+const FASES_TECNICA = {
+  '':            '— Não definida —',
+  'cabeamento':  'Cabeamento',
+  'eletrica':    'Elétrica',
+  'audio_video': 'Áudio e Vídeo',
+  'automacao':   'Automação',
 };
 
 const STATUS_LABELS = {
-  pendente:  { label: 'Pendente',   cls: 'badge-pend' },
-  concluida: { label: 'Concluída',  cls: 'badge-aprov' },
-  // retrocompatibilidade
-  aprovada:  { label: 'Concluída',  cls: 'badge-aprov' },
-  reprovada: { label: 'Pendente',   cls: 'badge-pend' },
+  pendente:  { label: 'Pendente',  cls: 'badge-pend' },
+  concluida: { label: 'Concluída', cls: 'badge-aprov' },
+  aprovada:  { label: 'Concluída', cls: 'badge-aprov' },
+  reprovada: { label: 'Pendente',  cls: 'badge-pend' },
 };
 
-let osSendoVisualizada = null;
-let roleAtual = 'tecnico';
+// Roles com permissão de editar campos da obra
+const PODE_EDITAR = ['coordenador', 'supervisor', 'agendamento', 'coordenador_projetos'];
 
 function renderTopbar(nome, role, paginaAtiva) {
   const h = new Date().getHours();
@@ -590,7 +476,7 @@ async function init() {
   lucide.createIcons();
 
   if (!obraId) {
-    document.getElementById('conteudo').innerHTML = '<div class="empty"><p>Obra nao encontrada.</p></div>';
+    document.getElementById('conteudo').innerHTML = '<div class="empty"><p>Obra não encontrada.</p></div>';
     return;
   }
 
@@ -602,39 +488,67 @@ async function logout() {
   window.location.href = 'login.html';
 }
 
+// ── Salvar campo genérico da obra ──
 async function salvarCampo(campo, valor) {
   if (!obraId) return;
   const { error } = await db.from('obras').update({ [campo]: valor }).eq('id', obraId);
   if (error) {
     alert('Erro ao salvar: ' + error.message);
+    return false;
+  }
+  mostrarSalvo('save-indicator-' + campo);
+
+  // Atualizar badge da fase no header
+  if (campo === 'fase_atual') {
+    const label = FASES_OBRA[valor] || valor;
+    const badgeEl = document.querySelector('.obra-meta .badge');
+    if (badgeEl) { badgeEl.className = `badge badge-${valor}`; badgeEl.textContent = label; }
+  }
+  return true;
+}
+
+// ── Salvar campo de texto (disparado ao sair do input) ──
+function salvarTexto(campo, valor) {
+  salvarCampo(campo, valor.trim());
+}
+
+function mostrarSalvo(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.style.display = 'inline';
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.style.display = 'none', 300); }, 2000);
+}
+
+// ── Salvar observações da obra ──
+async function salvarObservacoes() {
+  const texto = document.getElementById('obs-textarea')?.value || '';
+  const btn = document.getElementById('btn-salvar-obs');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2"></i> Salvando...'; lucide.createIcons(); }
+
+  const { error } = await db.from('obras').update({ observacoes: texto }).eq('id', obraId);
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="save"></i> Salvar'; lucide.createIcons(); }
+
+  if (error) {
+    alert('Erro ao salvar: ' + error.message);
     return;
   }
-  // Feedback visual
-  const ind = document.getElementById('save-indicator');
-  if (ind) {
-    ind.style.display = 'inline';
-    setTimeout(() => { ind.style.display = 'none'; }, 2000);
-  }
-  // Atualizar badge da fase no header da obra
-  if (campo === 'fase_atual') {
-    const faseLabel = FASES[valor] || valor;
-    const badgeEl = document.querySelector('.obra-meta .badge');
-    if (badgeEl) {
-      badgeEl.className = `badge badge-${valor}`;
-      badgeEl.textContent = faseLabel;
-    }
-  }
+  const msg = document.getElementById('obs-saved-msg');
+  if (msg) { msg.style.display = 'inline'; setTimeout(() => msg.style.display = 'none', 3000); }
 }
 
 async function carregarObra() {
-  const { data: obra, error } = await db
-    .from('obras')
-    .select('*, consultores(nome)')
-    .eq('id', obraId)
-    .single();
+  // Carregar obra + consultores em paralelo
+  const [{ data: obra, error }, { data: consList }] = await Promise.all([
+    db.from('obras').select('*, consultores(id, nome)').eq('id', obraId).single(),
+    db.from('consultores').select('id, nome').order('nome'),
+  ]);
+
+  consultoresLista = consList || [];
 
   if (error || !obra) {
-    document.getElementById('conteudo').innerHTML = '<div class="empty"><p>Obra nao encontrada.</p></div>';
+    document.getElementById('conteudo').innerHTML = '<div class="empty"><p>Obra não encontrada.</p></div>';
     return;
   }
 
@@ -667,69 +581,123 @@ async function carregarObra() {
 }
 
 function renderPagina(obra) {
-  const consultor = obra.consultores?.nome || '—';
-  const faseLabel = FASES[obra.fase_atual] || obra.fase_atual || '—';
-  const faseClass = obra.fase_atual || 'em_andamento';
+  const podeEditar = PODE_EDITAR.includes(roleAtual);
+  const faseLabel  = FASES_OBRA[obra.fase_atual] || obra.fase_atual || '—';
+  const faseClass  = obra.fase_atual || 'em_andamento';
 
-  const total     = todasOS.length;
+  const total      = todasOS.length;
   const concluidas = todasOS.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
-  const pendentes = todasOS.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
-  const nFotos    = todasFotos.length;
+  const pendentes  = todasOS.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
+  const nFotos     = todasFotos.length;
+
+  // ── Campos editáveis ──
+  const campoEndereco = podeEditar
+    ? `<div class="obra-info-value edit-field">
+        <i data-lucide="map-pin"></i>
+        <input class="inline-input" value="${escHtml(obra.endereco || '')}" placeholder="Endereço..." onblur="salvarTexto('endereco', this.value)">
+        <span id="save-indicator-endereco" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓</span>
+       </div>`
+    : `<div class="obra-info-value"><i data-lucide="map-pin"></i>${obra.endereco || '—'}</div>`;
+
+  const campoArquiteto = podeEditar
+    ? `<div class="obra-info-value edit-field">
+        <i data-lucide="pen-tool"></i>
+        <input class="inline-input" value="${escHtml(obra.arquiteto_responsavel || '')}" placeholder="Arquiteto..." onblur="salvarTexto('arquiteto_responsavel', this.value)">
+        <span id="save-indicator-arquiteto_responsavel" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓</span>
+       </div>`
+    : `<div class="obra-info-value"><i data-lucide="pen-tool"></i>${obra.arquiteto_responsavel || '—'}</div>`;
+
+  const consultorAtualId = obra.consultores?.id || '';
+  const consultorAtualNome = obra.consultores?.nome || '—';
+  const campoConsultor = podeEditar
+    ? `<div class="obra-info-value edit-field">
+        <i data-lucide="user"></i>
+        <select class="inline-select" onchange="salvarCampo('consultor_id', this.value || null)">
+          <option value="">— Sem consultor —</option>
+          ${consultoresLista.map(c => `<option value="${c.id}" ${c.id == consultorAtualId ? 'selected' : ''}>${escHtml(c.nome)}</option>`).join('')}
+        </select>
+        <span id="save-indicator-consultor_id" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓</span>
+       </div>`
+    : `<div class="obra-info-value"><i data-lucide="user"></i>${consultorAtualNome}</div>`;
+
+  // ── Edit row (privilegiados) ──
+  const editRow = podeEditar ? `
+    <div class="edit-row">
+      <div class="edit-row-group">
+        <span class="edit-row-label">Etapa da Obra</span>
+        <select class="inline-select" onchange="salvarCampo('fase_atual', this.value)">
+          ${Object.entries(FASES_OBRA).map(([v, l]) =>
+            `<option value="${v}" ${obra.fase_atual === v ? 'selected' : ''}>${l}</option>`
+          ).join('')}
+        </select>
+        <span id="save-indicator-fase_atual" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓ Salvo</span>
+      </div>
+      <div class="edit-row-group">
+        <span class="edit-row-label">Fase Técnica</span>
+        <select class="inline-select" onchange="salvarCampo('fase_tecnica', this.value || null)">
+          ${Object.entries(FASES_TECNICA).map(([v, l]) =>
+            `<option value="${v}" ${(obra.fase_tecnica || '') === v ? 'selected' : ''}>${l}</option>`
+          ).join('')}
+        </select>
+        <span id="save-indicator-fase_tecnica" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓ Salvo</span>
+      </div>
+      <div class="edit-row-group">
+        <span class="edit-row-label">Status Compra</span>
+        <select class="inline-select" onchange="salvarCampo('status_compra', this.value)">
+          <option value="">— Selecione —</option>
+          <option value="Aguardando orçamento" ${obra.status_compra==='Aguardando orçamento'?'selected':''}>Aguardando orçamento</option>
+          <option value="Orçamento aprovado"   ${obra.status_compra==='Orçamento aprovado'  ?'selected':''}>Orçamento aprovado</option>
+          <option value="Compra realizada"      ${obra.status_compra==='Compra realizada'    ?'selected':''}>Compra realizada</option>
+          <option value="Material entregue"     ${obra.status_compra==='Material entregue'   ?'selected':''}>Material entregue</option>
+          <option value="Sem pendência"          ${obra.status_compra==='Sem pendência'        ?'selected':''}>Sem pendência</option>
+        </select>
+        <span id="save-indicator-status_compra" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓ Salvo</span>
+      </div>
+    </div>` : '';
+
+  // ── Fase técnica badge (leitura) ──
+  const faseTecnicaBadge = obra.fase_tecnica
+    ? `<div class="obra-info-item">
+        <div class="obra-info-label">Fase Técnica</div>
+        <div class="obra-info-value">
+          <span class="badge badge-${obra.fase_tecnica}">${FASES_TECNICA[obra.fase_tecnica] || obra.fase_tecnica}</span>
+        </div>
+       </div>`
+    : '';
 
   document.getElementById('conteudo').innerHTML = `
     <div class="obra-card">
-      <div class="obra-title">${obra.nome_cliente}</div>
+      <div class="obra-title">${obra.nome_cliente || obra.nome || '—'}</div>
       <div class="obra-meta">
         #${String(obra.id).padStart(3,'0')}
         <span class="badge badge-${faseClass}">${faseLabel}</span>
+        ${obra.fase_tecnica ? `<span class="badge badge-${obra.fase_tecnica}" style="margin-left:4px;">${FASES_TECNICA[obra.fase_tecnica] || obra.fase_tecnica}</span>` : ''}
       </div>
+
       <div class="obra-infos">
         <div class="obra-info-item">
-          <div class="obra-info-label">Endereco</div>
-          <div class="obra-info-value"><i data-lucide="map-pin"></i>${obra.endereco || '—'}</div>
+          <div class="obra-info-label">Endereço</div>
+          ${campoEndereco}
         </div>
         <div class="obra-info-item">
           <div class="obra-info-label">Arquiteto</div>
-          <div class="obra-info-value"><i data-lucide="pen-tool"></i>${obra.arquiteto_responsavel || '—'}</div>
+          ${campoArquiteto}
         </div>
         <div class="obra-info-item">
           <div class="obra-info-label">Consultor</div>
-          <div class="obra-info-value"><i data-lucide="user"></i>${consultor}</div>
+          ${campoConsultor}
         </div>
-        <div class="obra-info-item">
+        ${!podeEditar ? `<div class="obra-info-item">
           <div class="obra-info-label">Status Compra</div>
-          ${['coordenador','supervisor','agendamento'].includes(roleAtual) ? `
-          <div class="obra-info-value edit-field">
-            <i data-lucide="shopping-cart"></i>
-            <select id="sel-compra" class="inline-select" onchange="salvarCampo('status_compra', this.value)">
-              <option value="">— Selecione —</option>
-              <option value="Aguardando orçamento" ${obra.status_compra==='Aguardando orçamento'?'selected':''}>Aguardando orçamento</option>
-              <option value="Orçamento aprovado" ${obra.status_compra==='Orçamento aprovado'?'selected':''}>Orçamento aprovado</option>
-              <option value="Compra realizada" ${obra.status_compra==='Compra realizada'?'selected':''}>Compra realizada</option>
-              <option value="Material entregue" ${obra.status_compra==='Material entregue'?'selected':''}>Material entregue</option>
-              <option value="Sem pendência" ${obra.status_compra==='Sem pendência'?'selected':''}>Sem pendência</option>
-            </select>
-          </div>` : `
-          <div class="obra-info-value"><i data-lucide="shopping-cart"></i>${obra.status_compra || '—'}</div>`}
-        </div>
+          <div class="obra-info-value"><i data-lucide="shopping-cart"></i>${obra.status_compra || '—'}</div>
+        </div>` : ''}
         ${obra.cod_shankya ? `<div class="obra-info-item">
-          <div class="obra-info-label">Cod. Shankya</div>
+          <div class="obra-info-label">Cód. Shankya</div>
           <div class="obra-info-value"><i data-lucide="hash"></i>${obra.cod_shankya}</div>
         </div>` : ''}
       </div>
-      ${['coordenador','supervisor','agendamento'].includes(roleAtual) ? `
-      <div class="edit-row" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.4px;">Etapa da Obra</div>
-        <select id="sel-fase" class="inline-select" onchange="salvarCampo('fase_atual', this.value)">
-          <option value="em_andamento"   ${obra.fase_atual==='em_andamento'  ?'selected':''}>Em andamento</option>
-          <option value="concluida"      ${obra.fase_atual==='concluida'     ?'selected':''}>Concluída</option>
-          <option value="pausada"        ${obra.fase_atual==='pausada'       ?'selected':''}>Pausada</option>
-          <option value="pre_vistoria"   ${obra.fase_atual==='pre_vistoria'  ?'selected':''}>Pré-vistoria</option>
-          <option value="pos_vistoria"   ${obra.fase_atual==='pos_vistoria'  ?'selected':''}>Pós-vistoria</option>
-          <option value="entregue"       ${obra.fase_atual==='entregue'      ?'selected':''}>Entregue</option>
-        </select>
-        <span id="save-indicator" style="font-size:12px;color:var(--primary);display:none;">✓ Salvo</span>
-      </div>` : ''}
+
+      ${editRow}
     </div>
 
     <div class="stats">
@@ -751,27 +719,71 @@ function renderPagina(obra) {
       </div>
     </div>
 
-    <div class="section-header">
-      <div class="section-title">Ordens de Servico</div>
-      <span class="section-count">${total}</span>
+    <!-- Tabs -->
+    <div class="tabs-bar">
+      <button class="tab-btn tab-active" id="tab-os" onclick="setTab('os')">
+        <i data-lucide="clipboard-list"></i> Ordens de Serviço
+        <span class="section-count">${total}</span>
+      </button>
+      <button class="tab-btn" id="tab-galeria" onclick="setTab('galeria')">
+        <i data-lucide="image"></i> Galeria
+        <span class="section-count">${nFotos}</span>
+      </button>
+      <button class="tab-btn" id="tab-obs" onclick="setTab('obs')">
+        <i data-lucide="file-text"></i> Descrição & Obs.
+      </button>
     </div>
-    <div class="filtros">
-      <button class="filtro-btn ativo" onclick="filtrarOS(this,'todos')">Todas</button>
-      <button class="filtro-btn" onclick="filtrarOS(this,'pendente')">Pendentes</button>
-      <button class="filtro-btn" onclick="filtrarOS(this,'concluida')">Concluídas</button>
-    </div>
-    <div id="tabela-os" class="os-table-wrap">${renderTabelaOS(todasOS)}</div>
 
-    <div class="section-header" style="margin-top:8px">
-      <div class="section-title">Galeria de Fotos</div>
-      <span class="section-count">${nFotos}</span>
+    <!-- Panel: OSs -->
+    <div id="panel-os" class="tab-panel tab-visible">
+      <div class="filtros">
+        <button class="filtro-btn ativo" onclick="filtrarOS(this,'todos')">Todas</button>
+        <button class="filtro-btn" onclick="filtrarOS(this,'pendente')">Pendentes</button>
+        <button class="filtro-btn" onclick="filtrarOS(this,'concluida')">Concluídas</button>
+      </div>
+      <div id="tabela-os" class="os-table-wrap">${renderTabelaOS(todasOS)}</div>
     </div>
-    <div class="galeria-grid" id="galeria">${renderGaleria(todasFotos)}</div>
+
+    <!-- Panel: Galeria -->
+    <div id="panel-galeria" class="tab-panel">
+      <div class="galeria-grid" id="galeria">${renderGaleria(todasFotos)}</div>
+    </div>
+
+    <!-- Panel: Observações -->
+    <div id="panel-obs" class="tab-panel">
+      <div class="obs-wrap">
+        <h3>Descrição & Observações da Obra</h3>
+        <p>Registre detalhes técnicos, observações gerais ou qualquer informação relevante sobre esta obra.</p>
+        <textarea
+          class="obs-textarea"
+          id="obs-textarea"
+          placeholder="Escreva observações, descrições técnicas, anotações importantes..."
+          ${!podeEditar ? 'readonly' : ''}
+        >${escHtml(obra.observacoes || '')}</textarea>
+        ${podeEditar ? `
+        <div class="obs-footer">
+          <button class="btn-salvar-obs" id="btn-salvar-obs" onclick="salvarObservacoes()">
+            <i data-lucide="save"></i> Salvar
+          </button>
+          <span id="obs-saved-msg" class="obs-saved-msg">✓ Observações salvas</span>
+        </div>` : ''}
+      </div>
+    </div>
   `;
 
   lucide.createIcons();
 }
 
+// ── Tabs ──
+function setTab(tab) {
+  tabAtiva = tab;
+  ['os', 'galeria', 'obs'].forEach(t => {
+    document.getElementById('tab-' + t)?.classList.toggle('tab-active', t === tab);
+    document.getElementById('panel-' + t)?.classList.toggle('tab-visible', t === tab);
+  });
+}
+
+// ── Tabela de OS ──
 function renderTabelaOS(lista) {
   if (!lista.length) return `
     <div class="empty">
@@ -781,11 +793,11 @@ function renderTabelaOS(lista) {
 
   const rows = lista.map((os, idx) => {
     const stKey = (os.status_aprovacao === 'aprovada') ? 'concluida' : (os.status_aprovacao === 'reprovada') ? 'pendente' : (os.status_aprovacao || 'pendente');
-    const st = STATUS_LABELS[stKey] || { label: stKey, cls: '' };
-    const tec = os.tecnicos?.nome || '—';
+    const st    = STATUS_LABELS[stKey] || { label: stKey, cls: '' };
+    const tec   = os.tecnicos?.nome || '—';
     const dataRef = os.data_servico || os.criado_em;
-    const data = dataRef ? new Date(dataRef + (dataRef.length === 10 ? 'T12:00' : '')).toLocaleDateString('pt-BR') : '—';
-    const nF = (os.fotos_urls || []).length;
+    const data  = dataRef ? new Date(dataRef + (dataRef.length === 10 ? 'T12:00' : '')).toLocaleDateString('pt-BR') : '—';
+    const nF    = (os.fotos_urls || []).length;
 
     const minisFotos = (os.fotos_urls || []).slice(0,3).map((url, fi) =>
       `<img class="foto-mini" src="${url}" alt="foto" onclick="event.stopPropagation();abrirLightboxOS(${idx},${fi})">`
@@ -842,13 +854,12 @@ function filtrarOS(btn, status) {
 function verDetalheOS(id) {
   const os = todasOS.find(o => o.id === id);
   if (!os) return;
-  osSendoVisualizada = os;
 
   const stKey = normStatus(os.status_aprovacao);
-  const st = STATUS_LABELS[stKey] || { label: stKey, cls: '' };
+  const st    = STATUS_LABELS[stKey] || { label: stKey, cls: '' };
   const dataRef = os.data_servico || os.criado_em;
-  const data = dataRef ? new Date(dataRef + (dataRef.length === 10 ? 'T12:00' : '')).toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) : '—';
-  const tec = os.tecnicos?.nome || '—';
+  const data  = dataRef ? new Date(dataRef + (dataRef.length === 10 ? 'T12:00' : '')).toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) : '—';
+  const tec   = os.tecnicos?.nome || '—';
 
   let html = `
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;">
@@ -871,7 +882,6 @@ function verDetalheOS(id) {
     </div></div>`;
   }
 
-  // Criar modal simples
   let modal = document.getElementById('modal-os-detalhe');
   if (!modal) {
     modal = document.createElement('div');
@@ -885,7 +895,7 @@ function verDetalheOS(id) {
     <div style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;padding:28px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
         <h3 style="font-size:16px;font-weight:700;color:var(--text-1);">Detalhes da OS</h3>
-        <button onclick="fecharDetalheOS()" style="background:none;border:none;cursor:pointer;color:var(--text-2);display:flex;align-items:center;gap:4px;font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);">Fechar</button>
+        <button onclick="fecharDetalheOS()" style="background:none;border:1px solid var(--border);cursor:pointer;color:var(--text-2);font-size:13px;padding:6px 10px;border-radius:6px;font-family:inherit;">Fechar</button>
       </div>
       ${html}
     </div>`;
@@ -899,9 +909,10 @@ function fecharDetalheOS() {
 }
 
 function abrirLightboxFromModal(fotos, idx) {
-  todasFotos = fotos.map(url => ({ url }));
+  todasFotos = fotos.map(url => ({ url, tecnico: '', data: '' }));
   lbIndex = idx;
   document.getElementById('lb-img').src = fotos[idx];
+  document.getElementById('lb-caption').textContent = `${idx + 1}/${fotos.length}`;
   document.getElementById('lightbox').classList.add('aberto');
 }
 
@@ -918,9 +929,7 @@ function abrirLightboxOS(osIdx, fotoIdx) {
   abrirLightbox(globalIdx);
 }
 
-function fecharLightbox() {
-  document.getElementById('lightbox').classList.remove('aberto');
-}
+function fecharLightbox() { document.getElementById('lightbox').classList.remove('aberto'); }
 
 function navLightbox(delta) {
   lbIndex = (lbIndex + delta + todasFotos.length) % todasFotos.length;
@@ -930,7 +939,12 @@ function navLightbox(delta) {
 function mostrarFotoLb() {
   const f = todasFotos[lbIndex];
   document.getElementById('lb-img').src = f.url;
-  document.getElementById('lb-caption').textContent = `${f.tecnico} · ${f.data} · ${lbIndex+1}/${todasFotos.length}`;
+  document.getElementById('lb-caption').textContent = `${f.tecnico ? f.tecnico + ' · ' : ''}${f.data ? f.data + ' · ' : ''}${lbIndex+1}/${todasFotos.length}`;
+}
+
+// ── Helper: escapar HTML ──
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 document.addEventListener('keydown', e => {
