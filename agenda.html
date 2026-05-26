@@ -831,6 +831,12 @@ let equipeDropdownAberto = false;
 let modoVisualizacao  = false;
 let roleAtual         = null;
 
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 const DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -1030,12 +1036,12 @@ function cardHTML(ag) {
 
   return `
     <div class="card-ag card-${status}" ${modoVisualizacao ? '' : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`} style="${modoVisualizacao ? 'cursor:default' : ''}">
-      <div class="ag-tecs">${hora ? hora + ' · ' : ''}${tecs}</div>
-      <div class="ag-cliente">${cliente}</div>
-      ${end ? `<div class="ag-detalhe"><i data-lucide="map-pin"></i>${end}</div>` : ''}
-      ${ag.servico ? `<div class="ag-detalhe"><i data-lucide="wrench"></i>${ag.servico}</div>` : ''}
-      ${ag.veiculo ? `<div class="ag-detalhe"><i data-lucide="car"></i>${ag.veiculo}</div>` : ''}
-      <span class="ag-badge badge-${status}">${STATUS_LABEL[status] || status}</span>
+      <div class="ag-tecs">${escHtml(hora ? hora + ' · ' : '')}${escHtml(tecs)}</div>
+      <div class="ag-cliente">${escHtml(cliente)}</div>
+      ${end ? `<div class="ag-detalhe"><i data-lucide="map-pin"></i>${escHtml(end)}</div>` : ''}
+      ${ag.servico ? `<div class="ag-detalhe"><i data-lucide="wrench"></i>${escHtml(ag.servico)}</div>` : ''}
+      ${ag.veiculo ? `<div class="ag-detalhe"><i data-lucide="car"></i>${escHtml(ag.veiculo)}</div>` : ''}
+      <span class="ag-badge badge-${escHtml(status)}">${escHtml(STATUS_LABEL[status] || status)}</span>
     </div>`;
 }
 
@@ -1120,8 +1126,8 @@ function renderEquipeDropdownItems() {
            onclick="toggleTecnicoEquipe('${idStr}', event)">
         <input type="checkbox" ${selecionado ? 'checked' : ''}
                onclick="event.stopPropagation();toggleTecnicoEquipe('${idStr}', event)"/>
-        <span class="equipe-item-nome">${t.nome}</span>
-        ${t.funcao ? `<span class="equipe-item-funcao">${t.funcao}</span>` : ''}
+        <span class="equipe-item-nome">${escHtml(t.nome)}</span>
+        ${t.funcao ? `<span class="equipe-item-funcao">${escHtml(t.funcao)}</span>` : ''}
       </div>`;
   }).join('');
 }
@@ -1400,31 +1406,24 @@ async function excluirAgendamento() {
   if (!agEditandoId) return;
   if (!confirm('Tem certeza que quer excluir este agendamento?')) return;
 
-  // Apagar OS pendente vinculada (não apaga OSs já concluídas)
+  // Apagar OSs pendentes vinculadas (não apaga OSs já concluídas)
   const ag = agendamentos.find(a => a.id === agEditandoId);
   if (ag) {
     // Tenta por agendamento_id primeiro (se coluna existir)
-    const { data: osPorId } = await db
+    const porAgendamento = await db
       .from('ordens_de_servico')
-      .select('id')
+      .delete()
       .eq('agendamento_id', agEditandoId)
-      .eq('status_aprovacao', 'pendente')
-      .maybeSingle();
+      .eq('status_aprovacao', 'pendente');
 
-    if (osPorId) {
-      await db.from('ordens_de_servico').delete().eq('id', osPorId.id);
-    } else if (ag.obra_id && ag.data) {
+    if (porAgendamento.error && ag.obra_id && ag.data) {
       // Fallback: busca por obra_id + data_servico
-      const { data: osPorData } = await db
+      await db
         .from('ordens_de_servico')
-        .select('id')
+        .delete()
         .eq('obra_id', ag.obra_id)
         .eq('data_servico', ag.data)
-        .eq('status_aprovacao', 'pendente')
-        .maybeSingle();
-      if (osPorData) {
-        await db.from('ordens_de_servico').delete().eq('id', osPorData.id);
-      }
+        .eq('status_aprovacao', 'pendente');
     }
   }
 

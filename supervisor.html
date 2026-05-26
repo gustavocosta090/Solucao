@@ -968,6 +968,12 @@ let lbFotos = [];
 let lbIdx = 0;
 let osSendoVisualizada = null;
 
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 // Init
 (async () => {
   const { data: { session } } = await db.auth.getSession();
@@ -994,7 +1000,7 @@ async function carregarTecnicos() {
   const { data } = await db.from('tecnicos').select('id, nome').order('nome');
   const sel = document.getElementById('fTecnico');
   (data || []).forEach(t => {
-    sel.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
+    sel.innerHTML += `<option value="${t.id}">${escHtml(t.nome)}</option>`;
   });
 }
 
@@ -1122,9 +1128,9 @@ function renderTabela() {
     return `
     <tr style="cursor:pointer;" onclick="verOS(${o.id})">
       <td>${data}</td>
-      <td>${o.equipeNomes?.join(', ') || '—'}</td>
-      <td title="${o.obras?.endereco || ''}">${o.obras?.nome_cliente || '—'}</td>
-      <td class="td-muted">${(o.tipo_servico || '').replace(/_/g,' ')}</td>
+      <td>${escHtml(o.equipeNomes?.join(', ') || '—')}</td>
+      <td title="${escHtml(o.obras?.endereco || '')}">${escHtml(o.obras?.nome_cliente || '—')}</td>
+      <td class="td-muted">${escHtml((o.tipo_servico || '').replace(/_/g,' '))}</td>
       <td>${statusBadge} ${noturnaBadge}</td>
       <td class="td-center">${nFotos > 0 ? `<span class="fotos-chip"><i data-lucide="image"></i>${nFotos}</span>` : '<span style="color:var(--text-3);">—</span>'}</td>
       <td style="white-space:nowrap;" onclick="event.stopPropagation()">
@@ -1174,7 +1180,7 @@ function verOS(id) {
   const statusLabel = _stM === 'concluida' ? 'Concluída' : 'Pendente';
 
   const DI = (label, valor, full = false) => valor
-    ? `<div class="detail-item ${full ? 'full' : ''}"><label>${label}</label><span style="white-space:pre-line">${valor}</span></div>`
+    ? `<div class="detail-item ${full ? 'full' : ''}"><label>${escHtml(label)}</label><span style="white-space:pre-line">${escHtml(valor)}</span></div>`
     : '';
 
   const nomeEquipe = os.equipeNomes?.join(' · ') || os.tecnicos?.nome || '—';
@@ -1189,7 +1195,7 @@ function verOS(id) {
     ${alertaNoturna ? DI('Alerta', 'Agenda noturna - finalizou após 17:30') : ''}
     <div class="detail-item full">
       <label>Obra</label>
-      <span><strong>${os.obras?.nome_cliente || '—'}</strong>${os.obras?.endereco ? `<span class="detail-address"><i data-lucide="map-pin"></i>${os.obras.endereco}</span>` : ''}</span>
+      <span><strong>${escHtml(os.obras?.nome_cliente || '—')}</strong>${os.obras?.endereco ? `<span class="detail-address"><i data-lucide="map-pin"></i>${escHtml(os.obras.endereco)}</span>` : ''}</span>
     </div>
     <div class="detail-item">
       <label>Status</label>
@@ -1204,7 +1210,7 @@ function verOS(id) {
     ${DI('Sistema de automação', os.sistema_automacao)}
     ${DI('Próximas atividades', os.proximas_atividades, true)}
     ${DI('Observações finais', os.observacoes, true)}
-    ${os.observacao_supervisor ? `<div class="detail-item full"><label>Obs. do supervisor</label><span class="obs-supervisor">${os.observacao_supervisor}</span></div>` : ''}
+    ${os.observacao_supervisor ? `<div class="detail-item full"><label>Obs. do supervisor</label><span class="obs-supervisor">${escHtml(os.observacao_supervisor)}</span></div>` : ''}
   </div>`;
 
   // Fotos
@@ -1215,7 +1221,7 @@ function verOS(id) {
       <div class="fotos-grid">
         ${os.fotos_urls.map((url, i) => `
           <div class="foto-item" onclick="abrirLightbox(${i}, ${JSON.stringify(os.fotos_urls).replace(/</g,'\\u003c')})">
-            <img src="${url}" alt="foto ${i+1}" loading="lazy">
+            <img src="${escHtml(url)}" alt="foto ${i+1}" loading="lazy">
           </div>`).join('')}
       </div>
     </div>`;

@@ -686,6 +686,12 @@
   let todasObras = [];
   let faseFiltro = 'todas';
 
+  function escHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
   // ── Auth check ──────────────────────────────────────────────
   let userRole = 'tecnico';
 
@@ -768,27 +774,27 @@
       <div class="card" onclick="window.location.href='obra_detail.html?id=${obra.id}'" title="Ver OS e fotos desta obra">
         <div class="card-topo">
           <div>
-            <div class="card-cliente">${obra.nome_cliente}</div>
+            <div class="card-cliente">${escHtml(obra.nome_cliente)}</div>
             <div class="card-id">#${String(obra.id).padStart(3,'0')}</div>
           </div>
-          <span class="badge badge-${obra.fase_atual}">${fase.label}</span>
+          <span class="badge badge-${escHtml(obra.fase_atual)}">${escHtml(fase.label)}</span>
         </div>
 
         <div class="card-info">
           <i data-lucide="map-pin"></i>
-          ${obra.endereco || '—'}
+          ${escHtml(obra.endereco || '—')}
         </div>
         <div class="card-info">
           <i data-lucide="hard-hat"></i>
-          Arq: ${obra.arquiteto_responsavel ?? '—'}
+          Arq: ${escHtml(obra.arquiteto_responsavel ?? '—')}
         </div>
         <div class="card-info">
           <i data-lucide="user"></i>
-          Consultor: ${consultor}
+          Consultor: ${escHtml(consultor)}
         </div>
 
         <div class="card-footer">
-          <span class="badge badge-compra">${status}</span>
+          <span class="badge badge-compra">${escHtml(status)}</span>
         </div>
       </div>`;
   }
@@ -799,12 +805,10 @@
       <div class="estado">
         <div class="erro-box">
           <h3>Erro ao carregar obras</h3>
-          <code>${error.message}</code>
+          <code>${escHtml(error.message)}</code>
           <div class="dica">
-            <strong>Solucao mais comum:</strong> o Supabase bloqueia acesso publico por padrao.<br><br>
-            No Supabase, va em <strong>Table Editor → obras</strong>, clique nos tres pontinhos
-            e desative o <strong>Row Level Security (RLS)</strong> — ou me avisa que eu
-            te explico como criar uma politica de acesso.
+            <strong>Solucao recomendada:</strong> mantenha o Row Level Security (RLS) ativo
+            e revise as politicas de acesso para cada perfil.
           </div>
         </div>
       </div>`;

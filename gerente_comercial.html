@@ -296,12 +296,15 @@
         <input type="text" id="searchInput" placeholder="Buscar obra ou cliente...">
         <select id="filterEtapa">
           <option value="">Todas as etapas</option>
-          <option value="em_andamento">Em andamento</option>
-          <option value="pausada">Pausada</option>
-          <option value="pré-vistoria">Pré-vistoria</option>
-          <option value="pós-vistoria">Pós-vistoria</option>
-          <option value="concluída">Concluída</option>
-          <option value="entregue">Entregue</option>
+          <option value="nao_iniciado">Não iniciado</option>
+          <option value="projeto_iniciado">Projeto iniciado</option>
+          <option value="projeto_concluido">Projeto concluído</option>
+          <option value="cabeamento">Cabeamento</option>
+          <option value="eletrica">Elétrica</option>
+          <option value="audio_video">Áudio e vídeo</option>
+          <option value="automacao">Automação</option>
+          <option value="em_finalizacao">Em finalização</option>
+          <option value="entrega_comercial">Entrega comercial</option>
         </select>
       </div>
     </div>
@@ -313,7 +316,7 @@
         <thead>
           <tr>
             <th>Obra / Cliente</th>
-            <th>Cidade</th>
+            <th>Endereço</th>
             <th>Etapa</th>
             <th>Status Compra</th>
             <th>OSs concluídas</th>
@@ -335,6 +338,12 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let allObras = [];
 
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 (async () => {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
@@ -355,7 +364,7 @@ let allObras = [];
 async function carregarObras() {
   const { data, error } = await db
     .from('obras')
-    .select('id, nome, cliente, cidade, etapa, status_compra, ordens_servico(id, status_aprovacao)')
+    .select('id, nome_cliente, endereco, fase_atual, status_compra, ordens_de_servico(id, status_aprovacao)')
     .order('criado_em', { ascending: false });
 
   if (error || !data) { document.getElementById('loadingState').textContent = 'Erro ao carregar obras.'; return; }
@@ -364,8 +373,8 @@ async function carregarObras() {
 
   // Stats
   document.getElementById('statTotal').textContent = data.length;
-  document.getElementById('statAndamento').textContent = data.filter(o => o.etapa === 'em_andamento').length;
-  document.getElementById('statEntregue').textContent = data.filter(o => o.etapa === 'entregue').length;
+  document.getElementById('statAndamento').textContent = data.filter(o => !['entrega_comercial'].includes(o.fase_atual)).length;
+  document.getElementById('statEntregue').textContent = data.filter(o => o.fase_atual === 'entrega_comercial').length;
 
   const pendenciaCompra = ['Aguardando orçamento','Orçamento aprovado','Compra realizada'];
   document.getElementById('statMaterial').textContent = data.filter(o => pendenciaCompra.includes(o.status_compra)).length;
@@ -377,11 +386,11 @@ async function carregarObras() {
 
 function renderTabela() {
   const search = document.getElementById('searchInput').value.toLowerCase();
-  const etapa  = document.getElementById('filterEtapa').value;
+  const fase_atual  = document.getElementById('filterEtapa').value;
 
   const filtered = allObras.filter(o => {
-    const matchSearch = !search || (o.nome || '').toLowerCase().includes(search) || (o.cliente || '').toLowerCase().includes(search);
-    const matchEtapa  = !etapa || o.etapa === etapa;
+    const matchSearch = !search || (o.nome_cliente || '').toLowerCase().includes(search);
+    const matchEtapa  = !fase_atual || o.fase_atual === fase_atual;
     return matchSearch && matchEtapa;
   });
 
@@ -395,8 +404,8 @@ function renderTabela() {
   document.getElementById('emptyState').style.display = 'none';
 
   filtered.forEach(o => {
-    const etapaBadge = badgeEtapa(o.etapa);
-    const os = o.ordens_servico || [];
+    const etapaBadge = badgeEtapa(o.fase_atual);
+    const os = o.ordens_de_servico || [];
     const osConcluidas = os.filter(s => s.status_aprovacao === 'concluida').length;
     const osTotal = os.length;
 
@@ -405,10 +414,9 @@ function renderTabela() {
     tbody.innerHTML += `
       <tr>
         <td class="td-name">
-          <a href="obra_detail.html?id=${o.id}">${o.nome || '—'}</a>
-          ${o.cliente ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px;">${o.cliente}</div>` : ''}
+          <a href="obra_detail.html?id=${o.id}">${escHtml(o.nome_cliente || '—')}</a>
         </td>
-        <td style="font-size:12px;">${o.cidade || '—'}</td>
+        <td style="font-size:12px;">${escHtml(o.endereco || '—')}</td>
         <td>${etapaBadge}</td>
         <td>${compraDot}</td>
         <td style="font-size:12px;">${osConcluidas}/${osTotal}</td>
@@ -416,24 +424,27 @@ function renderTabela() {
   });
 }
 
-function badgeEtapa(etapa) {
+function badgeEtapa(fase_atual) {
   const map = {
-    'em_andamento':  ['badge-andamento',     'Em andamento'],
-    'pausada':       ['badge-pausada',        'Pausada'],
-    'concluída':     ['badge-concluida',      'Concluída'],
-    'entregue':      ['badge-entregue',       'Entregue'],
-    'pré-vistoria':  ['badge-pre_vistoria',   'Pré-vistoria'],
-    'pós-vistoria':  ['badge-pos_vistoria',   'Pós-vistoria'],
+    'nao_iniciado':      ['badge-default',       'Não iniciado'],
+    'projeto_iniciado':  ['badge-andamento',     'Projeto iniciado'],
+    'projeto_concluido': ['badge-concluida',      'Projeto concluído'],
+    'cabeamento':        ['badge-andamento',     'Cabeamento'],
+    'eletrica':          ['badge-andamento',     'Elétrica'],
+    'audio_video':       ['badge-andamento',     'Áudio e vídeo'],
+    'automacao':         ['badge-andamento',     'Automação'],
+    'em_finalizacao':    ['badge-pausada',       'Em finalização'],
+    'entrega_comercial': ['badge-entregue',      'Entrega comercial'],
   };
-  const [cls, label] = map[etapa] || ['badge-default', etapa || '—'];
-  return `<span class="badge ${cls}">${label}</span>`;
+  const [cls, label] = map[fase_atual] || ['badge-default', fase_atual || '—'];
+  return `<span class="badge ${escHtml(cls)}">${escHtml(label)}</span>`;
 }
 
 function compraPill(status) {
   if (!status) return `<span style="color:var(--text-3);font-size:12px;">—</span>`;
   const ok = status === 'Sem pendência' || status === 'Material entregue';
   const dotClass = ok ? 'ok' : (status === 'Aguardando orçamento' ? '' : 'warn');
-  return `<div class="compra-pill"><div class="compra-dot ${dotClass}"></div><span style="font-size:11px;">${status}</span></div>`;
+  return `<div class="compra-pill"><div class="compra-dot ${escHtml(dotClass)}"></div><span style="font-size:11px;">${escHtml(status)}</span></div>`;
 }
 
 function renderTopbar(nome, role, paginaAtiva) {

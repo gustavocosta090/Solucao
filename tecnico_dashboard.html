@@ -667,6 +667,12 @@ let filtroStatus = 'todos';
 let tecnicoAtual = null;
 let tdTecMap = {};  // id → { nome } para exibir equipe completa
 
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 function renderTopbar(nome, role, paginaAtiva) {
   const h = new Date().getHours();
   const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
@@ -836,10 +842,10 @@ function renderTabela(lista) {
           : `<div class="cell-secondary">${fmtData(os.criado_em)}</div>`}
       </td>
       <td>
-        <div class="cell-primary">${os.obras?.nome_cliente || '—'}</div>
-        ${os.obras?.endereco ? `<div class="cell-secondary">${os.obras.endereco}</div>` : ''}
+        <div class="cell-primary">${escHtml(os.obras?.nome_cliente || '—')}</div>
+        ${os.obras?.endereco ? `<div class="cell-secondary">${escHtml(os.obras.endereco)}</div>` : ''}
       </td>
-      <td class="cell-obs">${(os.observacoes || os.servicos_realizados || '—').slice(0,80)}</td>
+      <td class="cell-obs">${escHtml((os.observacoes || os.servicos_realizados || '—').slice(0,80))}</td>
       <td>${badgeHTML(os.status_aprovacao)}</td>
       <td>${nFotos > 0 ? `<span class="badge badge-fotos"><i data-lucide="image"></i>${nFotos}</span>` : '<span style="color:#52525B">—</span>'}</td>
     </tr>`;
@@ -857,14 +863,14 @@ function renderCards(lista) {
   container.innerHTML = lista.map(os => `
     <div class="os-card" onclick="verDetalhe(${os.id})">
       <div class="os-card-header">
-        <div class="os-obra">${os.obras?.nome_cliente || '—'}</div>
+        <div class="os-obra">${escHtml(os.obras?.nome_cliente || '—')}</div>
         <div class="os-data">
           ${os.data_servico
             ? `<div style="font-weight:600;color:#FFFFFF">${fmtData(os.data_servico + 'T12:00')}</div><div>env. ${fmtData(os.criado_em)}</div>`
             : fmtData(os.criado_em)}
         </div>
       </div>
-      <div class="os-obs">${os.observacoes || os.servicos_realizados || 'Sem observações'}</div>
+      <div class="os-obs">${escHtml(os.observacoes || os.servicos_realizados || 'Sem observações')}</div>
       <div class="os-footer">
         ${badgeHTML(os.status_aprovacao)}
         ${(os.fotos_urls||[]).length > 0 ? `<span class="badge badge-fotos"><i data-lucide="image"></i>${os.fotos_urls.length} foto(s)</span>` : ''}
@@ -879,7 +885,7 @@ function verDetalhe(id) {
   if (!os) return;
 
   const DR = (label, valor) => valor
-    ? `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value" style="white-space:pre-line">${valor}</div></div>`
+    ? `<div class="detail-row"><div class="detail-label">${escHtml(label)}</div><div class="detail-value" style="white-space:pre-line">${escHtml(valor)}</div></div>`
     : '';
 
   const equipeIds   = [os.tecnico_id, os.auxiliar_id, os.auxiliar2_id, os.auxiliar3_id].filter(Boolean);
@@ -890,9 +896,9 @@ function verDetalhe(id) {
     ${DR('Equipe', equipeNomes)}
     ${os.data_servico ? DR('Data do serviço', fmtData(os.data_servico + 'T12:00')) : ''}
     ${DR('Horário', horario)}
-    <div class="detail-row"><div class="detail-label">Obra</div><div class="detail-value">${os.obras?.nome_cliente || '—'}${os.obras?.endereco ? `<br><span style="color:#52525B;font-size:0.78rem">${os.obras.endereco}</span>` : ''}</div></div>
+    <div class="detail-row"><div class="detail-label">Obra</div><div class="detail-value">${escHtml(os.obras?.nome_cliente || '—')}${os.obras?.endereco ? `<br><span style="color:#52525B;font-size:0.78rem">${escHtml(os.obras.endereco)}</span>` : ''}</div></div>
     <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value">${badgeHTML(os.status_aprovacao)}</div></div>
-    ${os.observacao_supervisor ? `<div class="obs-supervisor"><div class="obs-sup-label">Obs. do supervisor</div>${os.observacao_supervisor}</div>` : ''}
+    ${os.observacao_supervisor ? `<div class="obs-supervisor"><div class="obs-sup-label">Obs. do supervisor</div>${escHtml(os.observacao_supervisor)}</div>` : ''}
     <div class="modal-section-divider"></div>
     ${DR('Serviço planejado', os.servico_planejado)}
     ${DR('Serviços realizados', os.servicos_realizados)}
@@ -910,7 +916,7 @@ function verDetalhe(id) {
     <div class="detail-row">
       <div class="detail-label">Fotos (${os.fotos_urls.length})</div>
       <div class="fotos-grid">
-        ${os.fotos_urls.map(url => `<div class="foto-item" onclick="event.stopPropagation();abrirLightbox('${url}')"><img src="${url}" loading="lazy" alt="foto"></div>`).join('')}
+        ${os.fotos_urls.map(url => `<div class="foto-item" onclick="event.stopPropagation();abrirLightbox('${escHtml(url)}')"><img src="${escHtml(url)}" loading="lazy" alt="foto"></div>`).join('')}
       </div>
     </div>`;
   }

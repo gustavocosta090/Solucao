@@ -255,6 +255,12 @@ let allOS = [];
 let allObras = [];
 let tabAtual = 'todas';
 
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 (async () => {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
@@ -275,10 +281,10 @@ let tabAtual = 'todas';
 async function carregarDados() {
   // Carregar OSs com joins
   const { data: osData } = await db
-    .from('ordens_servico')
+    .from('ordens_de_servico')
     .select(`
-      id, descricao, data_servico, status_aprovacao,
-      obras(id, nome),
+      id, servico_planejado, servicos_realizados, data_servico, status_aprovacao,
+      obras(id, nome_cliente),
       tecnico:tecnicos!tecnico_id(nome)
     `)
     .order('data_servico', { ascending: false });
@@ -286,9 +292,8 @@ async function carregarDados() {
   // Carregar obras para filtro
   const { data: obrasData } = await db
     .from('obras')
-    .select('id, nome, etapa')
-    .eq('etapa', 'em_andamento')
-    .order('nome');
+    .select('id, nome_cliente, fase_atual')
+    .order('nome_cliente');
 
   allOS = osData || [];
   allObras = obrasData || [];
@@ -299,7 +304,7 @@ async function carregarDados() {
   const pendentes = allOS.filter(o => o.status_aprovacao === 'pendente').length;
   const obrasAtivas = new Set(allOS.filter(o => o.status_aprovacao === 'pendente').map(o => o.obras?.id)).size;
 
-  document.getElementById('statObras').textContent = (obrasData || []).length;
+  document.getElementById('statObras').textContent = obrasAtivas || (obrasData || []).filter(o => o.fase_atual !== 'entrega_comercial').length;
   document.getElementById('statTotalOs').textContent = total;
   document.getElementById('statConcluidas').textContent = concluidas;
   document.getElementById('statPendentes').textContent = pendentes;
@@ -307,9 +312,9 @@ async function carregarDados() {
   // Preencher filtro de obras
   const sel = document.getElementById('filterObra');
   const uniqueObras = [...new Map(allOS.filter(o => o.obras).map(o => [o.obras.id, o.obras])).values()];
-  uniqueObras.sort((a, b) => a.nome.localeCompare(b.nome));
+  uniqueObras.sort((a, b) => (a.nome_cliente || '').localeCompare(b.nome_cliente || ''));
   uniqueObras.forEach(o => {
-    sel.innerHTML += `<option value="${o.id}">${o.nome}</option>`;
+    sel.innerHTML += `<option value="${o.id}">${escHtml(o.nome_cliente)}</option>`;
   });
 
   document.getElementById('loadingState').style.display = 'none';
@@ -334,7 +339,9 @@ function renderTabela() {
   let filtered = allOS.filter(o => {
     const matchSearch = !search ||
       (o.descricao || '').toLowerCase().includes(search) ||
-      (o.obras?.nome || '').toLowerCase().includes(search);
+      (o.servico_planejado || '').toLowerCase().includes(search) ||
+      (o.servicos_realizados || '').toLowerCase().includes(search) ||
+      (o.obras?.nome_cliente || '').toLowerCase().includes(search);
     const matchObra = !obraFiltro || o.obras?.id === obraFiltro;
     const matchTab =
       tabAtual === 'todas' ? true :
@@ -364,10 +371,10 @@ function renderTabela() {
     tbody.innerHTML += `
       <tr>
         <td>
-          <div class="td-name">${o.descricao || '—'}</div>
-          ${o.obras ? `<div class="td-obra"><a href="obra_detail.html?id=${o.obras.id}">${o.obras.nome}</a></div>` : ''}
+          <div class="td-name">${escHtml(o.servico_planejado || o.servicos_realizados || '—')}</div>
+          ${o.obras ? `<div class="td-obra"><a href="obra_detail.html?id=${o.obras.id}">${escHtml(o.obras.nome_cliente)}</a></div>` : ''}
         </td>
-        <td style="font-size:12px;">${o.tecnico?.nome || '—'}</td>
+        <td style="font-size:12px;">${escHtml(o.tecnico?.nome || '—')}</td>
         <td style="font-size:12px;">${data}</td>
         <td>${statusBadge}</td>
       </tr>`;

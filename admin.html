@@ -449,9 +449,9 @@
 
     <div class="form-grid">
       <div class="form-group">
-        <label>Técnico *</label>
+        <label>Nome *</label>
         <select id="selectTecnico">
-          <option value="">Selecione o técnico...</option>
+          <option value="">Selecione o nome...</option>
         </select>
       </div>
       <div class="form-group">
@@ -468,8 +468,8 @@
         </select>
       </div>
       <div class="form-group">
-        <label>E-mail *</label>
-        <input type="email" id="novoEmail" placeholder="tecnico@empresa.com">
+        <label>Usuário *</label>
+        <input type="text" id="novoEmail" placeholder="alex.silva" autocapitalize="none">
       </div>
       <div class="form-group">
         <label>Senha inicial *</label>
@@ -478,20 +478,24 @@
     </div>
 
     <div class="senha-nota">
-      <strong>Atenção:</strong> Anote a senha e passe para o técnico. Após o primeiro login, ele poderá alterá-la (funcionalidade futura). O técnico deve guardar sua senha.
+      <strong>Atenção:</strong> Anote a senha e passe para a pessoa. Se ela entrar com a senha padrão 123456, o sistema oferecerá a troca logo após o login.
     </div>
 
     <button class="btn-primary" onclick="criarUsuario()">
       <i data-lucide="user-plus"></i>
       Criar Conta
     </button>
+    <button class="btn-secondary" onclick="sincronizarUsuarios()" style="margin-top:10px;">
+      <i data-lucide="users"></i>
+      Criar/normalizar acessos de todos
+    </button>
   </div>
 
-  <!-- Lista de técnicos -->
+  <!-- Lista de pessoas -->
   <div class="card">
     <div class="section-header">
       <i data-lucide="users"></i>
-      <h2>Técnicos e Status de Acesso</h2>
+      <h2>Pessoas e Status de Acesso</h2>
     </div>
 
     <div id="loadingTabela" class="table-empty">Carregando...</div>
@@ -504,7 +508,7 @@
               <th>Nome</th>
               <th>Equipe(s)</th>
               <th>Perfil</th>
-              <th>E-mail</th>
+              <th>Usuário</th>
               <th>Status</th>
               <th>Ações</th>
             </tr>
@@ -536,25 +540,56 @@
 </div>
 
 <script>
-// ⚠️ ATENÇÃO: Esta key só deve ser usada em ambiente local/admin controlado
-// Para produção, use uma Edge Function no Supabase para operações admin
 const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
-
-// SERVICE ROLE KEY — necessária para criar usuários via API admin
-// 1. Acesse: https://supabase.com/dashboard/project/kxtjqudpnmdqkzqhyhmz/settings/api
-// 2. Copie a chave "service_role" (Project API Keys → service_role)
-// 3. Cole aqui substituindo o placeholder abaixo:
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY0NjMzMSwiZXhwIjoyMDk1MjIyMzMxfQ.QyzUGOJgrF7YqU6QY6gPzT_jLYbeGV6gE6UTqe2Xrn0';
+const ADMIN_USERS_FUNCTION_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co/functions/v1/admin-users';
+const LOGIN_DOMAIN = 'solucaotecnica.local';
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-// Cliente admin com service_role — bypassa RLS para operações administrativas
-const dbAdmin = SUPABASE_SERVICE_KEY !== 'COLE_SUA_SERVICE_ROLE_KEY_AQUI'
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-  : null;
 
 let tecnicos = [];
 let resetUserId = null;
+
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function normalizarUsuario(v) {
+  return String(v || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '.')
+    .replace(/[^a-z0-9._-]/g, '')
+    .replace(/\.+/g, '.')
+    .replace(/^\.+|\.+$/g, '');
+}
+
+function emailParaUsuario(email) {
+  const valor = String(email || '');
+  return valor.endsWith(`@${LOGIN_DOMAIN}`) ? valor.replace(`@${LOGIN_DOMAIN}`, '') : valor;
+}
+
+async function chamarAdminFunction(payload) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session?.access_token) throw new Error('Sessão expirada. Faça login novamente.');
+
+  const resp = await fetch(ADMIN_USERS_FUNCTION_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || data.error) throw new Error(data.error || 'Erro na operação administrativa.');
+  return data;
+}
 
 // Verificar autenticação
 (async () => {
@@ -581,11 +616,11 @@ async function carregarDados() {
 
   tecnicos = data || [];
 
-  // Preencher select de técnicos sem conta
+  // Preencher select de pessoas sem conta
   const select = document.getElementById('selectTecnico');
-  select.innerHTML = '<option value="">Selecione o técnico...</option>';
+  select.innerHTML = '<option value="">Selecione o nome...</option>';
   tecnicos.filter(t => !t.auth_user_id).forEach(t => {
-    select.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
+    select.innerHTML += `<option value="${t.id}">${escHtml(t.nome)}</option>`;
   });
 
   // Preencher tabela
@@ -593,21 +628,21 @@ async function carregarDados() {
   tbody.innerHTML = '';
   tecnicos.forEach(t => {
     const equipes = t.tecnico_equipes?.map(te => te.equipes?.nome).filter(Boolean).join(', ') || '—';
-    const badgeRole = `<span class="badge badge-${t.role || 'tecnico'}">${t.role || 'técnico'}</span>`;
+    const badgeRole = `<span class="badge badge-${escHtml(t.role || 'tecnico')}">${escHtml(t.role || 'técnico')}</span>`;
     const status = t.auth_user_id
       ? '<span class="badge badge-ativo">Ativo</span>'
       : '<span class="badge badge-sem-conta">Sem conta</span>';
 
     const acoes = t.auth_user_id
-      ? `<button class="btn-sm btn-reset" onclick="abrirReset('${t.auth_user_id}', '${t.nome.replace(/'/g,'\\\'')}')" title="Redefinir senha"><i data-lucide="key-round"></i> Redefinir senha</button>`
+      ? `<button class="btn-sm btn-reset" data-user-id="${escHtml(t.auth_user_id)}" data-nome="${escHtml(t.nome)}" onclick="abrirReset(this.dataset.userId, this.dataset.nome)" title="Redefinir senha"><i data-lucide="key-round"></i> Redefinir senha</button>`
       : `<span style="color:var(--text-3);font-size:12px;">—</span>`;
 
     tbody.innerHTML += `
       <tr>
-        <td class="td-name">${t.nome}</td>
-        <td style="font-size:12px;">${equipes}</td>
+        <td class="td-name">${escHtml(t.nome)}</td>
+        <td style="font-size:12px;">${escHtml(equipes)}</td>
         <td>${badgeRole}</td>
-        <td style="font-size:12px;">${t.email || '—'}</td>
+        <td style="font-size:12px;">${escHtml(emailParaUsuario(t.email) || '—')}</td>
         <td>${status}</td>
         <td>${acoes}</td>
       </tr>`;
@@ -623,64 +658,61 @@ async function carregarDados() {
 async function criarUsuario() {
   const tecnicoId = document.getElementById('selectTecnico').value;
   const role = document.getElementById('selectRole').value;
-  const email = document.getElementById('novoEmail').value.trim();
+  const usuario = normalizarUsuario(document.getElementById('novoEmail').value);
   const senha = document.getElementById('novaSenha').value;
 
-  if (!tecnicoId || !email || !senha) {
+  if (!tecnicoId || !usuario || !senha) {
     mostrarErro('Preencha todos os campos obrigatórios.');
+    return;
+  }
+  if (usuario.length < 3) {
+    mostrarErro('O usuário deve ter pelo menos 3 caracteres.');
     return;
   }
   if (senha.length < 6) {
     mostrarErro('A senha deve ter pelo menos 6 caracteres.');
     return;
   }
-  if (!dbAdmin) {
-    mostrarErro('Service key não configurada. Adicione a chave service_role no admin.html.');
-    return;
-  }
-
-  // Criar usuário via Supabase Admin API
   try {
-    const resp = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_SERVICE_KEY,
-        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
-      },
-      body: JSON.stringify({
-        email,
-        password: senha,
-        email_confirm: true // Pular confirmação de e-mail
-      })
+    await chamarAdminFunction({
+      action: 'create_user',
+      tecnicoId,
+      role,
+      username: usuario,
+      password: senha,
     });
 
-    const userData = await resp.json();
-    if (!resp.ok) {
-      mostrarErro('Erro ao criar usuário: ' + (userData.msg || userData.message || 'Erro desconhecido'));
-      return;
-    }
-
-    const newUserId = userData.id;
-
-    // Vincular ao técnico — usa dbAdmin (service_role) para bypassar RLS
-    const { error: updateError } = await dbAdmin
-      .from('tecnicos')
-      .update({ auth_user_id: newUserId, email, role })
-      .eq('id', tecnicoId);
-
-    if (updateError) {
-      mostrarErro('Usuário criado mas erro ao vincular: ' + updateError.message);
-      return;
-    }
-
-    mostrarSucesso(`Conta criada com sucesso. E-mail: ${email} | Senha: ${senha}`);
+    mostrarSucesso(`Conta criada com sucesso. Usuário: ${usuario}. Entregue a senha temporária por um canal seguro.`);
     document.getElementById('novoEmail').value = '';
     document.getElementById('novaSenha').value = '';
     await carregarDados();
 
   } catch (err) {
-    mostrarErro('Erro de conexão. Verifique a service_role key.');
+    mostrarErro(err.message || 'Erro ao criar usuário.');
+  }
+}
+
+async function sincronizarUsuarios() {
+  if (!confirm('Isso vai criar/normalizar acesso para todos os nomes cadastrados e definir senha padrão 123456. O usuário Gustavo Martins ficará como gustavo, perfil coordenador, mantendo a senha atual. Deseja continuar?')) {
+    return;
+  }
+
+  try {
+    mostrarErro('');
+    mostrarSucesso('Processando usuários. Aguarde...');
+
+    const resultado = await chamarAdminFunction({ action: 'sync_usernames' });
+    const falhas = resultado.failed || [];
+
+    if (falhas.length > 0) {
+      mostrarErro(`${resultado.success}/${resultado.total} usuários processados. Falhas: ${falhas.map(f => `${f.nome}: ${f.error}`).join(' | ')}`);
+    } else {
+      mostrarSucesso(`${resultado.success} usuários criados/normalizados com sucesso. Senha padrão: 123456.`);
+    }
+
+    await carregarDados();
+  } catch (err) {
+    mostrarErro(err.message || 'Erro ao criar/normalizar usuários.');
   }
 }
 
@@ -701,26 +733,16 @@ async function confirmarReset() {
   if (novaSenha.length < 6) { alert('Senha muito curta.'); return; }
 
   try {
-    const resp = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${resetUserId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_SERVICE_KEY,
-        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
-      },
-      body: JSON.stringify({ password: novaSenha })
+    await chamarAdminFunction({
+      action: 'reset_password',
+      userId: resetUserId,
+      password: novaSenha,
     });
 
-    if (!resp.ok) {
-      const err = await resp.json();
-      alert('Erro: ' + (err.msg || 'Não foi possível redefinir a senha.'));
-      return;
-    }
-
-    alert(`Senha redefinida com sucesso. Nova senha: ${novaSenha}`);
+    alert('Senha redefinida com sucesso. Entregue a senha temporária por um canal seguro.');
     fecharModal();
   } catch (err) {
-    alert('Erro de conexão.');
+    alert('Erro: ' + (err.message || 'Não foi possível redefinir a senha.'));
   }
 }
 

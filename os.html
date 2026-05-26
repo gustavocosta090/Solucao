@@ -376,6 +376,12 @@ let tecnicos               = [];
 let fotosSelecionadas      = [];
 let equipeFull             = []; // todos os IDs da equipe do agendamento
 
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
   const { data: { session } } = await db.auth.getSession();
@@ -619,11 +625,11 @@ async function carregarAgendamentosHoje() {
         <div class="card-agenda" ${onclick}>
           <div class="ca-top">
             <div>
-              <div class="ca-cliente">${cliente}</div>
-              <div class="ca-detalhe">${hora ? hora + ' · ' : ''}${dataAg}</div>
-              ${end ? `<div class="ca-endereco"><i data-lucide="map-pin"></i>${end}</div>` : ''}
-              ${equipeNomes.length ? `<div class="ca-equipe">👥 ${equipeNomes.join(' · ')}</div>` : ''}
-              ${ag.servico ? `<div class="ca-servico">${ag.servico}</div>` : ''}
+              <div class="ca-cliente">${escHtml(cliente)}</div>
+              <div class="ca-detalhe">${escHtml(hora ? hora + ' · ' : '')}${escHtml(dataAg)}</div>
+              ${end ? `<div class="ca-endereco"><i data-lucide="map-pin"></i>${escHtml(end)}</div>` : ''}
+              ${equipeNomes.length ? `<div class="ca-equipe">Equipe: ${escHtml(equipeNomes.join(' · '))}</div>` : ''}
+              ${ag.servico ? `<div class="ca-servico">${escHtml(ag.servico)}</div>` : ''}
             </div>
             <span class="status-dot ${dotClass}"></span>
           </div>
@@ -759,7 +765,7 @@ function renderEquipeCheckboxes() {
       <label class="equipe-check-item ${isSelf ? 'is-self' : ''}">
         <input type="checkbox" class="equipe-check-input"
                value="${eid}" ${isSelf ? 'checked disabled' : ''}>
-        <span class="equipe-check-nome">${nome}</span>
+        <span class="equipe-check-nome">${escHtml(nome)}</span>
         ${isSelf ? '<span class="equipe-check-tag">você</span>' : ''}
       </label>`;
   }).join('');

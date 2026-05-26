@@ -419,9 +419,9 @@
 
       <form id="loginForm">
         <div class="form-group">
-          <label for="email">E-mail</label>
+          <label for="login">Usuário</label>
           <div class="input-wrap">
-            <input type="email" id="email" placeholder="seu@email.com" required autocomplete="email">
+            <input type="text" id="login" placeholder="alex.silva" required autocomplete="username" autocapitalize="none">
           </div>
         </div>
 
@@ -450,6 +450,53 @@
 const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const LOGIN_DOMAIN = 'solucaotecnica.local';
+
+function normalizarUsuario(v) {
+  return String(v || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '.')
+    .replace(/[^a-z0-9._-]/g, '')
+    .replace(/\.+/g, '.')
+    .replace(/^\.+|\.+$/g, '');
+}
+
+function loginParaEmail(login) {
+  const valor = String(login || '').trim().toLowerCase();
+  return valor.includes('@') ? valor : `${normalizarUsuario(valor)}@${LOGIN_DOMAIN}`;
+}
+
+async function oferecerTrocaSenhaInicial(senhaDigitada) {
+  if (senhaDigitada !== '123456') return;
+
+  const querTrocar = confirm('Você entrou com a senha padrão 123456. Deseja trocar sua senha agora?');
+  if (!querTrocar) return;
+
+  const novaSenha = prompt('Digite a nova senha. Ela precisa ter pelo menos 6 caracteres.');
+  if (!novaSenha) return;
+
+  if (novaSenha.length < 6) {
+    alert('A senha precisa ter pelo menos 6 caracteres.');
+    return;
+  }
+
+  const confirmarSenha = prompt('Digite a nova senha mais uma vez para confirmar.');
+  if (novaSenha !== confirmarSenha) {
+    alert('As senhas não conferem. Você poderá tentar novamente no próximo login.');
+    return;
+  }
+
+  const { error } = await db.auth.updateUser({ password: novaSenha });
+  if (error) {
+    alert('Não consegui alterar a senha agora: ' + error.message);
+    return;
+  }
+
+  alert('Senha alterada com sucesso.');
+}
 
 // Se já estiver logado, redirecionar
 (async () => {
@@ -495,7 +542,8 @@ async function redirecionarPorRole(userId) {
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const email    = document.getElementById('email').value.trim();
+  const login    = document.getElementById('login').value.trim();
+  const email    = loginParaEmail(login);
   const senha    = document.getElementById('senha').value;
   const btnLogin = document.getElementById('btnLogin');
   const errorMsg = document.getElementById('errorMsg');
@@ -507,7 +555,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
 
   if (error) {
-    let msg = 'E-mail ou senha incorretos.';
+    let msg = 'Usuário ou senha incorretos.';
     if (error.message.includes('Email not confirmed')) msg = 'Confirme seu e-mail antes de acessar.';
     document.getElementById('errorText').textContent = msg;
     errorMsg.classList.add('visible');
@@ -515,6 +563,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     btnLogin.innerHTML = '<span>Entrar</span>';
     return;
   }
+
+  await oferecerTrocaSenhaInicial(senha);
 
   // Login ok — redireciona usando o user retornado diretamente
   await redirecionarPorRole(data.user.id);

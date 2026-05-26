@@ -242,6 +242,12 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let allObras = [];
 
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 (async () => {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
@@ -261,16 +267,16 @@ let allObras = [];
 async function carregarObras() {
   const { data, error } = await db
     .from('obras')
-    .select('id, nome, cliente, cidade, etapa, ordens_servico(id, status_aprovacao)')
+    .select('id, nome_cliente, endereco, fase_atual, ordens_de_servico(id, status_aprovacao)')
     .order('criado_em', { ascending: false });
 
   if (error || !data) { document.getElementById('loadingState').textContent = 'Erro ao carregar obras.'; return; }
 
   allObras = data;
 
-  const totalOs = data.reduce((acc, o) => acc + (o.ordens_servico || []).filter(s => s.status_aprovacao === 'concluida').length, 0);
+  const totalOs = data.reduce((acc, o) => acc + (o.ordens_de_servico || []).filter(s => s.status_aprovacao === 'concluida').length, 0);
   document.getElementById('statTotal').textContent = data.length;
-  document.getElementById('statAndamento').textContent = data.filter(o => o.etapa === 'em_andamento').length;
+  document.getElementById('statAndamento').textContent = data.filter(o => !['entrega_comercial'].includes(o.fase_atual)).length;
   document.getElementById('statOs').textContent = totalOs;
 
   document.getElementById('loadingState').style.display = 'none';
@@ -281,7 +287,7 @@ async function carregarObras() {
 function renderGrid() {
   const search = document.getElementById('searchInput').value.toLowerCase();
   const filtered = allObras.filter(o =>
-    !search || (o.nome || '').toLowerCase().includes(search) || (o.cliente || '').toLowerCase().includes(search)
+    !search || (o.nome_cliente || '').toLowerCase().includes(search)
   );
 
   const grid = document.getElementById('obrasGrid');
@@ -296,20 +302,20 @@ function renderGrid() {
   grid.style.display = 'grid';
 
   filtered.forEach(o => {
-    const os = o.ordens_servico || [];
+    const os = o.ordens_de_servico || [];
     const osConcluidas = os.filter(s => s.status_aprovacao === 'concluida').length;
     const osTotal = os.length;
     const pct = osTotal > 0 ? Math.round((osConcluidas / osTotal) * 100) : 0;
-    const etapaBadge = badgeEtapa(o.etapa);
+    const etapaBadge = badgeEtapa(o.fase_atual);
 
     grid.innerHTML += `
       <a class="obra-card" href="obra_detail.html?id=${o.id}">
-        <div class="obra-nome">${o.nome || '—'}</div>
-        <div class="obra-cliente">${o.cliente || 'Cliente não informado'}</div>
+        <div class="obra-nome">${escHtml(o.nome_cliente || '—')}</div>
+        <div class="obra-cliente">${escHtml(o.endereco || 'Endereço não informado')}</div>
         <div class="obra-meta">
           <div class="obra-meta-row">
-            <span class="meta-label"><i data-lucide="map-pin"></i> Cidade</span>
-            <span class="meta-value">${o.cidade || '—'}</span>
+            <span class="meta-label"><i data-lucide="map-pin"></i> Endereço</span>
+            <span class="meta-value">${escHtml(o.endereco || '—')}</span>
           </div>
           <div class="obra-meta-row">
             <span class="meta-label"><i data-lucide="layers"></i> Etapa</span>
@@ -330,17 +336,20 @@ function renderGrid() {
   lucide.createIcons();
 }
 
-function badgeEtapa(etapa) {
+function badgeEtapa(fase_atual) {
   const map = {
-    'em_andamento': ['badge-andamento','Em andamento'],
-    'pausada':      ['badge-pausada','Pausada'],
-    'concluída':    ['badge-concluida','Concluída'],
-    'entregue':     ['badge-entregue','Entregue'],
-    'pré-vistoria': ['badge-pre_vistoria','Pré-vistoria'],
-    'pós-vistoria': ['badge-pos_vistoria','Pós-vistoria'],
+    'nao_iniciado':      ['badge-default','Não iniciado'],
+    'projeto_iniciado':  ['badge-andamento','Projeto iniciado'],
+    'projeto_concluido': ['badge-concluida','Projeto concluído'],
+    'cabeamento':        ['badge-andamento','Cabeamento'],
+    'eletrica':          ['badge-andamento','Elétrica'],
+    'audio_video':       ['badge-andamento','Áudio e vídeo'],
+    'automacao':         ['badge-andamento','Automação'],
+    'em_finalizacao':    ['badge-pausada','Em finalização'],
+    'entrega_comercial': ['badge-entregue','Entrega comercial'],
   };
-  const [cls, label] = map[etapa] || ['badge-default', etapa || '—'];
-  return `<span class="badge ${cls}">${label}</span>`;
+  const [cls, label] = map[fase_atual] || ['badge-default', fase_atual || '—'];
+  return `<span class="badge ${escHtml(cls)}">${escHtml(label)}</span>`;
 }
 
 function renderTopbar(nome, role, paginaAtiva) {
