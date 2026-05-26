@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comercial — Solução Técnica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg:        #0A0A0A;
+    --surface-1: #111111;
+    --surface-2: #161616;
+    --surface-3: #1B1B1B;
+    --primary:   #3ECF8E;
+    --primary-hover: #2EBF7E;
+    --primary-muted: rgba(62,207,142,0.1);
+    --text-1:    #FFFFFF;
+    --text-2:    #A1A1AA;
+    --text-3:    #52525B;
+    --border:    rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.12);
+    --radius:    8px;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text-1);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Topbar ── */
+  .topbar { background:var(--surface-1); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:100; }
+  .topbar-logo { font-size:15px; font-weight:700; color:var(--text-1); letter-spacing:-0.2px; flex:1; }
+  .topbar-greeting { font-size:13px; color:var(--text-2); margin-right:16px; }
+  .topbar-links { display:flex; align-items:center; gap:4px; }
+  .topbar-links a { color:var(--text-2); text-decoration:none; font-size:13px; font-weight:500; padding:6px 12px; border-radius:6px; transition:color .15s,background .15s; }
+  .topbar-links a:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
+  .topbar-links a.active { color:var(--text-1); background:rgba(255,255,255,0.07); }
+  .topbar-links a.nav-sair { color:var(--text-2); border:1px solid rgba(255,255,255,0.12); margin-left:8px; }
+  .topbar-links a.nav-sair:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
+
+  /* ── Layout ── */
+  .container { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
+
+  /* ── Page header ── */
+  .page-header { margin-bottom: 28px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 4px; }
+  .page-header p { font-size: 14px; color: var(--text-2); }
+
+  /* ── Stats row ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stat-label i { width: 13px; height: 13px; }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-1);
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+
+  .stat-sub {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 6px;
+  }
+
+  /* ── Main card ── */
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title i { width: 15px; height: 15px; color: var(--text-3); }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .filter-bar input, .filter-bar select {
+    padding: 7px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-1);
+    outline: none;
+    transition: border-color .15s;
+  }
+
+  .filter-bar input { min-width: 200px; }
+  .filter-bar input::placeholder { color: var(--text-3); }
+  .filter-bar input:focus, .filter-bar select:focus { border-color: rgba(62,207,142,0.4); }
+
+  .filter-bar select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2352525B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+    appearance: none;
+  }
+
+  .filter-bar select option { background: var(--surface-2); }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+  thead th {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.015); }
+
+  .td-name { font-weight: 500; color: var(--text-1); }
+  .td-name a { color: inherit; text-decoration: none; }
+  .td-name a:hover { color: var(--primary); }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  .badge-andamento  { background: rgba(62,207,142,0.1); color: #3ECF8E; }
+  .badge-pausada    { background: rgba(245,158,11,0.12); color: #FBBF24; }
+  .badge-concluida  { background: rgba(99,102,241,0.12); color: #818CF8; }
+  .badge-entregue   { background: rgba(20,184,166,0.12); color: #2DD4BF; }
+  .badge-pre_vistoria  { background: rgba(234,88,12,0.12); color: #FB923C; }
+  .badge-pos_vistoria  { background: rgba(6,182,212,0.12); color: #67E8F9; }
+  .badge-default    { background: rgba(255,255,255,0.06); color: var(--text-3); }
+
+  /* ── Empty / loading states ── */
+  .state-msg {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-3);
+    font-size: 13px;
+  }
+
+  /* ── Compra status ── */
+  .compra-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  .compra-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-3);
+    flex-shrink: 0;
+  }
+
+  .compra-dot.ok { background: var(--primary); }
+  .compra-dot.warn { background: #FBBF24; }
+
+  @media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .filter-bar input { min-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
+</header>
+
+<div class="container">
+
+  <div class="page-header">
+    <h1>Visão Comercial</h1>
+    <p>Acompanhe o status e andamento de todas as obras</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-label"><i data-lucide="hard-hat"></i> Total de Obras</div>
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-sub">obras cadastradas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><i data-lucide="activity"></i> Em Andamento</div>
+      <div class="stat-value" id="statAndamento" style="color:var(--primary)">—</div>
+      <div class="stat-sub">obras ativas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><i data-lucide="package"></i> Aguardando Material</div>
+      <div class="stat-value" id="statMaterial" style="color:#FBBF24">—</div>
+      <div class="stat-sub">pendências de compra</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><i data-lucide="check-circle-2"></i> Entregues</div>
+      <div class="stat-value" id="statEntregue" style="color:#2DD4BF">—</div>
+      <div class="stat-sub">obras finalizadas</div>
+    </div>
+  </div>
+
+  <!-- Lista de obras -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <i data-lucide="list"></i>
+        Obras
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="searchInput" placeholder="Buscar obra ou cliente...">
+        <select id="filterEtapa">
+          <option value="">Todas as etapas</option>
+          <option value="em_andamento">Em andamento</option>
+          <option value="pausada">Pausada</option>
+          <option value="pré-vistoria">Pré-vistoria</option>
+          <option value="pós-vistoria">Pós-vistoria</option>
+          <option value="concluída">Concluída</option>
+          <option value="entregue">Entregue</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="loadingState" class="state-msg">Carregando obras...</div>
+
+    <div id="tableWrap" class="table-wrap" style="display:none;">
+      <table>
+        <thead>
+          <tr>
+            <th>Obra / Cliente</th>
+            <th>Cidade</th>
+            <th>Etapa</th>
+            <th>Status Compra</th>
+            <th>OSs concluídas</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div id="emptyState" class="state-msg" style="display:none;">Nenhuma obra encontrada.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let allObras = [];
+
+(async () => {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
+  if (!eu || eu.role !== 'gerente_comercial') {
+    window.location.href = 'obras.html';
+    return;
+  }
+
+  renderTopbar(eu.nome, eu.role, 'comercial');
+  await carregarObras();
+
+  document.getElementById('searchInput').addEventListener('input', renderTabela);
+  document.getElementById('filterEtapa').addEventListener('change', renderTabela);
+})();
+
+async function carregarObras() {
+  const { data, error } = await db
+    .from('obras')
+    .select('id, nome, cliente, cidade, etapa, status_compra, ordens_servico(id, status_aprovacao)')
+    .order('criado_em', { ascending: false });
+
+  if (error || !data) { document.getElementById('loadingState').textContent = 'Erro ao carregar obras.'; return; }
+
+  allObras = data;
+
+  // Stats
+  document.getElementById('statTotal').textContent = data.length;
+  document.getElementById('statAndamento').textContent = data.filter(o => o.etapa === 'em_andamento').length;
+  document.getElementById('statEntregue').textContent = data.filter(o => o.etapa === 'entregue').length;
+
+  const pendenciaCompra = ['Aguardando orçamento','Orçamento aprovado','Compra realizada'];
+  document.getElementById('statMaterial').textContent = data.filter(o => pendenciaCompra.includes(o.status_compra)).length;
+
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('tableWrap').style.display = 'block';
+  renderTabela();
+}
+
+function renderTabela() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const etapa  = document.getElementById('filterEtapa').value;
+
+  const filtered = allObras.filter(o => {
+    const matchSearch = !search || (o.nome || '').toLowerCase().includes(search) || (o.cliente || '').toLowerCase().includes(search);
+    const matchEtapa  = !etapa || o.etapa === etapa;
+    return matchSearch && matchEtapa;
+  });
+
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  if (filtered.length === 0) {
+    document.getElementById('emptyState').style.display = 'block';
+    return;
+  }
+  document.getElementById('emptyState').style.display = 'none';
+
+  filtered.forEach(o => {
+    const etapaBadge = badgeEtapa(o.etapa);
+    const os = o.ordens_servico || [];
+    const osConcluidas = os.filter(s => s.status_aprovacao === 'concluida').length;
+    const osTotal = os.length;
+
+    const compraDot = compraPill(o.status_compra);
+
+    tbody.innerHTML += `
+      <tr>
+        <td class="td-name">
+          <a href="obra_detail.html?id=${o.id}">${o.nome || '—'}</a>
+          ${o.cliente ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px;">${o.cliente}</div>` : ''}
+        </td>
+        <td style="font-size:12px;">${o.cidade || '—'}</td>
+        <td>${etapaBadge}</td>
+        <td>${compraDot}</td>
+        <td style="font-size:12px;">${osConcluidas}/${osTotal}</td>
+      </tr>`;
+  });
+}
+
+function badgeEtapa(etapa) {
+  const map = {
+    'em_andamento':  ['badge-andamento',     'Em andamento'],
+    'pausada':       ['badge-pausada',        'Pausada'],
+    'concluída':     ['badge-concluida',      'Concluída'],
+    'entregue':      ['badge-entregue',       'Entregue'],
+    'pré-vistoria':  ['badge-pre_vistoria',   'Pré-vistoria'],
+    'pós-vistoria':  ['badge-pos_vistoria',   'Pós-vistoria'],
+  };
+  const [cls, label] = map[etapa] || ['badge-default', etapa || '—'];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function compraPill(status) {
+  if (!status) return `<span style="color:var(--text-3);font-size:12px;">—</span>`;
+  const ok = status === 'Sem pendência' || status === 'Material entregue';
+  const dotClass = ok ? 'ok' : (status === 'Aguardando orçamento' ? '' : 'warn');
+  return `<div class="compra-pill"><div class="compra-dot ${dotClass}"></div><span style="font-size:11px;">${status}</span></div>`;
+}
+
+function renderTopbar(nome, role, paginaAtiva) {
+  const h = new Date().getHours();
+  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = (nome || '').split(' ')[0];
+  const greetEl = document.getElementById('topbar-greeting');
+  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
+  const links = [
+    { href:'gerente_comercial.html', label:'Comercial',  id:'comercial', roles:['gerente_comercial'] },
+    { href:'obras.html',             label:'Obras',       id:'obras',     roles:['gerente_comercial'] },
+    { href:'agenda.html',            label:'Agenda',      id:'agenda',    roles:['gerente_comercial'] },
+  ];
+  const nav = document.getElementById('topbar-nav');
+  if (!nav) return;
+  nav.innerHTML = links.filter(l => l.roles.includes(role))
+    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
+    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
+}
+
+async function logout() {
+  await db.auth.signOut();
+  window.location.href = 'login.html';
+}
+</script>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

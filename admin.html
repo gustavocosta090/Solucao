@@ -297,6 +297,26 @@
     color: #2DD4BF;
   }
 
+  .badge-auxiliar {
+    background: rgba(99, 102, 241, 0.12);
+    color: #A5B4FC;
+  }
+
+  .badge-gerente_comercial {
+    background: rgba(234, 88, 12, 0.12);
+    color: #FB923C;
+  }
+
+  .badge-projetista {
+    background: rgba(6, 182, 212, 0.12);
+    color: #67E8F9;
+  }
+
+  .badge-coordenador_projetos {
+    background: rgba(168, 85, 247, 0.12);
+    color: #C084FC;
+  }
+
   .badge-ativo {
     background: var(--primary-muted);
     color: var(--primary);
@@ -421,7 +441,7 @@
   <div class="card">
     <div class="section-header">
       <i data-lucide="user-plus"></i>
-      <h2>Criar Conta para Técnico</h2>
+      <h2>Criar Conta de Usuário</h2>
     </div>
 
     <div id="alertSuccess" class="alert alert-success"></div>
@@ -438,9 +458,13 @@
         <label>Perfil *</label>
         <select id="selectRole">
           <option value="tecnico">Técnico</option>
+          <option value="auxiliar">Auxiliar</option>
           <option value="supervisor">Supervisor</option>
           <option value="coordenador">Coordenador</option>
           <option value="agendamento">Agendamento</option>
+          <option value="gerente_comercial">Gerente Comercial</option>
+          <option value="projetista">Projetista</option>
+          <option value="coordenador_projetos">Coordenador de Projetos</option>
         </select>
       </div>
       <div class="form-group">
@@ -722,11 +746,14 @@ function renderTopbar(nome, role, paginaAtiva) {
   const greetEl = document.getElementById('topbar-greeting');
   if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
   const links = [
-    { href:'obras.html',             label:'Obras',      id:'obras',      roles:['tecnico','auxiliar','supervisor','coordenador','agendamento'] },
-    { href:'agenda.html',            label:'Agenda',     id:'agenda',     roles:['supervisor','coordenador','agendamento','tecnico','auxiliar'] },
-    { href:'supervisor.html',        label:'Supervisor', id:'supervisor', roles:['supervisor','coordenador','agendamento'] },
-    { href:'admin.html',             label:'Admin',      id:'admin',      roles:['coordenador'] },
-    { href:'tecnico_dashboard.html', label:'Minhas OSs', id:'minhas-os',  roles:['tecnico','auxiliar'] },
+    { href:'obras.html',                label:'Obras',       id:'obras',                roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'agenda.html',               label:'Agenda',      id:'agenda',               roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'supervisor.html',           label:'Supervisor',  id:'supervisor',           roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
+    { href:'admin.html',                label:'Admin',       id:'admin',                roles:['coordenador'] },
+    { href:'tecnico_dashboard.html',    label:'Minhas OSs',  id:'minhas-os',            roles:['tecnico','auxiliar'] },
+    { href:'gerente_comercial.html',    label:'Comercial',   id:'comercial',            roles:['gerente_comercial'] },
+    { href:'projetista.html',           label:'Meu Painel',  id:'projetista',           roles:['projetista'] },
+    { href:'coordenador_projetos.html', label:'Projetos',    id:'coordenador-projetos', roles:['coordenador_projetos'] },
   ];
   const nav = document.getElementById('topbar-nav');
   if (!nav) return;

@@ -471,14 +471,20 @@ async function redirecionarPorRole(userId) {
 
     const role = tecnico?.role || '';
 
-    if (role === 'tecnico') {
+    if (role === 'tecnico' || role === 'auxiliar') {
       window.location.href = 'os.html';
     } else if (role === 'supervisor' || role === 'coordenador') {
       window.location.href = 'supervisor.html';
     } else if (role === 'agendamento') {
       window.location.href = 'agenda.html';
+    } else if (role === 'gerente_comercial') {
+      window.location.href = 'gerente_comercial.html';
+    } else if (role === 'projetista') {
+      window.location.href = 'projetista.html';
+    } else if (role === 'coordenador_projetos') {
+      window.location.href = 'coordenador_projetos.html';
     } else {
-      // fallback: envia para obras (cobre admin, coordenador sem match e roles desconhecidas)
+      // fallback: envia para obras (roles desconhecidas)
       window.location.href = 'obras.html';
     }
   } catch(e) {
