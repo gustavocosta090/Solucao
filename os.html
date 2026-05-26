@@ -533,23 +533,9 @@ async function carregarAgendamentosHoje() {
         return t ? t.nome.split(' ')[0] : null;
       }).filter(Boolean);
 
-      // OS concluída/aprovada → mostra como feito, não clicável
+      // OS concluída/aprovada → não exibe no os.html (só aparece no tecnico_dashboard)
       if (statusOS === 'concluida' || statusOS === 'aprovada') {
-        return `
-          <div class="card-agenda feito">
-            <div class="ca-top">
-              <div>
-                <div class="ca-cliente">${cliente}</div>
-                <div class="ca-detalhe">${hora ? hora + ' · ' : ''}${dataAg}</div>
-                ${end ? `<div class="ca-endereco"><i data-lucide="map-pin"></i>${end}</div>` : ''}
-                ${equipeNomes.length ? `<div class="ca-equipe">👥 ${equipeNomes.join(' · ')}</div>` : ''}
-              </div>
-              <span class="status-dot ${dotClass}"></span>
-            </div>
-            <div class="ca-badge-row">
-              <span class="badge-status badge-concluida"><i data-lucide="check-circle-2"></i>OS Concluída</span>
-            </div>
-          </div>`;
+        return '';
       }
 
       // Não clicável se pendente aguardando (OS existe mas foi criada automaticamente — tech ainda não preencheu)

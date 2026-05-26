@@ -1251,10 +1251,13 @@ async function salvarAgendamento() {
         status_aprovacao: 'pendente',
         criado_em:        new Date().toISOString(),
       };
-      // Silencioso: se agendamento_id ou outras colunas não existirem, ignora
-      const { error: osErr } = await db.from('ordens_de_servico').insert(osPayload);
-      if (osErr && !osErr.message.includes('agendamento_id') && !osErr.message.includes('endereco_servico')) {
-        console.warn('OS pendente não criada:', osErr.message);
+      // Tenta criar com todos os campos; se falhar por colunas novas, retenta sem elas
+      let { error: osErr } = await db.from('ordens_de_servico').insert(osPayload);
+      if (osErr) {
+        // Retry sem colunas que podem não existir ainda no banco
+        const { agendamento_id: _a, endereco_servico: _e, cliente_outro: _c, ...basicOsPayload } = osPayload;
+        const r2 = await db.from('ordens_de_servico').insert(basicOsPayload);
+        if (r2.error) console.warn('OS pendente não criada:', r2.error.message);
       }
     }
 
@@ -1271,6 +1274,35 @@ async function salvarAgendamento() {
 async function excluirAgendamento() {
   if (!agEditandoId) return;
   if (!confirm('Tem certeza que quer excluir este agendamento?')) return;
+
+  // Apagar OS pendente vinculada (não apaga OSs já concluídas)
+  const ag = agendamentos.find(a => a.id === agEditandoId);
+  if (ag) {
+    // Tenta por agendamento_id primeiro (se coluna existir)
+    const { data: osPorId } = await db
+      .from('ordens_de_servico')
+      .select('id')
+      .eq('agendamento_id', agEditandoId)
+      .eq('status_aprovacao', 'pendente')
+      .maybeSingle();
+
+    if (osPorId) {
+      await db.from('ordens_de_servico').delete().eq('id', osPorId.id);
+    } else if (ag.obra_id && ag.data) {
+      // Fallback: busca por obra_id + data_servico
+      const { data: osPorData } = await db
+        .from('ordens_de_servico')
+        .select('id')
+        .eq('obra_id', ag.obra_id)
+        .eq('data_servico', ag.data)
+        .eq('status_aprovacao', 'pendente')
+        .maybeSingle();
+      if (osPorData) {
+        await db.from('ordens_de_servico').delete().eq('id', osPorData.id);
+      }
+    }
+  }
+
   const { error } = await db.from('agendamentos').delete().eq('id', agEditandoId);
   if (error) { alert('Erro ao excluir: ' + error.message); return; }
   fecharModal();
