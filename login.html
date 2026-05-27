@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
@@ -58,7 +59,43 @@
     padding: 60px 64px;
     background: var(--bg);
     border-right: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    background-image: url('bg-login.jpg');
+    background-size: cover;
+    background-position: center center;
   }
+
+  /* Overlay: escurece o lado esquerdo (texto) e abre o direito (caixa) */
+  .brand-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      rgba(8, 8, 8, 0.92) 0%,
+      rgba(8, 8, 8, 0.82) 40%,
+      rgba(8, 8, 8, 0.45) 70%,
+      rgba(8, 8, 8, 0.15) 100%
+    );
+    z-index: 0;
+  }
+
+  /* Garante que o conteúdo fica acima do overlay */
+  .brand-logo-mark,
+  .brand-title,
+  .brand-subtitle,
+  .features-list {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Adapta texto ao fundo escuro fixo (independente do tema) */
+  .brand-title { color: #FFFFFF !important; }
+  .brand-subtitle { color: rgba(255,255,255,0.65) !important; }
+  .feature-text strong { color: #FFFFFF !important; }
+  .feature-text span { color: rgba(255,255,255,0.5) !important; }
+  .feature-icon { background: rgba(255,255,255,0.07) !important; border-color: rgba(255,255,255,0.1) !important; }
 
   .brand-logo-mark {
     width: 52px;
@@ -350,6 +387,41 @@
       padding: 32px 24px;
     }
   }
+
+  /* ── TEMA CLARO ── */
+  :root[data-theme="light"] { --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1; --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA; --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16); --primary-muted:rgba(62,207,142,0.15); }
+  @media (prefers-color-scheme: light) { :root[data-theme="auto"] { --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1; --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA; --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16); --primary-muted:rgba(62,207,142,0.15); } }
+  .tema-btn { background:transparent; border:1px solid var(--border-strong,rgba(255,255,255,.12)); border-radius:6px; color:var(--text-2,#A1A1AA); font-size:15px; width:32px; height:32px; cursor:pointer; display:flex; align-items:center; justify-content:center; margin-right:8px; flex-shrink:0; }
+  .tema-btn:hover { background:rgba(128,128,128,.1); }
+  .tema-float { position:fixed; top:16px; right:16px; z-index:999; background:transparent; border:1px solid rgba(255,255,255,.15); border-radius:6px; color:#A1A1AA; font-size:15px; width:32px; height:32px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .tema-float:hover { background:rgba(128,128,128,.15); }
+
+  /* ── RESPONSIVO ── */
+  @media (max-width: 1024px) {
+    .topbar-links a { font-size: 12px; padding: 5px 9px; }
+  }
+  @media (max-width: 768px) {
+    .topbar { padding: 0 12px; }
+    .topbar-greeting { display: none !important; }
+    .topbar-links { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .topbar-links a { font-size: 12px; padding: 5px 8px; white-space: nowrap; }
+    .container { padding: 0 12px !important; margin-top: 16px !important; margin-bottom: 16px !important; }
+    main { padding: 20px 12px !important; }
+    .form-grid { grid-template-columns: 1fr !important; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .card { padding: 16px !important; }
+    .page-header h1 { font-size: 18px !important; }
+    .modal, .modal-content { border-radius: 0 !important; max-width: 100% !important; max-height: 100dvh !important; }
+    .modal-overlay, .overlay { padding: 0 !important; align-items: flex-end !important; }
+    table { font-size: 12px; min-width: 500px; }
+    .table-wrap, .tabela-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  }
+  @media (max-width: 480px) {
+    .topbar-logo { font-size: 13px; }
+    .stats-grid { grid-template-columns: 1fr !important; }
+    .stat-card { padding: 14px !important; }
+    .btn, button { font-size: 12px; }
+  }
 </style>
 </head>
 <body>
@@ -592,5 +664,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     }
   });
 </script>
+
+<button id="tema-btn" class="tema-float" onclick="ciclarTema()" title="Alternar tema">🖥️</button>
 </body>
 </html>

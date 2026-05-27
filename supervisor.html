@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>document.documentElement.dataset.theme = localStorage.getItem('tema') || 'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -31,6 +32,36 @@
     --amber-text: #FCD34D;
     --red: #EF4444;
     --red-text: #F87171;
+  }
+
+  /* ===== LIGHT THEME ===== */
+  :root[data-theme="light"] {
+    --bg: #F4F4F5;
+    --surface-1: #FFFFFF;
+    --surface-2: #FAFAFA;
+    --surface-3: #F0F0F1;
+    --text-1: #09090B;
+    --text-2: #71717A;
+    --text-3: #A1A1AA;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.14);
+    --amber-text: #B45309;
+    --red-text: #B91C1C;
+  }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="auto"] {
+      --bg: #F4F4F5;
+      --surface-1: #FFFFFF;
+      --surface-2: #FAFAFA;
+      --surface-3: #F0F0F1;
+      --text-1: #09090B;
+      --text-2: #71717A;
+      --text-3: #A1A1AA;
+      --border: rgba(0,0,0,0.08);
+      --border-strong: rgba(0,0,0,0.14);
+      --amber-text: #B45309;
+      --red-text: #B91C1C;
+    }
   }
 
   body {
@@ -840,19 +871,73 @@
 
   .fotos-chip i { width: 12px; height: 12px; }
 
+  /* ===== TEMA BUTTON ===== */
+  .tema-btn {
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    color: var(--text-2);
+    font-size: 15px;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .tema-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-1); }
+  :root[data-theme="light"] .tema-btn:hover,
+  :root[data-theme="auto"] .tema-btn:hover { background: rgba(0,0,0,0.06); }
+
+  /* ===== BANCO DE HORAS MODAL ===== */
+  .bh-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+  .bh-table th { text-align:left; color:var(--text-3); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; padding:6px 10px; border-bottom:1px solid var(--border); }
+  .bh-table td { padding:10px 10px; border-bottom:1px solid var(--border); color:var(--text-1); }
+  .bh-table tr:last-child td { border-bottom:none; font-weight:700; }
+  .bh-table .td-h { color:#A5B4FC; font-weight:700; }
+  .bh-total-row { background:rgba(79,70,229,.06); }
+
+  /* ===== RESPONSIVE ===== */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  @media (max-width: 1024px) {
+    .filtros-bar { flex-wrap: wrap; gap: 8px; }
+    .filtros-bar select { flex: 1 1 140px; }
+    .filtros-bar input[type="date"] { flex: 1 1 130px; width: auto; }
+    .filtros-bar .input-busca-wrap { flex: 1 1 180px; }
+  }
+
   @media (max-width: 768px) {
-    .stats-row { gap: 8px; padding: 16px; }
-    .stat-card { min-width: 120px; padding: 14px; }
-    .filtros-bar { gap: 6px; padding: 10px 16px; }
+    .topbar { padding: 0 12px; gap: 4px; }
+    .topbar-greeting { display: none; }
+    .topbar-links { gap: 2px; }
+    .topbar-links a { font-size: 12px; padding: 5px 8px; }
+    .stats-row { gap: 8px; padding: 12px 12px; flex-wrap: wrap; }
+    .stat-card { min-width: calc(50% - 4px); flex: 1 1 calc(50% - 4px); padding: 14px 16px; }
+    .stat-num { font-size: 24px; }
+    .filtros-bar { gap: 6px; padding: 10px 12px; flex-wrap: wrap; }
     .filtros-bar select,
-    .filtros-bar input[type="date"],
-    .filtros-bar input[type="text"] { font-size: 12px; padding: 7px 10px; }
-    .container { padding: 16px; }
-    table { font-size: 12px; }
-    td, th { padding: 10px 12px; }
-    .fotos-grid { grid-template-columns: repeat(3, 1fr); }
+    .filtros-bar input[type="date"] { flex: 1 1 calc(50% - 3px); width: auto; font-size: 13px; }
+    .filtros-bar .input-busca-wrap { flex: 1 1 100%; }
+    .filtros-bar .btn-exportar { flex: 1 1 calc(50% - 3px); justify-content: center; }
+    .container { padding: 12px; }
+    table { font-size: 12px; min-width: 600px; }
+    td, th { padding: 8px 10px; }
+    .table-wrap { overflow-x: auto; }
+    .fotos-grid { grid-template-columns: repeat(2, 1fr); }
     .detail-grid { grid-template-columns: 1fr; }
-    .topbar { padding: 0 16px; }
+    .modal { border-radius: 0; max-height: 100dvh; height: 100dvh; max-width: 100%; border-left: none; border-right: none; border-top: 1px solid var(--border); }
+    .modal-overlay { padding: 0; align-items: flex-end; }
+    .btn-aprovar-lg { font-size: 13px; padding: 10px 14px; }
+  }
+
+  @media (max-width: 480px) {
+    .stat-card { min-width: calc(50% - 4px); }
+    .topbar-logo { font-size: 13px; }
+    .btn-exportar span { display: none; }
   }
 </style>
 </head>
@@ -862,6 +947,7 @@
 <header class="topbar">
   <span class="topbar-logo">Solução Técnica</span>
   <span id="topbar-greeting" class="topbar-greeting"></span>
+  <button id="tema-btn" class="tema-btn" onclick="ciclarTema()" title="Alternar tema">🖥️</button>
   <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
@@ -887,9 +973,9 @@
     <div class="stat-num" id="sNoturna" style="color: var(--amber);">—</div>
     <div class="stat-label">Agenda Noturna</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" style="cursor:pointer;" onclick="modalBancoHoras()" title="Ver detalhes por técnico">
     <div class="stat-num" id="sBancoHoras" style="color: #A5B4FC;">—</div>
-    <div class="stat-label">Banco de horas</div>
+    <div class="stat-label">Banco de horas ↗</div>
   </div>
 </div>
 
@@ -959,6 +1045,17 @@
       <button class="btn-fechar" onclick="fecharModal()"><i data-lucide="x"></i></button>
     </div>
     <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Modal banco de horas -->
+<div class="modal-overlay" id="modalBH">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h2 id="modalBHTitulo">Banco de horas</h2>
+      <button class="btn-fechar" onclick="document.getElementById('modalBH').classList.remove('open')"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body" id="modalBHBody"></div>
   </div>
 </div>
 
@@ -1100,13 +1197,105 @@ async function aprovarNoturna(osId, status) {
   filtrar();
 }
 
+function calcularMinutosBH(o) {
+  const fim = minutosDoHorario(o.horario_fim);
+  if (fim === null) return 0;
+  const CORTE = 17 * 60 + 30;
+  if (fim >= CORTE) return fim - CORTE;
+  if (fim <= 5 * 60) return (24 * 60 - CORTE) + fim; // atravessou meia-noite
+  return 0;
+}
+
+function formatarHorasBH(minutos) {
+  if (!minutos) return '0h';
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  return m ? `${h}h ${m}min` : `${h}h`;
+}
+
 function atualizarStats() {
   document.getElementById('sTot').textContent = filtradas.length;
   document.getElementById('sPend').textContent = filtradas.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
   document.getElementById('sAprov').textContent = filtradas.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
   document.getElementById('sFotos').textContent = filtradas.filter(o => o.fotos_urls?.length > 0).length;
   document.getElementById('sNoturna').textContent = filtradas.filter(isAgendaNoturna).length;
-  document.getElementById('sBancoHoras').textContent = filtradas.filter(o => o.noturna_status === 'banco_horas').length;
+  const bhOSs = filtradas.filter(o => o.noturna_status === 'banco_horas');
+  const bhMinTotal = bhOSs.reduce((acc, o) => {
+    const min = calcularMinutosBH(o);
+    const membros = o.equipeNomes?.length || 1;
+    return acc + min * membros;
+  }, 0);
+  document.getElementById('sBancoHoras').textContent = formatarHorasBH(bhMinTotal);
+}
+
+function modalBancoHoras() {
+  const bhOSs = filtradas.filter(o => o.noturna_status === 'banco_horas');
+  const fDi = document.getElementById('fDataInicio').value;
+  const fDf = document.getElementById('fDataFim').value;
+  const periodoLabel = fDi || fDf
+    ? `Período: ${fDi ? new Date(fDi+'T12:00').toLocaleDateString('pt-BR') : '—'} a ${fDf ? new Date(fDf+'T12:00').toLocaleDateString('pt-BR') : 'hoje'}`
+    : 'Todo o período registrado';
+
+  if (!bhOSs.length) {
+    document.getElementById('modalBHTitulo').textContent = 'Banco de horas';
+    document.getElementById('modalBHBody').innerHTML = `<p style="color:var(--text-2);padding:20px 0;">${periodoLabel}<br><br>Nenhuma OS em banco de horas no período selecionado.</p>`;
+    document.getElementById('modalBH').classList.add('open');
+    return;
+  }
+
+  const porTecnico = {};
+  bhOSs.forEach(o => {
+    const min = calcularMinutosBH(o);
+    const equipe = o.equipeNomes?.length ? o.equipeNomes : ['Sem técnico'];
+    equipe.forEach(nome => {
+      if (!porTecnico[nome]) porTecnico[nome] = { nome, minutos: 0, oss: 0 };
+      porTecnico[nome].minutos += min;
+      porTecnico[nome].oss += 1;
+    });
+  });
+
+  const lista = Object.values(porTecnico).sort((a, b) => b.minutos - a.minutos);
+  const totalMin = lista.reduce((s, t) => s + t.minutos, 0);
+  const totalOSs = bhOSs.length;
+
+  const rows = lista.map(t => `
+    <tr>
+      <td>${escHtml(t.nome)}</td>
+      <td style="text-align:center;">${t.oss}</td>
+      <td class="td-h">${formatarHorasBH(t.minutos)}</td>
+    </tr>`).join('');
+
+  document.getElementById('modalBHTitulo').textContent = 'Banco de horas — Detalhamento';
+  document.getElementById('modalBHBody').innerHTML = `
+    <p style="color:var(--text-2);font-size:12px;margin-bottom:16px;">${periodoLabel}</p>
+    <table class="bh-table">
+      <thead><tr><th>Técnico</th><th style="text-align:center;">OSs</th><th>Horas banco</th></tr></thead>
+      <tbody>
+        ${rows}
+        <tr class="bh-total-row">
+          <td>Total da equipe</td>
+          <td style="text-align:center;">${totalOSs}</td>
+          <td class="td-h">${formatarHorasBH(totalMin)}</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="color:var(--text-3);font-size:11px;margin-top:14px;">* Horas calculadas a partir de 17h30 de cada OS marcada como banco de horas.</p>`;
+  document.getElementById('modalBH').classList.add('open');
+}
+
+// ===== TEMA =====
+function applyTheme(tema) {
+  localStorage.setItem('tema', tema);
+  document.documentElement.dataset.theme = tema;
+  const icons = { dark: '🌙', light: '☀️', auto: '🖥️' };
+  const labels = { dark: 'Modo escuro', light: 'Modo claro', auto: 'Automático (sistema)' };
+  const btn = document.getElementById('tema-btn');
+  if (btn) { btn.textContent = icons[tema]; btn.title = labels[tema]; }
+}
+
+function ciclarTema() {
+  const atual = localStorage.getItem('tema') || 'auto';
+  applyTheme({ auto: 'dark', dark: 'light', light: 'auto' }[atual]);
 }
 
 function resumoAgendaNoturna(lista) {
@@ -1714,6 +1903,6 @@ async function logout() {
   window.location.href = 'login.html';
 }
 </script>
-<script>lucide.createIcons();</script>
+<script>lucide.createIcons(); applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>
 </html>

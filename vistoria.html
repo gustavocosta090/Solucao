@@ -7,21 +7,28 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>document.documentElement.dataset.theme = localStorage.getItem('tema') || 'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
-  :root { --bg:#0A0A0A; --surface:#111; --surface-2:#161616; --border:rgba(255,255,255,.08); --text:#fff; --muted:#A1A1AA; --dim:#52525B; --primary:#3ECF8E; --warn:#F59E0B; --danger:#F87171; --radius:8px; }
+  :root { --bg:#0A0A0A; --surface:#111; --surface-2:#161616; --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.12); --text:#fff; --muted:#A1A1AA; --dim:#52525B; --primary:#3ECF8E; --warn:#F59E0B; --danger:#F87171; --radius:8px; }
+  :root[data-theme="light"] { --bg:#F4F4F5; --surface:#fff; --surface-2:#FAFAFA; --border:rgba(0,0,0,.08); --border-strong:rgba(0,0,0,.14); --text:#09090B; --muted:#71717A; --dim:#A1A1AA; }
+  @media (prefers-color-scheme: light) { :root[data-theme="auto"] { --bg:#F4F4F5; --surface:#fff; --surface-2:#FAFAFA; --border:rgba(0,0,0,.08); --border-strong:rgba(0,0,0,.14); --text:#09090B; --muted:#71717A; --dim:#A1A1AA; } }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
-  .topbar { background:var(--surface); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:20; }
+  .topbar { background:var(--surface); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:20; gap:4px; }
   .topbar-logo { font-weight:700; flex:1; }
-  .topbar-greeting { color:var(--muted); font-size:13px; margin-right:16px; }
-  .topbar-links { display:flex; align-items:center; gap:4px; }
-  .topbar-links a { color:var(--muted); text-decoration:none; font-size:13px; font-weight:500; padding:6px 12px; border-radius:6px; }
+  .topbar-greeting { color:var(--muted); font-size:13px; margin-right:8px; white-space:nowrap; }
+  .topbar-links { display:flex; align-items:center; gap:4px; overflow-x:auto; }
+  .topbar-links a { color:var(--muted); text-decoration:none; font-size:13px; font-weight:500; padding:6px 12px; border-radius:6px; white-space:nowrap; }
   .topbar-links a:hover, .topbar-links a.active { color:var(--text); background:rgba(255,255,255,.07); }
-  .nav-sair { border:1px solid rgba(255,255,255,.12); margin-left:8px; }
+  .nav-sair { border:1px solid var(--border-strong); margin-left:8px; }
+  .tema-btn { background:transparent; border:1px solid var(--border-strong); border-radius:6px; color:var(--muted); font-size:15px; width:32px; height:32px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .tema-btn:hover { background:rgba(128,128,128,.1); }
   .wrap { width:min(1280px, calc(100vw - 32px)); margin:28px auto; }
-  .header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:18px; }
+  .header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
   h1 { font-size:22px; letter-spacing:-.4px; }
   .sub { color:var(--muted); font-size:13px; margin-top:4px; }
   .stats-row { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
@@ -55,19 +62,23 @@
   .midia img, .midia video { width:100%; aspect-ratio:1.25; object-fit:cover; display:block; }
   .midia span { display:block; padding:7px; font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .midia button { position:absolute; top:6px; right:6px; border:none; border-radius:999px; background:rgba(0,0,0,.72); color:#fff; width:24px; height:24px; cursor:pointer; }
-  .btnbar { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
+  .btnbar { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; flex-wrap:wrap; }
   .btn { border:none; border-radius:var(--radius); padding:10px 14px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
   .btn i { width:16px; height:16px; }
   .btn-primary { background:var(--primary); color:#07110c; }
   .btn-secondary { background:var(--surface-2); color:var(--muted); border:1px solid var(--border); }
+  .btn-pdf { background:rgba(239,68,68,.12); color:#F87171; border:1px solid rgba(239,68,68,.2); }
   .empty { color:var(--dim); text-align:center; padding:30px; border:1px dashed var(--border); border-radius:10px; }
-  @media (max-width: 980px) { .grid, .form-grid, .checklist { grid-template-columns:1fr; } .full { grid-column:auto; } .topbar { overflow-x:auto; } }
+  @media (max-width: 980px) { .grid { grid-template-columns:1fr; } .form-grid, .checklist { grid-template-columns:1fr; } .full { grid-column:auto; } }
+  @media (max-width: 768px) { .topbar { padding:0 12px; } .topbar-greeting { display:none; } .wrap { margin:16px auto; } h1 { font-size:18px; } .stat-card { min-width:calc(50% - 6px); flex:1 1 calc(50% - 6px); } .card { padding:16px; } }
+  @media (max-width: 480px) { .topbar-logo { font-size:13px; } .stats-row { gap:8px; } .stat-num { font-size:22px; } }
 </style>
 </head>
 <body>
 <header class="topbar">
   <span class="topbar-logo">Solução Técnica</span>
   <span id="topbar-greeting" class="topbar-greeting"></span>
+  <button id="tema-btn" class="tema-btn" onclick="ciclarTema()" title="Alternar tema">🖥️</button>
   <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
@@ -77,7 +88,10 @@
       <h1>Relatórios de Vistoria</h1>
       <div class="sub">Preencha o checklist da obra e conclua a liberação técnica.</div>
     </div>
-    <button class="btn btn-secondary" onclick="carregarRelatorios()"><i data-lucide="refresh-cw"></i>Atualizar</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="carregarRelatorios()"><i data-lucide="refresh-cw"></i>Atualizar</button>
+      <button class="btn btn-pdf" onclick="exportarPDFGeral()"><i data-lucide="file-text"></i>Exportar todos</button>
+    </div>
   </div>
 
   <div class="stats-row" id="stats-row" style="display:none">
@@ -313,6 +327,7 @@ function renderFormulario() {
       </div>
     </div>
     <div class="btnbar">
+      <button class="btn btn-pdf" onclick="exportarPDFUnico()"><i data-lucide="file-text"></i>Exportar PDF</button>
       <button class="btn btn-secondary" onclick="salvar(false)"><i data-lucide="save"></i>Salvar</button>
       <button class="btn btn-primary" onclick="salvar(true)"><i data-lucide="check-circle"></i>Concluir relatório</button>
     </div>`;
@@ -419,7 +434,107 @@ async function logout() {
   location.href = 'login.html';
 }
 
+// ===== TEMA =====
+function applyTheme(tema) {
+  localStorage.setItem('tema', tema);
+  document.documentElement.dataset.theme = tema;
+  const icons = { dark:'🌙', light:'☀️', auto:'🖥️' };
+  const labels = { dark:'Modo escuro', light:'Modo claro', auto:'Automático (sistema)' };
+  const btn = document.getElementById('tema-btn');
+  if (btn) { btn.textContent = icons[tema]; btn.title = labels[tema]; }
+}
+function ciclarTema() {
+  applyTheme({ auto:'dark', dark:'light', light:'auto' }[localStorage.getItem('tema') || 'auto']);
+}
+
+// ===== PDF INDIVIDUAL =====
+function exportarPDFUnico() {
+  if (!selecionado) { alert('Selecione uma vistoria primeiro.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const margin = 14;
+  let y = 20;
+
+  doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text('Relatório de Vistoria', margin, y); y += 8;
+
+  doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.text(`Cliente: ${selecionado.obras?.nome_cliente || '—'}`, margin, y); y += 6;
+  doc.text(`Tipo: ${tipoLabels[selecionado.tipo_vistoria] || selecionado.tipo_vistoria || '—'}`, margin, y); y += 6;
+  doc.text(`Data: ${fmtData(selecionado.data_vistoria)}`, margin, y); y += 6;
+  doc.text(`Status: ${selecionado.status === 'concluido' ? 'Concluído' : 'Pendente'}`, margin, y); y += 10;
+
+  const campos = [
+    ['Objetivo da vistoria', selecionado.objetivo_vistoria],
+    ['Situação atual da obra', selecionado.situacao_atual_obra],
+    ['Pontos positivos', selecionado.pontos_positivos],
+    ['Pontos de atenção', selecionado.pontos_atencao],
+    ['Inconformidade', selecionado.inconformidade ? (selecionado.descricao_inconformidade || 'Sim') : 'Nenhuma'],
+    ['Observações finais', selecionado.observacoes],
+  ];
+
+  campos.forEach(([label, valor]) => {
+    if (!valor) return;
+    if (y > 270) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text(label.toUpperCase(), margin, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    const lines = doc.splitTextToSize(valor, 180);
+    doc.text(lines, margin, y); y += lines.length * 5 + 4;
+  });
+
+  const checklist = checklistPorTipo[selecionado.tipo_vistoria] || [];
+  if (checklist.length) {
+    if (y > 250) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text('CHECKLIST', margin, y); y += 6;
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    checklist.forEach((item, idx) => {
+      if (y > 275) { doc.addPage(); y = 20; }
+      const ok = selecionado.checklist?.[idx];
+      doc.text(`${ok ? '✓' : '✗'} ${item}`, margin, y); y += 6;
+    });
+  }
+
+  const nome = (selecionado.obras?.nome_cliente || 'vistoria').replace(/\s+/g,'-').toLowerCase();
+  doc.save(`vistoria-${nome}-${selecionado.data_vistoria || 'sem-data'}.pdf`);
+}
+
+// ===== PDF GERAL =====
+function exportarPDFGeral() {
+  if (!relatorios.length) { alert('Nenhum relatório para exportar.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'landscape' });
+
+  doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text('Relatórios de Vistoria — Solução Técnica', 14, 16);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}  ·  ${relatorios.length} registros`, 14, 22);
+
+  doc.autoTable({
+    startY: 28,
+    head: [['Cliente', 'Tipo', 'Data', 'Hora', 'Status', 'Objetivo', 'Situação', 'Observações']],
+    body: relatorios.map(r => [
+      r.obras?.nome_cliente || '—',
+      tipoLabels[r.tipo_vistoria] || r.tipo_vistoria || '—',
+      fmtData(r.data_vistoria),
+      r.agendamentos_vistoria?.hora_inicio?.slice(0,5) || '—',
+      r.status === 'concluido' ? 'Concluído' : 'Pendente',
+      r.objetivo_vistoria || '',
+      r.situacao_atual_obra || '',
+      r.observacoes || '',
+    ]),
+    styles: { fontSize: 8, cellPadding: 3 },
+    headStyles: { fillColor: [62, 207, 142], textColor: 0, fontStyle: 'bold' },
+    columnStyles: { 5: { cellWidth: 40 }, 6: { cellWidth: 40 }, 7: { cellWidth: 40 } },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+  });
+
+  doc.save(`relatorios-vistoria-${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
 iniciar();
+applyTheme(localStorage.getItem('tema') || 'auto');
 </script>
 <script>lucide.createIcons();</script>
 </body>
