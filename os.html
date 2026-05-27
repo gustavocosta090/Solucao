@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- build: 2026-05-27 -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -10,7 +11,6 @@
   <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -909,80 +909,8 @@ async function uploadFotos(nomeCliente) {
   return urls;
 }
 
-// ── OneDrive / MSAL / PDF ─────────────────────────────────────
-const OD_CLIENT_ID  = '1de7fcf7-37c1-4c2f-b45f-49b69a14a155';
-const OD_TENANT_ID  = '5b81ca15-00b5-4f94-a638-81baf693546b';
-const OD_REDIRECT   = 'https://solucaotecnica.vercel.app/os.html';
-const OD_SCOPES     = ['Files.ReadWrite', 'offline_access'];
-const OD_PASTA_RAIZ = 'OS - Solução Técnica';
-let _msalApp = null;
-
-async function _getMsal() {
-  if (_msalApp) return _msalApp;
-  _msalApp = new msal.PublicClientApplication({
-    auth: {
-      clientId:    OD_CLIENT_ID,
-      authority:   `https://login.microsoftonline.com/${OD_TENANT_ID}`,
-      redirectUri: OD_REDIRECT,
-    },
-    cache: { cacheLocation: 'sessionStorage' }
-  });
-  await _msalApp.initialize();
-  return _msalApp;
-}
-
-async function _getODToken() {
-  const app      = await _getMsal();
-  const accounts = app.getAllAccounts();
-  const req      = { scopes: OD_SCOPES };
-  if (accounts.length > 0) {
-    try {
-      const r = await app.acquireTokenSilent({ ...req, account: accounts[0] });
-      return r.accessToken;
-    } catch(e) { /* popup fallback abaixo */ }
-  }
-  const r = await app.loginPopup(req);
-  return r.accessToken;
-}
-
-async function _odUpload(token, caminho, blob) {
-  const encodedPath = caminho.split('/').map(encodeURIComponent).join('/');
-  const uploadUrl   = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/content`;
-  if (blob.size <= 4 * 1024 * 1024) {
-    const res = await fetch(uploadUrl, {
-      method:  'PUT',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': blob.type || 'application/octet-stream' },
-      body:    blob,
-    });
-    if (!res.ok) throw new Error(`Graph ${res.status}: ${await res.text()}`);
-    return res.json();
-  }
-  // Upload em sessão (chunked) para arquivos > 4 MB
-  const sessRes = await fetch(
-    `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/createUploadSession`,
-    {
-      method:  'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ item: { '@microsoft.graph.conflictBehavior': 'replace' } })
-    }
-  );
-  const { uploadUrl: sessUrl } = await sessRes.json();
-  const chunkSize = 5 * 1024 * 1024;
-  let start = 0;
-  while (start < blob.size) {
-    const end   = Math.min(start + chunkSize, blob.size);
-    const chunk = blob.slice(start, end);
-    await fetch(sessUrl, {
-      method:  'PUT',
-      headers: {
-        'Content-Range':  `bytes ${start}-${end - 1}/${blob.size}`,
-        'Content-Length': String(end - start),
-      },
-      body: chunk,
-    });
-    start = end;
-  }
-}
+// ── OneDrive via proxy Vercel / PDF ──────────────────────────
+const OD_PASTA_RAIZ = 'Ordens de Serviço';
 
 function _gerarPDFOS(dados) {
   const { jsPDF } = window.jspdf;
@@ -1079,32 +1007,64 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, dadosPDF
   const set = (msg, cor = 'var(--text-2)') => {
     if (statusEl) statusEl.innerHTML = `<span style="color:${cor}">☁️ OneDrive: ${msg}</span>`;
   };
-  try {
-    set('conectando ao Microsoft 365...');
-    const token   = await _getODToken();
-    const pasta   = sanitizarNomePasta(nomeCliente);
-    const prefixo = `${dataServico}_${(numeroOS || 'OS').replace(/[^a-zA-Z0-9-]/g, '_')}`;
-    const base    = `${OD_PASTA_RAIZ}/${pasta}`;
 
+  const pasta      = sanitizarNomePasta(nomeCliente);
+  const prefixo    = `${dataServico}_${(numeroOS || 'OS').replace(/[^a-zA-Z0-9-]/g, '_')}`;
+  const folderPath = `${OD_PASTA_RAIZ}/${pasta}`;
+
+  // Pede URL de upload ao proxy Vercel (autenticação com Microsoft fica no servidor)
+  // depois faz PUT direto para o Microsoft com a URL pré-autenticada retornada
+  const uploadArquivo = async (blob, filename) => {
+    const initRes = await fetch('/api/upload', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        path:        folderPath,
+        filename,
+        contentType: blob.type || 'application/octet-stream',
+      }),
+    });
+    if (!initRes.ok) throw new Error('Proxy error ' + initRes.status + ': ' + await initRes.text());
+    const { uploadUrl } = await initRes.json();
+
+    // PUT chunked direto pro Microsoft (uploadUrl é pré-autenticada, sem auth header)
+    const CHUNK = 5 * 1024 * 1024;
+    let start = 0;
+    while (start < blob.size) {
+      const end   = Math.min(start + CHUNK, blob.size);
+      const chunk = blob.slice(start, end);
+      const putRes = await fetch(uploadUrl, {
+        method:  'PUT',
+        headers: {
+          'Content-Range':  `bytes ${start}-${end - 1}/${blob.size}`,
+          'Content-Length': String(end - start),
+          'Content-Type':   blob.type || 'application/octet-stream',
+        },
+        body: chunk,
+      });
+      if (!putRes.ok && putRes.status !== 202) {
+        throw new Error(`Upload erro ${putRes.status}: ${await putRes.text()}`);
+      }
+      start = end;
+    }
+  };
+
+  try {
     set('gerando PDF...');
     const pdfBlob = _gerarPDFOS(dadosPDF);
     set('enviando PDF...');
-    await _odUpload(token, `${base}/${prefixo}.pdf`, pdfBlob);
+    await uploadArquivo(pdfBlob, `${prefixo}.pdf`);
 
     for (let i = 0; i < fotos.length; i++) {
       const f   = fotos[i];
       const ext = (f.file.name.split('.').pop() || 'jpg').toLowerCase();
       set(`enviando foto ${i + 1}/${fotos.length}...`);
-      await _odUpload(token, `${base}/${prefixo}_foto-${String(i + 1).padStart(2, '0')}.${ext}`, f.file);
+      await uploadArquivo(f.file, `${prefixo}_foto-${String(i + 1).padStart(2, '0')}.${ext}`);
     }
     set(`✅ ${1 + fotos.length} arquivo(s) enviado(s)`, 'var(--primary)');
   } catch (e) {
-    if (e.errorCode === 'user_cancelled') {
-      set('login cancelado — OS salva normalmente.', 'var(--text-3)');
-    } else {
-      set(`falha no upload (OS já salva no sistema): ${e.message}`, '#f87171');
-      console.error('OneDrive upload error:', e);
-    }
+    set(`falha no upload (OS já salva): ${e.message}`, '#f87171');
+    console.error('OneDrive upload error:', e);
   }
 }
 
