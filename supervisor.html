@@ -1918,7 +1918,6 @@ async function exportarPDFOS(osId) {
   const os = todasOSs.find(o => o.id === osId);
   if (!os) return;
 
-  // Feedback visual no botão
   const btnPDF = document.querySelector(`button[onclick="exportarPDFOS(${osId})"]`);
   if (btnPDF) { btnPDF.disabled = true; btnPDF.textContent = '⏳ Gerando PDF...'; }
 
@@ -1926,146 +1925,200 @@ async function exportarPDFOS(osId) {
     const doc    = new jsPDF('p', 'mm', 'a4');
     const pageW  = doc.internal.pageSize.getWidth();
     const pageH  = doc.internal.pageSize.getHeight();
-    const margin = 16;
-    const contentW = pageW - margin * 2;
-    const geradoEm = new Date().toLocaleDateString('pt-BR');
+    const M      = 18;                       // margem lateral
+    const cW     = pageW - M * 2;            // largura útil
+    const GOLD   = [176, 144, 96];           // #B09060 — dourado elegante
+    const DARK   = [16, 16, 20];
+    const MID    = [90, 90, 100];
+    const LGRAY  = [246, 246, 248];
+    const geradoEm = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
 
-    // ── Cabeçalho ──
-    doc.setFillColor(248, 248, 248);
-    doc.rect(0, 0, pageW, 28, 'F');
-    doc.setDrawColor(220, 220, 225);
-    doc.line(0, 28, pageW, 28);
+    // ─── CABEÇALHO ──────────────────────────────────────────────────────
+    doc.setFillColor(...LGRAY);
+    doc.rect(0, 0, pageW, 34, 'F');
 
-    const logoBase64 = await carregarImgBase64('logosolucao.png');
-    if (logoBase64) {
-      try { doc.addImage(logoBase64, 'PNG', margin, 9, 40, 10); } catch {}
+    // Logo (letras pretas em fundo claro — perfeito para PDF cliente)
+    const logoB64 = await carregarImgBase64('logosolucao.png');
+    if (logoB64) {
+      try { doc.addImage(logoB64, 'PNG', M, 8, 56, 18); } catch {}
     } else {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(20, 20, 20);
-      doc.text('Solução Técnica', margin, 18);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...DARK);
+      doc.text('SOLUÇÃO TÉCNICA', M, 22);
     }
 
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150, 150, 160);
-    doc.text(`Relatório de Serviço · ${geradoEm}`, pageW - margin, 14, { align: 'right' });
-    doc.text('Sistema de Gestão de Obras', pageW - margin, 21, { align: 'right' });
+    // Bloco direito do cabeçalho
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...DARK);
+    doc.text('RELATÓRIO DE SERVIÇO', pageW - M, 15, { align: 'right' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...MID);
+    doc.text(`Emitido em ${geradoEm}`, pageW - M, 22, { align: 'right' });
+    doc.setFontSize(7); doc.setTextColor(160, 160, 170);
+    doc.text('Solução Técnica — Automação e Integração', pageW - M, 28, { align: 'right' });
 
-    // ── Faixa com nome do cliente ──
-    doc.setFillColor(18, 18, 22);
-    doc.rect(0, 29, pageW, 24, 'F');
+    // Linha dourada decorativa sob o cabeçalho
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.9);
+    doc.line(0, 34, pageW, 34);
+    doc.setLineWidth(0.2);
+
+    // ─── BLOCO DO CLIENTE ────────────────────────────────────────────────
+    doc.setFillColor(...DARK);
+    doc.rect(0, 35, pageW, 30, 'F');
+
     const clienteNome = os.obras?.nome_cliente || 'Cliente não informado';
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(255, 255, 255);
-    doc.text(clienteNome.substring(0, 58), margin, 40);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(180, 180, 195);
-    const dataStr  = os.data_servico ? formatarDataBR(os.data_servico) : '—';
-    const horario  = [os.horario_inicio?.slice(0,5), os.horario_fim?.slice(0,5)].filter(Boolean).join(' – ') || null;
-    const equipeStr = os.equipeNomes?.join(' · ') || '—';
-    const linhaInfo = [dataStr, horario, equipeStr].filter(Boolean).join('  ·  ');
-    doc.text(linhaInfo, margin, 48);
 
-    let y = 62;
+    // Número OS — canto direito
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+    doc.setTextColor(...GOLD);
+    doc.text(`OS #${osId}`, pageW - M, 44, { align: 'right' });
 
+    // Nome do cliente
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(255, 255, 255);
+    const nomeLinhas = doc.splitTextToSize(clienteNome, cW - 28);
+    doc.text(nomeLinhas[0], M, 49);
+
+    // Linha de info (data · horário · equipe)
+    const dataStr   = os.data_servico ? formatarDataBR(os.data_servico) : '—';
+    const horario   = [os.horario_inicio?.slice(0,5), os.horario_fim?.slice(0,5)].filter(Boolean).join(' – ') || null;
+    const equipeStr = os.equipeNomes?.join(' · ') || null;
+    const linhaInfo = [dataStr, horario, equipeStr].filter(Boolean).join('   ·   ');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(175, 175, 200);
+    doc.text(linhaInfo, M, 57);
+
+    // Endereço dentro do bloco
+    if (os.obras?.endereco) {
+      doc.setFontSize(7.5); doc.setTextColor(120, 120, 145);
+      const endLinhas = doc.splitTextToSize(os.obras.endereco, cW);
+      doc.text(endLinhas[0], M, 63);
+    }
+
+    let y = 76;
+
+    // ─── HELPERS ────────────────────────────────────────────────────────
     function novaPg(yy, h = 20) {
-      if (yy + h > pageH - 20) { doc.addPage(); return 18; }
+      if (yy + h > pageH - 22) { doc.addPage(); return 18; }
       return yy;
+    }
+
+    function secTitulo(titulo) {
+      y = novaPg(y, 16);
+      // Fundo sutil
+      doc.setFillColor(242, 242, 246);
+      doc.rect(M, y - 5.5, cW, 11, 'F');
+      // Barra lateral dourada
+      doc.setFillColor(...GOLD);
+      doc.rect(M, y - 5.5, 3, 11, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...MID);
+      doc.text(titulo, M + 7, y + 1.8);
+      y += 10;
     }
 
     function campo(label, valor) {
       if (!valor || String(valor).trim() === '') return;
       y = novaPg(y, 20);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(130, 130, 145);
-      doc.text(label.toUpperCase(), margin, y); y += 4.5;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(25, 25, 30);
-      const linhas = doc.splitTextToSize(String(valor), contentW);
-      linhas.forEach(l => { y = novaPg(y, 7); doc.text(l, margin, y); y += 6; });
-      y += 3;
+      // Label
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(155, 155, 170);
+      doc.text(label.toUpperCase(), M, y);
+      y += 4;
+      // Valor
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
+      const linhas = doc.splitTextToSize(String(valor), cW);
+      linhas.forEach(l => { y = novaPg(y, 7); doc.text(l, M, y); y += 5.5; });
+      y += 2;
     }
 
-    function sepLinha() {
+    function sep() {
       y = novaPg(y, 8);
-      doc.setDrawColor(225, 225, 230); doc.line(margin, y, pageW - margin, y); y += 7;
+      doc.setDrawColor(220, 220, 228); doc.setLineWidth(0.15);
+      doc.line(M, y, pageW - M, y);
+      doc.setLineWidth(0.2);
+      y += 6;
     }
 
-    function secTitulo(titulo) {
-      y = novaPg(y, 12);
-      doc.setFillColor(240, 240, 245);
-      doc.rect(margin, y - 4, contentW, 10, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(60, 60, 75);
-      doc.text(titulo, margin + 3, y + 2); y += 10;
-    }
-
-    // Dados básicos
-    if (os.obras?.endereco) campo('Endereço', os.obras.endereco);
-
+    // ─── SEÇÕES DE CONTEÚDO ──────────────────────────────────────────────
     if (os.servico_planejado || os.servicos_realizados) {
-      sepLinha();
       secTitulo('SERVIÇOS');
-      if (os.servico_planejado)   campo('Serviço planejado',  os.servico_planejado);
+      if (os.servico_planejado)   campo('Serviço planejado',   os.servico_planejado);
       if (os.servicos_realizados) campo('Serviços realizados', os.servicos_realizados);
     }
 
-    const temProblema = os.houve_problema || os.faltou_material || os.retornou_material || os.retorno_equipamento;
-    if (temProblema) {
-      sepLinha();
-      secTitulo('OCORRÊNCIAS');
-      if (os.houve_problema)                          campo('Problema reportado',   os.descricao_problema || 'Sim');
-      if (os.faltou_material    && os.lista_material)  campo('Material faltante',    os.lista_material);
-      if (os.retornou_material  && os.lista_retorno)   campo('Material retornado',   os.lista_retorno);
+    const temOcorrencia = os.houve_problema || os.faltou_material || os.retornou_material || os.retorno_equipamento;
+    if (temOcorrencia) {
+      sep(); secTitulo('OCORRÊNCIAS');
+      if (os.houve_problema)                               campo('Problema reportado',    os.descricao_problema || 'Sim');
+      if (os.faltou_material    && os.lista_material)      campo('Material faltante',     os.lista_material);
+      if (os.retornou_material  && os.lista_retorno)       campo('Material retornado',    os.lista_retorno);
       if (os.retorno_equipamento && os.lista_equipamentos) campo('Equipamento retornado', os.lista_equipamentos);
     }
 
     if (os.sistema_automacao || os.proximas_atividades || os.observacoes) {
-      sepLinha();
-      secTitulo('INFORMAÇÕES ADICIONAIS');
+      sep(); secTitulo('INFORMAÇÕES ADICIONAIS');
       if (os.sistema_automacao)   campo('Sistema de automação', os.sistema_automacao);
       if (os.proximas_atividades) campo('Próximas atividades',  os.proximas_atividades);
       if (os.observacoes)         campo('Observações',          os.observacoes);
     }
 
-    // ── Fotos ──
+    // ─── FOTOS ──────────────────────────────────────────────────────────
     if (os.fotos_urls?.length > 0) {
-      sepLinha();
-      secTitulo(`REGISTRO FOTOGRÁFICO (${os.fotos_urls.length} foto${os.fotos_urls.length > 1 ? 's' : ''})`);
+      sep(); secTitulo(`REGISTRO FOTOGRÁFICO — ${os.fotos_urls.length} FOTO${os.fotos_urls.length > 1 ? 'S' : ''}`);
 
-      const FOTO_W  = (contentW - 6) / 2;   // 2 colunas
-      const FOTO_H  = FOTO_W * 0.70;         // ratio 10:7
-      let col = 0;
+      const GAP     = 7;
+      const FOTO_W  = (cW - GAP) / 2;
+      const FOTO_H  = FOTO_W * 0.70;
+      const RAIO    = 1.5;
+      let col  = 0;
       let rowY = y;
 
-      for (const url of os.fotos_urls) {
-        const imgB64 = await carregarImgBase64(url);
+      for (let i = 0; i < os.fotos_urls.length; i++) {
+        const imgB64 = await carregarImgBase64(os.fotos_urls[i]);
         if (!imgB64) continue;
 
-        if (col === 0) {
-          rowY = novaPg(rowY, FOTO_H + 6);
-        }
-        const x = margin + col * (FOTO_W + 6);
+        if (col === 0) rowY = novaPg(rowY, FOTO_H + 16);
+
+        const x = M + col * (FOTO_W + GAP);
+
         try {
-          doc.setDrawColor(220, 220, 225);
-          doc.rect(x, rowY, FOTO_W, FOTO_H);
+          // Sombra leve (rect deslocado)
+          doc.setFillColor(205, 205, 212);
+          doc.roundedRect(x + 0.8, rowY + 0.8, FOTO_W, FOTO_H, RAIO, RAIO, 'F');
+          // Foto
           doc.addImage(imgB64, 'JPEG', x, rowY, FOTO_W, FOTO_H, '', 'FAST');
+          // Borda fina
+          doc.setDrawColor(195, 195, 208); doc.setLineWidth(0.25);
+          doc.roundedRect(x, rowY, FOTO_W, FOTO_H, RAIO, RAIO, 'S');
+          doc.setLineWidth(0.2);
+          // Legenda
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(140, 140, 155);
+          doc.text(`Foto ${i + 1}`, x + 1, rowY + FOTO_H + 5);
         } catch {}
 
         col++;
-        if (col >= 2) { col = 0; rowY += FOTO_H + 8; y = rowY; }
+        if (col >= 2) { col = 0; rowY += FOTO_H + 15; y = rowY; }
       }
-      if (col > 0) y = rowY + FOTO_H + 8;
+      if (col > 0) y = rowY + FOTO_H + 15;
     }
 
-    // ── Rodapé em todas as páginas ──
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let pg = 1; pg <= totalPages; pg++) {
+    // ─── RODAPÉ EM TODAS AS PÁGINAS ─────────────────────────────────────
+    const total = doc.internal.getNumberOfPages();
+    for (let pg = 1; pg <= total; pg++) {
       doc.setPage(pg);
-      doc.setDrawColor(215, 215, 220);
-      doc.line(margin, pageH - 13, pageW - margin, pageH - 13);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(150, 150, 160);
-      doc.text('Solução Técnica · Sistema de Gestão de Obras', margin, pageH - 8);
-      doc.text(`Página ${pg} de ${totalPages}`, pageW - margin, pageH - 8, { align: 'right' });
+      // Linha dourada no rodapé
+      doc.setDrawColor(...GOLD); doc.setLineWidth(0.5);
+      doc.line(M, pageH - 16, pageW - M, pageH - 16);
+      doc.setLineWidth(0.2);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(155, 155, 165);
+      doc.text('Solução Técnica · Automação e Integração', M, pageH - 10);
+      doc.text(`Página ${pg} / ${total}`, pageW - M, pageH - 10, { align: 'right' });
     }
 
     const slug = clienteNome.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     doc.save(`relatorio-${slug}-${os.data_servico || 'sem-data'}.pdf`);
 
   } finally {
-    if (btnPDF) { btnPDF.disabled = false; btnPDF.innerHTML = '<i data-lucide="file-down"></i> Gerar PDF desta OS'; lucide.createIcons(); }
+    if (btnPDF) {
+      btnPDF.disabled = false;
+      btnPDF.innerHTML = '<i data-lucide="file-down"></i> Gerar PDF desta OS';
+      lucide.createIcons();
+    }
   }
 }
 

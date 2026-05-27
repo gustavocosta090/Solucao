@@ -599,10 +599,10 @@
       position: fixed;
       left: -9999px;
       top: 0;
-      width: 560px;
-      background: #ffffff;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      border-radius: 16px;
+      width: 1500px;
+      background: #0f172a;
+      font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+      border-radius: 14px;
       overflow: hidden;
     }
     .ac-header {
@@ -1771,6 +1771,21 @@ function fecharModalSemanaBtn() {
   document.getElementById('overlay-semana').style.display = 'none';
 }
 
+// ── Carregar imagem como base64 via fetch (evita CORS/canvas taint) ──
+async function carregarImgBase64(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise(ok => {
+      const reader = new FileReader();
+      reader.onloadend = () => ok(reader.result);
+      reader.onerror  = () => ok(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
 async function gerarProgramacaoSemanal() {
   const tecId   = Number(document.getElementById('semana-tec-id').value);
   const refDate = document.getElementById('semana-data-ref').value;
@@ -1783,9 +1798,12 @@ async function gerarProgramacaoSemanal() {
   const tec = tecnicos.find(t => t.id === tecId);
   if (!tec) return;
 
+  fecharModalSemanaBtn();
+  mostrarToast('⏳ Gerando imagem horizontal...', 'ok');
+
   // Calcula seg–sex da semana da data de referência
   const base = new Date(refDate + 'T12:00');
-  const diaSemana = base.getDay() === 0 ? 7 : base.getDay(); // dom=7
+  const diaSemana = base.getDay() === 0 ? 7 : base.getDay();
   const seg = new Date(base); seg.setDate(base.getDate() - diaSemana + 1);
   const diasSemana = Array.from({length:5}, (_, i) => { const d = new Date(seg); d.setDate(seg.getDate()+i); return d; });
   const datasISO = diasSemana.map(fmtISO);
@@ -1796,83 +1814,118 @@ async function gerarProgramacaoSemanal() {
     [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].includes(tecId)
   );
 
-  if (agSemana.length === 0) {
-    erroEl.textContent = `Nenhum agendamento encontrado para ${tec.nome} nessa semana.`;
-    erroEl.style.display = 'block';
-    return;
-  }
-
-  fecharModalSemanaBtn();
-
-  const DIAS_PT  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const DIAS_PT  = ['Dom','Segunda','Terça','Quarta','Quinta','Sexta','Sáb'];
+  const DIAS_ABR = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
-  // Agrupa por dia
-  const porDia = datasISO.map((iso, i) => {
-    const ags = agSemana.filter(ag => ag.data === iso);
-    const d   = diasSemana[i];
-    return { label: `${DIAS_PT[d.getDay()]} ${d.getDate()}/${MESES_PT[d.getMonth()]}`, ags };
-  }).filter(g => g.ags.length > 0);
-
-  const campo = (lbl, val, cls='') => val
-    ? `<div class="ac-campo"><span class="ac-campo-label">${lbl}</span><span class="ac-campo-valor${cls}">${val}</span></div>` : '';
-
-  const diasHTML = porDia.map(({ label, ags }) => {
-    const atsHTML = ags.map(ag => {
-      const hora = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
-      const cliente = ag.obras?.nome_cliente || ag.cliente_outro || '—';
-      const end  = ag.endereco_outro || ag.obras?.endereco || '';
-      const serv = ag.servico || '';
-      const veic = ag.veiculo || '';
-      return `<div class="ac-atendimento">
-        <div class="ac-at-header" style="background:#1D4ED8">
-          <span class="ac-at-dot"></span>${escHtml(hora)} — ${escHtml(cliente)}
-        </div>
-        <div class="ac-campos">
-          ${campo('Cliente', cliente, ' destaque')}
-          ${campo('Endereço', end)}
-          ${campo('Serviço', serv)}
-          ${campo('Veículo', veic)}
-        </div>
-      </div>`;
-    }).join('');
-    return `<div style="margin-bottom:18px">
-      <div style="font-size:13px;font-weight:700;color:#1e293b;padding:8px 20px;background:#e2e8f0;border-radius:6px 6px 0 0;text-transform:uppercase;letter-spacing:0.05em;">${label}</div>
-      ${atsHTML}
-    </div>`;
-  }).join('');
-
-  const [y, m, d2] = datasISO[0].split('-');
+  const [yy, mm, dd] = datasISO[0].split('-');
   const [ye, me, de] = datasISO[4].split('-');
-  const periodoFmt = `${d2}/${m}/${y} – ${de}/${me}/${ye}`;
+  const periodoFmt = `${dd}/${mm}/${yy.slice(2)} – ${de}/${me}/${ye.slice(2)}`;
+  const geradoEm   = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+  // Carregar logo como base64 (letras pretas → inverte para branco via CSS filter)
+  const logoB64 = await carregarImgBase64('logosolucao.png');
+
+  // Cores por dia da semana (seg→sex)
+  const COR_DIA = ['#1D4ED8','#0891B2','#0F766E','#4338CA','#7C3AED'];
+
+  // Cores por equipe
+  const COR_EQ = { 1:'#1D4ED8', 2:'#B45309', 3:'#6D28D9', 4:'#065F46', 5:'#9F1239' };
+
+  // Gera HTML de uma coluna (um dia)
+  function colunaHTML(iso, idx) {
+    const d    = diasSemana[idx];
+    const ags  = agSemana.filter(ag => ag.data === iso);
+    const diaN = DIAS_PT[d.getDay()] || DIAS_ABR[d.getDay()];
+    const dataL = `${String(d.getDate()).padStart(2,'0')} ${MESES_PT[d.getMonth()]}`;
+    const cor  = COR_DIA[idx] || '#1D4ED8';
+    const temAgs = ags.length > 0;
+
+    const cardsHTML = !temAgs
+      ? `<div style="text-align:center;padding:28px 8px 16px;font-size:11px;color:#475569;font-style:italic;letter-spacing:0.02em;">Sem serviços</div>`
+      : ags.map(ag => {
+          const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
+          const cliente = escHtml(ag.obras?.nome_cliente || ag.cliente_outro || '—');
+          const end     = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
+          const serv    = escHtml(ag.servico || '');
+          const veic    = escHtml(ag.veiculo || '');
+          const corEq   = COR_EQ[ag.equipe_id] || '#1D4ED8';
+          return `<div style="background:#0f172a;border-radius:7px;padding:10px 12px;margin-bottom:8px;border-left:3px solid ${corEq};">
+            <div style="font-size:12px;font-weight:700;color:#f1f5f9;line-height:1.3;margin-bottom:${serv||end||veic?'5px':'0'}">${hora} — ${cliente}</div>
+            ${serv ? `<div style="font-size:10px;color:#94a3b8;margin-bottom:2px;line-height:1.3;">${serv}</div>` : ''}
+            ${end  ? `<div style="font-size:10px;color:#64748b;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${end}</div>` : ''}
+            ${veic ? `<div style="font-size:10px;color:#475569;margin-top:2px;">🚗 ${veic}</div>` : ''}
+          </div>`;
+        }).join('');
+
+    return `<div style="flex:1;background:#1e293b;border-radius:10px;overflow:hidden;min-width:0;display:flex;flex-direction:column;">
+      <div style="background:${cor};padding:12px 14px;text-align:center;">
+        <div style="font-size:14px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.07em;">${diaN}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:3px;">${dataL}${temAgs ? ` · ${ags.length} serv.` : ''}</div>
+      </div>
+      <div style="padding:10px 10px 12px;flex:1;">${cardsHTML}</div>
+    </div>`;
+  }
+
+  const colunasHTML = datasISO.map((iso, i) => colunaHTML(iso, i)).join('');
 
   const card = document.getElementById('agenda-card');
-  card.innerHTML = `
-    <div class="ac-header">
-      <div>
-        <div class="ac-brand">Solução Técnica</div>
-        <div class="ac-titulo">Programação da semana</div>
-        <div class="ac-data">${escHtml(tec.nome)} · ${periodoFmt}</div>
+  card.innerHTML = `<div style="width:1500px;background:#0f172a;font-family:'Segoe UI',system-ui,Arial,sans-serif;border-radius:14px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.5);">
+
+    <!-- ── Header ── -->
+    <div style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:20px 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1D4ED8;">
+      <div style="display:flex;align-items:center;gap:20px;">
+        ${logoB64
+          ? `<img src="${logoB64}" style="height:33px;filter:brightness(0) invert(1);opacity:0.95;">`
+          : `<span style="font-size:17px;font-weight:800;color:#fff;letter-spacing:-0.5px;">SOLUÇÃO TÉCNICA</span>`}
+        <div style="width:1px;height:38px;background:rgba(255,255,255,0.12);"></div>
+        <div>
+          <div style="font-size:19px;font-weight:700;color:#f1f5f9;letter-spacing:-0.3px;">${escHtml(tec.nome)}</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:3px;">Programação semanal · ${periodoFmt}</div>
+        </div>
       </div>
-      <div class="ac-icon">📅</div>
+      <div style="text-align:right;">
+        <div style="font-size:12px;font-weight:600;color:#475569;background:rgba(255,255,255,0.05);padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);">
+          ${agSemana.length} serviço${agSemana.length !== 1 ? 's' : ''} esta semana
+        </div>
+        <div style="font-size:9px;color:#334155;margin-top:6px;">Gerado em ${geradoEm}</div>
+      </div>
     </div>
-    <div class="ac-body">${diasHTML}</div>
-    <div class="ac-footer"><div class="ac-footer-txt">Solução Técnica · sistema de gestão</div></div>`;
+
+    <!-- ── Colunas dos dias ── -->
+    <div style="display:flex;gap:10px;padding:14px 14px 12px;">
+      ${colunasHTML}
+    </div>
+
+    <!-- ── Footer ── -->
+    <div style="background:#1e293b;padding:11px 28px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.06);">
+      <div style="font-size:10px;color:#475569;letter-spacing:0.03em;">Solução Técnica · Sistema de Gestão de Obras</div>
+      <div style="font-size:10px;color:#334155;">Sistema interno · ${geradoEm}</div>
+    </div>
+  </div>`;
 
   try {
     await document.fonts.ready;
-    const canvas = await html2canvas(card, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false });
-    const blob   = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    const canvas = await html2canvas(card, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#0f172a',
+      logging: false,
+      width: 1500,
+    });
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
     try {
       await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
       mostrarToast('✅ Imagem copiada! Abra o WhatsApp e cole (Ctrl+V).', 'ok');
       setTimeout(() => window.open('https://web.whatsapp.com', '_blank'), 800);
     } catch {
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `prog-semanal-${tec.nome.replace(/\s/g,'-')}-${datasISO[0]}.png`; a.click();
+      const a   = document.createElement('a');
+      a.href = url;
+      a.download = `prog-semanal-${tec.nome.replace(/\s+/g,'-')}-${datasISO[0]}.png`;
+      a.click();
       URL.revokeObjectURL(url);
-      mostrarToast('Imagem baixada! Anexe no WhatsApp.', 'ok');
+      mostrarToast('📥 Imagem baixada! Anexe no WhatsApp.', 'ok');
     }
   } catch(err) {
     mostrarToast('Erro ao gerar imagem: ' + err.message, 'err');
