@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27 -->
+<!-- build: 2026-05-27b -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -891,19 +891,55 @@ function sanitizarNomePasta(nome) {
     .substring(0, 60);                // limita o tamanho
 }
 
-async function uploadFotos(nomeCliente) {
-  const urls   = [];
-  const pasta  = sanitizarNomePasta(nomeCliente); // ex: "joao_da_silva"
+// Faz upload de todas as fotos para o SharePoint via proxy Vercel
+// Retorna URLs do tipo /api/foto?path=... que funcionam no supervisor/obra_detail
+async function uploadFotoSharePoint(nomeCliente, dataServico) {
+  const urls       = [];
+  const pasta      = sanitizarNomePasta(nomeCliente);
+  const folderPath = `${OD_PASTA_RAIZ}/${pasta}`;
+  const ts         = Date.now();
+
   for (let i = 0; i < fotosSelecionadas.length; i++) {
     const f   = fotosSelecionadas[i];
-    const ext = f.file.name.split('.').pop().toLowerCase() || 'jpg';
-    const path = `obras/${pasta}/${Date.now()}_${i}.${ext}`;
+    const ext = (f.file.name.split('.').pop() || 'jpg').toLowerCase();
+    const filename = `${dataServico}_${ts}_foto-${String(i + 1).padStart(2, '0')}.${ext}`;
+
     const thumb = document.getElementById(`thumb-${f.id}`);
-    if (thumb) thumb.innerHTML += `<div class="foto-uploading">${i+1}/${fotosSelecionadas.length}</div>`;
-    const { error } = await db.storage.from('fotos-os').upload(path, f.file, { contentType: f.file.type });
-    if (!error) {
-      const { data: urlData } = db.storage.from('fotos-os').getPublicUrl(path);
-      urls.push(urlData.publicUrl);
+    if (thumb) thumb.innerHTML += `<div class="foto-uploading">${i + 1}/${fotosSelecionadas.length}</div>`;
+
+    try {
+      // 1. Pede sessão de upload ao proxy
+      const initRes = await fetch('/api/upload', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ path: folderPath, filename, contentType: f.file.type }),
+      });
+      if (!initRes.ok) throw new Error(await initRes.text());
+      const { uploadUrl, filePath } = await initRes.json();
+
+      // 2. Envia direto ao Microsoft (uploadUrl é pré-autenticada)
+      const CHUNK = 5 * 1024 * 1024;
+      let start = 0;
+      while (start < f.file.size) {
+        const end   = Math.min(start + CHUNK, f.file.size);
+        const chunk = f.file.slice(start, end);
+        const put   = await fetch(uploadUrl, {
+          method:  'PUT',
+          headers: {
+            'Content-Range':  `bytes ${start}-${end - 1}/${f.file.size}`,
+            'Content-Length': String(end - start),
+            'Content-Type':   f.file.type || 'image/jpeg',
+          },
+          body: chunk,
+        });
+        if (!put.ok && put.status !== 202) throw new Error(`Chunk erro ${put.status}`);
+        start = end;
+      }
+
+      // 3. URL proxy para exibir no app (supervisor, obra_detail)
+      urls.push(`/api/foto?path=${encodeURIComponent(filePath)}`);
+    } catch (e) {
+      console.warn(`Foto ${i + 1} falhou:`, e.message);
     }
   }
   return urls;
@@ -1002,7 +1038,7 @@ function _gerarPDFOS(dados) {
   return doc.output('blob');
 }
 
-async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, dadosPDF, fotos }) {
+async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, dadosPDF }) {
   const statusEl = document.getElementById('onedrive-status');
   const set = (msg, cor = 'var(--text-2)') => {
     if (statusEl) statusEl.innerHTML = `<span style="color:${cor}">☁️ OneDrive: ${msg}</span>`;
@@ -1054,17 +1090,10 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, dadosPDF
     const pdfBlob = _gerarPDFOS(dadosPDF);
     set('enviando PDF...');
     await uploadArquivo(pdfBlob, `${prefixo}.pdf`);
-
-    for (let i = 0; i < fotos.length; i++) {
-      const f   = fotos[i];
-      const ext = (f.file.name.split('.').pop() || 'jpg').toLowerCase();
-      set(`enviando foto ${i + 1}/${fotos.length}...`);
-      await uploadArquivo(f.file, `${prefixo}_foto-${String(i + 1).padStart(2, '0')}.${ext}`);
-    }
-    set(`✅ ${1 + fotos.length} arquivo(s) enviado(s)`, 'var(--primary)');
+    set('✅ PDF salvo no SharePoint', 'var(--primary)');
   } catch (e) {
-    set(`falha no upload (OS já salva): ${e.message}`, '#f87171');
-    console.error('OneDrive upload error:', e);
+    set(`falha no PDF: ${e.message}`, '#f87171');
+    console.error('SharePoint PDF error:', e);
   }
 }
 
@@ -1080,9 +1109,10 @@ async function enviarOS() {
                       || agendamentoSelecionado?.cliente_outro
                       || null;
     let fotoUrls = [];
-    if (fotosSelecionadas.length > 0 && nomeCliente) {
+    if (fotosSelecionadas.length > 0) {
       btn.textContent = `Enviando ${fotosSelecionadas.length} foto(s)...`;
-      fotoUrls = await uploadFotos(nomeCliente);
+      const dataParaFoto = ag?.data || new Date().toISOString().slice(0, 10);
+      fotoUrls = await uploadFotoSharePoint(nomeCliente || 'sem-cliente', dataParaFoto);
     }
 
     // Auxiliares vêm dos checkboxes selecionados
@@ -1248,11 +1278,11 @@ async function enviarOS() {
       `${num} registrada para ${ag?.obras?.nome_cliente || ag?.cliente_outro || 'o cliente'}.`
       + (fotoUrls.length > 0 ? ` ${fotoUrls.length} foto(s) anexada(s).` : '');
 
-    // ── Dispara upload OneDrive (não bloqueia a UI) ──
+    // ── Dispara PDF para o SharePoint (não bloqueia a UI) ──
+    // Fotos já estão no SharePoint (enviadas antes do save acima)
     {
-      const fotosCopia     = [...fotosSelecionadas];
-      const numeroOSfinal  = document.getElementById('os-numero').textContent;
-      const equipeNomesOD  = participantes.map(id => {
+      const numeroOSfinal = document.getElementById('os-numero').textContent;
+      const equipeNomesOD = participantes.map(id => {
         const t = tecnicos.find(t => t.id === id);
         return t ? t.nome : null;
       }).filter(Boolean).join(' · ');
@@ -1285,7 +1315,6 @@ async function enviarOS() {
           proximas:     payload.proximas_atividades,
           obs:          payload.observacoes,
         },
-        fotos: fotosCopia,
       }); // sem await → não bloqueia
     }
 
