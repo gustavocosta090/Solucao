@@ -1,16 +1,4 @@
 // api/upload.js — Vercel Serverless Function
-//
-// Recebe: POST { path, filename, contentType }
-// Autentica com Microsoft 365 via client_credentials (segredo nunca vai pro browser)
-// Cria upload session no SharePoint e retorna { uploadUrl }
-// O browser faz o PUT diretamente para uploadUrl (URL pré-autenticada, sem auth header)
-//
-// Variáveis de ambiente necessárias no Vercel:
-//   MS_TENANT_ID          — ID do locatário Azure AD
-//   MS_CLIENT_ID          — ID do aplicativo Azure AD
-//   MS_CLIENT_SECRET      — Segredo do aplicativo
-//   MS_SHAREPOINT_HOST    — ex: suaempresa.sharepoint.com
-//   MS_SHAREPOINT_SITE_PATH — ex: /sites/operacoes  (ou / para o site raiz)
 
 let _cachedSiteId   = null;
 let _cachedToken    = null;
@@ -34,26 +22,62 @@ async function getToken() {
   );
 
   const data = await res.json();
-  if (!data.access_token) throw new Error('Falha ao obter token Microsoft: ' + JSON.stringify(data));
+  if (!data.access_token) throw new Error('Token error: ' + JSON.stringify(data));
 
   _cachedToken    = data.access_token;
   _tokenExpiresAt = Date.now() + data.expires_in * 1000;
+  console.log('[upload] token obtido, expira em', data.expires_in, 's');
   return _cachedToken;
 }
 
 async function getSiteId(token) {
   if (_cachedSiteId) return _cachedSiteId;
 
-  const host     = process.env.MS_SHAREPOINT_HOST;
-  const sitePath = process.env.MS_SHAREPOINT_SITE_PATH || '/';
-  const url      = `https://graph.microsoft.com/v1.0/sites/${host}:${sitePath}`;
+  const host     = process.env.MS_SHAREPOINT_HOST;        // ex: idccba.sharepoint.com
+  const sitePath = process.env.MS_SHAREPOINT_SITE_PATH;   // ex: /sites/TecnicaSolucaocba
 
-  const res  = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  const data = await res.json();
-  if (!data.id) throw new Error('Site SharePoint não encontrado: ' + JSON.stringify(data));
+  // Tentativa 1: URL direta com caminho
+  const url1 = `https://graph.microsoft.com/v1.0/sites/${host}:${sitePath}`;
+  console.log('[upload] tentando site URL:', url1);
+  const r1   = await fetch(url1, { headers: { Authorization: `Bearer ${token}` } });
+  const d1   = await r1.json();
+  console.log('[upload] resposta tentativa 1:', JSON.stringify(d1).slice(0, 300));
 
-  _cachedSiteId = data.id;
-  return _cachedSiteId;
+  if (d1.id) {
+    _cachedSiteId = d1.id;
+    return _cachedSiteId;
+  }
+
+  // Tentativa 2: busca pelo nome do site
+  const siteName = sitePath.split('/').filter(Boolean).pop(); // "TecnicaSolucaocba"
+  const url2     = `https://graph.microsoft.com/v1.0/sites?search=${encodeURIComponent(siteName)}`;
+  console.log('[upload] tentando busca por nome:', url2);
+  const r2 = await fetch(url2, { headers: { Authorization: `Bearer ${token}` } });
+  const d2 = await r2.json();
+  console.log('[upload] resposta tentativa 2:', JSON.stringify(d2).slice(0, 300));
+
+  const found = (d2.value || []).find(s =>
+    s.webUrl?.toLowerCase().includes(siteName.toLowerCase())
+  );
+  if (found?.id) {
+    console.log('[upload] site encontrado por busca:', found.webUrl, '→', found.id);
+    _cachedSiteId = found.id;
+    return _cachedSiteId;
+  }
+
+  // Tentativa 3: site raiz (útil pra debug)
+  const url3 = `https://graph.microsoft.com/v1.0/sites/${host}`;
+  console.log('[upload] tentando site raiz:', url3);
+  const r3 = await fetch(url3, { headers: { Authorization: `Bearer ${token}` } });
+  const d3 = await r3.json();
+  console.log('[upload] resposta raiz:', JSON.stringify(d3).slice(0, 300));
+
+  throw new Error(
+    `Site não encontrado após 3 tentativas. ` +
+    `T1: ${d1.error?.code}/${d1.error?.message}. ` +
+    `T2: ${d2.error?.code || (d2.value?.length + ' sites')}. ` +
+    `T3: ${d3.error?.code || d3.webUrl}`
+  );
 }
 
 export default async function handler(req, res) {
@@ -66,14 +90,13 @@ export default async function handler(req, res) {
 
   const { path: folderPath, filename, contentType } = req.body || {};
   if (!folderPath || !filename) {
-    return res.status(400).json({ error: 'Campos obrigatórios: path, filename' });
+    return res.status(400).json({ error: 'path e filename obrigatórios' });
   }
 
   try {
     const token  = await getToken();
     const siteId = await getSiteId(token);
 
-    // Caminho completo dentro da biblioteca de documentos do SharePoint
     const fullPath    = `${folderPath}/${filename}`;
     const encodedPath = fullPath.split('/').map(encodeURIComponent).join('/');
 
@@ -81,28 +104,22 @@ export default async function handler(req, res) {
       `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}:/createUploadSession`,
       {
         method:  'POST',
-        headers: {
-          Authorization:  `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          item: {
-            '@microsoft.graph.conflictBehavior': 'replace',
-            name: filename,
-          },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          item: { '@microsoft.graph.conflictBehavior': 'replace', name: filename },
         }),
       }
     );
 
     const sessData = await sessRes.json();
     if (!sessData.uploadUrl) {
-      throw new Error('Erro ao criar sessão de upload: ' + JSON.stringify(sessData));
+      throw new Error('Sessão de upload falhou: ' + JSON.stringify(sessData));
     }
 
     return res.status(200).json({ uploadUrl: sessData.uploadUrl });
 
   } catch (e) {
-    console.error('[api/upload] erro:', e.message);
+    console.error('[api/upload] erro final:', e.message);
     return res.status(500).json({ error: e.message });
   }
 }
