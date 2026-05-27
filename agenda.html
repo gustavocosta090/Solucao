@@ -191,6 +191,19 @@
 
     .dia-data.hoje { color: var(--primary); }
 
+    /* ── Botão disparar dia (dentro do header de cada coluna) ── */
+    .btn-dispatch-dia {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px;
+      background: rgba(37,211,102,0.08);
+      border: 1px solid rgba(37,211,102,0.22);
+      border-radius: var(--radius-input);
+      color: #25D366; cursor: pointer; flex-shrink: 0;
+      transition: background 150ms, border-color 150ms;
+    }
+    .btn-dispatch-dia:hover { background: rgba(37,211,102,0.18); border-color: rgba(37,211,102,0.45); }
+    .btn-dispatch-dia svg { width: 12px; height: 12px; flex-shrink: 0; }
+
     .btn-add {
       background: transparent;
       border: 1px solid var(--border);
@@ -1149,7 +1162,10 @@ function renderGrade(dias) {
             <div class="dia-nome">${DIAS[i]}</div>
             <div class="dia-data ${isHoje(dia) ? 'hoje' : ''}">${fmtBR(dia)}</div>
           </div>
-          ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento"><i data-lucide="plus"></i></button>`}
+          <div style="display:flex;align-items:center;gap:4px;">
+            ${['agendamento','coordenador','supervisor'].includes(roleAtual) ? `<button class="btn-dispatch-dia" onclick="dispararDia('${dataStr}')" title="Disparar agenda deste dia no WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>` : ''}
+            ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento"><i data-lucide="plus"></i></button>`}
+          </div>
         </div>
         <div class="coluna-body">${cards}</div>
       </div>`;
@@ -1605,6 +1621,13 @@ function mostrarToast(msg, tipo = 'ok') {
 }
 
 // ── Disparar agenda do dia como IMAGEM ───────────────────────
+// ── Disparar agenda de um dia específico (botão no header da coluna) ──
+function dispararDia(dataStr) {
+  const dpEl = document.getElementById('data-dispatch');
+  if (dpEl) dpEl.value = dataStr;
+  dispararAgendaWhatsapp();
+}
+
 async function dispararAgendaWhatsapp() {
   const btn    = document.getElementById('btn-whatsapp');
   const dpEl   = document.getElementById('data-dispatch');
@@ -1651,8 +1674,8 @@ async function dispararAgendaWhatsapp() {
     (a.hora_inicio || '00:00').localeCompare(b.hora_inicio || '00:00')
   );
 
-  // Carregar logo como base64 para embedar na imagem
-  const logoB64   = await carregarImgBase64('logosolucao.png');
+  // Carregar logo já pré-processado como branco (html2canvas ignora CSS filter)
+  const logoB64   = await carregarLogoBase64Branco('logosolucao.png');
   const geradoEm  = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
 
   // Paleta profissional — dark minimal
@@ -1693,9 +1716,10 @@ async function dispararAgendaWhatsapp() {
   }).join('');
 
   const card = document.getElementById('agenda-card');
+  card.style.width = '860px';
   card.innerHTML = `<div style="width:860px;background:${BG};font-family:'Segoe UI',system-ui,Arial,sans-serif;border-radius:12px;overflow:hidden;">
     <div style="background:${HEADER};padding:20px 26px;display:flex;align-items:center;gap:18px;border-bottom:1px solid ${BRDR};">
-      ${logoB64 ? `<img src="${logoB64}" style="height:26px;filter:brightness(0) invert(1);opacity:0.88;">` : `<span style="font-size:14px;font-weight:800;color:${T1};">SOLUÇÃO TÉCNICA</span>`}
+      ${logoB64 ? `<img src="${logoB64}" style="height:26px;opacity:0.92;">` : `<span style="font-size:14px;font-weight:800;color:${T1};">SOLUÇÃO TÉCNICA</span>`}
       <div style="width:1px;height:32px;background:${BRDR};"></div>
       <div style="flex:1;">
         <div style="font-size:10px;font-weight:700;color:${GOLD};letter-spacing:0.09em;text-transform:uppercase;">Agenda do Dia</div>
@@ -1790,6 +1814,29 @@ async function carregarImgBase64(url) {
   } catch { return null; }
 }
 
+// ── Versão branca do logo (html2canvas não suporta CSS filter em imagens) ──
+async function carregarLogoBase64Branco(url) {
+  const b64 = await carregarImgBase64(url);
+  if (!b64) return null;
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const c   = document.createElement('canvas');
+      c.width   = img.naturalWidth;
+      c.height  = img.naturalHeight;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      // Mantém apenas os pixels não-transparentes e pinta tudo de branco
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(null);
+    img.src = b64;
+  });
+}
+
 async function gerarProgramacaoSemanal() {
   const tecId   = Number(document.getElementById('semana-tec-id').value);
   const refDate = document.getElementById('semana-data-ref').value;
@@ -1827,8 +1874,8 @@ async function gerarProgramacaoSemanal() {
   const periodoFmt = `${dd}/${mm}/${yy.slice(2)} – ${de}/${me}/${ye.slice(2)}`;
   const geradoEm   = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
 
-  // Carregar logo como base64 (letras pretas → inverte para branco via CSS filter)
-  const logoB64 = await carregarImgBase64('logosolucao.png');
+  // Carregar logo pré-processado como branco (sem depender de CSS filter)
+  const logoB64 = await carregarLogoBase64Branco('logosolucao.png');
 
   // Paleta consistente — profissional, mínima
   const S_BG     = '#0D1117';
@@ -1879,10 +1926,11 @@ async function gerarProgramacaoSemanal() {
   const colunasHTML = datasISO.map((iso, i) => colunaHTML(iso, i)).join('');
 
   const card = document.getElementById('agenda-card');
+  card.style.width = '1500px';
   card.innerHTML = `<div style="width:1500px;background:${S_BG};font-family:'Segoe UI',system-ui,Arial,sans-serif;border-radius:12px;overflow:hidden;">
     <div style="background:${S_HEADER};padding:20px 26px;display:flex;align-items:center;gap:18px;border-bottom:1px solid ${S_BRDR};">
       ${logoB64
-        ? `<img src="${logoB64}" style="height:27px;filter:brightness(0) invert(1);opacity:0.88;">`
+        ? `<img src="${logoB64}" style="height:27px;opacity:0.92;">`
         : `<span style="font-size:15px;font-weight:800;color:${S_T1};">SOLUÇÃO TÉCNICA</span>`}
       <div style="width:1px;height:34px;background:${S_BRDR};"></div>
       <div style="flex:1;">

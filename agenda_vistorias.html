@@ -499,27 +499,12 @@
       position: fixed;
       left: -9999px;
       top: 0;
-      width: 560px;
-      background: #ffffff;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      border-radius: 16px;
+      width: 860px;
+      background: #0D1117;
+      font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+      border-radius: 12px;
       overflow: hidden;
     }
-    .ac-header { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 24px 28px 20px; display: flex; align-items: flex-start; justify-content: space-between; }
-    .ac-brand { font-size: 13px; font-weight: 700; color: #3ECF8E; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
-    .ac-titulo { font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; line-height: 1.1; }
-    .ac-data { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 6px; font-weight: 500; }
-    .ac-icon { width: 40px; height: 40px; background: rgba(62,207,142,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #3ECF8E; font-size: 20px; flex-shrink: 0; }
-    .ac-body { padding: 20px 24px; }
-    .ac-atendimento { background: #f8fafc; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 12px; }
-    .ac-atendimento:last-child { margin-bottom: 0; }
-    .ac-at-header { padding: 9px 16px; font-size: 11px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 0.09em; display: flex; align-items: center; gap: 7px; }
-    .ac-at-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.5); flex-shrink: 0; }
-    .ac-campos { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
-    .ac-campo { display: flex; align-items: flex-start; }
-    .ac-campo-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; width: 78px; flex-shrink: 0; padding-top: 1px; }
-    .ac-campo-valor { font-size: 13px; font-weight: 500; color: #0f172a; line-height: 1.45; flex: 1; }
-    .ac-campo-valor.destaque { font-weight: 700; font-size: 14px; }
     .ac-footer { padding: 14px 24px; background: #f1f5f9; border-top: 1px solid #e2e8f0; text-align: center; }
     .ac-footer-txt { font-size: 11px; color: #94a3b8; font-weight: 500; letter-spacing: 0.03em; }
 
@@ -1174,6 +1159,40 @@ function mostrarToast(msg, tipo = 'ok') {
 }
 
 // ── Disparar agenda de vistorias como imagem ──────────────────────
+// ── Helpers de imagem ─────────────────────────────────────────
+async function carregarImgBase64(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise(ok => {
+      const reader = new FileReader();
+      reader.onloadend = () => ok(reader.result);
+      reader.onerror  = () => ok(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+async function carregarLogoBase64Branco(url) {
+  const b64 = await carregarImgBase64(url);
+  if (!b64) return null;
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(null);
+    img.src = b64;
+  });
+}
+
 async function dispararAgendaWhatsapp() {
   const btn    = document.getElementById('btn-whatsapp');
   const dpEl   = document.getElementById('data-dispatch');
@@ -1186,95 +1205,111 @@ async function dispararAgendaWhatsapp() {
     return;
   }
 
-  btn.style.opacity      = '0.5';
-  btn.style.pointerEvents = 'none';
+  btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none';
   const span = btn.querySelector('span');
   if (span) span.textContent = 'Gerando...';
 
   const DIAS_PT  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
   const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  const d        = new Date(hoje + 'T12:00');
-  const dataFmt  = `${DIAS_PT[d.getDay()]}, ${d.getDate()} de ${MESES_PT[d.getMonth()]} de ${d.getFullYear()}`;
+  const dObj     = new Date(hoje + 'T12:00');
+  const dataFmt  = `${DIAS_PT[dObj.getDay()]}, ${dObj.getDate()} de ${MESES_PT[dObj.getMonth()]} de ${dObj.getFullYear()}`;
+
+  const logoB64  = await carregarLogoBase64Branco('logosolucao.png');
+  const geradoEm = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+  // Paleta profissional (igual agenda técnica)
+  const BG     = '#0D1117';
+  const SURF   = '#161B22';
+  const HEADER = '#0A0E15';
+  const GOLD   = '#C4A882';
+  const T1     = '#F0F6FC';
+  const T2     = '#8B949E';
+  const T3     = '#484F58';
+  const BRDR   = '#21262D';
 
   const ordenados = [...vHoje].sort((a, b) =>
     (a.hora_inicio || '00:00').localeCompare(b.hora_inicio || '00:00')
   );
 
-  const campo = (lbl, valor, extra = '') => valor
-    ? `<div class="ac-campo"><span class="ac-campo-label">${lbl}</span><span class="ac-campo-valor${extra}">${valor}</span></div>`
-    : '';
+  // Cor por tipo de vistoria (borda esquerda)
+  const COR_TIPO = {
+    cabeamento:   '#2563EB',
+    eletrica:     '#D97706',
+    audio_video:  '#7C3AED',
+    automacao:    '#059669',
+    regional_norte: '#DC2626',
+  };
 
-  const atendimentosHTML = ordenados.map(v => {
-    const info     = TIPO_INFO[v.tipo_vistoria] || { label: v.tipo_vistoria, cor: '#1e293b' };
-    const hora     = v.hora_inicio ? v.hora_inicio.slice(0,5) : '—';
-    const nome     = vistoriadorNome(v.vistoriador_id);
-    const cliente  = v.obras?.nome_cliente || '—';
-    const status   = v.confirmado ? 'Confirmado' : (v.viagem ? 'Viagem' : 'Não confirmado');
+  const cardsHTML = ordenados.map(v => {
+    const info    = TIPO_INFO[v.tipo_vistoria] || { label: v.tipo_vistoria || 'Vistoria', cor: '#334155' };
+    const hora    = v.hora_inicio ? v.hora_inicio.slice(0,5) : '—';
+    const nome    = escHtml(vistoriadorNome(v.vistoriador_id) || '—');
+    const cliente = escHtml(v.obras?.nome_cliente || '—');
+    const status  = v.confirmado ? 'Confirmado' : (v.viagem ? 'Viagem' : 'Não confirmado');
+    const cor     = COR_TIPO[v.tipo_vistoria] || info.cor || '#334155';
 
-    return `
-      <div class="ac-atendimento">
-        <div class="ac-at-header" style="background:${info.cor}">
-          <span class="ac-at-dot"></span>${info.label}
-        </div>
-        <div class="ac-campos">
-          ${campo('Horário', hora)}
-          ${campo('Vistoriador', nome)}
-          ${campo('Cliente', cliente, ' destaque')}
-          ${campo('Status', status)}
-          ${campo('Veículo', v.veiculo)}
-          ${campo('Objetivo', v.objetivo)}
-        </div>
-      </div>`;
+    const det = [
+      nome ? `Vistoriador: ${nome}` : '',
+      v.objetivo ? `Objetivo: ${escHtml(v.objetivo)}` : '',
+      v.veiculo  ? `Veículo: ${escHtml(v.veiculo)}`  : '',
+      `Status: ${status}`,
+    ].filter(Boolean);
+
+    return `<div style="background:${SURF};border-radius:7px;padding:13px 15px;margin-bottom:9px;border-left:3px solid ${cor};">
+      <div style="display:flex;align-items:baseline;gap:13px;">
+        <span style="font-size:14px;font-weight:700;color:${GOLD};flex-shrink:0;min-width:46px;font-variant-numeric:tabular-nums;">${hora}</span>
+        <span style="font-size:14px;font-weight:700;color:${T1};flex:1;line-height:1.3;">${cliente}</span>
+      </div>
+      <div style="font-size:10px;font-weight:700;color:${cor};text-transform:uppercase;letter-spacing:0.06em;margin-top:4px;padding-left:59px;">${escHtml(info.label)}</div>
+      ${det.length ? `<div style="margin-top:4px;padding-left:59px;">${det.map(d => `<div style="font-size:11px;color:${T2};margin-top:1px;">${d}</div>`).join('')}</div>` : ''}
+    </div>`;
   }).join('');
 
   const card = document.getElementById('agenda-card');
-  card.innerHTML = `
-    <div class="ac-header">
-      <div>
-        <div class="ac-brand">Solução Técnica</div>
-        <div class="ac-titulo">Agenda de Vistorias</div>
-        <div class="ac-data">${dataFmt}</div>
+  card.style.width = '860px';
+  card.innerHTML = `<div style="width:860px;background:${BG};font-family:'Segoe UI',system-ui,Arial,sans-serif;border-radius:12px;overflow:hidden;">
+    <div style="background:${HEADER};padding:20px 26px;display:flex;align-items:center;gap:18px;border-bottom:1px solid ${BRDR};">
+      ${logoB64 ? `<img src="${logoB64}" style="height:26px;opacity:0.92;">` : `<span style="font-size:14px;font-weight:800;color:${T1};">SOLUÇÃO TÉCNICA</span>`}
+      <div style="width:1px;height:32px;background:${BRDR};"></div>
+      <div style="flex:1;">
+        <div style="font-size:10px;font-weight:700;color:${GOLD};letter-spacing:0.09em;text-transform:uppercase;">Agenda de Vistorias</div>
+        <div style="font-size:16px;font-weight:700;color:${T1};margin-top:3px;">${dataFmt}</div>
       </div>
-      <div class="ac-icon">🔍</div>
+      <div style="text-align:right;">
+        <div style="font-size:22px;font-weight:700;color:${T1};line-height:1;">${ordenados.length}</div>
+        <div style="font-size:9px;color:${T2};margin-top:2px;text-transform:uppercase;letter-spacing:0.04em;">vistoria${ordenados.length !== 1 ? 's' : ''}</div>
+      </div>
     </div>
-    <div class="ac-body">${atendimentosHTML}</div>
-    <div class="ac-footer">
-      <div class="ac-footer-txt">Solução Técnica · sistema de gestão</div>
-    </div>`;
+    <div style="height:2px;background:linear-gradient(90deg,${GOLD} 0%,rgba(196,168,130,0.08) 100%);"></div>
+    <div style="padding:14px 18px;">${cardsHTML}</div>
+    <div style="background:${HEADER};padding:9px 26px;border-top:1px solid ${BRDR};display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:8px;color:${T3};letter-spacing:0.06em;text-transform:uppercase;">Solução Técnica · Sistema de Gestão</div>
+      <div style="font-size:8px;color:${T3};">${geradoEm}</div>
+    </div>
+  </div>`;
 
   try {
     await document.fonts.ready;
-
     const canvas = await html2canvas(card, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
+      scale: 2, useCORS: true, backgroundColor: '#0D1117', logging: false,
     });
-
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-
     try {
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      mostrarToast('✅ Imagem copiada! Abra o WhatsApp e cole (Ctrl+V) no grupo.', 'ok');
+      mostrarToast('✅ Imagem copiada! Abra o WhatsApp e cole (Ctrl+V).', 'ok');
       setTimeout(() => window.open('https://web.whatsapp.com', '_blank'), 800);
     } catch {
       const url = URL.createObjectURL(blob);
       const a   = document.createElement('a');
-      a.href     = url;
-      a.download = `vistorias-${hoje}.png`;
-      a.click();
+      a.href = url; a.download = `vistorias-${hoje}.png`; a.click();
       URL.revokeObjectURL(url);
-      setTimeout(() => window.open('https://web.whatsapp.com', '_blank'), 400);
-      mostrarToast('Imagem baixada! Anexe no grupo do WhatsApp.', 'ok');
+      mostrarToast('📥 Imagem baixada! Anexe no WhatsApp.', 'ok');
     }
   } catch (err) {
     mostrarToast('Erro ao gerar imagem: ' + err.message, 'err');
-    console.error(err);
   } finally {
-    btn.style.opacity      = '';
-    btn.style.pointerEvents = '';
-    if (span) span.textContent = 'Disparar vistorias do dia';
+    btn.style.opacity = ''; btn.style.pointerEvents = '';
+    if (span) span.textContent = 'Disparar dia';
   }
 }
 
