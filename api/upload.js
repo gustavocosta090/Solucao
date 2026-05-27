@@ -33,8 +33,19 @@ async function getToken() {
 async function getSiteId(token) {
   if (_cachedSiteId) return _cachedSiteId;
 
-  const host     = process.env.MS_SHAREPOINT_HOST;        // ex: idccba.sharepoint.com
-  const sitePath = process.env.MS_SHAREPOINT_SITE_PATH;   // ex: /sites/TecnicaSolucaocba
+  // Sanitiza as variáveis — remove https://, barras extras, query strings
+  let host     = (process.env.MS_SHAREPOINT_HOST || '')
+    .replace(/^https?:\/\//i, '')   // remove https://
+    .replace(/\/.*$/, '')           // remove qualquer caminho
+    .trim();
+  let sitePath = (process.env.MS_SHAREPOINT_SITE_PATH || '/')
+    .replace(/^https?:\/\/[^/]*/i, '')  // remove https://host se presente
+    .replace(/\?.*$/, '')               // remove query string
+    .replace(/\/Forms\/.*$/, '')        // remove /Forms/AllItems.aspx etc
+    .trim();
+  if (!sitePath.startsWith('/')) sitePath = '/' + sitePath;
+
+  console.log('[upload] host:', host, '| sitePath:', sitePath);
 
   // Tentativa 1: URL direta com caminho
   const url1 = `https://graph.microsoft.com/v1.0/sites/${host}:${sitePath}`;
