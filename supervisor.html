@@ -331,6 +331,19 @@
     border-color: rgba(239,68,68,0.2);
   }
 
+  .badge-noturna-pend {
+    background: rgba(245,158,11,0.08);
+    color: var(--amber-text);
+    border-color: rgba(245,158,11,0.25);
+    border-style: dashed;
+  }
+
+  .badge-banco-horas {
+    background: rgba(79,70,229,0.1);
+    color: #A5B4FC;
+    border-color: rgba(79,70,229,0.25);
+  }
+
   /* ===== ACTION BUTTONS ===== */
   .btn-ver,
   .btn-aprovar,
@@ -872,7 +885,7 @@
   </div>
   <div class="stat-card alerta">
     <div class="stat-num" id="sNoturna" style="color: var(--amber);">—</div>
-    <div class="stat-label">Agenda noturna</div>
+    <div class="stat-label">Noturna pendente aprovação</div>
   </div>
 </div>
 
@@ -1041,7 +1054,7 @@ async function carregarOSs() {
   document.getElementById('sPend').textContent = todasOSs.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
   document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
   document.getElementById('sFotos').textContent = todasOSs.filter(o => o.fotos_urls?.length > 0).length;
-  document.getElementById('sNoturna').textContent = todasOSs.filter(isAgendaNoturna).length;
+  atualizarStatNoturna();
 
   document.getElementById('loadingEl').style.display = 'none';
   document.getElementById('tabelaEl').style.display = 'block';
@@ -1079,6 +1092,20 @@ function formatarMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+async function aprovarNoturna(osId, status) {
+  const { error } = await db.from('ordens_de_servico').update({ noturna_status: status }).eq('id', osId);
+  if (error) { alert('Erro: ' + error.message); return; }
+  const os = todasOSs.find(o => o.id === osId);
+  if (os) os.noturna_status = status;
+  atualizarStatNoturna();
+  fecharModal();
+  filtrar();
+}
+
+function atualizarStatNoturna() {
+  document.getElementById('sNoturna').textContent = todasOSs.filter(o => isAgendaNoturna(o) && !o.noturna_status).length;
+}
+
 function resumoAgendaNoturna(lista) {
   const porTecnico = {};
   let meia = 0;
@@ -1087,7 +1114,7 @@ function resumoAgendaNoturna(lista) {
 
   lista.forEach(o => {
     const info = agendaNoturnaInfo(o);
-    if (!info) return;
+    if (!info || o.noturna_status !== 'aprovada') return;
 
     if (info.tipo === 'meia') meia += 1;
     if (info.tipo === 'completa') completa += 1;
@@ -1173,9 +1200,16 @@ function renderTabela() {
       ? '<span class="badge badge-aprovada">Concluída</span>'
       : '<span class="badge badge-pendente">Pendente</span>';
     const noturnaInfo = agendaNoturnaInfo(o);
-    const noturnaBadge = noturnaInfo
-      ? `<span class="badge badge-pendente" title="${escHtml(noturnaInfo.label)}">${escHtml(noturnaInfo.label)}</span>`
-      : '';
+    let noturnaBadge = '';
+    if (noturnaInfo) {
+      if (o.noturna_status === 'aprovada') {
+        noturnaBadge = `<span class="badge badge-aprovada" title="${escHtml(noturnaInfo.label)}">🌙 ${escHtml(noturnaInfo.label)}</span>`;
+      } else if (o.noturna_status === 'banco_horas') {
+        noturnaBadge = `<span class="badge badge-banco-horas">🌙 Banco de horas</span>`;
+      } else {
+        noturnaBadge = `<span class="badge badge-noturna-pend" title="${escHtml(noturnaInfo.label)}">🌙 Ag. noturna (pend.)</span>`;
+      }
+    }
     const nFotos = o.fotos_urls?.length || 0;
 
     const btnAcao = _stNorm === 'concluida'
@@ -1249,7 +1283,17 @@ function verOS(id) {
     ${DI('Equipe', nomeEquipe)}
     ${DI('Data do serviço', data)}
     ${horario ? DI('Horário', horario) : ''}
-    ${alertaNoturna ? DI('Agenda noturna', `${alertaNoturna.label} · ${formatarMoeda(alertaNoturna.valor)} por técnico`) : ''}
+    ${alertaNoturna && !os.noturna_status ? `
+    <div class="detail-item full">
+      <label>Agenda noturna</label>
+      <div style="margin-bottom:8px;color:var(--text-2);font-size:13px;">${escHtml(alertaNoturna.label)} · ${formatarMoeda(alertaNoturna.valor)} por técnico</div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-aprovar" onclick="aprovarNoturna(${os.id},'aprovada')"><i data-lucide="check-circle"></i> Aprovar (pagar ${formatarMoeda(alertaNoturna.valor)}/técnico)</button>
+        <button class="btn-reprovar" onclick="aprovarNoturna(${os.id},'banco_horas')"><i data-lucide="clock"></i> Banco de horas</button>
+      </div>
+    </div>` : ''}
+    ${alertaNoturna && os.noturna_status === 'aprovada' ? DI('Agenda noturna', `✅ Aprovada · ${alertaNoturna.label} · ${formatarMoeda(alertaNoturna.valor)} por técnico`) : ''}
+    ${alertaNoturna && os.noturna_status === 'banco_horas' ? DI('Banco de horas', `⏱ ${alertaNoturna.label} · registrado como banco de horas`) : ''}
     <div class="detail-item full">
       <label>Obra</label>
       <span><strong>${escHtml(os.obras?.nome_cliente || '—')}</strong>${os.obras?.endereco ? `<span class="detail-address"><i data-lucide="map-pin"></i>${escHtml(os.obras.endereco)}</span>` : ''}</span>
@@ -1351,7 +1395,7 @@ async function mudarStatusOS(id, status, obs) {
   // Re-render stats
   document.getElementById('sPend').textContent = todasOSs.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
   document.getElementById('sAprov').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
-  document.getElementById('sNoturna').textContent = todasOSs.filter(isAgendaNoturna).length;
+  atualizarStatNoturna();
 
   filtrar();
 }
