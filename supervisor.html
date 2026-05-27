@@ -1010,6 +1010,11 @@
     <option value="noturna">Agenda noturna</option>
     <option value="banco_horas">Banco de horas</option>
   </select>
+  <select id="fTipo" onchange="filtrar()">
+    <option value="">Execução + Assistência</option>
+    <option value="execucao">Execução</option>
+    <option value="assistencia">Assistência</option>
+  </select>
   <input type="date" id="fDataInicio" onchange="filtrar()" title="Data início">
   <input type="date" id="fDataFim" onchange="filtrar()" title="Data fim">
   <div class="input-busca-wrap">
@@ -1036,10 +1041,10 @@
       <table id="tabelaOS">
         <thead>
           <tr>
+            <th>Nº OS</th>
             <th onclick="ordenar('data_servico')">Data <span class="sort-icon">↕</span></th>
             <th onclick="ordenar('tecnico')">Equipe <span class="sort-icon">↕</span></th>
             <th onclick="ordenar('obra')">Obra <span class="sort-icon">↕</span></th>
-            <th>Tipo</th>
             <th onclick="ordenar('status_aprovacao')">Status</th>
             <th>Fotos</th>
             <th>Ações</th>
@@ -1138,13 +1143,25 @@ async function carregarTecnicos() {
   });
 }
 
+// Mapeamento código de equipe para o número da OS
+const EQUIPE_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
+
+function formatarNumeroOS(os) {
+  const dt   = os.data_servico || (os.criado_em ? os.criado_em.slice(0,10) : null);
+  const [y, m] = dt ? dt.split('-') : ['0000', '00'];
+  const cod  = EQUIPE_COD[os.equipeId] || '00';
+  const num  = String(os.id).padStart(3, '0');
+  return `${y}-${m}-${cod}-${num}`;
+}
+
 async function carregarOSs() {
-  // Busca OSs e técnicos separadamente para evitar ambiguidade de FK
-  const [{ data: osData, error: osError }, { data: tecList }] = await Promise.all([
+  // Busca OSs, técnicos e equipes do técnico para montar o número da OS
+  const [{ data: osData, error: osError }, { data: tecList }, { data: teData }] = await Promise.all([
     db.from('ordens_de_servico')
       .select('*, obras(nome_cliente, endereco)')
       .order('criado_em', { ascending: false }),
-    db.from('tecnicos').select('id, nome')
+    db.from('tecnicos').select('id, nome'),
+    db.from('tecnico_equipes').select('tecnico_id, equipe_id'),
   ]);
 
   if (osError) {
@@ -1153,18 +1170,23 @@ async function carregarOSs() {
     return;
   }
 
-  // Montar mapa de técnicos e juntar manualmente
-  const tecMap = {};
+  // Mapas: técnico → nome, técnico → equipe_id
+  const tecMap      = {};
+  const tecEquipeMap = {};
   (tecList || []).forEach(t => { tecMap[t.id] = t; });
+  (teData  || []).forEach(te => { tecEquipeMap[te.tecnico_id] = te.equipe_id; });
+
   const finalData = (osData || []).map(o => {
     const equipe = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id]
       .filter(Boolean)
       .map(tid => tecMap[tid]?.nome)
       .filter(Boolean);
+    const equipeId = tecEquipeMap[o.tecnico_id] || null;
     return {
       ...o,
-      tecnicos: o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null,
+      tecnicos:   o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null,
       equipeNomes: equipe,
+      equipeId,
     };
   });
 
@@ -1348,23 +1370,26 @@ function resumoAgendaNoturna(lista) {
 }
 
 function filtrar() {
-  const fTec = document.getElementById('fTecnico').value;
-  const fSt = document.getElementById('fStatus').value;
-  const fDi = document.getElementById('fDataInicio').value;
-  const fDf = document.getElementById('fDataFim').value;
+  const fTec   = document.getElementById('fTecnico').value;
+  const fSt    = document.getElementById('fStatus').value;
+  const fTipo  = document.getElementById('fTipo').value;
+  const fDi    = document.getElementById('fDataInicio').value;
+  const fDf    = document.getElementById('fDataFim').value;
   const fBusca = document.getElementById('fBusca').value.toLowerCase();
 
   filtradas = todasOSs.filter(o => {
-    const matchTec = !fTec || String(o.tecnico_id) === fTec || String(o.auxiliar_id) === fTec || String(o.auxiliar2_id) === fTec || String(o.auxiliar3_id) === fTec;
-    const stRaw = o.status_aprovacao || 'pendente';
-    const stOS = (stRaw === 'aprovada' || stRaw === 'concluida') ? 'concluida' : 'pendente';
-    const matchSt = !fSt || (fSt === 'noturna' ? isAgendaNoturna(o) : fSt === 'banco_horas' ? o.noturna_status === 'banco_horas' : stOS === fSt);
-    const matchDi = !fDi || !o.data_servico || o.data_servico >= fDi;
-    const matchDf = !fDf || !o.data_servico || o.data_servico <= fDf;
+    const matchTec   = !fTec  || String(o.tecnico_id) === fTec || String(o.auxiliar_id) === fTec || String(o.auxiliar2_id) === fTec || String(o.auxiliar3_id) === fTec;
+    const stRaw      = o.status_aprovacao || 'pendente';
+    const stOS       = (stRaw === 'aprovada' || stRaw === 'concluida') ? 'concluida' : 'pendente';
+    const matchSt    = !fSt   || (fSt === 'noturna' ? isAgendaNoturna(o) : fSt === 'banco_horas' ? o.noturna_status === 'banco_horas' : stOS === fSt);
+    const matchTipo  = !fTipo || (o.tipo_servico || 'execucao') === fTipo;
+    const matchDi    = !fDi   || !o.data_servico || o.data_servico >= fDi;
+    const matchDf    = !fDf   || !o.data_servico || o.data_servico <= fDf;
     const matchBusca = !fBusca ||
       (o.obras?.nome_cliente || '').toLowerCase().includes(fBusca) ||
-      (o.equipeNomes || []).some(n => n.toLowerCase().includes(fBusca));
-    return matchTec && matchSt && matchDi && matchDf && matchBusca;
+      (o.equipeNomes || []).some(n => n.toLowerCase().includes(fBusca)) ||
+      formatarNumeroOS(o).includes(fBusca);
+    return matchTec && matchSt && matchTipo && matchDi && matchDf && matchBusca;
   });
 
   // Ordenar
@@ -1428,12 +1453,20 @@ function renderTabela() {
       ? `<button class="btn-reprovar" onclick="event.stopPropagation();reabrirOS(${o.id})">Reabrir</button>`
       : `<button class="btn-aprovar" onclick="event.stopPropagation();concluirOS(${o.id})">Concluir</button>`;
 
+    const tipoTxt  = (o.tipo_servico || 'execucao') === 'assistencia' ? 'Assistência' : 'Execução';
+    const tipoColor= (o.tipo_servico || 'execucao') === 'assistencia'
+      ? 'background:rgba(251,191,36,0.12);color:#FCD34D;border:1px solid rgba(251,191,36,0.25);'
+      : 'background:rgba(62,207,142,0.10);color:#3ECF8E;border:1px solid rgba(62,207,142,0.22);';
+
     return `
     <tr style="cursor:pointer;" onclick="verOS(${o.id})">
+      <td style="white-space:nowrap;">
+        <span style="font-size:11px;font-weight:600;color:var(--text-1);font-variant-numeric:tabular-nums;letter-spacing:0.03em;">${formatarNumeroOS(o)}</span>
+        <br><span style="font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;${tipoColor}">${tipoTxt}</span>
+      </td>
       <td>${data}</td>
       <td>${escHtml(o.equipeNomes?.join(', ') || '—')}</td>
       <td title="${escHtml(o.obras?.endereco || '')}">${escHtml(o.obras?.nome_cliente || '—')}</td>
-      <td class="td-muted">${escHtml((o.tipo_servico || '').replace(/_/g,' '))}</td>
       <td>${statusBadge} ${noturnaBadge}</td>
       <td class="td-center">${nFotos > 0 ? `<span class="fotos-chip"><i data-lucide="image"></i>${nFotos}</span>` : '<span style="color:var(--text-3);">—</span>'}</td>
       <td style="white-space:nowrap;" onclick="event.stopPropagation()">
@@ -1566,7 +1599,9 @@ function verOS(id) {
       <span style="font-size:11px;color:var(--text-3)">Para enviar ao técnico ou arquivar</span>
     </div>`;
 
-  document.getElementById('modalTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
+  const tipoLabel = (os.tipo_servico || 'execucao') === 'assistencia' ? 'Assistência' : 'Execução';
+  document.getElementById('modalTitulo').innerHTML =
+    `<span style="font-size:0.75em;font-weight:500;color:var(--text-3);display:block;margin-bottom:2px;">${formatarNumeroOS(os)} · ${tipoLabel}</span>${escHtml(os.obras?.nome_cliente || 'Obra')}`;
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('modalOS').classList.add('open');
   lucide.createIcons();
@@ -1969,7 +2004,7 @@ async function exportarPDFOS(osId) {
     // Número OS — canto direito
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
     doc.setTextColor(...GOLD);
-    doc.text(`OS #${osId}`, pageW - M, 44, { align: 'right' });
+    doc.text(formatarNumeroOS(os), pageW - M, 44, { align: 'right' });
 
     // Nome do cliente
     doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(255, 255, 255);

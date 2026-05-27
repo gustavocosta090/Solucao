@@ -183,6 +183,62 @@
       color: var(--primary);
     }
 
+    /* ── Campo de busca ── */
+    .busca-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-width: 240px;
+      flex-shrink: 0;
+    }
+
+    .busca-icon {
+      position: absolute;
+      left: 10px;
+      width: 14px;
+      height: 14px;
+      color: var(--text-3);
+      pointer-events: none;
+      flex-shrink: 0;
+    }
+
+    .campo-busca {
+      width: 100%;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      padding: 7px 34px 7px 32px;
+      color: var(--text-1);
+      font-size: 0.82rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 150ms, box-shadow 150ms;
+    }
+
+    .campo-busca::placeholder { color: var(--text-3); }
+
+    .campo-busca:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(62,207,142,0.1);
+    }
+
+    .busca-limpar {
+      position: absolute;
+      right: 7px;
+      background: none;
+      border: none;
+      color: var(--text-3);
+      cursor: pointer;
+      padding: 3px;
+      display: none;
+      align-items: center;
+      border-radius: 4px;
+      transition: color 150ms, background 150ms;
+    }
+
+    .busca-limpar:hover { color: var(--text-2); background: rgba(255,255,255,0.06); }
+    .busca-limpar i { width: 12px; height: 12px; }
+
     /* ── Contador ── */
     .contador {
       font-size: 0.78rem;
@@ -605,7 +661,7 @@
     </button>
   </div>
 
-  <!-- Filtros -->
+  <!-- Filtros + Busca -->
   <div class="filtros-bar">
     <div class="filtros">
       <button class="filtro-btn ativo" data-fase="todas">Todas</button>
@@ -615,6 +671,20 @@
       <button class="filtro-btn" data-fase="audio_video">Audio e Video</button>
       <button class="filtro-btn" data-fase="automacao">Automacao</button>
       <button class="filtro-btn" data-fase="em_finalizacao">Em Finalizacao</button>
+    </div>
+    <div class="busca-wrap">
+      <i data-lucide="search" class="busca-icon"></i>
+      <input
+        type="text"
+        id="campo-busca"
+        class="campo-busca"
+        placeholder="Buscar cliente, endereço, código..."
+        oninput="buscar(this.value)"
+        autocomplete="off"
+      >
+      <button class="busca-limpar" id="busca-limpar" onclick="limparBusca()" title="Limpar busca">
+        <i data-lucide="x"></i>
+      </button>
     </div>
   </div>
 
@@ -718,8 +788,9 @@
     em_finalizacao:   { label: 'Em Finalizacao',    prazo: '—'          },
   };
 
-  let todasObras = [];
-  let faseFiltro = 'todas';
+  let todasObras  = [];
+  let faseFiltro  = 'todas';
+  let termoBusca  = '';
 
   function escHtml(v) {
     return String(v ?? '').replace(/[&<>"']/g, c => ({
@@ -773,24 +844,65 @@
     renderizar();
   }
 
+  // ── Busca em tempo real ──────────────────────────────────────
+  function buscar(val) {
+    termoBusca = val.trim().toLowerCase();
+    const limpar = document.getElementById('busca-limpar');
+    if (limpar) limpar.style.display = termoBusca ? 'flex' : 'none';
+    renderizar();
+  }
+
+  function limparBusca() {
+    termoBusca = '';
+    const campo  = document.getElementById('campo-busca');
+    const limpar = document.getElementById('busca-limpar');
+    if (campo)  campo.value          = '';
+    if (limpar) limpar.style.display = 'none';
+    renderizar();
+    if (campo) campo.focus();
+  }
+
   // ── Renderizar cards ────────────────────────────────────────
   function renderizar() {
-    const obras = faseFiltro === 'todas'
+    let obras = faseFiltro === 'todas'
       ? todasObras
       : todasObras.filter(o => o.fase_atual === faseFiltro);
 
+    if (termoBusca) {
+      obras = obras.filter(o =>
+        (o.nome_cliente          || '').toLowerCase().includes(termoBusca) ||
+        (o.endereco              || '').toLowerCase().includes(termoBusca) ||
+        (o.arquiteto_responsavel || '').toLowerCase().includes(termoBusca) ||
+        (o.cod_shankya           || '').toLowerCase().includes(termoBusca) ||
+        (o.consultores?.nome     || '').toLowerCase().includes(termoBusca)
+      );
+    }
+
     const contador = document.getElementById('contador');
-    contador.innerHTML = `Exibindo <strong>${obras.length}</strong> obra${obras.length !== 1 ? 's' : ''}`;
+    if (termoBusca) {
+      contador.innerHTML = `<strong>${obras.length}</strong> resultado${obras.length !== 1 ? 's' : ''} para "<strong>${escHtml(termoBusca)}</strong>"`;
+    } else {
+      contador.innerHTML = `Exibindo <strong>${obras.length}</strong> obra${obras.length !== 1 ? 's' : ''}`;
+    }
 
     const conteudo = document.getElementById('conteudo');
 
     if (obras.length === 0) {
-      conteudo.innerHTML = `
-        <div class="estado">
-          <i data-lucide="building-2"></i>
-          <p>Nenhuma obra encontrada para este filtro.</p>
-          <small>Tente selecionar outra fase ou criar uma nova obra.</small>
-        </div>`;
+      if (termoBusca) {
+        conteudo.innerHTML = `
+          <div class="estado">
+            <i data-lucide="search-x"></i>
+            <p>Nenhuma obra encontrada para "<strong style="color:var(--text-2)">${escHtml(termoBusca)}</strong>".</p>
+            <small>Tente outro termo ou <button onclick="limparBusca()" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:inherit;padding:0;text-decoration:underline;">limpar a busca</button>.</small>
+          </div>`;
+      } else {
+        conteudo.innerHTML = `
+          <div class="estado">
+            <i data-lucide="building-2"></i>
+            <p>Nenhuma obra encontrada para este filtro.</p>
+            <small>Tente selecionar outra fase ou criar uma nova obra.</small>
+          </div>`;
+      }
       lucide.createIcons();
       return;
     }
@@ -850,7 +962,7 @@
     lucide.createIcons();
   }
 
-  // ── Filtros ─────────────────────────────────────────────────
+  // ── Filtros de fase ──────────────────────────────────────────
   document.querySelectorAll('.filtro-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));

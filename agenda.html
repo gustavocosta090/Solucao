@@ -966,6 +966,7 @@ let equipesSelecionadas = []; // array de IDs (string)
 let equipeDropdownAberto = false;
 let modoVisualizacao  = false;
 let roleAtual         = null;
+let osNumeroMap       = {}; // agendamento_id → numero_os
 
 function escHtml(v) {
   return String(v ?? '').replace(/[&<>"']/g, c => ({
@@ -1109,20 +1110,27 @@ async function carregarAgenda() {
   document.getElementById('periodo-label').textContent =
     `${DIAS[0]}, ${fmtBR(dias[0])} — ${DIAS[4]}, ${fmtBR(dias[4])}`;
 
-  const { data, error } = await db
-    .from('agendamentos')
-    .select('*, obras(nome_cliente, endereco)')
-    .gte('data', ini)
-    .lte('data', fim)
-    .order('hora_inicio');
+  const [agResult, osResult] = await Promise.all([
+    db.from('agendamentos').select('*, obras(nome_cliente, endereco)').gte('data', ini).lte('data', fim).order('hora_inicio'),
+    db.from('ordens_de_servico').select('agendamento_id, numero_os').gte('data_servico', ini).lte('data_servico', fim).not('numero_os', 'is', null)
+  ]);
 
-  if (error) {
+  if (agResult.error) {
     document.getElementById('grade').innerHTML =
-      `<div class="spinner-wrap"><p style="color:#f87171">Erro: ${error.message}</p></div>`;
+      `<div class="spinner-wrap"><p style="color:#f87171">Erro: ${agResult.error.message}</p></div>`;
     return;
   }
 
-  agendamentos = data || [];
+  agendamentos = agResult.data || [];
+
+  // Monta mapa de número de OS por agendamento (usa o primeiro encontrado)
+  osNumeroMap = {};
+  (osResult.data || []).forEach(os => {
+    if (os.agendamento_id && os.numero_os && !osNumeroMap[os.agendamento_id]) {
+      osNumeroMap[os.agendamento_id] = os.numero_os;
+    }
+  });
+
   renderGrade(dias);
 }
 
@@ -1198,6 +1206,7 @@ function cardHTML(ag) {
       ${ag.servico ? `<div class="ag-detalhe"><i data-lucide="wrench"></i>${escHtml(ag.servico)}</div>` : ''}
       ${ag.veiculo ? `<div class="ag-detalhe"><i data-lucide="car"></i>${escHtml(ag.veiculo)}</div>` : ''}
       <span class="ag-badge badge-${escHtml(status)}">${escHtml(STATUS_LABEL[status] || status)}</span>
+      ${osNumeroMap[ag.id] ? `<div style="margin-top:5px;font-size:0.66rem;font-weight:700;color:var(--primary);letter-spacing:0.04em;opacity:0.9;">OS ${escHtml(osNumeroMap[ag.id])}</div>` : ''}
     </div>`;
 }
 

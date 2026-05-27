@@ -268,9 +268,16 @@
     </div>
   </div>
 
-  <!-- Serviços -->
+  <!-- Tipo de atendimento + Serviços -->
   <div class="secao">
     <div class="secao-titulo">Serviços</div>
+    <div class="form-group">
+      <label>Tipo de atendimento</label>
+      <select id="f-tipo-servico">
+        <option value="execucao">Execução</option>
+        <option value="assistencia">Assistência</option>
+      </select>
+    </div>
     <div class="form-group">
       <label>O que foi planejado</label>
       <textarea id="f-planejado" rows="2" placeholder="Serviço planejado para esta visita..."></textarea>
@@ -780,11 +787,13 @@ async function abrirFormulario(agId, osId = null) {
     }
   }
 
-  // Número OS
-  const { count } = await db.from('ordens_de_servico').select('*', { count:'exact', head:true });
-  document.getElementById('os-numero').textContent = osId
-    ? `OS-${String(osId).padStart(4,'0')}`
-    : `OS-${String((count||0)+1).padStart(4,'0')}`;
+  // Número OS — mostra o numero_os real salvo no banco, se disponível
+  if (osId) {
+    const { data: osNumRow } = await db.from('ordens_de_servico').select('numero_os').eq('id', osId).maybeSingle();
+    document.getElementById('os-numero').textContent = osNumRow?.numero_os || `OS-${String(osId).padStart(4,'0')}`;
+  } else {
+    document.getElementById('os-numero').textContent = 'Nova OS';
+  }
 
   mostrarTela('tela-form');
   lucide.createIcons();
@@ -926,7 +935,7 @@ async function enviarOS() {
       auxiliar2_id:        pid2                                   || null,
       auxiliar3_id:        pid3                                   || null,
       consultor_id:        ag?.obras?.consultores?.id             || null,
-      tipo_servico:        'execucao',
+      tipo_servico:        document.getElementById('f-tipo-servico')?.value || 'execucao',
       horario_inicio:      document.getElementById('f-inicio').value    || null,
       horario_fim:         document.getElementById('f-fim').value       || null,
       servico_planejado:   document.getElementById('f-planejado').value || null,
@@ -950,6 +959,7 @@ async function enviarOS() {
 
     btn.textContent = 'Salvando...';
     let error;
+    let savedOsId = null;
 
     // Helper: remove colunas que podem não existir ainda no schema
     function payloadSemColunasNovas(p) {
@@ -976,18 +986,37 @@ async function enviarOS() {
         const r2 = await db.from('ordens_de_servico').update(payloadSemColunasNovas(payload)).eq('id', osSelecionadaId);
         error = r2.error;
       }
+      if (!error) savedOsId = osSelecionadaId;
     } else {
-      // INSERT novo (fluxo sem criação automática, ou retorno de OS sem agendamento_id)
-      const res = await db.from('ordens_de_servico').insert(payload);
+      // INSERT novo — recupera o id gerado para montar o número da OS
+      const res = await db.from('ordens_de_servico').insert(payload).select('id').single();
       error = res.error;
+      if (!error) savedOsId = res.data?.id;
       // Fallback: sem colunas novas
       if (erroColuna(error)) {
-        const r2 = await db.from('ordens_de_servico').insert(payloadSemColunasNovas(payload));
+        const r2 = await db.from('ordens_de_servico').insert(payloadSemColunasNovas(payload)).select('id').single();
         error = r2.error;
+        if (!error) savedOsId = r2.data?.id;
       }
     }
 
     if (error) { alert('Erro ao enviar OS: ' + error.message); return; }
+
+    // ── Gerar, salvar e exibir o número da OS (formato YYYY-MM-EE-NNN) ──
+    if (savedOsId) {
+      try {
+        const EQUIPE_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
+        const tecId = payload.tecnico_id || tecnicoLogado?.id;
+        const { data: teRow } = await db.from('tecnico_equipes').select('equipe_id').eq('tecnico_id', tecId).maybeSingle();
+        const equipeId = teRow?.equipe_id || 0;
+        const dt = payload.data_servico || new Date().toISOString().slice(0,10);
+        const [y, m] = dt.split('-');
+        const cod = EQUIPE_COD[equipeId] || '00';
+        const numeroOS = `${y}-${m}-${cod}-${String(savedOsId).padStart(3,'0')}`;
+        await db.from('ordens_de_servico').update({ numero_os: numeroOS }).eq('id', savedOsId);
+        document.getElementById('os-numero').textContent = numeroOS;
+      } catch(e) { console.warn('Não foi possível salvar número da OS:', e); }
+    }
 
     // Quem foi marcado entra nesta OS unificada; removemos a pendente individual dele.
     if (outrosIncluidos.length > 0 && ag?.id) {
