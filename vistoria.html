@@ -166,8 +166,14 @@ function renderTopbar(nome, role, ativa) {
     { href:'agenda.html', label:'Agenda Técnica', id:'agenda', roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
     { href:'agenda_vistorias.html', label:'Agenda de Vistorias', id:'agenda-vistorias', roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
     { href:'vistoria.html', label:'Minhas Vistorias', id:'vistoria', roles:['vistoriador'] },
+    { href:'vistoria.html', label:'Relatórios de Vistoria', id:'relatorios-vistoria', roles:['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
+    { href:'os.html', label:'Fazer OS', id:'os', roles:['tecnico','auxiliar'] },
     { href:'supervisor.html', label:'Supervisor', id:'supervisor', roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
     { href:'admin.html', label:'Admin', id:'admin', roles:['coordenador'] },
+    { href:'tecnico_dashboard.html', label:'Minhas OSs', id:'minhas-os', roles:['tecnico','auxiliar'] },
+    { href:'gerente_comercial.html', label:'Comercial', id:'comercial', roles:['gerente_comercial'] },
+    { href:'projetista.html', label:'Meu Painel', id:'projetista', roles:['projetista'] },
+    { href:'coordenador_projetos.html', label:'Projetos', id:'coordenador-projetos', roles:['coordenador_projetos'] },
   ];
   document.getElementById('topbar-nav').innerHTML = links.filter(l => l.roles.includes(role)).map(l => `<a href="${l.href}" ${l.id === ativa ? 'class="active"' : ''}>${l.label}</a>`).join('') + '<a href="#" class="nav-sair" onclick="logout()">Sair</a>';
 }
@@ -176,11 +182,13 @@ async function iniciar() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { location.href = 'login.html'; return; }
   const { data: eu } = await db.from('tecnicos').select('id,nome,role').eq('auth_user_id', session.user.id).single();
-  if (!eu || !['vistoriador','coordenador','supervisor'].includes(eu.role)) {
-    alert('Acesso restrito ao vistoriador.'); location.href = 'obras.html'; return;
+  const ROLES_ACESSO = ['vistoriador','coordenador','supervisor','agendamento','coordenador_projetos','gerente_comercial'];
+  if (!eu || !ROLES_ACESSO.includes(eu.role)) {
+    alert('Acesso restrito.'); location.href = 'obras.html'; return;
   }
   usuarioAtual = eu;
-  renderTopbar(eu.nome, eu.role, 'vistoria');
+  const paginaAtiva = eu.role === 'vistoriador' ? 'vistoria' : 'relatorios-vistoria';
+  renderTopbar(eu.nome, eu.role, paginaAtiva);
   await carregarRelatorios();
 }
 

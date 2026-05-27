@@ -1,272 +1,1235 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Agenda de Vistorias — Solução Técnica</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<style>
-  :root { --bg:#0A0A0A; --surface:#111; --surface-2:#161616; --border:rgba(255,255,255,.08); --text:#fff; --muted:#A1A1AA; --dim:#52525B; --primary:#3ECF8E; --warn:#F59E0B; --radius:8px; }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
-  .topbar { background:var(--surface); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:20; }
-  .topbar-logo { font-weight:700; flex:1; }
-  .topbar-greeting { color:var(--muted); font-size:13px; margin-right:16px; }
-  .topbar-links { display:flex; align-items:center; gap:4px; }
-  .topbar-links a { color:var(--muted); text-decoration:none; font-size:13px; font-weight:500; padding:6px 12px; border-radius:6px; }
-  .topbar-links a:hover, .topbar-links a.active { color:var(--text); background:rgba(255,255,255,.07); }
-  .nav-sair { border:1px solid rgba(255,255,255,.12); margin-left:8px; }
-  .wrap { width:min(1240px, calc(100vw - 32px)); margin:28px auto; }
-  .header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:18px; }
-  h1 { font-size:22px; letter-spacing:-.4px; }
-  .sub { color:var(--muted); font-size:13px; margin-top:4px; }
-  .btn { border:none; border-radius:var(--radius); padding:10px 14px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
-  .btn i { width:16px; height:16px; }
-  .btn-primary { background:var(--primary); color:#07110c; }
-  .btn-secondary { background:var(--surface-2); color:var(--muted); border:1px solid var(--border); }
-  .grid { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; align-items:start; }
-  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:22px; }
-  .card h2 { font-size:15px; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
-  .card h2 i { width:17px; color:var(--dim); }
-  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  .full { grid-column:1 / -1; }
-  label { color:var(--muted); font-size:12px; font-weight:600; margin-bottom:7px; display:block; }
-  input, select, textarea { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:var(--radius); padding:10px 12px; font:inherit; font-size:14px; outline:none; }
-  textarea { min-height:92px; resize:vertical; }
-  input:focus, select:focus, textarea:focus { border-color:rgba(62,207,142,.45); }
-  .checkline { display:flex; align-items:center; gap:8px; padding-top:24px; color:var(--muted); font-size:13px; }
-  .checkline input { width:auto; }
-  .agenda-list { display:flex; flex-direction:column; gap:10px; }
-  .item { border:1px solid var(--border); border-radius:8px; padding:14px; background:rgba(255,255,255,.02); }
-  .item-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
-  .cliente { font-weight:700; font-size:14px; }
-  .meta { color:var(--muted); font-size:12px; margin-top:5px; line-height:1.5; }
-  .badge { display:inline-flex; padding:4px 8px; border-radius:999px; font-size:11px; font-weight:700; background:rgba(62,207,142,.1); color:var(--primary); white-space:nowrap; }
-  .badge.warn { background:rgba(245,158,11,.12); color:#FBBF24; }
-  .empty { color:var(--dim); text-align:center; padding:28px; border:1px dashed var(--border); border-radius:10px; }
-  @media (max-width: 900px) { .grid, .form-grid { grid-template-columns:1fr; } .full { grid-column:auto; } .topbar { overflow-x:auto; } }
-</style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solução Técnica — Agenda de Vistorias</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0A0A0A;
+      --surface-1:    #111111;
+      --surface-2:    #161616;
+      --surface-3:    #1B1B1B;
+      --primary:      #3ECF8E;
+      --secondary:    #4F46E5;
+      --text-1:       #FFFFFF;
+      --text-2:       #A1A1AA;
+      --text-3:       #52525B;
+      --border:       rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.16);
+      --radius-card:  12px;
+      --radius-input: 6px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Topbar ── */
+    .topbar { background:var(--surface-1); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:100; }
+    .topbar-logo { font-size:15px; font-weight:700; color:var(--text-1); letter-spacing:-0.2px; flex:1; }
+    .topbar-greeting { font-size:13px; color:var(--text-2); margin-right:16px; }
+    .topbar-links { display:flex; align-items:center; gap:4px; }
+    .topbar-links a { color:var(--text-2); text-decoration:none; font-size:13px; font-weight:500; padding:6px 12px; border-radius:6px; transition:color .15s,background .15s; }
+    .topbar-links a:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
+    .topbar-links a.active { color:var(--text-1); background:rgba(255,255,255,0.07); }
+    .topbar-links a.nav-sair { color:var(--text-2); border:1px solid rgba(255,255,255,0.12); margin-left:8px; }
+    .topbar-links a.nav-sair:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
+
+    /* ── Barra de controles ── */
+    .controles {
+      max-width: 1400px;
+      margin: 28px auto 0;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .semana-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .semana-nav button {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 150ms, color 150ms;
+    }
+
+    .semana-nav button i { width: 16px; height: 16px; }
+    .semana-nav button:hover { border-color: var(--border-hover); color: var(--text-1); }
+
+    .semana-nav span {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-1);
+      min-width: 230px;
+      text-align: center;
+      letter-spacing: -0.01em;
+    }
+
+    .filtros-tipo {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filtro-btn {
+      padding: 5px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-2);
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 150ms;
+      font-family: inherit;
+    }
+
+    .filtro-btn:hover { border-color: var(--border-hover); color: var(--text-1); }
+
+    .filtro-btn.ativo {
+      background: rgba(62,207,142,0.12);
+      border-color: rgba(62,207,142,0.35);
+      color: var(--primary);
+    }
+
+    .btn-novo {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 16px;
+      background: var(--primary);
+      border: none;
+      border-radius: var(--radius-input);
+      color: #000;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 150ms, transform 150ms;
+      font-family: inherit;
+    }
+
+    .btn-novo i { width: 15px; height: 15px; }
+    .btn-novo:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    /* ── Grade semanal ── */
+    .grade {
+      max-width: 1400px;
+      margin: 20px auto 48px;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    @media (max-width: 900px) { .grade { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 600px) { .grade { grid-template-columns: 1fr; } }
+
+    /* ── Coluna do dia ── */
+    .coluna {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 200px;
+    }
+
+    .coluna-header {
+      padding: 12px 14px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dia-nome {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 2px;
+    }
+
+    .dia-data {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.02em;
+    }
+
+    .dia-data.hoje { color: var(--primary); }
+
+    .btn-add {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-3);
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: border-color 150ms, color 150ms, background 150ms;
+    }
+
+    .btn-add i { width: 14px; height: 14px; }
+    .btn-add:hover { border-color: var(--primary); color: var(--primary); background: rgba(62,207,142,0.08); }
+
+    .coluna-body {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .coluna-vazia {
+      text-align: center;
+      padding: 24px 8px;
+      color: var(--text-3);
+      font-size: 0.75rem;
+    }
+
+    /* ── Cards de vistoria ── */
+    .card-vis {
+      border-radius: 8px;
+      padding: 10px 12px;
+      border-left: 3px solid;
+      cursor: pointer;
+      transition: opacity 150ms, transform 150ms;
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+
+    .card-vis:hover { opacity: 0.85; transform: translateX(2px); }
+
+    .card-cabeamento  { background: rgba(245,158,11,0.07);  border-color: #f59e0b; }
+    .card-eletrica    { background: rgba(59,130,246,0.07);  border-color: #3b82f6; }
+    .card-audio_video { background: rgba(139,92,246,0.07);  border-color: #8b5cf6; }
+    .card-automacao   { background: rgba(16,185,129,0.07);  border-color: #10b981; }
+
+    .ag-tecs    { font-weight: 700; color: var(--text-1); margin-bottom: 3px; }
+    .ag-cliente { font-weight: 600; color: var(--text-2); margin-bottom: 2px; }
+    .ag-detalhe { color: var(--text-3); font-size: 0.72rem; display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+    .ag-detalhe i { width: 11px; height: 11px; flex-shrink: 0; }
+
+    .ag-badge {
+      display: inline-block;
+      margin-top: 7px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.67rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-tipo-cabeamento  { background: rgba(120,53,15,0.5);  color: #fde68a; }
+    .badge-tipo-eletrica    { background: rgba(30,58,138,0.5);  color: #bfdbfe; }
+    .badge-tipo-audio_video { background: rgba(76,29,149,0.5);  color: #ddd6fe; }
+    .badge-tipo-automacao   { background: rgba(6,78,59,0.5);    color: #a7f3d0; }
+
+    .badge-confirmado     { background: rgba(30,58,138,0.4);  color: #93c5fd; }
+    .badge-nao_confirmado { background: rgba(113,63,18,0.4);  color: #fef08a; }
+    .badge-viagem         { background: rgba(20,83,45,0.4);   color: #86efac; }
+
+    /* ── Spinner ── */
+    .spinner-wrap { grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-3); }
+    .spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 14px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Modal ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+
+    .overlay.aberto { display: flex; }
+
+    .modal {
+      background: var(--surface-2);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 28px;
+      width: 100%;
+      max-width: 540px;
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .modal-header-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(62,207,142,0.12);
+      border: 1px solid rgba(62,207,142,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .modal-header-icon i { width: 16px; height: 16px; color: var(--primary); }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+    }
+
+    .form-group { margin-bottom: 14px; }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 6px;
+      letter-spacing: 0.01em;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      padding: 9px 12px;
+      color: var(--text-1);
+      font-size: 0.84rem;
+      outline: none;
+      transition: border-color 150ms, box-shadow 150ms;
+      font-family: inherit;
+    }
+
+    .form-group textarea { min-height: 80px; resize: vertical; }
+
+    .form-group input::placeholder,
+    .form-group textarea::placeholder { color: var(--text-3); }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(62,207,142,0.1);
+    }
+
+    .form-group select option { background: var(--surface-2); color: var(--text-1); }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .form-section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 20px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .check-group {
+      display: flex;
+      gap: 20px;
+      margin-top: 4px;
+    }
+
+    .check-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--text-2);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .check-label input[type="checkbox"] {
+      accent-color: var(--primary);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ── Footer do modal ── */
+    .modal-footer {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      align-items: center;
+    }
+
+    .btn-cancelar {
+      padding: 8px 18px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      color: var(--text-2);
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+      font-family: inherit;
+      transition: border-color 150ms, color 150ms;
+    }
+
+    .btn-cancelar:hover { border-color: var(--border-hover); color: var(--text-1); }
+
+    .btn-salvar {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 18px;
+      background: var(--primary);
+      border: none;
+      border-radius: var(--radius-input);
+      color: #000;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-family: inherit;
+      transition: opacity 150ms;
+    }
+
+    .btn-salvar:hover { opacity: 0.88; }
+    .btn-salvar:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-excluir {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: var(--radius-input);
+      color: #f87171;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+      font-family: inherit;
+      margin-right: auto;
+      transition: background 150ms, border-color 150ms;
+    }
+
+    .btn-excluir:hover { background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.35); }
+    .btn-excluir i { width: 14px; height: 14px; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a1a1a;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.85rem;
+      color: #fff;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      z-index: 9999;
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s;
+      opacity: 0;
+      white-space: nowrap;
+    }
+    .toast.visivel { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .toast-icon.ok { background: rgba(62,207,142,0.15); color: #3ECF8E; }
+    .toast-icon.err { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .toast-icon svg { width: 12px; height: 12px; }
+
+    /* ── Card para WhatsApp (fora da tela) ── */
+    #agenda-card {
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: 560px;
+      background: #ffffff;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .ac-header { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 24px 28px 20px; display: flex; align-items: flex-start; justify-content: space-between; }
+    .ac-brand { font-size: 13px; font-weight: 700; color: #3ECF8E; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
+    .ac-titulo { font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; line-height: 1.1; }
+    .ac-data { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 6px; font-weight: 500; }
+    .ac-icon { width: 40px; height: 40px; background: rgba(62,207,142,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #3ECF8E; font-size: 20px; flex-shrink: 0; }
+    .ac-body { padding: 20px 24px; }
+    .ac-atendimento { background: #f8fafc; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 12px; }
+    .ac-atendimento:last-child { margin-bottom: 0; }
+    .ac-at-header { padding: 9px 16px; font-size: 11px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 0.09em; display: flex; align-items: center; gap: 7px; }
+    .ac-at-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.5); flex-shrink: 0; }
+    .ac-campos { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .ac-campo { display: flex; align-items: flex-start; }
+    .ac-campo-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; width: 78px; flex-shrink: 0; padding-top: 1px; }
+    .ac-campo-valor { font-size: 13px; font-weight: 500; color: #0f172a; line-height: 1.45; flex: 1; }
+    .ac-campo-valor.destaque { font-weight: 700; font-size: 14px; }
+    .ac-footer { padding: 14px 24px; background: #f1f5f9; border-top: 1px solid #e2e8f0; text-align: center; }
+    .ac-footer-txt { font-size: 11px; color: #94a3b8; font-weight: 500; letter-spacing: 0.03em; }
+
+    /* ── Botão WhatsApp ── */
+    .btn-whatsapp {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 16px;
+      background: rgba(37,211,102,0.12);
+      border: 1px solid rgba(37,211,102,0.3);
+      border-radius: var(--radius-input);
+      color: #25D366;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 150ms, border-color 150ms, transform 150ms;
+      font-family: inherit;
+    }
+    .btn-whatsapp:hover { background: rgba(37,211,102,0.2); border-color: rgba(37,211,102,0.5); transform: translateY(-1px); }
+    .btn-whatsapp svg { width: 15px; height: 15px; flex-shrink: 0; }
+  </style>
 </head>
 <body>
+
 <header class="topbar">
   <span class="topbar-logo">Solução Técnica</span>
   <span id="topbar-greeting" class="topbar-greeting"></span>
   <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
-<main class="wrap">
-  <div class="header">
-    <div>
-      <h1>Agenda de Vistorias</h1>
-      <div class="sub">Agende a visita e o relatório de vistoria será criado automaticamente para o vistoriador.</div>
-    </div>
-    <button class="btn btn-secondary" onclick="carregarTudo()"><i data-lucide="refresh-cw"></i>Atualizar</button>
+<!-- Controles -->
+<div class="controles">
+  <div class="semana-nav">
+    <button onclick="mudarSemana(-1)"><i data-lucide="chevron-left"></i></button>
+    <span id="periodo-label">—</span>
+    <button onclick="mudarSemana(1)"><i data-lucide="chevron-right"></i></button>
   </div>
 
-  <div class="grid">
-    <section class="card">
-      <h2><i data-lucide="clipboard-check"></i>Nova vistoria</h2>
-      <div class="form-grid">
-        <div>
-          <label>Nome do cliente</label>
-          <select id="obra_id"></select>
-        </div>
-        <div>
-          <label>Vistoriador</label>
-          <select id="vistoriador_id"></select>
-        </div>
-        <div>
-          <label>Dia</label>
-          <input type="date" id="data">
-        </div>
-        <div>
-          <label>Horário início</label>
-          <input type="time" id="hora_inicio">
-        </div>
-        <div>
-          <label>Tipo de vistoria</label>
-          <select id="tipo_vistoria">
-            <option value="cabeamento">Vistoria de Cabeamento</option>
-            <option value="eletrica">Vistoria de elétrica</option>
-            <option value="audio_video">Vistoria de Áudio e Vídeo</option>
-            <option value="automacao">Vistoria de Automação</option>
-          </select>
-        </div>
-        <div>
-          <label>Veículo</label>
-          <input id="veiculo" placeholder="Ex: Saveiro, Fiorino...">
-        </div>
-        <label class="checkline"><input type="checkbox" id="confirmado"> Confirmado</label>
-        <label class="checkline"><input type="checkbox" id="viagem"> É viagem</label>
-        <div class="full">
-          <label>Objetivo da vistoria</label>
-          <textarea id="objetivo" placeholder="Ex: liberar obra para instalação, acompanhar instalação em andamento..."></textarea>
-        </div>
-        <div class="full">
-          <label>Observação específica da vistoria</label>
-          <textarea id="observacao"></textarea>
-        </div>
+  <div class="filtros-tipo">
+    <button class="filtro-btn ativo" data-tipo="todas">Todas</button>
+    <button class="filtro-btn" data-tipo="cabeamento">Cabeamento</button>
+    <button class="filtro-btn" data-tipo="eletrica">Elétrica</button>
+    <button class="filtro-btn" data-tipo="audio_video">Áudio e Vídeo</button>
+    <button class="filtro-btn" data-tipo="automacao">Automação</button>
+  </div>
+
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn-whatsapp" id="btn-whatsapp" onclick="dispararAgendaWhatsapp()" style="display:none" title="Gerar imagem da agenda de vistorias do dia">
+      <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+      </svg>
+      <span>Disparar vistorias do dia</span>
+    </button>
+
+    <button class="btn-novo" id="btn-novo" onclick="abrirModal()">
+      <i data-lucide="plus"></i>
+      Nova vistoria
+    </button>
+  </div>
+</div>
+
+<!-- Grade semanal -->
+<div class="grade" id="grade">
+  <div class="spinner-wrap">
+    <div class="spinner"></div>
+    <p>Carregando agenda...</p>
+  </div>
+</div>
+
+<!-- Card oculto para geração de imagem -->
+<div id="agenda-card"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <div class="toast-icon ok" id="toast-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+  </div>
+  <span id="toast-msg">Imagem copiada!</span>
+</div>
+
+<!-- Modal -->
+<div class="overlay" id="overlay" onclick="fecharModalFora(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-icon">
+        <i data-lucide="search"></i>
       </div>
-      <button class="btn btn-primary" style="margin-top:16px;" onclick="salvarVistoria()"><i data-lucide="calendar-plus"></i>Criar agenda e relatório</button>
-    </section>
+      <div class="modal-title" id="modal-titulo">Nova Vistoria</div>
+    </div>
 
-    <section class="card">
-      <h2><i data-lucide="calendar-days"></i>Próximas vistorias</h2>
-      <div id="lista" class="agenda-list"><div class="empty">Carregando...</div></div>
-    </section>
+    <div id="modal-erro" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:16px;"></div>
+
+    <!-- OBRA -->
+    <div class="form-section-label">Obra</div>
+
+    <div class="form-group">
+      <label>Obra / Cliente</label>
+      <select id="f-obra">
+        <option value="">Selecione a obra...</option>
+      </select>
+    </div>
+
+    <!-- VISTORIADOR E TIPO -->
+    <div class="form-section-label">Vistoria</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Vistoriador</label>
+        <select id="f-vistoriador">
+          <option value="">Selecione...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tipo de vistoria</label>
+        <select id="f-tipo">
+          <option value="cabeamento">Cabeamento</option>
+          <option value="eletrica">Elétrica</option>
+          <option value="audio_video">Áudio e Vídeo</option>
+          <option value="automacao">Automação</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- DATA E HORA -->
+    <div class="form-section-label">Agendamento</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" id="f-data"/>
+      </div>
+      <div class="form-group">
+        <label>Hora início</label>
+        <input type="time" id="f-hora"/>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Status</label>
+      <div class="check-group">
+        <label class="check-label">
+          <input type="checkbox" id="f-confirmado"/>
+          Confirmado
+        </label>
+        <label class="check-label">
+          <input type="checkbox" id="f-viagem"/>
+          Viagem
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Veículo (placa)</label>
+      <input type="text" id="f-veiculo" placeholder="Ex: STRADA-TYR7C97"/>
+    </div>
+
+    <!-- OBSERVAÇÕES -->
+    <div class="form-section-label">Detalhes</div>
+
+    <div class="form-group">
+      <label>Objetivo da vistoria</label>
+      <textarea id="f-objetivo" placeholder="O que será avaliado nesta visita?"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Observação</label>
+      <textarea id="f-observacao" placeholder="Informações adicionais..."></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-excluir" id="btn-excluir" onclick="excluirVistoria()" style="display:none">
+        <i data-lucide="trash-2"></i>
+        Excluir
+      </button>
+      <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-salvar" id="btn-salvar" onclick="salvarVistoria()">
+        <i data-lucide="save"></i>
+        Salvar
+      </button>
+    </div>
   </div>
-</main>
+</div>
 
 <script>
-const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-let usuarioAtual = null;
+const { createClient } = window.supabase;
+const db = createClient(
+  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
+);
 
-const tipoLabels = {
-  cabeamento: 'Vistoria de Cabeamento',
-  eletrica: 'Vistoria de elétrica',
-  audio_video: 'Vistoria de Áudio e Vídeo',
-  automacao: 'Vistoria de Automação',
+const ROLES_EDITAR = ['coordenador','supervisor','agendamento','projetista','gerente_comercial','coordenador_projetos'];
+
+let semanaOffset    = 0;
+let filtroTipo      = 'todas';
+let vistorias       = [];
+let obras           = [];
+let vistoriadores   = [];
+let editandoId      = null;
+let modoVisualizacao = false;
+let roleAtual       = null;
+
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+const DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta'];
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+const TIPO_INFO = {
+  cabeamento:  { label: 'Cabeamento',    cor: '#d97706' },
+  eletrica:    { label: 'Elétrica',      cor: '#2563eb' },
+  audio_video: { label: 'Áudio e Vídeo', cor: '#7c3aed' },
+  automacao:   { label: 'Automação',     cor: '#059669' },
 };
 
-function esc(v) {
-  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// ── Init ────────────────────────────────────────────────────────
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const { data: eu } = await db.from('tecnicos').select('id, role, nome').eq('auth_user_id', session.user.id).single();
+  roleAtual = eu?.role;
+  modoVisualizacao = !ROLES_EDITAR.includes(roleAtual);
+
+  renderTopbar(eu?.nome, roleAtual, 'agenda-vistorias');
+
+  const podeDisparar = ['agendamento','coordenador','supervisor'].includes(roleAtual);
+
+  if (modoVisualizacao) {
+    const btnNovo = document.getElementById('btn-novo');
+    if (btnNovo) btnNovo.style.display = 'none';
+  }
+  if (podeDisparar) {
+    const btnWa = document.getElementById('btn-whatsapp');
+    if (btnWa) btnWa.style.display = 'inline-flex';
+  }
+
+  await Promise.all([carregarObras(), carregarVistoriadores()]);
+  preencherSelects();
+  await carregarVistorias();
 }
 
-function fmtData(d) {
-  return d ? new Date(d + 'T12:00').toLocaleDateString('pt-BR') : '-';
-}
-
-function renderTopbar(nome, role, ativa) {
+function renderTopbar(nome, role, paginaAtiva) {
   const h = new Date().getHours();
   const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  document.getElementById('topbar-greeting').textContent = `${s}, ${(nome || '').split(' ')[0]}`;
+  const primeiro = (nome || '').split(' ')[0];
+  const greetEl = document.getElementById('topbar-greeting');
+  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
+
   const links = [
-    { href:'obras.html', label:'Obras', id:'obras', roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'agenda.html', label:'Agenda Técnica', id:'agenda', roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'agenda_vistorias.html', label:'Agenda de Vistorias', id:'agenda-vistorias', roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'vistoria.html', label:'Minhas Vistorias', id:'vistoria', roles:['vistoriador'] },
-    { href:'supervisor.html', label:'Supervisor', id:'supervisor', roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href:'admin.html', label:'Admin', id:'admin', roles:['coordenador'] },
+    { href:'obras.html',                label:'Obras',                  id:'obras',              roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href:'agenda.html',               label:'Agenda Técnica',         id:'agenda',             roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'agenda_vistorias.html',     label:'Agenda de Vistorias',    id:'agenda-vistorias',   roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href:'vistoria.html',             label:'Minhas Vistorias',       id:'vistoria',           roles:['vistoriador'] },
+    { href:'vistoria.html',             label:'Relatórios de Vistoria', id:'relatorios-vistoria', roles:['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
+    { href:'os.html',                   label:'Fazer OS',               id:'os',                 roles:['tecnico','auxiliar'] },
+    { href:'supervisor.html',           label:'Supervisor',             id:'supervisor',         roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
+    { href:'admin.html',                label:'Admin',                  id:'admin',              roles:['coordenador'] },
+    { href:'tecnico_dashboard.html',    label:'Minhas OSs',             id:'minhas-os',          roles:['tecnico','auxiliar'] },
+    { href:'gerente_comercial.html',    label:'Comercial',              id:'comercial',          roles:['gerente_comercial'] },
+    { href:'projetista.html',           label:'Meu Painel',             id:'projetista',         roles:['projetista'] },
+    { href:'coordenador_projetos.html', label:'Projetos',               id:'coordenador-projetos', roles:['coordenador_projetos'] },
   ];
-  document.getElementById('topbar-nav').innerHTML = links.filter(l => l.roles.includes(role)).map(l => `<a href="${l.href}" ${l.id === ativa ? 'class="active"' : ''}>${l.label}</a>`).join('') + '<a href="#" class="nav-sair" onclick="logout()">Sair</a>';
-}
-
-const ROLES_EDITAR_VISTORIA = ['coordenador','supervisor','agendamento','projetista','gerente_comercial','coordenador_projetos'];
-
-async function iniciar() {
-  const { data: { session } } = await db.auth.getSession();
-  if (!session) { location.href = 'login.html'; return; }
-  const { data: eu } = await db.from('tecnicos').select('id,nome,role').eq('auth_user_id', session.user.id).single();
-  if (!eu) { alert('Usuário não encontrado.'); location.href = 'obras.html'; return; }
-  usuarioAtual = eu;
-
-  const podeEditar = ROLES_EDITAR_VISTORIA.includes(eu.role);
-  if (!podeEditar) {
-    const formSection = document.querySelector('.grid > section:first-child');
-    if (formSection) formSection.style.display = 'none';
-    const grid = document.querySelector('.grid');
-    if (grid) grid.style.gridTemplateColumns = '1fr';
-  }
-
-  renderTopbar(eu.nome, eu.role, 'agenda-vistorias');
-  await carregarTudo();
-}
-
-async function carregarTudo() {
-  const [{ data: obras }, { data: vistoriadores }, { data: agenda, error }] = await Promise.all([
-    db.from('obras').select('id,nome_cliente,endereco').order('nome_cliente'),
-    db.from('tecnicos').select('id,nome,role').eq('role', 'vistoriador').order('nome'),
-    db.from('agendamentos_vistoria').select('*, obras(nome_cliente,endereco), tecnicos(nome)').order('data', { ascending:true }).order('hora_inicio', { ascending:true }),
-  ]);
-
-  document.getElementById('obra_id').innerHTML = '<option value="">Selecione...</option>' + (obras || []).map(o => `<option value="${o.id}">${esc(o.nome_cliente)}</option>`).join('');
-  document.getElementById('vistoriador_id').innerHTML = '<option value="">Selecione...</option>' + (vistoriadores || []).map(v => `<option value="${v.id}">${esc(v.nome)}</option>`).join('');
-  document.getElementById('data').value ||= new Date().toISOString().slice(0,10);
-
-  if (error) {
-    document.getElementById('lista').innerHTML = `<div class="empty">Erro: ${esc(error.message)}</div>`;
-    return;
-  }
-
-  const hoje = new Date().toISOString().slice(0,10);
-  const proximas = (agenda || []).filter(a => !a.data || a.data >= hoje);
-  document.getElementById('lista').innerHTML = proximas.length ? proximas.map(a => `
-    <div class="item">
-      <div class="item-top">
-        <div>
-          <div class="cliente">${esc(a.obras?.nome_cliente || 'Cliente não informado')}</div>
-          <div class="meta">${fmtData(a.data)} · ${esc(a.hora_inicio?.slice(0,5) || '-')} · ${esc(a.tecnicos?.nome || '-')}</div>
-          <div class="meta">${esc(a.obras?.endereco || '')}</div>
-        </div>
-        <span class="badge ${a.confirmado ? '' : 'warn'}">${a.confirmado ? 'Confirmado' : 'Pendente'}</span>
-      </div>
-      <div class="meta">${esc(tipoLabels[a.tipo_vistoria] || a.tipo_vistoria)}${a.viagem ? ' · Viagem' : ''}${a.veiculo ? ' · ' + esc(a.veiculo) : ''}</div>
-    </div>
-  `).join('') : '<div class="empty">Nenhuma vistoria futura.</div>';
-  lucide.createIcons();
-}
-
-async function salvarVistoria() {
-  if (!ROLES_EDITAR_VISTORIA.includes(usuarioAtual?.role)) {
-    alert('Sem permissão para criar vistorias.'); return;
-  }
-  const obraId = document.getElementById('obra_id').value;
-  const vistoriadorId = document.getElementById('vistoriador_id').value;
-  const data = document.getElementById('data').value;
-  const tipo = document.getElementById('tipo_vistoria').value;
-  const objetivo = document.getElementById('objetivo').value.trim() || tipoLabels[tipo];
-
-  if (!obraId || !vistoriadorId || !data) {
-    alert('Preencha cliente, vistoriador e dia.');
-    return;
-  }
-
-  const payload = {
-    obra_id: Number(obraId),
-    vistoriador_id: Number(vistoriadorId),
-    data,
-    hora_inicio: document.getElementById('hora_inicio').value || null,
-    confirmado: document.getElementById('confirmado').checked,
-    viagem: document.getElementById('viagem').checked,
-    veiculo: document.getElementById('veiculo').value.trim() || null,
-    tipo_vistoria: tipo,
-    objetivo,
-    observacao: document.getElementById('observacao').value.trim() || null,
-  };
-
-  const { data: ag, error } = await db.from('agendamentos_vistoria').insert(payload).select().single();
-  if (error) { alert('Erro ao criar agenda: ' + error.message); return; }
-
-  const { error: relError } = await db.from('relatorios_vistoria').insert({
-    agendamento_vistoria_id: ag.id,
-    obra_id: payload.obra_id,
-    vistoriador_id: payload.vistoriador_id,
-    data_vistoria: payload.data,
-    tipo_vistoria: payload.tipo_vistoria,
-    objetivo_vistoria: payload.objetivo,
-    status: 'pendente',
-  });
-  if (relError) { alert('Agenda criada, mas relatório falhou: ' + relError.message); return; }
-
-  alert('Agenda e relatório de vistoria criados.');
-  document.querySelectorAll('textarea,input[type=text]').forEach(el => el.value = '');
-  document.getElementById('confirmado').checked = false;
-  document.getElementById('viagem').checked = false;
-  await carregarTudo();
+  const nav = document.getElementById('topbar-nav');
+  if (!nav) return;
+  nav.innerHTML = links.filter(l => l.roles.includes(role))
+    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
+    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
 }
 
 async function logout() {
   await db.auth.signOut();
-  location.href = 'login.html';
+  window.location.href = 'login.html';
 }
 
-iniciar();
+// ── Datas ────────────────────────────────────────────────────────
+function getSegunda(offset = 0) {
+  const hoje = new Date();
+  const dia  = hoje.getDay() || 7;
+  const seg  = new Date(hoje);
+  seg.setDate(hoje.getDate() - dia + 1 + offset * 7);
+  seg.setHours(0,0,0,0);
+  return seg;
+}
+
+function diasDaSemana(offset) {
+  const seg = getSegunda(offset);
+  return Array.from({length: 5}, (_, i) => {
+    const d = new Date(seg);
+    d.setDate(seg.getDate() + i);
+    return d;
+  });
+}
+
+function fmtISO(d) { return d.toISOString().split('T')[0]; }
+function fmtBR(d)  { return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; }
+
+function isHoje(d) {
+  const h = new Date();
+  return d.getDate()===h.getDate() && d.getMonth()===h.getMonth() && d.getFullYear()===h.getFullYear();
+}
+
+// ── Carregar dados ────────────────────────────────────────────────
+async function carregarObras() {
+  const { data } = await db.from('obras').select('id, nome_cliente, endereco').order('nome_cliente');
+  obras = data || [];
+}
+
+async function carregarVistoriadores() {
+  const { data } = await db.from('tecnicos').select('id, nome').eq('role', 'vistoriador').order('nome');
+  vistoriadores = data || [];
+}
+
+async function carregarVistorias() {
+  const dias = diasDaSemana(semanaOffset);
+  const ini  = fmtISO(dias[0]);
+  const fim  = fmtISO(dias[4]);
+
+  document.getElementById('periodo-label').textContent =
+    `${DIAS[0]}, ${fmtBR(dias[0])} — ${DIAS[4]}, ${fmtBR(dias[4])}`;
+
+  const { data, error } = await db
+    .from('agendamentos_vistoria')
+    .select('*, obras(nome_cliente, endereco)')
+    .gte('data', ini)
+    .lte('data', fim)
+    .order('hora_inicio');
+
+  if (error) {
+    document.getElementById('grade').innerHTML =
+      `<div class="spinner-wrap"><p style="color:#f87171">Erro: ${error.message}</p></div>`;
+    return;
+  }
+
+  vistorias = data || [];
+  renderGrade(dias);
+}
+
+// ── Filtro ────────────────────────────────────────────────────────
+function vistoriasVisiveis() {
+  if (filtroTipo === 'todas') return vistorias;
+  return vistorias.filter(v => v.tipo_vistoria === filtroTipo);
+}
+
+// ── Renderizar grade ──────────────────────────────────────────────
+function renderGrade(dias) {
+  const visiveis = vistoriasVisiveis();
+  const grade    = document.getElementById('grade');
+
+  grade.innerHTML = dias.map((dia, i) => {
+    const dataStr = fmtISO(dia);
+    const vs      = visiveis.filter(v => v.data === dataStr);
+
+    const cards = vs.length
+      ? vs.map(cardHTML).join('')
+      : `<div class="coluna-vazia">Sem vistorias</div>`;
+
+    return `
+      <div class="coluna">
+        <div class="coluna-header">
+          <div>
+            <div class="dia-nome">${DIAS[i]}</div>
+            <div class="dia-data ${isHoje(dia) ? 'hoje' : ''}">${fmtBR(dia)}</div>
+          </div>
+          ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Nova vistoria"><i data-lucide="plus"></i></button>`}
+        </div>
+        <div class="coluna-body">${cards}</div>
+      </div>`;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+// ── Card de vistoria ──────────────────────────────────────────────
+function cardHTML(v) {
+  const tipo  = v.tipo_vistoria || 'cabeamento';
+  const info  = TIPO_INFO[tipo] || { label: tipo };
+  const nome  = vistoriadorNome(v.vistoriador_id);
+  const cliente = v.obras?.nome_cliente || '—';
+  const hora  = v.hora_inicio ? v.hora_inicio.slice(0,5) : '';
+  const statusClass = v.confirmado ? 'confirmado' : (v.viagem ? 'viagem' : 'nao_confirmado');
+  const statusLabel = v.confirmado ? 'Confirmado' : (v.viagem ? 'Viagem' : 'Não confirmado');
+
+  return `
+    <div class="card-vis card-${tipo}" ${modoVisualizacao ? 'style="cursor:default"' : `onclick="editarVistoria(${v.id})" style="cursor:pointer"`}>
+      <div class="ag-tecs">${escHtml(hora ? hora + ' · ' : '')}${escHtml(nome)}</div>
+      <div class="ag-cliente">${escHtml(cliente)}</div>
+      ${v.veiculo ? `<div class="ag-detalhe"><i data-lucide="car"></i>${escHtml(v.veiculo)}</div>` : ''}
+      <br>
+      <span class="ag-badge badge-tipo-${escHtml(tipo)}">${escHtml(info.label)}</span>
+      <span class="ag-badge badge-${statusClass}" style="margin-left:4px">${escHtml(statusLabel)}</span>
+    </div>`;
+}
+
+function vistoriadorNome(id) {
+  const v = vistoriadores.find(v => v.id === id);
+  return v ? v.nome : '—';
+}
+
+// ── Navegação de semana ───────────────────────────────────────────
+function mudarSemana(delta) {
+  semanaOffset += delta;
+  carregarVistorias();
+}
+
+// ── Preencher selects ─────────────────────────────────────────────
+function preencherSelects() {
+  const selObra = document.getElementById('f-obra');
+  selObra.innerHTML = '<option value="">Selecione a obra...</option>';
+  obras.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value       = String(o.id);
+    opt.textContent = o.nome_cliente;
+    selObra.appendChild(opt);
+  });
+
+  const selVist = document.getElementById('f-vistoriador');
+  selVist.innerHTML = '<option value="">Selecione...</option>';
+  vistoriadores.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value       = String(v.id);
+    opt.textContent = v.nome;
+    selVist.appendChild(opt);
+  });
+}
+
+// ── Abrir modal (novo) ────────────────────────────────────────────
+function abrirModal(data = '') {
+  editandoId = null;
+
+  if (!obras.length || !vistoriadores.length) {
+    Promise.all([carregarObras(), carregarVistoriadores()]).then(preencherSelects);
+  }
+
+  document.getElementById('modal-titulo').textContent  = 'Nova Vistoria';
+  document.getElementById('modal-erro').style.display  = 'none';
+  document.getElementById('f-obra').value              = '';
+  document.getElementById('f-vistoriador').value       = '';
+  document.getElementById('f-tipo').value              = 'cabeamento';
+  document.getElementById('f-data').value              = data || fmtISO(new Date());
+  document.getElementById('f-hora').value              = '';
+  document.getElementById('f-confirmado').checked      = false;
+  document.getElementById('f-viagem').checked          = false;
+  document.getElementById('f-veiculo').value           = '';
+  document.getElementById('f-objetivo').value          = '';
+  document.getElementById('f-observacao').value        = '';
+  document.getElementById('btn-excluir').style.display = 'none';
+  document.getElementById('overlay').classList.add('aberto');
+  lucide.createIcons();
+}
+
+// ── Abrir modal (editar) ──────────────────────────────────────────
+function editarVistoria(id) {
+  const v = vistorias.find(x => x.id === id);
+  if (!v) return;
+  editandoId = id;
+
+  document.getElementById('modal-titulo').textContent  = 'Editar Vistoria';
+  document.getElementById('modal-erro').style.display  = 'none';
+  document.getElementById('f-obra').value              = v.obra_id ? String(v.obra_id) : '';
+  document.getElementById('f-vistoriador').value       = v.vistoriador_id ? String(v.vistoriador_id) : '';
+  document.getElementById('f-tipo').value              = v.tipo_vistoria   || 'cabeamento';
+  document.getElementById('f-data').value              = v.data            || '';
+  document.getElementById('f-hora').value              = v.hora_inicio     ? v.hora_inicio.slice(0,5) : '';
+  document.getElementById('f-confirmado').checked      = !!v.confirmado;
+  document.getElementById('f-viagem').checked          = !!v.viagem;
+  document.getElementById('f-veiculo').value           = v.veiculo         || '';
+  document.getElementById('f-objetivo').value          = v.objetivo        || '';
+  document.getElementById('f-observacao').value        = v.observacao      || '';
+  document.getElementById('btn-excluir').style.display = 'flex';
+  document.getElementById('overlay').classList.add('aberto');
+  lucide.createIcons();
+}
+
+// ── Fechar modal ──────────────────────────────────────────────────
+function fecharModal() {
+  document.getElementById('overlay').classList.remove('aberto');
+  editandoId = null;
+}
+
+function fecharModalFora(e) {
+  if (e.target === document.getElementById('overlay')) fecharModal();
+}
+
+// ── Salvar vistoria ───────────────────────────────────────────────
+async function salvarVistoria() {
+  if (modoVisualizacao) return;
+
+  const btn    = document.getElementById('btn-salvar');
+  const erroEl = document.getElementById('modal-erro');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+  erroEl.style.display = 'none';
+
+  const obraId      = document.getElementById('f-obra').value;
+  const vistoriadorId = document.getElementById('f-vistoriador').value;
+  const tipo        = document.getElementById('f-tipo').value;
+  const data        = document.getElementById('f-data').value;
+  const hora        = document.getElementById('f-hora').value;
+  const confirmado  = document.getElementById('f-confirmado').checked;
+  const viagem      = document.getElementById('f-viagem').checked;
+  const veiculo     = document.getElementById('f-veiculo').value.trim();
+  const objetivo    = document.getElementById('f-objetivo').value.trim();
+  const observacao  = document.getElementById('f-observacao').value.trim();
+
+  function mostrarErro(msg) {
+    erroEl.textContent   = msg;
+    erroEl.style.display = 'block';
+    btn.disabled         = false;
+    btn.innerHTML        = '<i data-lucide="save"></i> Salvar';
+    lucide.createIcons();
+  }
+
+  if (!obraId)        { mostrarErro('Selecione a obra.'); return; }
+  if (!vistoriadorId) { mostrarErro('Selecione o vistoriador.'); return; }
+  if (!data)          { mostrarErro('Selecione a data.'); return; }
+
+  const payload = {
+    obra_id:        parseInt(obraId),
+    vistoriador_id: parseInt(vistoriadorId),
+    tipo_vistoria:  tipo,
+    data,
+    hora_inicio:    hora || null,
+    confirmado,
+    viagem,
+    veiculo:        veiculo  || null,
+    objetivo:       objetivo || null,
+    observacao:     observacao || null,
+  };
+
+  let savedId = editandoId;
+
+  if (editandoId) {
+    const { error } = await db.from('agendamentos_vistoria').update(payload).eq('id', editandoId);
+    if (error) { mostrarErro('Erro ao salvar: ' + error.message); return; }
+  } else {
+    const { data: novo, error } = await db.from('agendamentos_vistoria').insert(payload).select('id').single();
+    if (error) { mostrarErro('Erro ao salvar: ' + error.message); return; }
+    savedId = novo.id;
+
+    // Auto-criar relatório de vistoria
+    await db.from('relatorios_vistoria').insert({
+      agendamento_vistoria_id: savedId,
+      obra_id:                 payload.obra_id,
+      vistoriador_id:          payload.vistoriador_id,
+      data_vistoria:           payload.data,
+      tipo_vistoria:           payload.tipo_vistoria,
+      status:                  'pendente',
+      objetivo_vistoria:       payload.objetivo || null,
+    });
+  }
+
+  fecharModal();
+  await carregarVistorias();
+
+  btn.disabled  = false;
+  btn.innerHTML = '<i data-lucide="save"></i> Salvar';
+  lucide.createIcons();
+}
+
+// ── Excluir vistoria ──────────────────────────────────────────────
+async function excluirVistoria() {
+  if (!editandoId) return;
+  if (!confirm('Excluir esta vistoria e o relatório vinculado?')) return;
+
+  // Apagar relatórios de vistoria pendentes vinculados
+  await db.from('relatorios_vistoria')
+    .delete()
+    .eq('agendamento_vistoria_id', editandoId)
+    .eq('status', 'pendente');
+
+  const { error } = await db.from('agendamentos_vistoria').delete().eq('id', editandoId);
+  if (error) { alert('Erro ao excluir: ' + error.message); return; }
+  fecharModal();
+  await carregarVistorias();
+}
+
+// ── Filtros de tipo ────────────────────────────────────────────────
+document.querySelectorAll('.filtro-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    filtroTipo = btn.dataset.tipo;
+    renderGrade(diasDaSemana(semanaOffset));
+  });
+});
+
+// ── Toast ─────────────────────────────────────────────────────────
+let toastTimer = null;
+function mostrarToast(msg, tipo = 'ok') {
+  const el   = document.getElementById('toast');
+  const icon = document.getElementById('toast-icon');
+  document.getElementById('toast-msg').textContent = msg;
+  icon.className = `toast-icon ${tipo}`;
+  icon.innerHTML = tipo === 'ok'
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  el.classList.add('visivel');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('visivel'), 4500);
+}
+
+// ── Disparar agenda de vistorias como imagem ──────────────────────
+async function dispararAgendaWhatsapp() {
+  const btn  = document.getElementById('btn-whatsapp');
+  const hoje = fmtISO(new Date());
+  const vHoje = vistorias.filter(v => v.data === hoje);
+
+  if (vHoje.length === 0) {
+    mostrarToast('Não há vistorias para hoje.', 'err');
+    return;
+  }
+
+  btn.style.opacity      = '0.5';
+  btn.style.pointerEvents = 'none';
+  const span = btn.querySelector('span');
+  if (span) span.textContent = 'Gerando...';
+
+  const DIAS_PT  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const d        = new Date();
+  const dataFmt  = `${DIAS_PT[d.getDay()]}, ${d.getDate()} de ${MESES_PT[d.getMonth()]} de ${d.getFullYear()}`;
+
+  const ordenados = [...vHoje].sort((a, b) =>
+    (a.hora_inicio || '00:00').localeCompare(b.hora_inicio || '00:00')
+  );
+
+  const campo = (lbl, valor, extra = '') => valor
+    ? `<div class="ac-campo"><span class="ac-campo-label">${lbl}</span><span class="ac-campo-valor${extra}">${valor}</span></div>`
+    : '';
+
+  const atendimentosHTML = ordenados.map(v => {
+    const info     = TIPO_INFO[v.tipo_vistoria] || { label: v.tipo_vistoria, cor: '#1e293b' };
+    const hora     = v.hora_inicio ? v.hora_inicio.slice(0,5) : '—';
+    const nome     = vistoriadorNome(v.vistoriador_id);
+    const cliente  = v.obras?.nome_cliente || '—';
+    const status   = v.confirmado ? 'Confirmado' : (v.viagem ? 'Viagem' : 'Não confirmado');
+
+    return `
+      <div class="ac-atendimento">
+        <div class="ac-at-header" style="background:${info.cor}">
+          <span class="ac-at-dot"></span>${info.label}
+        </div>
+        <div class="ac-campos">
+          ${campo('Horário', hora)}
+          ${campo('Vistoriador', nome)}
+          ${campo('Cliente', cliente, ' destaque')}
+          ${campo('Status', status)}
+          ${campo('Veículo', v.veiculo)}
+          ${campo('Objetivo', v.objetivo)}
+        </div>
+      </div>`;
+  }).join('');
+
+  const card = document.getElementById('agenda-card');
+  card.innerHTML = `
+    <div class="ac-header">
+      <div>
+        <div class="ac-brand">Solução Técnica</div>
+        <div class="ac-titulo">Agenda de Vistorias</div>
+        <div class="ac-data">${dataFmt}</div>
+      </div>
+      <div class="ac-icon">🔍</div>
+    </div>
+    <div class="ac-body">${atendimentosHTML}</div>
+    <div class="ac-footer">
+      <div class="ac-footer-txt">Solução Técnica · sistema de gestão</div>
+    </div>`;
+
+  try {
+    await document.fonts.ready;
+
+    const canvas = await html2canvas(card, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      mostrarToast('✅ Imagem copiada! Abra o WhatsApp e cole (Ctrl+V) no grupo.', 'ok');
+      setTimeout(() => window.open('https://web.whatsapp.com', '_blank'), 800);
+    } catch {
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      a.href     = url;
+      a.download = `vistorias-${hoje}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setTimeout(() => window.open('https://web.whatsapp.com', '_blank'), 400);
+      mostrarToast('Imagem baixada! Anexe no grupo do WhatsApp.', 'ok');
+    }
+  } catch (err) {
+    mostrarToast('Erro ao gerar imagem: ' + err.message, 'err');
+    console.error(err);
+  } finally {
+    btn.style.opacity      = '';
+    btn.style.pointerEvents = '';
+    if (span) span.textContent = 'Disparar vistorias do dia';
+  }
+}
+
+// ── Iniciar ────────────────────────────────────────────────────────
+init();
 </script>
 <script>lucide.createIcons();</script>
 </body>
