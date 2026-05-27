@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda de Vistorias — Solução Técnica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  :root { --bg:#0A0A0A; --surface:#111; --surface-2:#161616; --border:rgba(255,255,255,.08); --text:#fff; --muted:#A1A1AA; --dim:#52525B; --primary:#3ECF8E; --warn:#F59E0B; --radius:8px; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+  .topbar { background:var(--surface); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:20; }
+  .topbar-logo { font-weight:700; flex:1; }
+  .topbar-greeting { color:var(--muted); font-size:13px; margin-right:16px; }
+  .topbar-links { display:flex; align-items:center; gap:4px; }
+  .topbar-links a { color:var(--muted); text-decoration:none; font-size:13px; font-weight:500; padding:6px 12px; border-radius:6px; }
+  .topbar-links a:hover, .topbar-links a.active { color:var(--text); background:rgba(255,255,255,.07); }
+  .nav-sair { border:1px solid rgba(255,255,255,.12); margin-left:8px; }
+  .wrap { width:min(1240px, calc(100vw - 32px)); margin:28px auto; }
+  .header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:18px; }
+  h1 { font-size:22px; letter-spacing:-.4px; }
+  .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+  .btn { border:none; border-radius:var(--radius); padding:10px 14px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn i { width:16px; height:16px; }
+  .btn-primary { background:var(--primary); color:#07110c; }
+  .btn-secondary { background:var(--surface-2); color:var(--muted); border:1px solid var(--border); }
+  .grid { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; align-items:start; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:22px; }
+  .card h2 { font-size:15px; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+  .card h2 i { width:17px; color:var(--dim); }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .full { grid-column:1 / -1; }
+  label { color:var(--muted); font-size:12px; font-weight:600; margin-bottom:7px; display:block; }
+  input, select, textarea { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:var(--radius); padding:10px 12px; font:inherit; font-size:14px; outline:none; }
+  textarea { min-height:92px; resize:vertical; }
+  input:focus, select:focus, textarea:focus { border-color:rgba(62,207,142,.45); }
+  .checkline { display:flex; align-items:center; gap:8px; padding-top:24px; color:var(--muted); font-size:13px; }
+  .checkline input { width:auto; }
+  .agenda-list { display:flex; flex-direction:column; gap:10px; }
+  .item { border:1px solid var(--border); border-radius:8px; padding:14px; background:rgba(255,255,255,.02); }
+  .item-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  .cliente { font-weight:700; font-size:14px; }
+  .meta { color:var(--muted); font-size:12px; margin-top:5px; line-height:1.5; }
+  .badge { display:inline-flex; padding:4px 8px; border-radius:999px; font-size:11px; font-weight:700; background:rgba(62,207,142,.1); color:var(--primary); white-space:nowrap; }
+  .badge.warn { background:rgba(245,158,11,.12); color:#FBBF24; }
+  .empty { color:var(--dim); text-align:center; padding:28px; border:1px dashed var(--border); border-radius:10px; }
+  @media (max-width: 900px) { .grid, .form-grid { grid-template-columns:1fr; } .full { grid-column:auto; } .topbar { overflow-x:auto; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
+</header>
+
+<main class="wrap">
+  <div class="header">
+    <div>
+      <h1>Agenda de Vistorias</h1>
+      <div class="sub">Agende a visita e o relatório de vistoria será criado automaticamente para o vistoriador.</div>
+    </div>
+    <button class="btn btn-secondary" onclick="carregarTudo()"><i data-lucide="refresh-cw"></i>Atualizar</button>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2><i data-lucide="clipboard-check"></i>Nova vistoria</h2>
+      <div class="form-grid">
+        <div>
+          <label>Nome do cliente</label>
+          <select id="obra_id"></select>
+        </div>
+        <div>
+          <label>Vistoriador</label>
+          <select id="vistoriador_id"></select>
+        </div>
+        <div>
+          <label>Dia</label>
+          <input type="date" id="data">
+        </div>
+        <div>
+          <label>Horário início</label>
+          <input type="time" id="hora_inicio">
+        </div>
+        <div>
+          <label>Tipo de vistoria</label>
+          <select id="tipo_vistoria">
+            <option value="cabeamento">Vistoria de Cabeamento</option>
+            <option value="eletrica">Vistoria de elétrica</option>
+            <option value="audio_video">Vistoria de Áudio e Vídeo</option>
+            <option value="automacao">Vistoria de Automação</option>
+          </select>
+        </div>
+        <div>
+          <label>Veículo</label>
+          <input id="veiculo" placeholder="Ex: Saveiro, Fiorino...">
+        </div>
+        <label class="checkline"><input type="checkbox" id="confirmado"> Confirmado</label>
+        <label class="checkline"><input type="checkbox" id="viagem"> É viagem</label>
+        <div class="full">
+          <label>Objetivo da vistoria</label>
+          <textarea id="objetivo" placeholder="Ex: liberar obra para instalação, acompanhar instalação em andamento..."></textarea>
+        </div>
+        <div class="full">
+          <label>Observação específica da vistoria</label>
+          <textarea id="observacao"></textarea>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:16px;" onclick="salvarVistoria()"><i data-lucide="calendar-plus"></i>Criar agenda e relatório</button>
+    </section>
+
+    <section class="card">
+      <h2><i data-lucide="calendar-days"></i>Próximas vistorias</h2>
+      <div id="lista" class="agenda-list"><div class="empty">Carregando...</div></div>
+    </section>
+  </div>
+</main>
+
+<script>
+const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let usuarioAtual = null;
+
+const tipoLabels = {
+  cabeamento: 'Vistoria de Cabeamento',
+  eletrica: 'Vistoria de elétrica',
+  audio_video: 'Vistoria de Áudio e Vídeo',
+  automacao: 'Vistoria de Automação',
+};
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtData(d) {
+  return d ? new Date(d + 'T12:00').toLocaleDateString('pt-BR') : '-';
+}
+
+function renderTopbar(nome, role, ativa) {
+  const h = new Date().getHours();
+  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  document.getElementById('topbar-greeting').textContent = `${s}, ${(nome || '').split(' ')[0]}`;
+  const links = [
+    { href:'obras.html', label:'Obras', id:'obras', roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href:'agenda.html', label:'Agenda Técnica', id:'agenda', roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'agenda_vistorias.html', label:'Agenda de Vistorias', id:'agenda-vistorias', roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href:'vistoria.html', label:'Minhas Vistorias', id:'vistoria', roles:['vistoriador'] },
+    { href:'supervisor.html', label:'Supervisor', id:'supervisor', roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
+    { href:'admin.html', label:'Admin', id:'admin', roles:['coordenador'] },
+  ];
+  document.getElementById('topbar-nav').innerHTML = links.filter(l => l.roles.includes(role)).map(l => `<a href="${l.href}" ${l.id === ativa ? 'class="active"' : ''}>${l.label}</a>`).join('') + '<a href="#" class="nav-sair" onclick="logout()">Sair</a>';
+}
+
+const ROLES_EDITAR_VISTORIA = ['coordenador','supervisor','agendamento','projetista','gerente_comercial','coordenador_projetos'];
+
+async function iniciar() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { location.href = 'login.html'; return; }
+  const { data: eu } = await db.from('tecnicos').select('id,nome,role').eq('auth_user_id', session.user.id).single();
+  if (!eu) { alert('Usuário não encontrado.'); location.href = 'obras.html'; return; }
+  usuarioAtual = eu;
+
+  const podeEditar = ROLES_EDITAR_VISTORIA.includes(eu.role);
+  if (!podeEditar) {
+    const formSection = document.querySelector('.grid > section:first-child');
+    if (formSection) formSection.style.display = 'none';
+    const grid = document.querySelector('.grid');
+    if (grid) grid.style.gridTemplateColumns = '1fr';
+  }
+
+  renderTopbar(eu.nome, eu.role, 'agenda-vistorias');
+  await carregarTudo();
+}
+
+async function carregarTudo() {
+  const [{ data: obras }, { data: vistoriadores }, { data: agenda, error }] = await Promise.all([
+    db.from('obras').select('id,nome_cliente,endereco').order('nome_cliente'),
+    db.from('tecnicos').select('id,nome,role').eq('role', 'vistoriador').order('nome'),
+    db.from('agendamentos_vistoria').select('*, obras(nome_cliente,endereco), tecnicos(nome)').order('data', { ascending:true }).order('hora_inicio', { ascending:true }),
+  ]);
+
+  document.getElementById('obra_id').innerHTML = '<option value="">Selecione...</option>' + (obras || []).map(o => `<option value="${o.id}">${esc(o.nome_cliente)}</option>`).join('');
+  document.getElementById('vistoriador_id').innerHTML = '<option value="">Selecione...</option>' + (vistoriadores || []).map(v => `<option value="${v.id}">${esc(v.nome)}</option>`).join('');
+  document.getElementById('data').value ||= new Date().toISOString().slice(0,10);
+
+  if (error) {
+    document.getElementById('lista').innerHTML = `<div class="empty">Erro: ${esc(error.message)}</div>`;
+    return;
+  }
+
+  const hoje = new Date().toISOString().slice(0,10);
+  const proximas = (agenda || []).filter(a => !a.data || a.data >= hoje);
+  document.getElementById('lista').innerHTML = proximas.length ? proximas.map(a => `
+    <div class="item">
+      <div class="item-top">
+        <div>
+          <div class="cliente">${esc(a.obras?.nome_cliente || 'Cliente não informado')}</div>
+          <div class="meta">${fmtData(a.data)} · ${esc(a.hora_inicio?.slice(0,5) || '-')} · ${esc(a.tecnicos?.nome || '-')}</div>
+          <div class="meta">${esc(a.obras?.endereco || '')}</div>
+        </div>
+        <span class="badge ${a.confirmado ? '' : 'warn'}">${a.confirmado ? 'Confirmado' : 'Pendente'}</span>
+      </div>
+      <div class="meta">${esc(tipoLabels[a.tipo_vistoria] || a.tipo_vistoria)}${a.viagem ? ' · Viagem' : ''}${a.veiculo ? ' · ' + esc(a.veiculo) : ''}</div>
+    </div>
+  `).join('') : '<div class="empty">Nenhuma vistoria futura.</div>';
+  lucide.createIcons();
+}
+
+async function salvarVistoria() {
+  if (!ROLES_EDITAR_VISTORIA.includes(usuarioAtual?.role)) {
+    alert('Sem permissão para criar vistorias.'); return;
+  }
+  const obraId = document.getElementById('obra_id').value;
+  const vistoriadorId = document.getElementById('vistoriador_id').value;
+  const data = document.getElementById('data').value;
+  const tipo = document.getElementById('tipo_vistoria').value;
+  const objetivo = document.getElementById('objetivo').value.trim() || tipoLabels[tipo];
+
+  if (!obraId || !vistoriadorId || !data) {
+    alert('Preencha cliente, vistoriador e dia.');
+    return;
+  }
+
+  const payload = {
+    obra_id: Number(obraId),
+    vistoriador_id: Number(vistoriadorId),
+    data,
+    hora_inicio: document.getElementById('hora_inicio').value || null,
+    confirmado: document.getElementById('confirmado').checked,
+    viagem: document.getElementById('viagem').checked,
+    veiculo: document.getElementById('veiculo').value.trim() || null,
+    tipo_vistoria: tipo,
+    objetivo,
+    observacao: document.getElementById('observacao').value.trim() || null,
+  };
+
+  const { data: ag, error } = await db.from('agendamentos_vistoria').insert(payload).select().single();
+  if (error) { alert('Erro ao criar agenda: ' + error.message); return; }
+
+  const { error: relError } = await db.from('relatorios_vistoria').insert({
+    agendamento_vistoria_id: ag.id,
+    obra_id: payload.obra_id,
+    vistoriador_id: payload.vistoriador_id,
+    data_vistoria: payload.data,
+    tipo_vistoria: payload.tipo_vistoria,
+    objetivo_vistoria: payload.objetivo,
+    status: 'pendente',
+  });
+  if (relError) { alert('Agenda criada, mas relatório falhou: ' + relError.message); return; }
+
+  alert('Agenda e relatório de vistoria criados.');
+  document.querySelectorAll('textarea,input[type=text]').forEach(el => el.value = '');
+  document.getElementById('confirmado').checked = false;
+  document.getElementById('viagem').checked = false;
+  await carregarTudo();
+}
+
+async function logout() {
+  await db.auth.signOut();
+  location.href = 'login.html';
+}
+
+iniciar();
+</script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

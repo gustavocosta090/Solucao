@@ -456,7 +456,8 @@ function renderTopbar(nome, role, paginaAtiva) {
   const links = [
     { href:'gerente_comercial.html', label:'Comercial',  id:'comercial', roles:['gerente_comercial'] },
     { href:'obras.html',             label:'Obras',       id:'obras',     roles:['gerente_comercial'] },
-    { href:'agenda.html',            label:'Agenda',      id:'agenda',    roles:['gerente_comercial'] },
+    { href:'agenda.html',            label:'Agenda Técnica',      id:'agenda',    roles:['gerente_comercial'] },
+    { href:'agenda_vistorias.html',  label:'Agenda de Vistorias', id:'agenda-vistorias', roles:['gerente_comercial'] },
   ];
   const nav = document.getElementById('topbar-nav');
   if (!nav) return;

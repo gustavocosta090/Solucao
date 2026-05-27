@@ -390,8 +390,9 @@ function renderTopbar(nome, role, paginaAtiva) {
   const links = [
     { href:'coordenador_projetos.html', label:'Projetos',   id:'coordenador-projetos', roles:['coordenador_projetos'] },
     { href:'obras.html',                label:'Obras',       id:'obras',                roles:['coordenador_projetos'] },
-    { href:'agenda.html',               label:'Agenda',      id:'agenda',               roles:['coordenador_projetos'] },
+    { href:'agenda.html',               label:'Agenda Técnica',      id:'agenda',               roles:['coordenador_projetos'] },
     { href:'supervisor.html',           label:'Supervisor',  id:'supervisor',            roles:['coordenador_projetos'] },
+    { href:'agenda_vistorias.html',     label:'Agenda de Vistorias', id:'agenda-vistorias',     roles:['coordenador_projetos'] },
   ];
   const nav = document.getElementById('topbar-nav');
   if (!nav) return;

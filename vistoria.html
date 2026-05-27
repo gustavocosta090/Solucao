@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatórios de Vistoria — Solução Técnica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  :root { --bg:#0A0A0A; --surface:#111; --surface-2:#161616; --border:rgba(255,255,255,.08); --text:#fff; --muted:#A1A1AA; --dim:#52525B; --primary:#3ECF8E; --warn:#F59E0B; --danger:#F87171; --radius:8px; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+  .topbar { background:var(--surface); border-bottom:1px solid var(--border); height:56px; padding:0 24px; display:flex; align-items:center; position:sticky; top:0; z-index:20; }
+  .topbar-logo { font-weight:700; flex:1; }
+  .topbar-greeting { color:var(--muted); font-size:13px; margin-right:16px; }
+  .topbar-links { display:flex; align-items:center; gap:4px; }
+  .topbar-links a { color:var(--muted); text-decoration:none; font-size:13px; font-weight:500; padding:6px 12px; border-radius:6px; }
+  .topbar-links a:hover, .topbar-links a.active { color:var(--text); background:rgba(255,255,255,.07); }
+  .nav-sair { border:1px solid rgba(255,255,255,.12); margin-left:8px; }
+  .wrap { width:min(1280px, calc(100vw - 32px)); margin:28px auto; }
+  .header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:18px; }
+  h1 { font-size:22px; letter-spacing:-.4px; }
+  .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+  .grid { display:grid; grid-template-columns:360px 1fr; gap:18px; align-items:start; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:22px; }
+  .card h2 { font-size:15px; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+  .card h2 i { width:17px; color:var(--dim); }
+  .list { display:flex; flex-direction:column; gap:10px; }
+  .item { border:1px solid var(--border); border-radius:8px; padding:14px; background:rgba(255,255,255,.02); cursor:pointer; }
+  .item:hover, .item.active { border-color:rgba(62,207,142,.35); background:rgba(62,207,142,.06); }
+  .cliente { font-weight:700; font-size:14px; }
+  .meta { color:var(--muted); font-size:12px; margin-top:5px; line-height:1.45; }
+  .badge { display:inline-flex; padding:4px 8px; border-radius:999px; font-size:11px; font-weight:700; background:rgba(245,158,11,.12); color:#FBBF24; margin-top:8px; }
+  .badge.done { background:rgba(62,207,142,.1); color:var(--primary); }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .full { grid-column:1 / -1; }
+  label { color:var(--muted); font-size:12px; font-weight:600; margin-bottom:7px; display:block; }
+  input, textarea, select { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:var(--radius); padding:10px 12px; font:inherit; font-size:14px; outline:none; }
+  textarea { min-height:88px; resize:vertical; }
+  input:focus, textarea:focus, select:focus { border-color:rgba(62,207,142,.45); }
+  .checklist { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:6px 0 16px; }
+  .check { display:flex; align-items:flex-start; gap:9px; padding:10px; background:rgba(255,255,255,.025); border:1px solid var(--border); border-radius:8px; color:var(--muted); font-size:13px; line-height:1.35; }
+  .check input { width:auto; margin-top:2px; }
+  .upload { border:1px dashed var(--border); border-radius:8px; padding:18px; text-align:center; background:rgba(255,255,255,.02); cursor:pointer; color:var(--muted); }
+  .upload:hover { border-color:rgba(62,207,142,.35); background:rgba(62,207,142,.04); }
+  .midias { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; margin-top:10px; }
+  .midia { position:relative; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--surface-2); min-height:90px; }
+  .midia img, .midia video { width:100%; aspect-ratio:1.25; object-fit:cover; display:block; }
+  .midia span { display:block; padding:7px; font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .midia button { position:absolute; top:6px; right:6px; border:none; border-radius:999px; background:rgba(0,0,0,.72); color:#fff; width:24px; height:24px; cursor:pointer; }
+  .btnbar { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
+  .btn { border:none; border-radius:var(--radius); padding:10px 14px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn i { width:16px; height:16px; }
+  .btn-primary { background:var(--primary); color:#07110c; }
+  .btn-secondary { background:var(--surface-2); color:var(--muted); border:1px solid var(--border); }
+  .empty { color:var(--dim); text-align:center; padding:30px; border:1px dashed var(--border); border-radius:10px; }
+  @media (max-width: 980px) { .grid, .form-grid, .checklist { grid-template-columns:1fr; } .full { grid-column:auto; } .topbar { overflow-x:auto; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
+</header>
+
+<main class="wrap">
+  <div class="header">
+    <div>
+      <h1>Relatórios de Vistoria</h1>
+      <div class="sub">Preencha o checklist da obra e conclua a liberação técnica.</div>
+    </div>
+    <button class="btn btn-secondary" onclick="carregarRelatorios()"><i data-lucide="refresh-cw"></i>Atualizar</button>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2><i data-lucide="clipboard-list"></i>Minhas vistorias</h2>
+      <div id="lista" class="list"><div class="empty">Carregando...</div></div>
+    </section>
+
+    <section class="card">
+      <h2><i data-lucide="file-check-2"></i>Relatório</h2>
+      <div id="formArea" class="empty">Selecione uma vistoria para preencher.</div>
+    </section>
+  </div>
+</main>
+
+<script>
+const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let usuarioAtual = null;
+let relatorios = [];
+let selecionado = null;
+let arquivosSelecionados = [];
+let midiasExistentes = [];
+
+const tipoLabels = {
+  cabeamento: 'Vistoria de Cabeamento',
+  eletrica: 'Vistoria de elétrica',
+  audio_video: 'Vistoria de Áudio e Vídeo',
+  automacao: 'Vistoria de Automação',
+};
+
+const checklistPorTipo = {
+  cabeamento: [
+    'Tubulações executadas conforme projeto',
+    'Pontos de rede/automação identificados e no local correto',
+    'Cabeamento passado nos pontos previstos',
+    'Cabos identificados na central',
+    'Caixas e conduítes sem obstrução',
+    'Infraestrutura permite lançamento dos cabos pendentes',
+    'Acabamento da equipe de cabeamento está adequado',
+    'Pendências foram registradas com clareza',
+  ],
+  eletrica: [
+    'Obra limpa e segura para receber equipamentos',
+    'Quadro de automação com alimentação correta',
+    'Rack/quadro de rede com energia disponível',
+    'Circuitos dedicados conferidos quando necessário',
+    'Equipamentos instalados estão bem fixados',
+    'Aterramento e proteção aparentam adequados',
+    'Falta algum hardware ou ponto elétrico',
+    'Condição geral libera continuidade da instalação',
+  ],
+  audio_video: [
+    'Caixas de áudio/vídeo cortadas conforme projeto',
+    'Caixas alinhadas e bem instaladas',
+    'Central de áudio/vídeo com energia correta',
+    'Cabos chegam corretamente na central',
+    'Cabos identificados para início da montagem',
+    'Pontos de TV/projetor/caixas estão no local previsto',
+    'Existe pendência de infraestrutura para AV',
+    'Ambiente está em condição de receber equipamentos',
+  ],
+  automacao: [
+    'Obra em condição de receber equipamentos finais',
+    'Módulos/dispositivos instalados estão bem fixados',
+    'Pontos de automação conferem com o projeto',
+    'Quadro de automação está organizado',
+    'Rede e alimentação disponíveis para equipamentos',
+    'Cenários ou comandos pendentes foram identificados',
+    'Instalação já executada está com boa qualidade',
+    'Obra pode ser liberada para próxima etapa técnica',
+  ],
+};
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtData(d) {
+  return d ? new Date(d + 'T12:00').toLocaleDateString('pt-BR') : '-';
+}
+
+function renderTopbar(nome, role, ativa) {
+  const h = new Date().getHours();
+  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  document.getElementById('topbar-greeting').textContent = `${s}, ${(nome || '').split(' ')[0]}`;
+  const links = [
+    { href:'obras.html', label:'Obras', id:'obras', roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href:'agenda.html', label:'Agenda Técnica', id:'agenda', roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'agenda_vistorias.html', label:'Agenda de Vistorias', id:'agenda-vistorias', roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href:'vistoria.html', label:'Minhas Vistorias', id:'vistoria', roles:['vistoriador'] },
+    { href:'supervisor.html', label:'Supervisor', id:'supervisor', roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
+    { href:'admin.html', label:'Admin', id:'admin', roles:['coordenador'] },
+  ];
+  document.getElementById('topbar-nav').innerHTML = links.filter(l => l.roles.includes(role)).map(l => `<a href="${l.href}" ${l.id === ativa ? 'class="active"' : ''}>${l.label}</a>`).join('') + '<a href="#" class="nav-sair" onclick="logout()">Sair</a>';
+}
+
+async function iniciar() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { location.href = 'login.html'; return; }
+  const { data: eu } = await db.from('tecnicos').select('id,nome,role').eq('auth_user_id', session.user.id).single();
+  if (!eu || !['vistoriador','coordenador','supervisor'].includes(eu.role)) {
+    alert('Acesso restrito ao vistoriador.'); location.href = 'obras.html'; return;
+  }
+  usuarioAtual = eu;
+  renderTopbar(eu.nome, eu.role, 'vistoria');
+  await carregarRelatorios();
+}
+
+async function carregarRelatorios() {
+  let query = db.from('relatorios_vistoria')
+    .select('*, obras(nome_cliente,endereco), agendamentos_vistoria(hora_inicio,confirmado,viagem,veiculo,observacao)')
+    .order('data_vistoria', { ascending:false });
+
+  if (usuarioAtual.role === 'vistoriador') query = query.eq('vistoriador_id', usuarioAtual.id);
+
+  const { data, error } = await query;
+  if (error) {
+    document.getElementById('lista').innerHTML = `<div class="empty">Erro: ${esc(error.message)}</div>`;
+    return;
+  }
+  relatorios = data || [];
+  renderLista();
+}
+
+function renderLista() {
+  document.getElementById('lista').innerHTML = relatorios.length ? relatorios.map(r => `
+    <div class="item ${selecionado?.id === r.id ? 'active' : ''}" onclick="selecionar(${r.id})">
+      <div class="cliente">${esc(r.obras?.nome_cliente || 'Cliente não informado')}</div>
+      <div class="meta">${fmtData(r.data_vistoria)} · ${esc(r.agendamentos_vistoria?.hora_inicio?.slice(0,5) || '-')}</div>
+      <div class="meta">${esc(tipoLabels[r.tipo_vistoria] || r.tipo_vistoria)}</div>
+      <span class="badge ${r.status === 'concluido' ? 'done' : ''}">${r.status === 'concluido' ? 'Concluído' : 'Pendente'}</span>
+    </div>
+  `).join('') : '<div class="empty">Nenhum relatório encontrado.</div>';
+  lucide.createIcons();
+}
+
+function selecionar(id) {
+  selecionado = relatorios.find(r => r.id === id);
+  renderLista();
+  renderFormulario();
+}
+
+function renderFormulario() {
+  if (!selecionado) return;
+  const checklist = checklistPorTipo[selecionado.tipo_vistoria] || [];
+  const respostas = selecionado.checklist || {};
+  document.getElementById('formArea').className = '';
+  document.getElementById('formArea').innerHTML = `
+    <div class="form-grid">
+      <div>
+        <label>Cliente</label>
+        <input value="${esc(selecionado.obras?.nome_cliente || '')}" disabled>
+      </div>
+      <div>
+        <label>Tipo</label>
+        <input value="${esc(tipoLabels[selecionado.tipo_vistoria] || '')}" disabled>
+      </div>
+      <div class="full">
+        <label>Objetivo da vistoria</label>
+        <textarea id="objetivo_vistoria">${esc(selecionado.objetivo_vistoria || '')}</textarea>
+      </div>
+      <div class="full">
+        <label>Situação atual da obra</label>
+        <textarea id="situacao_atual_obra">${esc(selecionado.situacao_atual_obra || '')}</textarea>
+      </div>
+      <div class="full">
+        <label>Pontos positivos identificados</label>
+        <textarea id="pontos_positivos">${esc(selecionado.pontos_positivos || '')}</textarea>
+      </div>
+      <div class="full">
+        <label>Pontos de atenção da equipe técnica</label>
+        <textarea id="pontos_atencao">${esc(selecionado.pontos_atencao || '')}</textarea>
+      </div>
+      <div class="full">
+        <label>Checklist específico</label>
+        <div class="checklist">
+          ${checklist.map((item, idx) => `<label class="check"><input type="checkbox" data-check="${idx}" ${respostas[idx] ? 'checked' : ''}> ${esc(item)}</label>`).join('')}
+        </div>
+      </div>
+      <label class="check full"><input type="checkbox" id="inconformidade" ${selecionado.inconformidade ? 'checked' : ''}> Foi encontrada alguma inconformidade com o projeto em obra?</label>
+      <div class="full">
+        <label>Descreva a inconformidade, se houver</label>
+        <textarea id="descricao_inconformidade">${esc(selecionado.descricao_inconformidade || '')}</textarea>
+      </div>
+      <div class="full">
+        <label>Observações finais</label>
+        <textarea id="observacoes">${esc(selecionado.observacoes || '')}</textarea>
+      </div>
+      <div class="full">
+        <label>Fotos e vídeos da vistoria</label>
+        <div class="upload" onclick="document.getElementById('midia_input').click()">
+          <i data-lucide="upload-cloud"></i>
+          <div>Selecionar fotos ou vídeos</div>
+          <div class="meta">Imagens e vídeos da obra, pendências ou liberação</div>
+        </div>
+        <input type="file" id="midia_input" accept="image/*,video/*" multiple style="display:none" onchange="adicionarMidias(this.files)">
+        <div id="midias_grid" class="midias"></div>
+      </div>
+    </div>
+    <div class="btnbar">
+      <button class="btn btn-secondary" onclick="salvar(false)"><i data-lucide="save"></i>Salvar</button>
+      <button class="btn btn-primary" onclick="salvar(true)"><i data-lucide="check-circle"></i>Concluir relatório</button>
+    </div>`;
+  midiasExistentes = Array.isArray(selecionado.midias_urls) ? [...selecionado.midias_urls] : [];
+  arquivosSelecionados = [];
+  renderMidias();
+  lucide.createIcons();
+}
+
+function adicionarMidias(files) {
+  Array.from(files || []).forEach(file => {
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return;
+    arquivosSelecionados.push({
+      id: Date.now() + Math.random(),
+      file,
+      tipo: file.type.startsWith('video/') ? 'video' : 'image',
+      preview: URL.createObjectURL(file),
+    });
+  });
+  renderMidias();
+}
+
+function removerMidia(tipo, id) {
+  if (tipo === 'nova') arquivosSelecionados = arquivosSelecionados.filter(m => String(m.id) !== String(id));
+  if (tipo === 'existente') midiasExistentes = midiasExistentes.filter((_, idx) => String(idx) !== String(id));
+  renderMidias();
+}
+
+function renderMidias() {
+  const grid = document.getElementById('midias_grid');
+  if (!grid) return;
+  const existentes = midiasExistentes.map((m, idx) => `
+    <div class="midia">
+      ${m.tipo === 'video' ? `<video src="${esc(m.url)}" controls></video>` : `<img src="${esc(m.url)}" alt="mídia">`}
+      <button type="button" onclick="removerMidia('existente', ${idx})">x</button>
+      <span>${esc(m.nome || (m.tipo === 'video' ? 'Vídeo' : 'Foto'))}</span>
+    </div>
+  `).join('');
+  const novas = arquivosSelecionados.map(m => `
+    <div class="midia">
+      ${m.tipo === 'video' ? `<video src="${esc(m.preview)}" controls></video>` : `<img src="${esc(m.preview)}" alt="mídia">`}
+      <button type="button" onclick="removerMidia('nova', '${m.id}')">x</button>
+      <span>${esc(m.file.name)}</span>
+    </div>
+  `).join('');
+  grid.innerHTML = existentes + novas || '<div class="meta">Nenhuma mídia anexada.</div>';
+  lucide.createIcons();
+}
+
+async function uploadMidias() {
+  const enviadas = [];
+  for (let i = 0; i < arquivosSelecionados.length; i++) {
+    const item = arquivosSelecionados[i];
+    const ext = item.file.name.split('.').pop()?.toLowerCase() || (item.tipo === 'video' ? 'mp4' : 'jpg');
+    const path = `vistorias/obra_${selecionado.obra_id || 'sem_obra'}/rel_${selecionado.id}_${Date.now()}_${i}.${ext}`;
+    const { error } = await db.storage.from('fotos-os').upload(path, item.file, { contentType: item.file.type });
+    if (error) throw error;
+    const { data } = db.storage.from('fotos-os').getPublicUrl(path);
+    enviadas.push({ url: data.publicUrl, tipo: item.tipo, nome: item.file.name });
+  }
+  return enviadas;
+}
+
+async function salvar(concluir) {
+  if (!selecionado) return;
+  const checklist = {};
+  document.querySelectorAll('[data-check]').forEach(el => { checklist[el.dataset.check] = el.checked; });
+
+  let midiasNovas = [];
+  try {
+    midiasNovas = await uploadMidias();
+  } catch (error) {
+    alert('Erro ao enviar mídia: ' + error.message);
+    return;
+  }
+
+  const payload = {
+    objetivo_vistoria: document.getElementById('objetivo_vistoria').value.trim() || null,
+    situacao_atual_obra: document.getElementById('situacao_atual_obra').value.trim() || null,
+    pontos_positivos: document.getElementById('pontos_positivos').value.trim() || null,
+    pontos_atencao: document.getElementById('pontos_atencao').value.trim() || null,
+    inconformidade: document.getElementById('inconformidade').checked,
+    descricao_inconformidade: document.getElementById('descricao_inconformidade').value.trim() || null,
+    checklist,
+    midias_urls: [...midiasExistentes, ...midiasNovas],
+    observacoes: document.getElementById('observacoes').value.trim() || null,
+    atualizado_em: new Date().toISOString(),
+  };
+  if (concluir) {
+    payload.status = 'concluido';
+    payload.concluido_em = new Date().toISOString();
+  }
+
+  const { error } = await db.from('relatorios_vistoria').update(payload).eq('id', selecionado.id);
+  if (error) { alert('Erro ao salvar: ' + error.message); return; }
+  alert(concluir ? 'Relatório concluído.' : 'Relatório salvo.');
+  await carregarRelatorios();
+  selecionado = relatorios.find(r => r.id === selecionado.id) || selecionado;
+  renderFormulario();
+}
+
+async function logout() {
+  await db.auth.signOut();
+  location.href = 'login.html';
+}
+
+iniciar();
+</script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

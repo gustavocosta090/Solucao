@@ -361,7 +361,8 @@ function renderTopbar(nome, role, paginaAtiva) {
   const links = [
     { href:'projetista.html', label:'Meu Painel', id:'projetista', roles:['projetista'] },
     { href:'obras.html',      label:'Obras',       id:'obras',      roles:['projetista'] },
-    { href:'agenda.html',     label:'Agenda',      id:'agenda',     roles:['projetista'] },
+    { href:'agenda.html',     label:'Agenda Técnica',      id:'agenda',     roles:['projetista'] },
+    { href:'agenda_vistorias.html',  label:'Agenda de Vistorias', id:'agenda-vistorias', roles:['projetista'] },
   ];
   const nav = document.getElementById('topbar-nav');
   if (!nav) return;

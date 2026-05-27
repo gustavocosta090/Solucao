@@ -50,9 +50,10 @@
 
   /* ── Layout ── */
   .container {
-    max-width: 960px;
+    width: min(1320px, calc(100vw - 32px));
+    max-width: none;
     margin: 32px auto;
-    padding: 0 24px;
+    padding: 0;
   }
 
   /* ── Section header ── */
@@ -226,12 +227,15 @@
   /* ── Table ── */
   .table-wrapper {
     overflow-x: auto;
+    padding-bottom: 8px;
   }
 
   table {
     width: 100%;
+    min-width: 1180px;
     border-collapse: collapse;
     font-size: 13px;
+    table-layout: fixed;
   }
 
   thead th {
@@ -251,6 +255,7 @@
     border-bottom: 1px solid var(--border);
     color: var(--text-2);
     vertical-align: middle;
+    overflow-wrap: anywhere;
   }
 
   tbody tr:last-child td {
@@ -315,6 +320,11 @@
   .badge-coordenador_projetos {
     background: rgba(168, 85, 247, 0.12);
     color: #C084FC;
+  }
+
+  .badge-vistoriador {
+    background: rgba(20, 184, 166, 0.12);
+    color: #5EEAD4;
   }
 
   .badge-ativo {
@@ -485,6 +495,7 @@
           <option value="gerente_comercial">Gerente Comercial</option>
           <option value="projetista">Projetista</option>
           <option value="coordenador_projetos">Coordenador de Projetos</option>
+          <option value="vistoriador">Vistoriador</option>
         </select>
       </div>
       <div class="form-group">
@@ -568,6 +579,7 @@
         <option value="gerente_comercial">Gerente Comercial</option>
         <option value="projetista">Projetista</option>
         <option value="coordenador_projetos">Coordenador de Projetos</option>
+        <option value="vistoriador">Vistoriador</option>
       </select>
     </div>
     <div class="form-group">
@@ -906,14 +918,17 @@ function renderTopbar(nome, role, paginaAtiva) {
   const greetEl = document.getElementById('topbar-greeting');
   if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
   const links = [
-    { href:'obras.html',                label:'Obras',       id:'obras',                roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'agenda.html',               label:'Agenda',      id:'agenda',               roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'supervisor.html',           label:'Supervisor',  id:'supervisor',           roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href:'admin.html',                label:'Admin',       id:'admin',                roles:['coordenador'] },
-    { href:'tecnico_dashboard.html',    label:'Minhas OSs',  id:'minhas-os',            roles:['tecnico','auxiliar'] },
-    { href:'gerente_comercial.html',    label:'Comercial',   id:'comercial',            roles:['gerente_comercial'] },
-    { href:'projetista.html',           label:'Meu Painel',  id:'projetista',           roles:['projetista'] },
-    { href:'coordenador_projetos.html', label:'Projetos',    id:'coordenador-projetos', roles:['coordenador_projetos'] },
+    { href:'obras.html',                label:'Obras',               id:'obras',              roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href:'agenda.html',               label:'Agenda Técnica',      id:'agenda',             roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'agenda_vistorias.html',     label:'Agenda de Vistorias', id:'agenda-vistorias',   roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href:'vistoria.html',             label:'Minhas Vistorias',    id:'vistoria',           roles:['vistoriador'] },
+    { href:'os.html',                   label:'Fazer OS',            id:'os',                 roles:['tecnico','auxiliar'] },
+    { href:'supervisor.html',           label:'Supervisor',          id:'supervisor',         roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
+    { href:'admin.html',                label:'Admin',               id:'admin',              roles:['coordenador'] },
+    { href:'tecnico_dashboard.html',    label:'Minhas OSs',          id:'minhas-os',          roles:['tecnico','auxiliar'] },
+    { href:'gerente_comercial.html',    label:'Comercial',           id:'comercial',          roles:['gerente_comercial'] },
+    { href:'projetista.html',           label:'Meu Painel',          id:'projetista',         roles:['projetista'] },
+    { href:'coordenador_projetos.html', label:'Projetos',            id:'coordenador-projetos', roles:['coordenador_projetos'] },
   ];
   const nav = document.getElementById('topbar-nav');
   if (!nav) return;

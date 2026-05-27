@@ -530,6 +530,8 @@ async function redirecionarPorRole(userId) {
       window.location.href = 'projetista.html';
     } else if (role === 'coordenador_projetos') {
       window.location.href = 'coordenador_projetos.html';
+    } else if (role === 'vistoriador') {
+      window.location.href = 'vistoria.html';
     } else {
       // fallback: envia para obras (roles desconhecidas)
       window.location.href = 'obras.html';
