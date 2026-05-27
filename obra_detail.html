@@ -291,8 +291,18 @@
 
     .galeria-item { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--surface-2); border: 1px solid var(--border); cursor: pointer; }
     .galeria-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 200ms; }
+    .galeria-item video { width: 100%; height: 100%; object-fit: cover; }
     .galeria-item:hover img { transform: scale(1.04); }
     .galeria-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.85)); padding: 10px 8px 6px; font-size: 0.68rem; color: var(--text-2); }
+
+    .vistoria-list { display: flex; flex-direction: column; gap: 12px; }
+    .vistoria-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px; cursor: pointer; }
+    .vistoria-card:hover { border-color: var(--border-hover); }
+    .vistoria-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .vistoria-title { font-weight: 700; color: var(--text-1); font-size: .92rem; }
+    .vistoria-meta { color: var(--text-3); font-size: .75rem; margin-top: 4px; line-height: 1.45; }
+    .midia-chip { display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); font-size: .74rem; margin-top: 8px; }
+    .midia-chip i { width: 13px; height: 13px; }
 
     /* ── Observações tab ── */
     .obs-wrap {
@@ -407,6 +417,8 @@ const params = new URLSearchParams(location.search);
 const obraId = parseInt(params.get('id'));
 
 let todasFotos  = [];
+let fotosLightbox = [];
+let todasVistorias = [];
 let lbIndex     = 0;
 let filtroStatus = 'todos';
 let todasOS     = [];
@@ -435,6 +447,20 @@ const STATUS_LABELS = {
   reprovada: { label: 'Pendente',  cls: 'badge-pend' },
 };
 
+const TIPO_VISTORIA_LABELS = {
+  cabeamento: 'Vistoria de Cabeamento',
+  eletrica: 'Vistoria de elétrica',
+  audio_video: 'Vistoria de Áudio e Vídeo',
+  automacao: 'Vistoria de Automação',
+};
+
+const CHECKLIST_VISTORIA = {
+  cabeamento: ['Tubulações conforme projeto','Pontos identificados/local correto','Cabeamento passado','Cabos identificados na central','Caixas e conduítes sem obstrução','Infraestrutura permite pendências','Acabamento adequado','Pendências registradas'],
+  eletrica: ['Obra limpa e segura','Quadro de automação energizado','Rack/quadro de rede com energia','Circuitos conferidos','Equipamentos bem fixados','Aterramento/proteção aparentes','Pendências de hardware/elétrica','Libera continuidade'],
+  audio_video: ['Caixas cortadas conforme projeto','Caixas alinhadas','Central com energia correta','Cabos chegam na central','Cabos identificados','Pontos no local previsto','Pendências de AV','Ambiente liberado'],
+  automacao: ['Condição para equipamentos finais','Dispositivos bem fixados','Pontos conferem com projeto','Quadro organizado','Rede/energia disponíveis','Cenários pendentes identificados','Instalação com qualidade','Liberada próxima etapa'],
+};
+
 // Roles com permissão de editar campos da obra
 const PODE_EDITAR = ['coordenador', 'supervisor', 'agendamento', 'coordenador_projetos'];
 
@@ -445,14 +471,17 @@ function renderTopbar(nome, role, paginaAtiva) {
   const greetEl = document.getElementById('topbar-greeting');
   if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
   const links = [
-    { href:'obras.html',                label:'Obras',       id:'obras',                roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'agenda.html',               label:'Agenda',      id:'agenda',               roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'supervisor.html',           label:'Supervisor',  id:'supervisor',           roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href:'admin.html',                label:'Admin',       id:'admin',                roles:['coordenador'] },
-    { href:'tecnico_dashboard.html',    label:'Minhas OSs',  id:'minhas-os',            roles:['tecnico','auxiliar'] },
-    { href:'gerente_comercial.html',    label:'Comercial',   id:'comercial',            roles:['gerente_comercial'] },
-    { href:'projetista.html',           label:'Meu Painel',  id:'projetista',           roles:['projetista'] },
-    { href:'coordenador_projetos.html', label:'Projetos',    id:'coordenador-projetos', roles:['coordenador_projetos'] },
+    { href:'obras.html',                label:'Obras',               id:'obras',              roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href:'agenda.html',               label:'Agenda Técnica',      id:'agenda',             roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'agenda_vistorias.html',     label:'Agenda de Vistorias', id:'agenda-vistorias',   roles:['supervisor','coordenador','agendamento','vistoriador'] },
+    { href:'vistoria.html',             label:'Minhas Vistorias',    id:'vistoria',           roles:['vistoriador'] },
+    { href:'os.html',                   label:'Fazer OS',            id:'os',                 roles:['tecnico','auxiliar'] },
+    { href:'supervisor.html',           label:'Supervisor',          id:'supervisor',         roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
+    { href:'admin.html',                label:'Admin',               id:'admin',              roles:['coordenador'] },
+    { href:'tecnico_dashboard.html',    label:'Minhas OSs',          id:'minhas-os',          roles:['tecnico','auxiliar'] },
+    { href:'gerente_comercial.html',    label:'Comercial',           id:'comercial',          roles:['gerente_comercial'] },
+    { href:'projetista.html',           label:'Meu Painel',          id:'projetista',         roles:['projetista'] },
+    { href:'coordenador_projetos.html', label:'Projetos',            id:'coordenador-projetos', roles:['coordenador_projetos'] },
   ];
   const nav = document.getElementById('topbar-nav');
   if (!nav) return;
@@ -553,15 +582,20 @@ async function carregarObra() {
     return;
   }
 
-  const [{ data: osList, error: osErr }, { data: tecList }] = await Promise.all([
+  const [{ data: osList, error: osErr }, { data: tecList }, { data: vistList, error: vistErr }] = await Promise.all([
     db.from('ordens_de_servico')
       .select('*')
       .eq('obra_id', obraId)
       .order('criado_em', { ascending: false }),
-    db.from('tecnicos').select('id, nome')
+    db.from('tecnicos').select('id, nome'),
+    db.from('relatorios_vistoria')
+      .select('*, tecnicos(nome), agendamentos_vistoria(hora_inicio,confirmado,viagem,veiculo,observacao)')
+      .eq('obra_id', obraId)
+      .order('data_vistoria', { ascending: false })
   ]);
 
   if (osErr) console.error('Erro ao buscar OS:', osErr.message);
+  if (vistErr) console.error('Erro ao buscar vistorias:', vistErr.message);
 
   (tecList || []).forEach(t => { tecMap[t.id] = t; });
 
@@ -569,11 +603,17 @@ async function carregarObra() {
     ...o,
     tecnicos: o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null
   }));
+  todasVistorias = vistList || [];
 
   todasFotos = [];
   todasOS.forEach(os => {
     (os.fotos_urls || []).forEach(url => {
-      todasFotos.push({ url, tecnico: os.tecnicos?.nome || '—', data: os.criado_em?.slice(0,10) || '' });
+      todasFotos.push({ url, tipo: 'image', tecnico: os.tecnicos?.nome || '—', data: os.criado_em?.slice(0,10) || '', origem: 'OS' });
+    });
+  });
+  todasVistorias.forEach(v => {
+    (Array.isArray(v.midias_urls) ? v.midias_urls : []).forEach(m => {
+      todasFotos.push({ url: m.url, tipo: m.tipo || 'image', tecnico: v.tecnicos?.nome || '—', data: v.data_vistoria || '', origem: 'Vistoria' });
     });
   });
 
@@ -586,6 +626,7 @@ function renderPagina(obra) {
   const faseClass  = obra.fase_atual || 'em_andamento';
 
   const total      = todasOS.length;
+  const totalVistorias = todasVistorias.length;
   const concluidas = todasOS.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
   const pendentes  = todasOS.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
   const nFotos     = todasFotos.length;
@@ -705,6 +746,10 @@ function renderPagina(obra) {
         <i data-lucide="clipboard-list"></i> Ordens de Serviço
         <span class="section-count">${total}</span>
       </button>
+      <button class="tab-btn" id="tab-vistorias" onclick="setTab('vistorias')">
+        <i data-lucide="clipboard-check"></i> Vistorias
+        <span class="section-count">${totalVistorias}</span>
+      </button>
       <button class="tab-btn" id="tab-galeria" onclick="setTab('galeria')">
         <i data-lucide="image"></i> Galeria
         <span class="section-count">${nFotos}</span>
@@ -722,6 +767,10 @@ function renderPagina(obra) {
         <button class="filtro-btn" onclick="filtrarOS(this,'concluida')">Concluídas</button>
       </div>
       <div id="tabela-os" class="os-table-wrap">${renderTabelaOS(todasOS)}</div>
+    </div>
+
+    <div id="panel-vistorias" class="tab-panel">
+      <div class="vistoria-list">${renderVistorias(todasVistorias)}</div>
     </div>
 
     <!-- Panel: Galeria -->
@@ -757,7 +806,7 @@ function renderPagina(obra) {
 // ── Tabs ──
 function setTab(tab) {
   tabAtiva = tab;
-  ['os', 'galeria', 'obs'].forEach(t => {
+  ['os', 'vistorias', 'galeria', 'obs'].forEach(t => {
     document.getElementById('tab-' + t)?.classList.toggle('tab-active', t === tab);
     document.getElementById('panel-' + t)?.classList.toggle('tab-visible', t === tab);
   });
@@ -810,10 +859,37 @@ function renderGaleria(fotos) {
     </div>`;
 
   return fotos.map((f, i) => `
-    <div class="galeria-item" onclick="abrirLightbox(${i})">
-      <img src="${f.url}" alt="foto" loading="lazy">
-      <div class="galeria-info">${f.tecnico} · ${f.data}</div>
+    <div class="galeria-item" ${f.tipo === 'video' ? '' : `onclick="abrirLightbox(${i})"`}>
+      ${f.tipo === 'video' ? `<video src="${escHtml(f.url)}" controls></video>` : `<img src="${escHtml(f.url)}" alt="foto" loading="lazy">`}
+      <div class="galeria-info">${escHtml(f.origem || 'Mídia')} · ${escHtml(f.tecnico)} · ${escHtml(f.data)}</div>
     </div>`).join('');
+}
+
+function renderVistorias(lista) {
+  if (!lista.length) return `
+    <div class="empty">
+      <i data-lucide="clipboard-check"></i>
+      Nenhuma vistoria registrada para esta obra.
+    </div>`;
+
+  return lista.map(v => {
+    const data = v.data_vistoria ? new Date(v.data_vistoria + 'T12:00').toLocaleDateString('pt-BR') : '—';
+    const midias = Array.isArray(v.midias_urls) ? v.midias_urls.length : 0;
+    const status = v.status === 'concluido'
+      ? '<span class="badge badge-aprov">Concluído</span>'
+      : '<span class="badge badge-pend">Pendente</span>';
+    return `<div class="vistoria-card" onclick="verDetalheVistoria(${v.id})">
+      <div class="vistoria-head">
+        <div>
+          <div class="vistoria-title">${escHtml(TIPO_VISTORIA_LABELS[v.tipo_vistoria] || v.tipo_vistoria)}</div>
+          <div class="vistoria-meta">${data} · ${escHtml(v.agendamentos_vistoria?.hora_inicio?.slice(0,5) || 'horário não informado')} · ${escHtml(v.tecnicos?.nome || '—')}</div>
+        </div>
+        ${status}
+      </div>
+      <div class="vistoria-meta">${escHtml(v.objetivo_vistoria || 'Sem objetivo informado')}</div>
+      <div class="midia-chip"><i data-lucide="paperclip"></i>${midias} mídia(s)</div>
+    </div>`;
+  }).join('');
 }
 
 function normStatus(s) {
@@ -914,8 +990,54 @@ function fecharDetalheOS() {
   if (modal) modal.style.display = 'none';
 }
 
+function verDetalheVistoria(id) {
+  const v = todasVistorias.find(item => item.id === id);
+  if (!v) return;
+  const midias = Array.isArray(v.midias_urls) ? v.midias_urls : [];
+  const checklist = v.checklist || {};
+  const checklistLabels = CHECKLIST_VISTORIA[v.tipo_vistoria] || [];
+  const checks = Object.entries(checklist).map(([idx, ok]) =>
+    `<div style="color:${ok ? 'var(--primary)' : 'var(--text-3)'};font-size:.82rem;">${ok ? '✓' : '○'} ${escHtml(checklistLabels[Number(idx)] || `Item ${Number(idx) + 1}`)}</div>`
+  ).join('');
+  const midiasHtml = midias.map((m, i) => `
+    <div class="galeria-item" style="aspect-ratio:1.2" onclick="${m.tipo === 'video' ? '' : `abrirLightboxFromModal(${JSON.stringify(midias.filter(x => x.tipo !== 'video').map(x => x.url)).replace(/"/g,"'")}, ${Math.max(0, midias.filter(x => x.tipo !== 'video').findIndex(x => x.url === m.url))})`}">
+      ${m.tipo === 'video' ? `<video src="${escHtml(m.url)}" controls></video>` : `<img src="${escHtml(m.url)}" alt="mídia">`}
+    </div>
+  `).join('');
+
+  let modal = document.getElementById('modal-os-detalhe');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-os-detalhe';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);padding:20px;';
+    modal.addEventListener('click', e => { if (e.target === modal) fecharDetalheOS(); });
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;max-width:760px;width:100%;max-height:85vh;overflow-y:auto;padding:28px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <h3 style="font-size:16px;font-weight:700;color:var(--text-1);">Relatório de Vistoria</h3>
+        <button onclick="fecharDetalheOS()" style="background:none;border:1px solid var(--border);cursor:pointer;color:var(--text-2);font-size:13px;padding:6px 10px;border-radius:6px;font-family:inherit;">Fechar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;">
+        <div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;">Tipo</label><div style="margin-top:5px;color:var(--text-1);">${escHtml(TIPO_VISTORIA_LABELS[v.tipo_vistoria] || v.tipo_vistoria)}</div></div>
+        <div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;">Vistoriador</label><div style="margin-top:5px;color:var(--text-1);">${escHtml(v.tecnicos?.nome || '—')}</div></div>
+        <div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;">Objetivo</label><div style="margin-top:5px;color:var(--text-2);white-space:pre-line">${escHtml(v.objetivo_vistoria || '—')}</div></div>
+        <div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;">Situação atual da obra</label><div style="margin-top:5px;color:var(--text-2);white-space:pre-line">${escHtml(v.situacao_atual_obra || '—')}</div></div>
+        <div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;">Pontos positivos</label><div style="margin-top:5px;color:var(--text-2);white-space:pre-line">${escHtml(v.pontos_positivos || '—')}</div></div>
+        <div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;">Pontos de atenção</label><div style="margin-top:5px;color:var(--text-2);white-space:pre-line">${escHtml(v.pontos_atencao || '—')}</div></div>
+        <div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;">Inconformidade</label><div style="margin-top:5px;color:${v.inconformidade ? '#F59E0B' : 'var(--text-2)'};white-space:pre-line">${v.inconformidade ? escHtml(v.descricao_inconformidade || 'Sim') : 'Não'}</div></div>
+        ${checks ? `<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;">Checklist</label><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;margin-top:8px;">${checks}</div></div>` : ''}
+      </div>
+      ${midiasHtml ? `<div style="margin-top:20px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Fotos e vídeos (${midias.length})</div><div class="galeria-grid">${midiasHtml}</div></div>` : ''}
+    </div>`;
+  modal.style.display = 'flex';
+  lucide.createIcons();
+}
+
 function abrirLightboxFromModal(fotos, idx) {
-  todasFotos = fotos.map(url => ({ url, tecnico: '', data: '' }));
+  fotosLightbox = fotos.map(url => ({ url, tecnico: '', data: '' }));
   lbIndex = idx;
   document.getElementById('lb-img').src = fotos[idx];
   document.getElementById('lb-caption').textContent = `${idx + 1}/${fotos.length}`;
@@ -923,7 +1045,11 @@ function abrirLightboxFromModal(fotos, idx) {
 }
 
 function abrirLightbox(idx) {
-  lbIndex = idx;
+  const item = todasFotos[idx];
+  if (!item || item.tipo === 'video') return;
+  fotosLightbox = todasFotos.filter(f => f.tipo !== 'video');
+  lbIndex = fotosLightbox.findIndex(f => f.url === item.url);
+  if (lbIndex < 0) lbIndex = 0;
   mostrarFotoLb();
   document.getElementById('lightbox').classList.add('aberto');
 }
@@ -938,14 +1064,19 @@ function abrirLightboxOS(osIdx, fotoIdx) {
 function fecharLightbox() { document.getElementById('lightbox').classList.remove('aberto'); }
 
 function navLightbox(delta) {
-  lbIndex = (lbIndex + delta + todasFotos.length) % todasFotos.length;
+  const lista = fotosLightbox.length ? fotosLightbox : todasFotos.filter(f => f.tipo !== 'video');
+  if (!lista.length) return;
+  fotosLightbox = lista;
+  lbIndex = (lbIndex + delta + lista.length) % lista.length;
   mostrarFotoLb();
 }
 
 function mostrarFotoLb() {
-  const f = todasFotos[lbIndex];
+  const lista = fotosLightbox.length ? fotosLightbox : todasFotos.filter(f => f.tipo !== 'video');
+  const f = lista[lbIndex];
+  if (!f) return;
   document.getElementById('lb-img').src = f.url;
-  document.getElementById('lb-caption').textContent = `${f.tecnico ? f.tecnico + ' · ' : ''}${f.data ? f.data + ' · ' : ''}${lbIndex+1}/${todasFotos.length}`;
+  document.getElementById('lb-caption').textContent = `${f.tecnico ? f.tecnico + ' · ' : ''}${f.data ? f.data + ' · ' : ''}${lbIndex+1}/${lista.length}`;
 }
 
 // ── Helper: escapar HTML ──
