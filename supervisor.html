@@ -737,6 +737,25 @@
 
   .btn-aprovar-lg i { width: 15px; height: 15px; }
 
+  /* Botão PDF da OS */
+  .btn-pdf-os {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 8px;
+    color: #F87171;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn-pdf-os:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.35); }
+  .btn-pdf-os i { width: 15px; height: 15px; }
+
   .btn-reprovar-lg {
     flex: 1;
     padding: 11px;
@@ -1200,7 +1219,7 @@ async function aprovarNoturna(osId, status) {
 function calcularMinutosBH(o) {
   const fim = minutosDoHorario(o.horario_fim);
   if (fim === null) return 0;
-  const CORTE = 17 * 60 + 30;
+  const CORTE = 17 * 60 + 31; // 17:31
   if (fim >= CORTE) return fim - CORTE;
   if (fim <= 5 * 60) return (24 * 60 - CORTE) + fim; // atravessou meia-noite
   return 0;
@@ -1538,6 +1557,15 @@ function verOS(id) {
     </div>`;
   }
 
+  // Botão PDF sempre disponível no rodapé do modal
+  html += `
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <button class="btn-pdf-os" onclick="exportarPDFOS(${os.id})">
+        <i data-lucide="file-down"></i> Gerar PDF desta OS
+      </button>
+      <span style="font-size:11px;color:var(--text-3)">Para enviar ao técnico ou arquivar</span>
+    </div>`;
+
   document.getElementById('modalTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('modalOS').classList.add('open');
@@ -1866,6 +1894,173 @@ function exportarPDF() {
   doc.save(`ordens_de_servico_${hoje.toISOString().split('T')[0]}.pdf`);
 }
 
+// ── PDF individual de uma OS ──────────────────────────────────
+async function carregarImgBase64(url) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width; canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+async function exportarPDFOS(osId) {
+  if (!window.jspdf?.jsPDF) { alert('jsPDF não carregado.'); return; }
+  const { jsPDF } = window.jspdf;
+  const os = todasOSs.find(o => o.id === osId);
+  if (!os) return;
+
+  const doc   = new jsPDF('p', 'mm', 'a4');
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 16;
+  const geradoEm = new Date().toLocaleString('pt-BR');
+
+  // ── Cabeçalho branco com logo ──
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, pageW, 26, 'F');
+  doc.setDrawColor(228, 228, 231);
+  doc.line(0, 26, pageW, 26);
+
+  // Logo
+  const logoBase64 = await carregarImgBase64('logosolucao.png');
+  if (logoBase64) {
+    try {
+      // Logo tem ~3:1 ratio → altura 10mm → largura ~30mm
+      doc.addImage(logoBase64, 'PNG', margin, 8, 38, 10);
+    } catch {}
+  } else {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(10, 10, 10);
+    doc.text('Solução Técnica', margin, 17);
+  }
+
+  // Título no canto direito
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(80, 80, 90);
+  doc.text('ORDEM DE SERVIÇO', pageW - margin, 12, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(140, 140, 150);
+  doc.text(`Gerado em ${geradoEm}`, pageW - margin, 18, { align: 'right' });
+
+  // ── Faixa colorida com cliente ──
+  doc.setFillColor(16, 16, 16);
+  doc.rect(0, 27, pageW, 22, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  const clienteNome = os.obras?.nome_cliente || 'Cliente não informado';
+  doc.text(clienteNome.substring(0,60), margin, 37);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(180, 180, 190);
+  const dataStr = os.data_servico ? formatarDataBR(os.data_servico) : '—';
+  const equipeStr = os.equipeNomes?.join(' · ') || '—';
+  const horario = [os.horario_inicio?.slice(0,5), os.horario_fim?.slice(0,5)].filter(Boolean).join(' – ') || '—';
+  doc.text(`${dataStr} · ${horario} · ${equipeStr}`, margin, 44);
+
+  // ── Campos ──
+  let y = 57;
+
+  function addRodape() {
+    const total = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= total; p++) {
+      doc.setPage(p);
+      doc.setDrawColor(228, 228, 231);
+      doc.line(margin, pageH - 12, pageW - margin, pageH - 12);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(140, 140, 150);
+      doc.text('Solução Técnica · Sistema de Gestão de Obras', margin, pageH - 7);
+      doc.text(`Página ${p} de ${total}`, pageW - margin, pageH - 7, { align: 'right' });
+    }
+  }
+
+  function novaPg(yy, h = 20) {
+    if (yy + h > pageH - 18) { doc.addPage(); return 16; }
+    return yy;
+  }
+
+  function campo(label, valor, largura = pageW - margin * 2) {
+    if (!valor || String(valor).trim() === '') return;
+    y = novaPg(y, 18);
+    // Label
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(140, 140, 150);
+    doc.text(label.toUpperCase(), margin, y);
+    y += 4;
+    // Valor com wrap
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(30, 30, 35);
+    const linhas = doc.splitTextToSize(String(valor), largura);
+    linhas.forEach(linha => {
+      y = novaPg(y, 6);
+      doc.text(linha, margin, y);
+      y += 5.5;
+    });
+    y += 3;
+  }
+
+  function separador() {
+    doc.setDrawColor(228, 228, 231); doc.line(margin, y, pageW - margin, y); y += 5;
+  }
+
+  // Endereço
+  if (os.obras?.endereco) campo('Endereço', os.obras.endereco);
+
+  // Status
+  const stLabel = (os.status_aprovacao === 'concluida' || os.status_aprovacao === 'aprovada') ? 'Concluída' : 'Pendente';
+  campo('Status', stLabel);
+
+  separador();
+
+  // Campos principais
+  if (os.servico_planejado)    campo('Serviço planejado', os.servico_planejado);
+  if (os.servicos_realizados)  campo('Serviços realizados', os.servicos_realizados);
+
+  if (os.houve_problema) {
+    separador();
+    campo('Problema reportado', os.descricao_problema || 'Sim');
+  }
+  if (os.faltou_material && os.lista_material) {
+    campo('Material faltante', os.lista_material);
+  }
+  if (os.retornou_material && os.lista_retorno) {
+    campo('Material retornado', os.lista_retorno);
+  }
+  if (os.retorno_equipamento && os.lista_equipamentos) {
+    campo('Equipamento retornado', os.lista_equipamentos);
+  }
+  if (os.sistema_automacao) campo('Sistema de automação', os.sistema_automacao);
+  if (os.proximas_atividades) { separador(); campo('Próximas atividades', os.proximas_atividades); }
+  if (os.observacoes) campo('Observações do técnico', os.observacoes);
+  if (os.observacao_supervisor) campo('Observação do supervisor', os.observacao_supervisor);
+
+  // Agenda noturna
+  const noturna = agendaNoturnaInfo(os);
+  if (noturna) {
+    separador();
+    campo('Agenda noturna', `${noturna.label} · R$ ${(noturna.valor).toFixed(2).replace('.',',')} por técnico`);
+  }
+
+  // Fotos
+  if (os.fotos_urls?.length) {
+    separador();
+    campo('Fotos anexadas', `${os.fotos_urls.length} foto(s) — disponíveis no sistema`);
+  }
+
+  addRodape();
+
+  const clienteSlug = clienteNome.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  doc.save(`os-${clienteSlug}-${os.data_servico || 'sem-data'}.pdf`);
+}
+
 // Fechar modal fora
 document.getElementById('modalOS').addEventListener('click', e => {
   if (e.target === document.getElementById('modalOS')) fecharModal();
@@ -1885,6 +2080,7 @@ function renderTopbar(nome, role, paginaAtiva) {
     { href:'vistoria.html',             label:'Relatórios de Vistoria', id:'relatorios-vistoria', roles:['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
     { href:'os.html',                   label:'Fazer OS',            id:'os',                 roles:['tecnico','auxiliar'] },
     { href:'supervisor.html',           label:'Supervisor',          id:'supervisor',         roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
+    { href:'pendencias.html',           label:'Pendências',          id:'pendencias',         roles:['supervisor','coordenador','agendamento'] },
     { href:'admin.html',                label:'Admin',               id:'admin',              roles:['coordenador'] },
     { href:'tecnico_dashboard.html',    label:'Minhas OSs',          id:'minhas-os',          roles:['tecnico','auxiliar'] },
     { href:'gerente_comercial.html',    label:'Comercial',           id:'comercial',          roles:['gerente_comercial'] },

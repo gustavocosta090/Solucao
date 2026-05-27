@@ -12,18 +12,18 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   :root {
-    --bg: #0A0A0A;
-    --surface-1: #111111;
-    --surface-2: #161616;
-    --primary: #3ECF8E;
-    --primary-hover: #2EBF7E;
-    --primary-muted: rgba(62, 207, 142, 0.1);
-    --text-1: #FFFFFF;
-    --text-2: #A1A1AA;
-    --text-3: #52525B;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.12);
-    --border-focus: rgba(62, 207, 142, 0.4);
+    --bg: #0A0907;
+    --surface-1: rgba(15, 13, 11, 0.88);
+    --surface-2: rgba(22, 19, 16, 0.92);
+    --primary: #C4A882;
+    --primary-hover: #B89468;
+    --primary-muted: rgba(196, 168, 130, 0.12);
+    --text-1: #F5F0EB;
+    --text-2: #A89E94;
+    --text-3: #5C5650;
+    --border: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.11);
+    --border-focus: rgba(196, 168, 130, 0.50);
     --radius: 8px;
   }
 
@@ -35,7 +35,7 @@
 
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: var(--bg);
+    background: var(--bg) url('bg-login.jpg') center center / cover no-repeat;
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -57,26 +57,21 @@
     flex-direction: column;
     justify-content: center;
     padding: 60px 64px;
-    background: var(--bg);
-    border-right: 1px solid var(--border);
     position: relative;
     overflow: hidden;
-    background-image: url('bg-login.jpg');
-    background-size: cover;
-    background-position: center center;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  /* Overlay: escurece o lado esquerdo (texto) e abre o direito (caixa) */
+  /* Overlay: escurece o lado esquerdo para legibilidade do texto */
   .brand-panel::before {
     content: '';
     position: absolute;
     inset: 0;
     background: linear-gradient(
-      105deg,
-      rgba(8, 8, 8, 0.92) 0%,
-      rgba(8, 8, 8, 0.82) 40%,
-      rgba(8, 8, 8, 0.45) 70%,
-      rgba(8, 8, 8, 0.15) 100%
+      to right,
+      rgba(8, 6, 4, 0.90) 0%,
+      rgba(8, 6, 4, 0.78) 55%,
+      rgba(8, 6, 4, 0.45) 100%
     );
     z-index: 0;
   }
@@ -90,46 +85,63 @@
     z-index: 1;
   }
 
-  /* Adapta texto ao fundo escuro fixo (independente do tema) */
-  .brand-title { color: #FFFFFF !important; }
-  .brand-subtitle { color: rgba(255,255,255,0.65) !important; }
-  .feature-text strong { color: #FFFFFF !important; }
-  .feature-text span { color: rgba(255,255,255,0.5) !important; }
-  .feature-icon { background: rgba(255,255,255,0.07) !important; border-color: rgba(255,255,255,0.1) !important; }
+  /* Texto sempre claro sobre o fundo escuro */
+  .brand-title { color: #F5F0EB !important; }
+  .brand-subtitle { color: rgba(245,240,235,0.60) !important; }
+  .feature-text strong { color: #F5F0EB !important; }
+  .feature-text span { color: rgba(245,240,235,0.45) !important; }
+  .feature-icon { background: rgba(196,168,130,0.08) !important; border-color: rgba(196,168,130,0.18) !important; color: var(--primary) !important; }
 
-  .brand-logo-mark {
-    width: 52px;
+  /* ── Logo image in brand panel ── */
+  .brand-logo-wrap {
+    margin-bottom: 18px;
+  }
+
+  .brand-logo-img {
     height: 52px;
-    background: var(--primary-muted);
-    border: 1px solid rgba(62, 207, 142, 0.25);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--primary);
-    margin-bottom: 28px;
-  }
-
-  .brand-logo-mark i {
-    width: 24px;
-    height: 24px;
-  }
-
-  .brand-title {
-    font-size: 36px;
-    font-weight: 700;
-    color: var(--text-1);
-    letter-spacing: -0.8px;
-    line-height: 1.15;
-    margin-bottom: 10px;
+    width: auto;
+    max-width: 260px;
+    object-fit: contain;
+    /* logo tem letras pretas → inverte para branco sobre fundo escuro */
+    filter: brightness(0) invert(1);
+    opacity: 0.92;
   }
 
   .brand-subtitle {
-    font-size: 15px;
-    color: var(--text-2);
+    font-size: 14px;
+    color: rgba(245, 240, 235, 0.55);
     font-weight: 400;
-    margin-bottom: 48px;
+    margin-bottom: 32px;
     line-height: 1.5;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .brand-divider {
+    width: 40px;
+    height: 1px;
+    background: rgba(196, 168, 130, 0.35);
+    margin-bottom: 32px;
+  }
+
+  /* ── Logo in card header ── */
+  .card-logo-wrap {
+    margin-bottom: 20px;
+  }
+
+  .card-logo-img {
+    height: 32px;
+    width: auto;
+    max-width: 180px;
+    object-fit: contain;
+    /* logo preto: no tema escuro inverte, no claro mantém */
+    filter: brightness(0) invert(1);
+    opacity: 0.85;
+  }
+
+  :root[data-theme="light"] .card-logo-img { filter: none; opacity: 1; }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="auto"] .card-logo-img { filter: none; opacity: 1; }
   }
 
   .features-list {
@@ -187,16 +199,21 @@
     align-items: center;
     justify-content: center;
     padding: 40px 24px;
-    background: var(--bg);
+    background: rgba(6, 5, 3, 0.68);
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
   }
 
   .login-card {
-    background: var(--surface-1);
-    border: 1px solid var(--border);
+    background: rgba(14, 12, 10, 0.88);
+    border: 1px solid rgba(196, 168, 130, 0.12);
     border-radius: 12px;
     padding: 40px;
     width: 100%;
     max-width: 400px;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.50), inset 0 1px 0 rgba(255,255,255,0.04);
   }
 
   .card-header {
@@ -264,8 +281,8 @@
   .input-wrap input {
     width: 100%;
     padding: 10px 12px;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(196, 168, 130, 0.15);
     border-radius: 6px;
     font-size: 14px;
     font-family: inherit;
@@ -316,23 +333,24 @@
   /* ── Submit button ── */
   .btn-login {
     width: 100%;
-    height: 42px;
+    height: 44px;
     padding: 0 16px;
     background: var(--primary);
-    color: #0A0A0A;
+    color: #1A1008;
     border: none;
     border-radius: 6px;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     font-family: inherit;
     cursor: pointer;
-    transition: background 0.15s, opacity 0.15s;
-    letter-spacing: -0.1px;
-    margin-top: 8px;
+    transition: background 0.15s, opacity 0.15s, box-shadow 0.15s;
+    letter-spacing: 0.2px;
+    margin-top: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    box-shadow: 0 2px 12px rgba(196, 168, 130, 0.25);
   }
 
   .btn-login:hover:not(:disabled) {
@@ -389,8 +407,11 @@
   }
 
   /* ── TEMA CLARO ── */
-  :root[data-theme="light"] { --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1; --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA; --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16); --primary-muted:rgba(62,207,142,0.15); }
-  @media (prefers-color-scheme: light) { :root[data-theme="auto"] { --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1; --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA; --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16); --primary-muted:rgba(62,207,142,0.15); } }
+  :root[data-theme="light"] { --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1; --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA; --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16); --primary-muted:rgba(196,168,130,0.15); }
+  @media (prefers-color-scheme: light) { :root[data-theme="auto"] { --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1; --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA; --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16); --primary-muted:rgba(196,168,130,0.15); } }
+  /* logo: letras pretas → no tema claro fica preto normal */
+  :root[data-theme="light"] .brand-logo-img { filter: none; opacity: 0.9; }
+  @media (prefers-color-scheme: light) { :root[data-theme="auto"] .brand-logo-img { filter: none; opacity: 0.9; } }
   .tema-btn { background:transparent; border:1px solid var(--border-strong,rgba(255,255,255,.12)); border-radius:6px; color:var(--text-2,#A1A1AA); font-size:15px; width:32px; height:32px; cursor:pointer; display:flex; align-items:center; justify-content:center; margin-right:8px; flex-shrink:0; }
   .tema-btn:hover { background:rgba(128,128,128,.1); }
   .tema-float { position:fixed; top:16px; right:16px; z-index:999; background:transparent; border:1px solid rgba(255,255,255,.15); border-radius:6px; color:#A1A1AA; font-size:15px; width:32px; height:32px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
@@ -430,11 +451,12 @@
 
   <!-- Left: Branding -->
   <div class="brand-panel">
-    <div class="brand-logo-mark">
-      <i data-lucide="zap"></i>
+    <div class="brand-logo-wrap">
+      <img src="logosolucao.png" alt="Solução Técnica" class="brand-logo-img">
     </div>
-    <h1 class="brand-title">Solução Técnica</h1>
     <p class="brand-subtitle">Sistema de Gestão de Obras</p>
+
+    <div class="brand-divider"></div>
 
     <div class="features-list">
       <div class="feature-item">
@@ -480,8 +502,11 @@
   <div class="login-panel">
     <div class="login-card">
       <div class="card-header">
+        <div class="card-logo-wrap">
+          <img src="logosolucao.png" alt="Solução Técnica" class="card-logo-img">
+        </div>
         <h2>Entrar</h2>
-        <p>Acesse sua conta</p>
+        <p>Acesse sua conta para continuar</p>
       </div>
 
       <div id="errorMsg" class="error-msg">

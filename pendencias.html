@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pendências — Solução Técnica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root {
+  --bg:#0A0A0A; --surface-1:#111111; --surface-2:#161616; --surface-3:#1B1B1B;
+  --primary:#3ECF8E; --text-1:#FFFFFF; --text-2:#A1A1AA; --text-3:#52525B;
+  --border:rgba(255,255,255,0.08); --border-strong:rgba(255,255,255,0.12); --border-hover:rgba(255,255,255,0.16);
+  --amber:#F59E0B; --amber-text:#FCD34D; --red:#EF4444; --red-text:#F87171;
+}
+:root[data-theme="light"] {
+  --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1;
+  --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA;
+  --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16);
+  --amber-text:#B45309; --red-text:#B91C1C;
+}
+@media(prefers-color-scheme:light){:root[data-theme="auto"]{
+  --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1;
+  --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA;
+  --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16);
+  --amber-text:#B45309; --red-text:#B91C1C;
+}}
+
+html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* ── Topbar ── */
+.topbar{background:var(--surface-1);border-bottom:1px solid var(--border);height:56px;padding:0 24px;display:flex;align-items:center;position:sticky;top:0;z-index:100;gap:12px}
+.topbar-logo{font-size:15px;font-weight:700;color:var(--text-1);letter-spacing:-.2px;flex:1}
+.topbar-greeting{font-size:13px;color:var(--text-2)}
+.topbar-links{display:flex;align-items:center;gap:4px}
+.topbar-links a{color:var(--text-2);text-decoration:none;font-size:13px;font-weight:500;padding:6px 12px;border-radius:6px;transition:color .15s,background .15s}
+.topbar-links a:hover{color:var(--text-1);background:rgba(255,255,255,0.06)}
+.topbar-links a.active{color:var(--text-1);background:rgba(255,255,255,0.07)}
+.topbar-links a.nav-sair{color:var(--text-2);border:1px solid rgba(255,255,255,0.12);margin-left:8px}
+.topbar-links a.nav-sair:hover{color:var(--text-1);background:rgba(255,255,255,0.06)}
+.tema-btn{background:transparent;border:1px solid var(--border-strong);border-radius:6px;color:var(--text-2);font-size:15px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tema-btn:hover{background:rgba(128,128,128,.1)}
+
+/* ── Page ── */
+.page{max-width:1100px;margin:0 auto;padding:32px 24px 64px}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;gap:12px;flex-wrap:wrap}
+.page-header h1{font-size:22px;font-weight:700;letter-spacing:-.4px;display:flex;align-items:center;gap:10px}
+.badge-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);border-radius:999px;font-size:12px;font-weight:700;color:var(--red-text)}
+
+/* ── Filtros ── */
+.filtros-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;align-items:center}
+.filtro-chip{padding:5px 14px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text-2);font-size:0.78rem;font-weight:500;cursor:pointer;transition:all 150ms;font-family:inherit}
+.filtro-chip:hover{border-color:var(--border-hover);color:var(--text-1)}
+.filtro-chip.ativo{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:var(--red-text)}
+.filtro-chip.ativo-am{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--amber-text)}
+.filtro-chip.ativo-gr{background:rgba(62,207,142,.1);border-color:rgba(62,207,142,.3);color:var(--primary)}
+.busca-wrap{flex:1;min-width:180px;max-width:300px;position:relative}
+.busca-wrap input{width:100%;padding:7px 10px 7px 34px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:0.82rem;outline:none;transition:border-color 150ms}
+.busca-wrap input:focus{border-color:var(--border-hover)}
+.busca-wrap input::placeholder{color:var(--text-3)}
+.busca-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none;width:14px;height:14px}
+
+/* ── Grupo ── */
+.grupo-titulo{font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin:24px 0 10px;display:flex;align-items:center;gap:8px}
+.grupo-titulo span{font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px}
+.grupo-titulo .ct-red{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red-text)}
+.grupo-titulo .ct-am{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:var(--amber-text)}
+.grupo-titulo .ct-bl{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);color:#A5B4FC}
+
+/* ── Card de pendência ── */
+.pend-card{background:var(--surface-1);border:1px solid var(--border);border-left:3px solid transparent;border-radius:8px;padding:16px 18px;margin-bottom:10px;transition:border-color 150ms}
+.pend-card:hover{border-color:var(--border-hover)}
+.pend-card.urgente{border-left-color:var(--red)}
+.pend-card.atencao{border-left-color:var(--amber)}
+.pend-card.contato{border-left-color:#6366F1}
+.pend-card.resolvida{opacity:.55;border-left-color:var(--primary)}
+.pend-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.pend-info{flex:1;min-width:0}
+.pend-cliente{font-size:15px;font-weight:600;color:var(--text-1);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pend-meta{font-size:12px;color:var(--text-2);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.pend-meta i{width:12px;height:12px;flex-shrink:0}
+.badge-dias{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.badge-dias.urgente{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red-text)}
+.badge-dias.atencao{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:var(--amber-text)}
+.badge-status-pend{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;cursor:pointer;border:1px solid transparent;transition:all 150ms}
+.bs-aguardando{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.2);color:#A5B4FC}
+.bs-contato{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.2);color:var(--amber-text)}
+.bs-em_resolucao{background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.2);color:#C4B5FD}
+.bs-resolvida{background:rgba(62,207,142,.1);border-color:rgba(62,207,142,.2);color:var(--primary)}
+.pend-nota{margin-top:10px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-2);white-space:pre-wrap;line-height:1.5}
+.pend-nota-edit{width:100%;padding:9px 11px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:12px;resize:vertical;outline:none;min-height:64px;transition:border-color 150ms;margin-top:10px}
+.pend-nota-edit:focus{border-color:var(--border-hover)}
+.pend-acoes{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn-acao{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-2);font-size:12px;font-family:inherit;cursor:pointer;transition:all 150ms}
+.btn-acao:hover{border-color:var(--border-hover);color:var(--text-1)}
+.btn-acao i{width:13px;height:13px}
+.btn-acao.btn-resolver{color:var(--primary);border-color:rgba(62,207,142,.2)}
+.btn-acao.btn-resolver:hover{background:rgba(62,207,142,.08)}
+.btn-acao.btn-salvar-nota{color:#A78BFA;border-color:rgba(167,139,250,.2)}
+.btn-acao.btn-salvar-nota:hover{background:rgba(167,139,250,.08)}
+
+/* ── Empty state ── */
+.empty-state{text-align:center;padding:64px 24px;color:var(--text-3)}
+.empty-state i{width:40px;height:40px;margin:0 auto 16px;display:block;color:var(--text-3);opacity:.5}
+.empty-state p{font-size:14px}
+
+/* ── Loading ── */
+.loading{text-align:center;padding:48px;color:var(--text-3)}
+.spinner-inline{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .topbar{padding:0 12px} .topbar-greeting{display:none}
+  .topbar-links{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .topbar-links a{font-size:12px;padding:5px 8px;white-space:nowrap}
+  .page{padding:20px 12px 48px}
+  .page-header h1{font-size:18px}
+  .pend-top{flex-direction:column;gap:8px}
+  .pend-acoes{gap:6px}
+}
+@media(max-width:480px){
+  .topbar-logo{font-size:13px}
+  .filtros-bar{gap:6px}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <button id="tema-btn" class="tema-btn" onclick="ciclarTema()" title="Alternar tema">🖥️</button>
+  <nav class="topbar-links" id="topbar-nav"></nav>
+</header>
+
+<div class="page">
+  <div class="page-header">
+    <h1>
+      <i data-lucide="alert-triangle" style="width:22px;height:22px;color:var(--amber-text)"></i>
+      Pendências
+      <span class="badge-count" id="badge-total">0</span>
+    </h1>
+    <div style="display:flex;gap:8px">
+      <button class="btn-acao" onclick="recarregar()" title="Atualizar lista">
+        <i data-lucide="refresh-cw"></i> Atualizar
+      </button>
+    </div>
+  </div>
+
+  <div class="filtros-bar">
+    <button class="filtro-chip ativo" data-filtro="todos" onclick="setFiltro(this,'todos')">Todos</button>
+    <button class="filtro-chip" data-filtro="urgente" onclick="setFiltro(this,'urgente')">Urgentes (+7 dias)</button>
+    <button class="filtro-chip" data-filtro="atencao" onclick="setFiltro(this,'atencao')">Atenção (1–7 dias)</button>
+    <button class="filtro-chip" data-filtro="aguardando" onclick="setFiltro(this,'aguardando')">Aguardando</button>
+    <button class="filtro-chip" data-filtro="contato" onclick="setFiltro(this,'contato')">Contato feito</button>
+    <div class="busca-wrap">
+      <i data-lucide="search" class="busca-icon"></i>
+      <input type="text" id="busca" placeholder="Buscar cliente, técnico..." oninput="renderLista()">
+    </div>
+  </div>
+
+  <div id="lista-pendencias">
+    <div class="loading"><div class="spinner-inline"></div><p>Carregando pendências...</p></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let todasPendencias = [];
+let filtroAtivo = 'todos';
+const PEND_KEY = 'pend_status_v1'; // localStorage key
+
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function getStoredPend() {
+  try { return JSON.parse(localStorage.getItem(PEND_KEY) || '{}'); } catch { return {}; }
+}
+function savePendStatus(osId, status) {
+  const obj = getStoredPend();
+  obj[osId] = { status, ts: Date.now() };
+  localStorage.setItem(PEND_KEY, JSON.stringify(obj));
+}
+function getPendStatus(osId) {
+  const obj = getStoredPend();
+  return obj[osId]?.status || 'aguardando';
+}
+
+function diasAtraso(dataServico) {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const d = new Date(dataServico + 'T00:00:00');
+  return Math.floor((hoje - d) / 86400000);
+}
+
+function setFiltro(el, val) {
+  document.querySelectorAll('.filtro-chip').forEach(b => b.classList.remove('ativo','ativo-am','ativo-gr'));
+  filtroAtivo = val;
+  if (val === 'urgente') el.classList.add('ativo');
+  else if (val === 'atencao') el.classList.add('ativo-am');
+  else if (val === 'contato') el.classList.add('ativo-gr');
+  else el.classList.add('ativo');
+  renderLista();
+}
+
+function cardClass(dias, statusPend) {
+  if (statusPend === 'resolvida') return 'resolvida';
+  if (statusPend === 'contato')   return 'contato';
+  if (dias > 7) return 'urgente';
+  return 'atencao';
+}
+
+function badgeDias(dias) {
+  const cls = dias > 7 ? 'urgente' : 'atencao';
+  return `<span class="badge-dias ${cls}"><i data-lucide="clock" style="display:inline-block;width:10px;height:10px;vertical-align:middle"></i> ${dias}d atrasada</span>`;
+}
+
+const STATUS_LABELS = {
+  aguardando: { label: 'Aguardando', cls: 'bs-aguardando' },
+  contato:    { label: 'Contato feito', cls: 'bs-contato' },
+  em_resolucao: { label: 'Em resolução', cls: 'bs-em_resolucao' },
+  resolvida:  { label: 'Resolvida', cls: 'bs-resolvida' },
+};
+
+function badgeStatus(osId, current) {
+  const { label, cls } = STATUS_LABELS[current] || STATUS_LABELS.aguardando;
+  return `<span class="badge-status-pend ${cls}" onclick="ciclarStatus(${osId})" title="Clique para avançar status">${label}</span>`;
+}
+
+function ciclarStatus(osId) {
+  const order = ['aguardando', 'contato', 'em_resolucao', 'resolvida'];
+  const cur = getPendStatus(osId);
+  const idx = order.indexOf(cur);
+  const next = order[(idx + 1) % order.length];
+  savePendStatus(osId, next);
+  renderLista();
+}
+
+function toggleNotaEdit(osId) {
+  const editEl = document.getElementById(`nota-edit-${osId}`);
+  const viewEl = document.getElementById(`nota-view-${osId}`);
+  const acaoEl = document.getElementById(`btn-edit-nota-${osId}`);
+  if (!editEl) return;
+  if (editEl.style.display === 'none' || !editEl.style.display) {
+    editEl.style.display = 'block';
+    if (viewEl) viewEl.style.display = 'none';
+    if (acaoEl) acaoEl.style.display = 'none';
+    editEl.focus();
+  } else {
+    editEl.style.display = 'none';
+    if (viewEl) viewEl.style.display = editEl.value.trim() ? 'block' : 'none';
+    if (acaoEl) acaoEl.style.display = '';
+  }
+}
+
+async function salvarNota(osId) {
+  const editEl = document.getElementById(`nota-edit-${osId}`);
+  if (!editEl) return;
+  const nota = editEl.value.trim();
+  const { error } = await db.from('ordens_de_servico')
+    .update({ observacao_supervisor: nota || null })
+    .eq('id', osId);
+  if (error) { alert('Erro ao salvar nota: ' + error.message); return; }
+  // Atualiza local
+  const os = todasPendencias.find(o => o.id === osId);
+  if (os) os.observacao_supervisor = nota || null;
+  toggleNotaEdit(osId);
+  renderLista();
+}
+
+async function marcarResolvida(osId) {
+  if (!confirm('Marcar esta OS como concluída?')) return;
+  const { error } = await db.from('ordens_de_servico')
+    .update({ status_aprovacao: 'concluida' })
+    .eq('id', osId);
+  if (error) { alert('Erro: ' + error.message); return; }
+  todasPendencias = todasPendencias.filter(o => o.id !== osId);
+  renderLista();
+}
+
+function renderLista() {
+  const busca = (document.getElementById('busca')?.value || '').toLowerCase().trim();
+  const armazenados = getStoredPend();
+
+  let lista = todasPendencias.filter(o => {
+    const statusPend = armazenados[o.id]?.status || 'aguardando';
+    const dias = diasAtraso(o.data_servico);
+    if (filtroAtivo === 'urgente' && dias <= 7) return false;
+    if (filtroAtivo === 'atencao' && (dias < 1 || dias > 7)) return false;
+    if (filtroAtivo === 'aguardando' && statusPend !== 'aguardando') return false;
+    if (filtroAtivo === 'contato' && statusPend !== 'contato') return false;
+    if (busca) {
+      const text = [
+        o.obras?.nome_cliente || '',
+        o.obras?.endereco || '',
+        o.tecnicoNome || '',
+        o.descricao || '',
+        o.servico || '',
+      ].join(' ').toLowerCase();
+      if (!text.includes(busca)) return false;
+    }
+    return true;
+  });
+
+  // Ordena por dias atraso desc
+  lista.sort((a, b) => diasAtraso(b.data_servico) - diasAtraso(a.data_servico));
+
+  document.getElementById('badge-total').textContent = todasPendencias.length;
+
+  if (lista.length === 0) {
+    document.getElementById('lista-pendencias').innerHTML = `
+      <div class="empty-state">
+        <i data-lucide="check-circle-2" style="color:var(--primary);opacity:.6"></i>
+        <p>Nenhuma pendência encontrada${busca ? ' para "' + escHtml(busca) + '"' : ''}.</p>
+      </div>`;
+    lucide.createIcons();
+    return;
+  }
+
+  // Agrupa por urgência
+  const grupos = [
+    { key: 'urgente', label: 'Urgente', sub: 'mais de 7 dias', cls: 'ct-red', items: lista.filter(o => diasAtraso(o.data_servico) > 7 && (armazenados[o.id]?.status || 'aguardando') !== 'resolvida') },
+    { key: 'atencao', label: 'Atenção',  sub: '1 a 7 dias',     cls: 'ct-am',  items: lista.filter(o => diasAtraso(o.data_servico) >= 1 && diasAtraso(o.data_servico) <= 7 && (armazenados[o.id]?.status || 'aguardando') !== 'resolvida') },
+    { key: 'contato', label: 'Contato feito / Em resolução', sub: '', cls: 'ct-bl', items: lista.filter(o => ['contato','em_resolucao'].includes(armazenados[o.id]?.status)) },
+  ].filter(g => g.items.length > 0 && (filtroAtivo === 'todos' || filtroAtivo === g.key || filtroAtivo === 'aguardando' || filtroAtivo === 'contato'));
+
+  let html = '';
+  for (const grupo of grupos) {
+    if (filtroAtivo !== 'todos' && filtroAtivo !== grupo.key && !(filtroAtivo === 'contato' && grupo.key === 'contato') && !(filtroAtivo === 'aguardando')) continue;
+    if (grupo.items.length === 0) continue;
+    html += `<div class="grupo-titulo">${grupo.label} <span class="${grupo.cls}">${grupo.items.length}</span>${grupo.sub ? ` <span style="font-size:10px;color:var(--text-3);font-weight:400">${grupo.sub}</span>` : ''}</div>`;
+    for (const o of grupo.items) {
+      const dias = diasAtraso(o.data_servico);
+      const statusPend = armazenados[o.id]?.status || 'aguardando';
+      const cc = cardClass(dias, statusPend);
+      const [y, m, d] = o.data_servico.split('-');
+      const dataFmt = `${d}/${m}/${y}`;
+      const nota = o.observacao_supervisor || '';
+      html += `
+      <div class="pend-card ${cc}" id="pend-${o.id}">
+        <div class="pend-top">
+          <div class="pend-info">
+            <div class="pend-cliente">${escHtml(o.obras?.nome_cliente || 'Cliente não informado')}</div>
+            <div class="pend-meta">
+              <span><i data-lucide="calendar"></i> ${dataFmt}</span>
+              ${o.tecnicoNome ? `<span><i data-lucide="user"></i> ${escHtml(o.tecnicoNome)}</span>` : ''}
+              ${o.obras?.endereco ? `<span><i data-lucide="map-pin"></i> ${escHtml(o.obras.endereco)}</span>` : ''}
+              ${o.descricao ? `<span style="color:var(--text-3)">${escHtml(o.descricao.substring(0,60))}${o.descricao.length>60?'…':''}</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+            ${badgeDias(dias)}
+            ${badgeStatus(o.id, statusPend)}
+          </div>
+        </div>
+        ${nota ? `<div class="pend-nota" id="nota-view-${o.id}">${escHtml(nota)}</div>` : `<div id="nota-view-${o.id}" style="display:none"></div>`}
+        <textarea class="pend-nota-edit" id="nota-edit-${o.id}" placeholder="Adicionar observação sobre esta pendência..." style="display:none">${escHtml(nota)}</textarea>
+        <div class="pend-acoes">
+          <button class="btn-acao btn-salvar-nota" id="btn-salvar-${o.id}" onclick="salvarNota(${o.id})" style="display:none">
+            <i data-lucide="save"></i> Salvar nota
+          </button>
+          <button class="btn-acao" id="btn-edit-nota-${o.id}" onclick="toggleNotaEdit(${o.id})" title="${nota ? 'Editar' : 'Adicionar'} observação">
+            <i data-lucide="${nota ? 'pencil' : 'plus'}"></i> ${nota ? 'Editar nota' : 'Adicionar nota'}
+          </button>
+          ${statusPend !== 'resolvida' ? `<button class="btn-acao btn-resolver" onclick="marcarResolvida(${o.id})"><i data-lucide="check-circle-2"></i> Marcar resolvida</button>` : ''}
+          <a href="supervisor.html" class="btn-acao" style="text-decoration:none;"><i data-lucide="external-link"></i> Ver no supervisor</a>
+        </div>
+      </div>`;
+    }
+  }
+
+  // Resolve nota edit toggles — precisa de JS inline
+  document.getElementById('lista-pendencias').innerHTML = html;
+
+  // Mostra o btn-salvar ao editar
+  document.querySelectorAll('.pend-nota-edit').forEach(el => {
+    el.addEventListener('input', () => {
+      const osId = el.id.replace('nota-edit-','');
+      const saveBtn = document.getElementById(`btn-salvar-${osId}`);
+      if (saveBtn) saveBtn.style.display = el.style.display !== 'none' ? '' : 'none';
+    });
+  });
+
+  lucide.createIcons();
+}
+
+async function recarregar() {
+  document.getElementById('lista-pendencias').innerHTML = '<div class="loading"><div class="spinner-inline"></div><p>Atualizando...</p></div>';
+  await carregarPendencias();
+}
+
+async function carregarPendencias() {
+  const hoje = new Date().toISOString().split('T')[0];
+
+  const [{ data: osData, error }, { data: tecList }] = await Promise.all([
+    db.from('ordens_de_servico')
+      .select('*, obras(nome_cliente, endereco)')
+      .lt('data_servico', hoje)
+      .not('status_aprovacao', 'in', '("concluida","aprovada")')
+      .order('data_servico', { ascending: true }),
+    db.from('tecnicos').select('id, nome')
+  ]);
+
+  if (error) {
+    document.getElementById('lista-pendencias').innerHTML = `<div class="empty-state"><p style="color:var(--red-text)">Erro: ${escHtml(error.message)}</p></div>`;
+    return;
+  }
+
+  const tecMap = Object.fromEntries((tecList || []).map(t => [t.id, t.nome]));
+  todasPendencias = (osData || []).map(o => ({
+    ...o,
+    tecnicoNome: tecMap[o.tecnico_id] || null
+  }));
+
+  renderLista();
+}
+
+// ── Topbar ──
+function renderTopbar(nome, role) {
+  const h = new Date().getHours();
+  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = (nome || '').split(' ')[0];
+  const greetEl = document.getElementById('topbar-greeting');
+  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
+  const links = [
+    { href:'obras.html',            label:'Obras',            id:'obras',       roles:['supervisor','coordenador','agendamento'] },
+    { href:'agenda.html',           label:'Agenda Técnica',   id:'agenda',      roles:['supervisor','coordenador','agendamento'] },
+    { href:'agenda_vistorias.html', label:'Agenda Vistorias', id:'agenda-vis',  roles:['supervisor','coordenador','agendamento'] },
+    { href:'supervisor.html',       label:'Supervisor',       id:'supervisor',  roles:['supervisor','coordenador','agendamento'] },
+    { href:'pendencias.html',       label:'Pendências',       id:'pendencias',  roles:['supervisor','coordenador','agendamento'] },
+    { href:'admin.html',            label:'Admin',            id:'admin',       roles:['coordenador'] },
+  ];
+  const nav = document.getElementById('topbar-nav');
+  if (!nav) return;
+  nav.innerHTML = links
+    .filter(l => l.roles.includes(role))
+    .map(l => `<a href="${l.href}" ${l.id === 'pendencias' ? 'class="active"' : ''}>${l.label}</a>`)
+    .join('') + `<a href="#" class="nav-sair" onclick="sair()">Sair</a>`;
+}
+
+async function sair() { await db.auth.signOut(); window.location.href = 'login.html'; }
+
+// ── Init ──
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
+  if (!eu || !['supervisor','coordenador','agendamento'].includes(eu.role)) {
+    window.location.href = 'supervisor.html'; return;
+  }
+
+  renderTopbar(eu.nome, eu.role);
+  applyTheme(localStorage.getItem('tema') || 'auto');
+  await carregarPendencias();
+}
+
+init();
+</script>
+<script>lucide.createIcons();</script>
+</body>
+</html>
