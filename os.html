@@ -10,6 +10,8 @@
   <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -396,6 +398,7 @@
     </div>
     <h2>OS registrada com sucesso</h2>
     <p id="sucesso-msg">A ordem de serviço foi registrada.</p>
+    <div id="onedrive-status" style="margin-top:12px;font-size:0.8rem;color:var(--text-2);min-height:1.2em;"></div>
     <div class="sucesso-actions">
       <button class="btn-sucesso-secondary" onclick="irHistorico()">Ver minhas OSs</button>
       <button class="btn-sucesso-primary" onclick="novaOS()">Voltar à lista</button>
@@ -875,12 +878,26 @@ function removerFoto(id) {
   renderFotos();
 }
 
-async function uploadFotos(obraId) {
-  const urls = [];
+// Sanitiza o nome do cliente para usar como nome de pasta no Storage
+// Ex: "João da Silva" → "joao_da_silva"
+function sanitizarNomePasta(nome) {
+  return (nome || 'sem-cliente')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')  // remove acentos
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '_')       // qualquer char especial → underscore
+    .replace(/_+/g, '_')              // múltiplos underscores → um só
+    .replace(/^_|_$/g, '')            // remove underscore no início/fim
+    .substring(0, 60);                // limita o tamanho
+}
+
+async function uploadFotos(nomeCliente) {
+  const urls   = [];
+  const pasta  = sanitizarNomePasta(nomeCliente); // ex: "joao_da_silva"
   for (let i = 0; i < fotosSelecionadas.length; i++) {
     const f   = fotosSelecionadas[i];
     const ext = f.file.name.split('.').pop().toLowerCase() || 'jpg';
-    const path = `obras/${obraId}/${Date.now()}_${i}.${ext}`;
+    const path = `obras/${pasta}/${Date.now()}_${i}.${ext}`;
     const thumb = document.getElementById(`thumb-${f.id}`);
     if (thumb) thumb.innerHTML += `<div class="foto-uploading">${i+1}/${fotosSelecionadas.length}</div>`;
     const { error } = await db.storage.from('fotos-os').upload(path, f.file, { contentType: f.file.type });
@@ -892,6 +909,205 @@ async function uploadFotos(obraId) {
   return urls;
 }
 
+// ── OneDrive / MSAL / PDF ─────────────────────────────────────
+const OD_CLIENT_ID  = '1de7fcf7-37c1-4c2f-b45f-49b69a14a155';
+const OD_TENANT_ID  = '5b81ca15-00b5-4f94-a638-81baf693546b';
+const OD_REDIRECT   = 'https://solucaotecnica.vercel.app/os.html';
+const OD_SCOPES     = ['Files.ReadWrite', 'offline_access'];
+const OD_PASTA_RAIZ = 'OS - Solução Técnica';
+let _msalApp = null;
+
+async function _getMsal() {
+  if (_msalApp) return _msalApp;
+  _msalApp = new msal.PublicClientApplication({
+    auth: {
+      clientId:    OD_CLIENT_ID,
+      authority:   `https://login.microsoftonline.com/${OD_TENANT_ID}`,
+      redirectUri: OD_REDIRECT,
+    },
+    cache: { cacheLocation: 'sessionStorage' }
+  });
+  await _msalApp.initialize();
+  return _msalApp;
+}
+
+async function _getODToken() {
+  const app      = await _getMsal();
+  const accounts = app.getAllAccounts();
+  const req      = { scopes: OD_SCOPES };
+  if (accounts.length > 0) {
+    try {
+      const r = await app.acquireTokenSilent({ ...req, account: accounts[0] });
+      return r.accessToken;
+    } catch(e) { /* popup fallback abaixo */ }
+  }
+  const r = await app.loginPopup(req);
+  return r.accessToken;
+}
+
+async function _odUpload(token, caminho, blob) {
+  const encodedPath = caminho.split('/').map(encodeURIComponent).join('/');
+  const uploadUrl   = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/content`;
+  if (blob.size <= 4 * 1024 * 1024) {
+    const res = await fetch(uploadUrl, {
+      method:  'PUT',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': blob.type || 'application/octet-stream' },
+      body:    blob,
+    });
+    if (!res.ok) throw new Error(`Graph ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+  // Upload em sessão (chunked) para arquivos > 4 MB
+  const sessRes = await fetch(
+    `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/createUploadSession`,
+    {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ item: { '@microsoft.graph.conflictBehavior': 'replace' } })
+    }
+  );
+  const { uploadUrl: sessUrl } = await sessRes.json();
+  const chunkSize = 5 * 1024 * 1024;
+  let start = 0;
+  while (start < blob.size) {
+    const end   = Math.min(start + chunkSize, blob.size);
+    const chunk = blob.slice(start, end);
+    await fetch(sessUrl, {
+      method:  'PUT',
+      headers: {
+        'Content-Range':  `bytes ${start}-${end - 1}/${blob.size}`,
+        'Content-Length': String(end - start),
+      },
+      body: chunk,
+    });
+    start = end;
+  }
+}
+
+function _gerarPDFOS(dados) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 14;
+  let y = 0;
+
+  // Cabeçalho escuro
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, W, 32, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(62, 207, 142);
+  doc.text('SOLUÇÃO TÉCNICA', M, 11);
+  doc.setFontSize(17);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Ordem de Serviço', M, 23);
+  if (dados.numeroOS) {
+    doc.setFontSize(10); doc.setTextColor(180, 180, 190);
+    doc.text(dados.numeroOS, W - M, 23, { align: 'right' });
+  }
+  y = 42;
+
+  const novaLinhaSePreciso = (h = 25) => {
+    if (y + h > H - 16) { doc.addPage(); cabRodape(); y = 22; }
+  };
+  const cabRodape = () => {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(140, 140, 150);
+    doc.text('Solução Técnica · Sistema de Gestão de Obras', M, H - 6);
+    doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, W - M, H - 6, { align: 'right' });
+  };
+  const secao = (titulo) => {
+    novaLinhaSePreciso(10);
+    doc.setDrawColor(220, 220, 225); doc.line(M, y, W - M, y); y += 4;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(100, 100, 110);
+    doc.text(titulo.toUpperCase(), M, y); y += 5;
+  };
+  const campo = (label, valor) => {
+    if (!valor) return;
+    novaLinhaSePreciso(14);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(130, 130, 140);
+    doc.text(label.toUpperCase(), M, y);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(25, 25, 30);
+    const linhas = doc.splitTextToSize(String(valor), W - M * 2);
+    y += 4;
+    linhas.forEach(l => { novaLinhaSePreciso(5); doc.text(l, M, y); y += 4.5; });
+    y += 2;
+  };
+
+  // Cliente + data
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(130, 130, 140);
+  doc.text('CLIENTE', M, y); doc.text('DATA', W / 2, y);
+  y += 4;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(20, 20, 25);
+  doc.text(dados.cliente || '—', M, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+  doc.text(dados.data || '—', W / 2, y); y += 7;
+
+  campo('Endereço',               dados.endereco);
+  campo('Equipe',                  dados.equipe);
+  campo('Tipo de atendimento',     dados.tipoServico === 'assistencia' ? 'Assistência' : 'Execução');
+  campo('Sistema de automação',    dados.automacao);
+  campo('Horário',                 dados.horario);
+  secao('Serviços');
+  campo('Planejado',               dados.planejado);
+  campo('Realizado',               dados.realizado);
+  if (dados.problema || dados.material || dados.retorno || dados.equipamentos) {
+    secao('Ocorrências');
+    campo('Problema reportado',    dados.problema);
+    campo('Material faltante',     dados.material);
+    campo('Material retornado',    dados.retorno);
+    campo('Equipamentos retornados', dados.equipamentos);
+  }
+  secao('Finalização');
+  campo('Próximas atividades',     dados.proximas);
+  campo('Observações',             dados.obs);
+
+  // Rodapé em todas as páginas
+  const total = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(220, 220, 225); doc.line(M, H - 12, W - M, H - 12);
+    cabRodape();
+    doc.setTextColor(160, 160, 170);
+    doc.text(`${p}/${total}`, W / 2, H - 6, { align: 'center' });
+  }
+  return doc.output('blob');
+}
+
+async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, dadosPDF, fotos }) {
+  const statusEl = document.getElementById('onedrive-status');
+  const set = (msg, cor = 'var(--text-2)') => {
+    if (statusEl) statusEl.innerHTML = `<span style="color:${cor}">☁️ OneDrive: ${msg}</span>`;
+  };
+  try {
+    set('conectando ao Microsoft 365...');
+    const token   = await _getODToken();
+    const pasta   = sanitizarNomePasta(nomeCliente);
+    const prefixo = `${dataServico}_${(numeroOS || 'OS').replace(/[^a-zA-Z0-9-]/g, '_')}`;
+    const base    = `${OD_PASTA_RAIZ}/${pasta}`;
+
+    set('gerando PDF...');
+    const pdfBlob = _gerarPDFOS(dadosPDF);
+    set('enviando PDF...');
+    await _odUpload(token, `${base}/${prefixo}.pdf`, pdfBlob);
+
+    for (let i = 0; i < fotos.length; i++) {
+      const f   = fotos[i];
+      const ext = (f.file.name.split('.').pop() || 'jpg').toLowerCase();
+      set(`enviando foto ${i + 1}/${fotos.length}...`);
+      await _odUpload(token, `${base}/${prefixo}_foto-${String(i + 1).padStart(2, '0')}.${ext}`, f.file);
+    }
+    set(`✅ ${1 + fotos.length} arquivo(s) enviado(s)`, 'var(--primary)');
+  } catch (e) {
+    if (e.errorCode === 'user_cancelled') {
+      set('login cancelado — OS salva normalmente.', 'var(--text-3)');
+    } else {
+      set(`falha no upload (OS já salva no sistema): ${e.message}`, '#f87171');
+      console.error('OneDrive upload error:', e);
+    }
+  }
+}
+
 // ── Enviar OS ─────────────────────────────────────────────────
 async function enviarOS() {
   const btn = document.getElementById('btn-enviar');
@@ -899,11 +1115,14 @@ async function enviarOS() {
   btn.textContent = 'Enviando...';
 
   try {
-    const obraId = agendamentoSelecionado?.obras?.id || null;
+    const obraId      = agendamentoSelecionado?.obras?.id || null;
+    const nomeCliente = agendamentoSelecionado?.obras?.nome_cliente
+                      || agendamentoSelecionado?.cliente_outro
+                      || null;
     let fotoUrls = [];
-    if (fotosSelecionadas.length > 0 && obraId) {
+    if (fotosSelecionadas.length > 0 && nomeCliente) {
       btn.textContent = `Enviando ${fotosSelecionadas.length} foto(s)...`;
-      fotoUrls = await uploadFotos(obraId);
+      fotoUrls = await uploadFotos(nomeCliente);
     }
 
     // Auxiliares vêm dos checkboxes selecionados
@@ -1068,6 +1287,48 @@ async function enviarOS() {
     document.getElementById('sucesso-msg').textContent =
       `${num} registrada para ${ag?.obras?.nome_cliente || ag?.cliente_outro || 'o cliente'}.`
       + (fotoUrls.length > 0 ? ` ${fotoUrls.length} foto(s) anexada(s).` : '');
+
+    // ── Dispara upload OneDrive (não bloqueia a UI) ──
+    {
+      const fotosCopia     = [...fotosSelecionadas];
+      const numeroOSfinal  = document.getElementById('os-numero').textContent;
+      const equipeNomesOD  = participantes.map(id => {
+        const t = tecnicos.find(t => t.id === id);
+        return t ? t.nome : null;
+      }).filter(Boolean).join(' · ');
+      const dataBR = payload.data_servico
+        ? new Date(payload.data_servico + 'T12:00').toLocaleDateString('pt-BR')
+        : new Date().toLocaleDateString('pt-BR');
+      const horarioOD = [payload.horario_inicio?.slice(0, 5), payload.horario_fim?.slice(0, 5)]
+        .filter(Boolean).join(' – ') || null;
+
+      document.getElementById('onedrive-status').innerHTML = '';
+      enviarParaOneDrive({
+        nomeCliente: nomeCliente || 'sem-cliente',
+        dataServico: payload.data_servico || new Date().toISOString().slice(0, 10),
+        numeroOS:    numeroOSfinal,
+        dadosPDF: {
+          numeroOS:     numeroOSfinal,
+          cliente:      nomeCliente || '—',
+          endereco:     ag?.endereco_outro || ag?.obras?.endereco || null,
+          data:         dataBR,
+          equipe:       equipeNomesOD || null,
+          tipoServico:  payload.tipo_servico,
+          automacao:    payload.sistema_automacao,
+          horario:      horarioOD,
+          planejado:    payload.servico_planejado,
+          realizado:    payload.servicos_realizados,
+          problema:     payload.houve_problema      ? payload.descricao_problema  : null,
+          material:     payload.faltou_material     ? payload.lista_material      : null,
+          retorno:      payload.retornou_material   ? payload.lista_retorno       : null,
+          equipamentos: payload.retorno_equipamento ? payload.lista_equipamentos  : null,
+          proximas:     payload.proximas_atividades,
+          obs:          payload.observacoes,
+        },
+        fotos: fotosCopia,
+      }); // sem await → não bloqueia
+    }
+
     mostrarTela('tela-sucesso');
 
   } finally {
