@@ -1896,18 +1896,20 @@ function exportarPDF() {
 
 // ── PDF individual de uma OS ──────────────────────────────────
 async function carregarImgBase64(url) {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width; canvas.height = img.height;
-      canvas.getContext('2d').drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => resolve(null);
-    img.src = url;
-  });
+  // Usa fetch (evita problemas de canvas cross-origin)
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise((ok, fail) => {
+      const reader = new FileReader();
+      reader.onloadend = () => ok(reader.result);
+      reader.onerror  = () => ok(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
 }
 
 async function exportarPDFOS(osId) {
@@ -1916,149 +1918,155 @@ async function exportarPDFOS(osId) {
   const os = todasOSs.find(o => o.id === osId);
   if (!os) return;
 
-  const doc   = new jsPDF('p', 'mm', 'a4');
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const margin = 16;
-  const geradoEm = new Date().toLocaleString('pt-BR');
+  // Feedback visual no botão
+  const btnPDF = document.querySelector(`button[onclick="exportarPDFOS(${osId})"]`);
+  if (btnPDF) { btnPDF.disabled = true; btnPDF.textContent = '⏳ Gerando PDF...'; }
 
-  // ── Cabeçalho branco com logo ──
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageW, 26, 'F');
-  doc.setDrawColor(228, 228, 231);
-  doc.line(0, 26, pageW, 26);
+  try {
+    const doc    = new jsPDF('p', 'mm', 'a4');
+    const pageW  = doc.internal.pageSize.getWidth();
+    const pageH  = doc.internal.pageSize.getHeight();
+    const margin = 16;
+    const contentW = pageW - margin * 2;
+    const geradoEm = new Date().toLocaleDateString('pt-BR');
 
-  // Logo
-  const logoBase64 = await carregarImgBase64('logosolucao.png');
-  if (logoBase64) {
-    try {
-      // Logo tem ~3:1 ratio → altura 10mm → largura ~30mm
-      doc.addImage(logoBase64, 'PNG', margin, 8, 38, 10);
-    } catch {}
-  } else {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(10, 10, 10);
-    doc.text('Solução Técnica', margin, 17);
-  }
+    // ── Cabeçalho ──
+    doc.setFillColor(248, 248, 248);
+    doc.rect(0, 0, pageW, 28, 'F');
+    doc.setDrawColor(220, 220, 225);
+    doc.line(0, 28, pageW, 28);
 
-  // Título no canto direito
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(80, 80, 90);
-  doc.text('ORDEM DE SERVIÇO', pageW - margin, 12, { align: 'right' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(140, 140, 150);
-  doc.text(`Gerado em ${geradoEm}`, pageW - margin, 18, { align: 'right' });
-
-  // ── Faixa colorida com cliente ──
-  doc.setFillColor(16, 16, 16);
-  doc.rect(0, 27, pageW, 22, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.setTextColor(255, 255, 255);
-  const clienteNome = os.obras?.nome_cliente || 'Cliente não informado';
-  doc.text(clienteNome.substring(0,60), margin, 37);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(180, 180, 190);
-  const dataStr = os.data_servico ? formatarDataBR(os.data_servico) : '—';
-  const equipeStr = os.equipeNomes?.join(' · ') || '—';
-  const horario = [os.horario_inicio?.slice(0,5), os.horario_fim?.slice(0,5)].filter(Boolean).join(' – ') || '—';
-  doc.text(`${dataStr} · ${horario} · ${equipeStr}`, margin, 44);
-
-  // ── Campos ──
-  let y = 57;
-
-  function addRodape() {
-    const total = doc.internal.getNumberOfPages();
-    for (let p = 1; p <= total; p++) {
-      doc.setPage(p);
-      doc.setDrawColor(228, 228, 231);
-      doc.line(margin, pageH - 12, pageW - margin, pageH - 12);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(140, 140, 150);
-      doc.text('Solução Técnica · Sistema de Gestão de Obras', margin, pageH - 7);
-      doc.text(`Página ${p} de ${total}`, pageW - margin, pageH - 7, { align: 'right' });
+    const logoBase64 = await carregarImgBase64('logosolucao.png');
+    if (logoBase64) {
+      try { doc.addImage(logoBase64, 'PNG', margin, 9, 40, 10); } catch {}
+    } else {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(20, 20, 20);
+      doc.text('Solução Técnica', margin, 18);
     }
+
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150, 150, 160);
+    doc.text(`Relatório de Serviço · ${geradoEm}`, pageW - margin, 14, { align: 'right' });
+    doc.text('Sistema de Gestão de Obras', pageW - margin, 21, { align: 'right' });
+
+    // ── Faixa com nome do cliente ──
+    doc.setFillColor(18, 18, 22);
+    doc.rect(0, 29, pageW, 24, 'F');
+    const clienteNome = os.obras?.nome_cliente || 'Cliente não informado';
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(255, 255, 255);
+    doc.text(clienteNome.substring(0, 58), margin, 40);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(180, 180, 195);
+    const dataStr  = os.data_servico ? formatarDataBR(os.data_servico) : '—';
+    const horario  = [os.horario_inicio?.slice(0,5), os.horario_fim?.slice(0,5)].filter(Boolean).join(' – ') || null;
+    const equipeStr = os.equipeNomes?.join(' · ') || '—';
+    const linhaInfo = [dataStr, horario, equipeStr].filter(Boolean).join('  ·  ');
+    doc.text(linhaInfo, margin, 48);
+
+    let y = 62;
+
+    function novaPg(yy, h = 20) {
+      if (yy + h > pageH - 20) { doc.addPage(); return 18; }
+      return yy;
+    }
+
+    function campo(label, valor) {
+      if (!valor || String(valor).trim() === '') return;
+      y = novaPg(y, 20);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(130, 130, 145);
+      doc.text(label.toUpperCase(), margin, y); y += 4.5;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(25, 25, 30);
+      const linhas = doc.splitTextToSize(String(valor), contentW);
+      linhas.forEach(l => { y = novaPg(y, 7); doc.text(l, margin, y); y += 6; });
+      y += 3;
+    }
+
+    function sepLinha() {
+      y = novaPg(y, 8);
+      doc.setDrawColor(225, 225, 230); doc.line(margin, y, pageW - margin, y); y += 7;
+    }
+
+    function secTitulo(titulo) {
+      y = novaPg(y, 12);
+      doc.setFillColor(240, 240, 245);
+      doc.rect(margin, y - 4, contentW, 10, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(60, 60, 75);
+      doc.text(titulo, margin + 3, y + 2); y += 10;
+    }
+
+    // Dados básicos
+    if (os.obras?.endereco) campo('Endereço', os.obras.endereco);
+
+    if (os.servico_planejado || os.servicos_realizados) {
+      sepLinha();
+      secTitulo('SERVIÇOS');
+      if (os.servico_planejado)   campo('Serviço planejado',  os.servico_planejado);
+      if (os.servicos_realizados) campo('Serviços realizados', os.servicos_realizados);
+    }
+
+    const temProblema = os.houve_problema || os.faltou_material || os.retornou_material || os.retorno_equipamento;
+    if (temProblema) {
+      sepLinha();
+      secTitulo('OCORRÊNCIAS');
+      if (os.houve_problema)                          campo('Problema reportado',   os.descricao_problema || 'Sim');
+      if (os.faltou_material    && os.lista_material)  campo('Material faltante',    os.lista_material);
+      if (os.retornou_material  && os.lista_retorno)   campo('Material retornado',   os.lista_retorno);
+      if (os.retorno_equipamento && os.lista_equipamentos) campo('Equipamento retornado', os.lista_equipamentos);
+    }
+
+    if (os.sistema_automacao || os.proximas_atividades || os.observacoes) {
+      sepLinha();
+      secTitulo('INFORMAÇÕES ADICIONAIS');
+      if (os.sistema_automacao)   campo('Sistema de automação', os.sistema_automacao);
+      if (os.proximas_atividades) campo('Próximas atividades',  os.proximas_atividades);
+      if (os.observacoes)         campo('Observações',          os.observacoes);
+    }
+
+    // ── Fotos ──
+    if (os.fotos_urls?.length > 0) {
+      sepLinha();
+      secTitulo(`REGISTRO FOTOGRÁFICO (${os.fotos_urls.length} foto${os.fotos_urls.length > 1 ? 's' : ''})`);
+
+      const FOTO_W  = (contentW - 6) / 2;   // 2 colunas
+      const FOTO_H  = FOTO_W * 0.70;         // ratio 10:7
+      let col = 0;
+      let rowY = y;
+
+      for (const url of os.fotos_urls) {
+        const imgB64 = await carregarImgBase64(url);
+        if (!imgB64) continue;
+
+        if (col === 0) {
+          rowY = novaPg(rowY, FOTO_H + 6);
+        }
+        const x = margin + col * (FOTO_W + 6);
+        try {
+          doc.setDrawColor(220, 220, 225);
+          doc.rect(x, rowY, FOTO_W, FOTO_H);
+          doc.addImage(imgB64, 'JPEG', x, rowY, FOTO_W, FOTO_H, '', 'FAST');
+        } catch {}
+
+        col++;
+        if (col >= 2) { col = 0; rowY += FOTO_H + 8; y = rowY; }
+      }
+      if (col > 0) y = rowY + FOTO_H + 8;
+    }
+
+    // ── Rodapé em todas as páginas ──
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let pg = 1; pg <= totalPages; pg++) {
+      doc.setPage(pg);
+      doc.setDrawColor(215, 215, 220);
+      doc.line(margin, pageH - 13, pageW - margin, pageH - 13);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(150, 150, 160);
+      doc.text('Solução Técnica · Sistema de Gestão de Obras', margin, pageH - 8);
+      doc.text(`Página ${pg} de ${totalPages}`, pageW - margin, pageH - 8, { align: 'right' });
+    }
+
+    const slug = clienteNome.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    doc.save(`relatorio-${slug}-${os.data_servico || 'sem-data'}.pdf`);
+
+  } finally {
+    if (btnPDF) { btnPDF.disabled = false; btnPDF.innerHTML = '<i data-lucide="file-down"></i> Gerar PDF desta OS'; lucide.createIcons(); }
   }
-
-  function novaPg(yy, h = 20) {
-    if (yy + h > pageH - 18) { doc.addPage(); return 16; }
-    return yy;
-  }
-
-  function campo(label, valor, largura = pageW - margin * 2) {
-    if (!valor || String(valor).trim() === '') return;
-    y = novaPg(y, 18);
-    // Label
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(140, 140, 150);
-    doc.text(label.toUpperCase(), margin, y);
-    y += 4;
-    // Valor com wrap
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(30, 30, 35);
-    const linhas = doc.splitTextToSize(String(valor), largura);
-    linhas.forEach(linha => {
-      y = novaPg(y, 6);
-      doc.text(linha, margin, y);
-      y += 5.5;
-    });
-    y += 3;
-  }
-
-  function separador() {
-    doc.setDrawColor(228, 228, 231); doc.line(margin, y, pageW - margin, y); y += 5;
-  }
-
-  // Endereço
-  if (os.obras?.endereco) campo('Endereço', os.obras.endereco);
-
-  // Status
-  const stLabel = (os.status_aprovacao === 'concluida' || os.status_aprovacao === 'aprovada') ? 'Concluída' : 'Pendente';
-  campo('Status', stLabel);
-
-  separador();
-
-  // Campos principais
-  if (os.servico_planejado)    campo('Serviço planejado', os.servico_planejado);
-  if (os.servicos_realizados)  campo('Serviços realizados', os.servicos_realizados);
-
-  if (os.houve_problema) {
-    separador();
-    campo('Problema reportado', os.descricao_problema || 'Sim');
-  }
-  if (os.faltou_material && os.lista_material) {
-    campo('Material faltante', os.lista_material);
-  }
-  if (os.retornou_material && os.lista_retorno) {
-    campo('Material retornado', os.lista_retorno);
-  }
-  if (os.retorno_equipamento && os.lista_equipamentos) {
-    campo('Equipamento retornado', os.lista_equipamentos);
-  }
-  if (os.sistema_automacao) campo('Sistema de automação', os.sistema_automacao);
-  if (os.proximas_atividades) { separador(); campo('Próximas atividades', os.proximas_atividades); }
-  if (os.observacoes) campo('Observações do técnico', os.observacoes);
-  if (os.observacao_supervisor) campo('Observação do supervisor', os.observacao_supervisor);
-
-  // Agenda noturna
-  const noturna = agendaNoturnaInfo(os);
-  if (noturna) {
-    separador();
-    campo('Agenda noturna', `${noturna.label} · R$ ${(noturna.valor).toFixed(2).replace('.',',')} por técnico`);
-  }
-
-  // Fotos
-  if (os.fotos_urls?.length) {
-    separador();
-    campo('Fotos anexadas', `${os.fotos_urls.length} foto(s) — disponíveis no sistema`);
-  }
-
-  addRodape();
-
-  const clienteSlug = clienteNome.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  doc.save(`os-${clienteSlug}-${os.data_servico || 'sem-data'}.pdf`);
 }
 
 // Fechar modal fora

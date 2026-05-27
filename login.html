@@ -33,14 +33,34 @@
     box-sizing: border-box;
   }
 
+  html, body {
+    height: 100%;
+  }
+
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: var(--bg) url('bg-login.jpg') center center / cover no-repeat;
+    background: var(--bg);
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     color: var(--text-1);
+    position: relative;
+  }
+
+  /* Imagem de fundo fixada no viewport — cobre 100% independente de scroll */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url('bg-login.jpg') center 30% / cover no-repeat;
+    z-index: 0;
+  }
+
+  /* Véu escuro sutil sobre tudo */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 3, 2, 0.42);
+    z-index: 0;
   }
 
   /* ── Layout wrapper ── */
@@ -48,6 +68,8 @@
     display: flex;
     width: 100%;
     min-height: 100vh;
+    position: relative;
+    z-index: 1;
   }
 
   /* ── Left branding panel ── */
@@ -58,22 +80,20 @@
     justify-content: center;
     padding: 60px 64px;
     position: relative;
-    overflow: hidden;
-    border-right: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  /* Overlay: escurece o lado esquerdo para legibilidade do texto */
+  /* Gradiente direcional: escurece apenas a área do texto */
   .brand-panel::before {
     content: '';
     position: absolute;
     inset: 0;
     background: linear-gradient(
       to right,
-      rgba(8, 6, 4, 0.90) 0%,
-      rgba(8, 6, 4, 0.78) 55%,
-      rgba(8, 6, 4, 0.45) 100%
+      rgba(5, 4, 2, 0.82) 0%,
+      rgba(5, 4, 2, 0.65) 55%,
+      rgba(5, 4, 2, 0.10) 100%
     );
-    z-index: 0;
+    pointer-events: none;
   }
 
   /* Garante que o conteúdo fica acima do overlay */
@@ -199,21 +219,20 @@
     align-items: center;
     justify-content: center;
     padding: 40px 24px;
-    background: rgba(6, 5, 3, 0.68);
-    backdrop-filter: blur(1px);
-    -webkit-backdrop-filter: blur(1px);
+    /* sem background — a imagem do body aparece aqui também */
   }
 
   .login-card {
-    background: rgba(14, 12, 10, 0.88);
-    border: 1px solid rgba(196, 168, 130, 0.12);
-    border-radius: 12px;
+    background: rgba(10, 8, 6, 0.82);
+    border: 1px solid rgba(196, 168, 130, 0.15);
+    border-top: 1px solid rgba(196, 168, 130, 0.22);
+    border-radius: 14px;
     padding: 40px;
     width: 100%;
     max-width: 400px;
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.50), inset 0 1px 0 rgba(255,255,255,0.04);
+    backdrop-filter: blur(40px) saturate(1.4);
+    -webkit-backdrop-filter: blur(40px) saturate(1.4);
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.60), inset 0 1px 0 rgba(255,255,255,0.05);
   }
 
   .card-header {

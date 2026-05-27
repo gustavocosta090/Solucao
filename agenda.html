@@ -752,6 +752,7 @@
     <button class="filtro-btn" data-equipe="2">Elétrica</button>
     <button class="filtro-btn" data-equipe="3">Áudio e Vídeo</button>
     <button class="filtro-btn" data-equipe="4">Automação</button>
+    <button class="filtro-btn" data-equipe="5">Regional Norte</button>
   </div>
 
   <div class="controles-acoes">
@@ -978,7 +979,7 @@ async function init() {
   roleAtual = eu?.role;
 
   const podeEditar = ['agendamento', 'coordenador', 'supervisor'].includes(roleAtual);
-  const podeDisparar = ['agendamento', 'coordenador'].includes(roleAtual);
+  const podeDisparar = ['agendamento', 'coordenador', 'supervisor'].includes(roleAtual);
 
   if (!podeEditar) {
     modoVisualizacao = true;
@@ -1627,10 +1628,11 @@ async function dispararAgendaWhatsapp() {
 
   // Mapa de equipes: id → { nome, cor }
   const EQUIPE_INFO = {
-    1: { nome: 'Cabeamento',   cor: '#1D4ED8' }, // azul
-    2: { nome: 'Eletrica',     cor: '#B45309' }, // âmbar escuro
+    1: { nome: 'Cabeamento',    cor: '#1D4ED8' }, // azul
+    2: { nome: 'Eletrica',      cor: '#B45309' }, // âmbar escuro
     3: { nome: 'Audio e Video', cor: '#6D28D9' }, // roxo
-    4: { nome: 'Automacao',    cor: '#065F46' }, // verde escuro
+    4: { nome: 'Automacao',     cor: '#065F46' }, // verde escuro
+    5: { nome: 'Regional Norte', cor: '#9F1239' }, // vermelho escuro
   };
   const COR_PADRAO = '#1e293b';
 

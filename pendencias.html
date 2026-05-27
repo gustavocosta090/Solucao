@@ -12,26 +12,24 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-
-:root {
-  --bg:#0A0A0A; --surface-1:#111111; --surface-2:#161616; --surface-3:#1B1B1B;
-  --primary:#3ECF8E; --text-1:#FFFFFF; --text-2:#A1A1AA; --text-3:#52525B;
-  --border:rgba(255,255,255,0.08); --border-strong:rgba(255,255,255,0.12); --border-hover:rgba(255,255,255,0.16);
-  --amber:#F59E0B; --amber-text:#FCD34D; --red:#EF4444; --red-text:#F87171;
+:root{
+  --bg:#0A0A0A;--surface-1:#111111;--surface-2:#161616;--surface-3:#1B1B1B;
+  --primary:#3ECF8E;--text-1:#FFFFFF;--text-2:#A1A1AA;--text-3:#52525B;
+  --border:rgba(255,255,255,0.08);--border-strong:rgba(255,255,255,0.12);--border-hover:rgba(255,255,255,0.16);
+  --amber:#F59E0B;--amber-text:#FCD34D;--red:#EF4444;--red-text:#F87171;--radius:8px;
 }
-:root[data-theme="light"] {
-  --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1;
-  --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA;
-  --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16);
-  --amber-text:#B45309; --red-text:#B91C1C;
+:root[data-theme="light"]{
+  --bg:#F4F4F5;--surface-1:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F1;
+  --text-1:#09090B;--text-2:#71717A;--text-3:#A1A1AA;
+  --border:rgba(0,0,0,0.08);--border-strong:rgba(0,0,0,0.14);--border-hover:rgba(0,0,0,0.16);
+  --amber-text:#B45309;--red-text:#B91C1C;
 }
 @media(prefers-color-scheme:light){:root[data-theme="auto"]{
-  --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1;
-  --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA;
-  --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16);
-  --amber-text:#B45309; --red-text:#B91C1C;
+  --bg:#F4F4F5;--surface-1:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F1;
+  --text-1:#09090B;--text-2:#71717A;--text-3:#A1A1AA;
+  --border:rgba(0,0,0,0.08);--border-strong:rgba(0,0,0,0.14);--border-hover:rgba(0,0,0,0.16);
+  --amber-text:#B45309;--red-text:#B91C1C;
 }}
-
 html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh;-webkit-font-smoothing:antialiased}
 
 /* ── Topbar ── */
@@ -43,91 +41,138 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .topbar-links a:hover{color:var(--text-1);background:rgba(255,255,255,0.06)}
 .topbar-links a.active{color:var(--text-1);background:rgba(255,255,255,0.07)}
 .topbar-links a.nav-sair{color:var(--text-2);border:1px solid rgba(255,255,255,0.12);margin-left:8px}
-.topbar-links a.nav-sair:hover{color:var(--text-1);background:rgba(255,255,255,0.06)}
+.topbar-links a.nav-sair:hover{color:var(--text-1)}
 .tema-btn{background:transparent;border:1px solid var(--border-strong);border-radius:6px;color:var(--text-2);font-size:15px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .tema-btn:hover{background:rgba(128,128,128,.1)}
 
 /* ── Page ── */
-.page{max-width:1100px;margin:0 auto;padding:32px 24px 64px}
-.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;gap:12px;flex-wrap:wrap}
-.page-header h1{font-size:22px;font-weight:700;letter-spacing:-.4px;display:flex;align-items:center;gap:10px}
-.badge-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);border-radius:999px;font-size:12px;font-weight:700;color:var(--red-text)}
+.page{max-width:1160px;margin:0 auto;padding:28px 24px 64px}
 
-/* ── Filtros ── */
-.filtros-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;align-items:center}
-.filtro-chip{padding:5px 14px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text-2);font-size:0.78rem;font-weight:500;cursor:pointer;transition:all 150ms;font-family:inherit}
-.filtro-chip:hover{border-color:var(--border-hover);color:var(--text-1)}
-.filtro-chip.ativo{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:var(--red-text)}
-.filtro-chip.ativo-am{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--amber-text)}
-.filtro-chip.ativo-gr{background:rgba(62,207,142,.1);border-color:rgba(62,207,142,.3);color:var(--primary)}
-.busca-wrap{flex:1;min-width:180px;max-width:300px;position:relative}
+/* ── Page header ── */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:12px;flex-wrap:wrap}
+.page-title{font-size:20px;font-weight:700;letter-spacing:-.3px;display:flex;align-items:center;gap:10px}
+.page-title i{width:20px;height:20px;color:var(--amber-text)}
+.btn-cadastrar{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:var(--primary);border:none;border-radius:var(--radius);color:#0A0A0A;font-size:0.85rem;font-weight:700;font-family:inherit;cursor:pointer;transition:opacity .15s,transform .15s;white-space:nowrap}
+.btn-cadastrar:hover{opacity:.88;transform:translateY(-1px)}
+.btn-cadastrar i{width:15px;height:15px}
+
+/* ── Tabs de equipe ── */
+.tabs-equipe{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.tab-btn{padding:6px 16px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text-2);font-size:0.8rem;font-weight:500;cursor:pointer;font-family:inherit;transition:all 150ms;display:flex;align-items:center;gap:6px}
+.tab-btn:hover{border-color:var(--border-hover);color:var(--text-1)}
+.tab-btn.ativo{font-weight:600}
+.tab-btn .tab-count{font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:rgba(255,255,255,.06)}
+.tab-cab.ativo{background:rgba(29,78,216,.12);border-color:rgba(29,78,216,.35);color:#93C5FD}
+.tab-ele.ativo{background:rgba(180,83,9,.12);border-color:rgba(180,83,9,.35);color:#FCD34D}
+.tab-aud.ativo{background:rgba(109,40,217,.12);border-color:rgba(109,40,217,.35);color:#C4B5FD}
+.tab-aut.ativo{background:rgba(6,95,70,.12);border-color:rgba(6,95,70,.35);color:#6EE7B7}
+.tab-reg.ativo{background:rgba(159,18,57,.12);border-color:rgba(159,18,57,.35);color:#FDA4AF}
+.tab-all.ativo{background:rgba(62,207,142,.1);border-color:rgba(62,207,142,.3);color:var(--primary)}
+
+/* ── Filtros bar ── */
+.filtros-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.filtro-st{padding:5px 13px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text-2);font-size:0.78rem;font-weight:500;cursor:pointer;font-family:inherit;transition:all 150ms}
+.filtro-st:hover{border-color:var(--border-hover);color:var(--text-1)}
+.filtro-st.ativo{background:rgba(255,255,255,.07);border-color:var(--border-hover);color:var(--text-1)}
+.busca-wrap{flex:1;min-width:180px;max-width:280px;position:relative}
 .busca-wrap input{width:100%;padding:7px 10px 7px 34px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:0.82rem;outline:none;transition:border-color 150ms}
 .busca-wrap input:focus{border-color:var(--border-hover)}
 .busca-wrap input::placeholder{color:var(--text-3)}
-.busca-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none;width:14px;height:14px}
+.busca-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none}
 
-/* ── Grupo ── */
-.grupo-titulo{font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin:24px 0 10px;display:flex;align-items:center;gap:8px}
-.grupo-titulo span{font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px}
-.grupo-titulo .ct-red{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red-text)}
-.grupo-titulo .ct-am{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:var(--amber-text)}
-.grupo-titulo .ct-bl{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);color:#A5B4FC}
-
-/* ── Card de pendência ── */
-.pend-card{background:var(--surface-1);border:1px solid var(--border);border-left:3px solid transparent;border-radius:8px;padding:16px 18px;margin-bottom:10px;transition:border-color 150ms}
+/* ── Cards de pendência ── */
+.lista-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+.pend-card{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;transition:border-color 150ms}
 .pend-card:hover{border-color:var(--border-hover)}
-.pend-card.urgente{border-left-color:var(--red)}
-.pend-card.atencao{border-left-color:var(--amber)}
-.pend-card.contato{border-left-color:#6366F1}
-.pend-card.resolvida{opacity:.55;border-left-color:var(--primary)}
-.pend-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
-.pend-info{flex:1;min-width:0}
-.pend-cliente{font-size:15px;font-weight:600;color:var(--text-1);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pend-meta{font-size:12px;color:var(--text-2);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
-.pend-meta i{width:12px;height:12px;flex-shrink:0}
-.badge-dias{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
-.badge-dias.urgente{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red-text)}
-.badge-dias.atencao{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:var(--amber-text)}
-.badge-status-pend{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;cursor:pointer;border:1px solid transparent;transition:all 150ms}
-.bs-aguardando{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.2);color:#A5B4FC}
-.bs-contato{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.2);color:var(--amber-text)}
-.bs-em_resolucao{background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.2);color:#C4B5FD}
-.bs-resolvida{background:rgba(62,207,142,.1);border-color:rgba(62,207,142,.2);color:var(--primary)}
-.pend-nota{margin-top:10px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-2);white-space:pre-wrap;line-height:1.5}
-.pend-nota-edit{width:100%;padding:9px 11px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:12px;resize:vertical;outline:none;min-height:64px;transition:border-color 150ms;margin-top:10px}
-.pend-nota-edit:focus{border-color:var(--border-hover)}
-.pend-acoes{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
-.btn-acao{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-2);font-size:12px;font-family:inherit;cursor:pointer;transition:all 150ms}
-.btn-acao:hover{border-color:var(--border-hover);color:var(--text-1)}
-.btn-acao i{width:13px;height:13px}
-.btn-acao.btn-resolver{color:var(--primary);border-color:rgba(62,207,142,.2)}
-.btn-acao.btn-resolver:hover{background:rgba(62,207,142,.08)}
-.btn-acao.btn-salvar-nota{color:#A78BFA;border-color:rgba(167,139,250,.2)}
-.btn-acao.btn-salvar-nota:hover{background:rgba(167,139,250,.08)}
+.pend-card.urgente{border-left:3px solid var(--red)}
+.pend-card.resolvida{opacity:.5}
 
-/* ── Empty state ── */
-.empty-state{text-align:center;padding:64px 24px;color:var(--text-3)}
-.empty-state i{width:40px;height:40px;margin:0 auto 16px;display:block;color:var(--text-3);opacity:.5}
-.empty-state p{font-size:14px}
+/* Badges de status */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.badge-aberta{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:var(--amber-text)}
+.badge-pendencia_cliente{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red-text)}
+.badge-pendencia_solucao{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);color:#A5B4FC}
+.badge-resolvida{background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.25);color:var(--primary)}
+.badge-urgente{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);color:var(--red-text);font-size:10px}
+.badge-equipe{font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px}
 
-/* ── Loading ── */
-.loading{text-align:center;padding:48px;color:var(--text-3)}
-.spinner-inline{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+/* Card: topo */
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.card-obra{font-size:15px;font-weight:600;color:var(--text-1);margin-bottom:3px;line-height:1.3}
+.card-equipe-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px}
+.card-meta{font-size:12px;color:var(--text-3)}
+
+/* Descrição */
+.card-descricao{font-size:13px;color:var(--text-2);line-height:1.55;white-space:pre-line}
+
+/* Ações */
+.card-acoes{display:flex;gap:7px;flex-wrap:wrap;padding-top:4px;border-top:1px solid var(--border)}
+.btn-st{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-2);font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 150ms}
+.btn-st:hover{border-color:var(--border-hover);color:var(--text-1)}
+.btn-st.active-resolvida{background:rgba(62,207,142,.1);border-color:rgba(62,207,142,.3);color:var(--primary)}
+.btn-st.active-pendencia_cliente{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:var(--red-text)}
+.btn-st.active-pendencia_solucao{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.3);color:#A5B4FC}
+.btn-st i{width:12px;height:12px}
+.btn-excluir{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-3);font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 150ms;margin-left:auto}
+.btn-excluir:hover{color:var(--red-text);border-color:rgba(239,68,68,.3)}
+.btn-excluir i{width:12px;height:12px}
+
+/* ── Empty / loading ── */
+.empty-state{text-align:center;padding:64px 24px;color:var(--text-3);grid-column:1/-1}
+.empty-state i{width:38px;height:38px;margin:0 auto 14px;display:block;opacity:.4}
+.spinner-wrap{text-align:center;padding:48px;grid-column:1/-1}
+.spinner{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface-1);border:1px solid var(--border-strong);border-radius:8px;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:9px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:999;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.toast.visivel{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Overlay / Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:500;padding:16px;backdrop-filter:blur(4px)}
+.modal-pend{background:var(--surface-1);border:1px solid var(--border-strong);border-radius:12px;padding:28px;width:100%;max-width:520px;max-height:90dvh;overflow-y:auto}
+.modal-pend h2{font-size:17px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.modal-pend h2 i{width:18px;height:18px;color:var(--primary)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-2);margin-bottom:6px}
+.form-group select,.form-group input,.form-group textarea{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:0.85rem;outline:none;transition:border-color 150ms;appearance:none}
+.form-group select:focus,.form-group input:focus,.form-group textarea:focus{border-color:rgba(62,207,142,.4)}
+.form-group select option{background:var(--surface-2)}
+.form-group textarea{resize:vertical;min-height:88px;line-height:1.55}
+.toggle-urgente{display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;transition:border-color 150ms}
+.toggle-urgente:hover{border-color:var(--border-hover)}
+.toggle-urgente input{accent-color:var(--red);width:16px;height:16px}
+.toggle-urgente span{font-size:13px;color:var(--text-2);font-weight:500}
+.toggle-urgente strong{color:var(--red-text)}
+.modal-footer{display:flex;gap:10px;margin-top:20px}
+.btn-salvar{flex:1;height:42px;background:var(--primary);border:none;border-radius:6px;color:#0A0A0A;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:opacity .15s}
+.btn-salvar:hover{opacity:.88}
+.btn-salvar:disabled{opacity:.45;cursor:not-allowed}
+.btn-cancelar{padding:0 18px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-family:inherit;font-size:14px;cursor:pointer;transition:border-color .15s}
+.btn-cancelar:hover{border-color:var(--border-hover);color:var(--text-1)}
+.erro-form{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:6px;padding:9px 13px;font-size:12px;color:var(--red-text);margin-bottom:14px;display:none}
+
+/* ── Cores de equipe nos badges ── */
+.eq-cabeamento{background:rgba(29,78,216,.12);border:1px solid rgba(29,78,216,.25);color:#93C5FD}
+.eq-eletrica{background:rgba(180,83,9,.12);border:1px solid rgba(180,83,9,.25);color:#FCD34D}
+.eq-audio_video{background:rgba(109,40,217,.12);border:1px solid rgba(109,40,217,.25);color:#C4B5FD}
+.eq-automacao{background:rgba(6,95,70,.12);border:1px solid rgba(6,95,70,.25);color:#6EE7B7}
+.eq-regional_norte{background:rgba(159,18,57,.12);border:1px solid rgba(159,18,57,.25);color:#FDA4AF}
 
 /* ── Responsive ── */
 @media(max-width:768px){
   .topbar{padding:0 12px} .topbar-greeting{display:none}
   .topbar-links{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .topbar-links a{font-size:12px;padding:5px 8px;white-space:nowrap}
-  .page{padding:20px 12px 48px}
-  .page-header h1{font-size:18px}
-  .pend-top{flex-direction:column;gap:8px}
-  .pend-acoes{gap:6px}
+  .page{padding:16px 12px 48px}
+  .lista-grid{grid-template-columns:1fr}
+  .tabs-equipe{gap:4px}
+  .tab-btn{font-size:0.75rem;padding:5px 11px}
 }
 @media(max-width:480px){
   .topbar-logo{font-size:13px}
-  .filtros-bar{gap:6px}
+  .page-header{flex-direction:column;align-items:flex-start}
+  .btn-cadastrar{width:100%;justify-content:center}
 }
 </style>
 </head>
@@ -142,32 +187,111 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 
 <div class="page">
   <div class="page-header">
-    <h1>
-      <i data-lucide="alert-triangle" style="width:22px;height:22px;color:var(--amber-text)"></i>
+    <h1 class="page-title">
+      <i data-lucide="clipboard-list"></i>
       Pendências
-      <span class="badge-count" id="badge-total">0</span>
+      <span id="badge-total" style="font-size:12px;padding:2px 8px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.2);border-radius:999px;color:var(--amber-text);font-weight:700">0</span>
     </h1>
-    <div style="display:flex;gap:8px">
-      <button class="btn-acao" onclick="recarregar()" title="Atualizar lista">
-        <i data-lucide="refresh-cw"></i> Atualizar
-      </button>
-    </div>
+    <button class="btn-cadastrar" onclick="abrirModal()">
+      <i data-lucide="plus"></i>
+      Cadastrar Pendência
+    </button>
   </div>
 
+  <!-- Tabs por equipe -->
+  <div class="tabs-equipe">
+    <button class="tab-btn tab-all ativo" data-eq="todas" onclick="setEquipe(this,'todas')">
+      Todas <span class="tab-count" id="ct-todas">0</span>
+    </button>
+    <button class="tab-btn tab-cab" data-eq="cabeamento" onclick="setEquipe(this,'cabeamento')">
+      Cabeamento <span class="tab-count" id="ct-cabeamento">0</span>
+    </button>
+    <button class="tab-btn tab-ele" data-eq="eletrica" onclick="setEquipe(this,'eletrica')">
+      Elétrica <span class="tab-count" id="ct-eletrica">0</span>
+    </button>
+    <button class="tab-btn tab-aud" data-eq="audio_video" onclick="setEquipe(this,'audio_video')">
+      Áudio e Vídeo <span class="tab-count" id="ct-audio_video">0</span>
+    </button>
+    <button class="tab-btn tab-aut" data-eq="automacao" onclick="setEquipe(this,'automacao')">
+      Automação <span class="tab-count" id="ct-automacao">0</span>
+    </button>
+    <button class="tab-btn tab-reg" data-eq="regional_norte" onclick="setEquipe(this,'regional_norte')">
+      Regional Norte <span class="tab-count" id="ct-regional_norte">0</span>
+    </button>
+  </div>
+
+  <!-- Filtros -->
   <div class="filtros-bar">
-    <button class="filtro-chip ativo" data-filtro="todos" onclick="setFiltro(this,'todos')">Todos</button>
-    <button class="filtro-chip" data-filtro="urgente" onclick="setFiltro(this,'urgente')">Urgentes (+7 dias)</button>
-    <button class="filtro-chip" data-filtro="atencao" onclick="setFiltro(this,'atencao')">Atenção (1–7 dias)</button>
-    <button class="filtro-chip" data-filtro="aguardando" onclick="setFiltro(this,'aguardando')">Aguardando</button>
-    <button class="filtro-chip" data-filtro="contato" onclick="setFiltro(this,'contato')">Contato feito</button>
+    <button class="filtro-st ativo" data-st="todos" onclick="setStatus(this,'todos')">Todos</button>
+    <button class="filtro-st" data-st="aberta" onclick="setStatus(this,'aberta')">Em aberto</button>
+    <button class="filtro-st" data-st="pendencia_cliente" onclick="setStatus(this,'pendencia_cliente')">Pendência cliente</button>
+    <button class="filtro-st" data-st="pendencia_solucao" onclick="setStatus(this,'pendencia_solucao')">Pendência Solução</button>
+    <button class="filtro-st" data-st="resolvida" onclick="setStatus(this,'resolvida')">Resolvidas</button>
     <div class="busca-wrap">
-      <i data-lucide="search" class="busca-icon"></i>
-      <input type="text" id="busca" placeholder="Buscar cliente, técnico..." oninput="renderLista()">
+      <i data-lucide="search" class="busca-icon" style="width:14px;height:14px"></i>
+      <input type="text" id="busca" placeholder="Buscar obra, descrição..." oninput="renderLista()">
     </div>
   </div>
 
-  <div id="lista-pendencias">
-    <div class="loading"><div class="spinner-inline"></div><p>Carregando pendências...</p></div>
+  <!-- Lista -->
+  <div class="lista-grid" id="lista-pend">
+    <div class="spinner-wrap"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toast-msg"></span>
+</div>
+
+<!-- Modal cadastro/edição -->
+<div class="overlay" id="overlay-modal" style="display:none" onclick="fecharModalFora(event)">
+  <div class="modal-pend" id="modal-pend">
+    <h2><i data-lucide="clipboard-list"></i> <span id="modal-titulo">Cadastrar Pendência</span></h2>
+
+    <div class="erro-form" id="erro-form"></div>
+
+    <div class="form-group">
+      <label>Equipe</label>
+      <select id="f-equipe">
+        <option value="">Selecione a equipe...</option>
+        <option value="cabeamento">Cabeamento</option>
+        <option value="eletrica">Elétrica</option>
+        <option value="audio_video">Áudio e Vídeo</option>
+        <option value="automacao">Automação</option>
+        <option value="regional_norte">Regional Norte</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Obra / Cliente</label>
+      <select id="f-obra" onchange="onObraChange()">
+        <option value="">Carregando obras...</option>
+        <option value="outro">— Outro (assistência / avulso) —</option>
+      </select>
+    </div>
+
+    <div id="outro-wrap" style="display:none">
+      <div class="form-group">
+        <label>Nome do cliente / descrição rápida</label>
+        <input type="text" id="f-obra-outro" placeholder="Ex.: Assistência residencial João...">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Pendências e solicitações</label>
+      <textarea id="f-descricao" rows="4" placeholder="Descreva as pendências, solicitações do cliente, pontos a resolver..."></textarea>
+    </div>
+
+    <label class="toggle-urgente">
+      <input type="checkbox" id="f-urgente">
+      <span><strong>Urgente</strong> — precisa de atenção imediata</span>
+    </label>
+
+    <div class="modal-footer">
+      <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-salvar" id="btn-salvar" onclick="salvarPendencia()">Salvar</button>
+    </div>
   </div>
 </div>
 
@@ -176,293 +300,320 @@ const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let todasPendencias = [];
-let filtroAtivo = 'todos';
-const PEND_KEY = 'pend_status_v1'; // localStorage key
+let pendencias  = [];
+let obras       = [];
+let meuTecId    = null;
+let editandoId  = null;
+let equipeAtiva = 'todas';
+let statusAtivo = 'todos';
+let toastTimer  = null;
 
-function escHtml(v) {
-  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
+function escHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
-function getStoredPend() {
-  try { return JSON.parse(localStorage.getItem(PEND_KEY) || '{}'); } catch { return {}; }
-}
-function savePendStatus(osId, status) {
-  const obj = getStoredPend();
-  obj[osId] = { status, ts: Date.now() };
-  localStorage.setItem(PEND_KEY, JSON.stringify(obj));
-}
-function getPendStatus(osId) {
-  const obj = getStoredPend();
-  return obj[osId]?.status || 'aguardando';
-}
-
-function diasAtraso(dataServico) {
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const d = new Date(dataServico + 'T00:00:00');
-  return Math.floor((hoje - d) / 86400000);
-}
-
-function setFiltro(el, val) {
-  document.querySelectorAll('.filtro-chip').forEach(b => b.classList.remove('ativo','ativo-am','ativo-gr'));
-  filtroAtivo = val;
-  if (val === 'urgente') el.classList.add('ativo');
-  else if (val === 'atencao') el.classList.add('ativo-am');
-  else if (val === 'contato') el.classList.add('ativo-gr');
-  else el.classList.add('ativo');
-  renderLista();
-}
-
-function cardClass(dias, statusPend) {
-  if (statusPend === 'resolvida') return 'resolvida';
-  if (statusPend === 'contato')   return 'contato';
-  if (dias > 7) return 'urgente';
-  return 'atencao';
-}
-
-function badgeDias(dias) {
-  const cls = dias > 7 ? 'urgente' : 'atencao';
-  return `<span class="badge-dias ${cls}"><i data-lucide="clock" style="display:inline-block;width:10px;height:10px;vertical-align:middle"></i> ${dias}d atrasada</span>`;
-}
-
-const STATUS_LABELS = {
-  aguardando: { label: 'Aguardando', cls: 'bs-aguardando' },
-  contato:    { label: 'Contato feito', cls: 'bs-contato' },
-  em_resolucao: { label: 'Em resolução', cls: 'bs-em_resolucao' },
-  resolvida:  { label: 'Resolvida', cls: 'bs-resolvida' },
+const EQUIPE_LABEL = {
+  cabeamento:'Cabeamento', eletrica:'Elétrica', audio_video:'Áudio e Vídeo',
+  automacao:'Automação', regional_norte:'Regional Norte'
+};
+const STATUS_INFO = {
+  aberta:             { label:'Em aberto',         cls:'badge-aberta',            icon:'clock' },
+  pendencia_cliente:  { label:'Pendência cliente', cls:'badge-pendencia_cliente', icon:'user' },
+  pendencia_solucao:  { label:'Pendência Solução', cls:'badge-pendencia_solucao', icon:'building-2' },
+  resolvida:          { label:'Resolvida',          cls:'badge-resolvida',         icon:'check-circle-2' },
 };
 
-function badgeStatus(osId, current) {
-  const { label, cls } = STATUS_LABELS[current] || STATUS_LABELS.aguardando;
-  return `<span class="badge-status-pend ${cls}" onclick="ciclarStatus(${osId})" title="Clique para avançar status">${label}</span>`;
+function mostrarToast(msg, tipo='ok'){
+  const el = document.getElementById('toast');
+  el.style.background = tipo === 'err' ? 'rgba(239,68,68,0.12)' : 'var(--surface-1)';
+  el.style.borderColor = tipo === 'err' ? 'rgba(239,68,68,0.3)' : 'var(--border-strong)';
+  document.getElementById('toast-msg').textContent = msg;
+  el.classList.add('visivel');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('visivel'), 3500);
 }
 
-function ciclarStatus(osId) {
-  const order = ['aguardando', 'contato', 'em_resolucao', 'resolvida'];
-  const cur = getPendStatus(osId);
-  const idx = order.indexOf(cur);
-  const next = order[(idx + 1) % order.length];
-  savePendStatus(osId, next);
+function setEquipe(el, eq){
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    b.classList.remove('ativo');
+    b.style.fontWeight='';
+  });
+  el.classList.add('ativo');
+  equipeAtiva = eq;
   renderLista();
 }
 
-function toggleNotaEdit(osId) {
-  const editEl = document.getElementById(`nota-edit-${osId}`);
-  const viewEl = document.getElementById(`nota-view-${osId}`);
-  const acaoEl = document.getElementById(`btn-edit-nota-${osId}`);
-  if (!editEl) return;
-  if (editEl.style.display === 'none' || !editEl.style.display) {
-    editEl.style.display = 'block';
-    if (viewEl) viewEl.style.display = 'none';
-    if (acaoEl) acaoEl.style.display = 'none';
-    editEl.focus();
-  } else {
-    editEl.style.display = 'none';
-    if (viewEl) viewEl.style.display = editEl.value.trim() ? 'block' : 'none';
-    if (acaoEl) acaoEl.style.display = '';
-  }
-}
-
-async function salvarNota(osId) {
-  const editEl = document.getElementById(`nota-edit-${osId}`);
-  if (!editEl) return;
-  const nota = editEl.value.trim();
-  const { error } = await db.from('ordens_de_servico')
-    .update({ observacao_supervisor: nota || null })
-    .eq('id', osId);
-  if (error) { alert('Erro ao salvar nota: ' + error.message); return; }
-  // Atualiza local
-  const os = todasPendencias.find(o => o.id === osId);
-  if (os) os.observacao_supervisor = nota || null;
-  toggleNotaEdit(osId);
+function setStatus(el, st){
+  document.querySelectorAll('.filtro-st').forEach(b=>b.classList.remove('ativo'));
+  el.classList.add('ativo');
+  statusAtivo = st;
   renderLista();
 }
 
-async function marcarResolvida(osId) {
-  if (!confirm('Marcar esta OS como concluída?')) return;
-  const { error } = await db.from('ordens_de_servico')
-    .update({ status_aprovacao: 'concluida' })
-    .eq('id', osId);
-  if (error) { alert('Erro: ' + error.message); return; }
-  todasPendencias = todasPendencias.filter(o => o.id !== osId);
-  renderLista();
+function onObraChange(){
+  const v = document.getElementById('f-obra').value;
+  document.getElementById('outro-wrap').style.display = v === 'outro' ? 'block' : 'none';
 }
 
-function renderLista() {
-  const busca = (document.getElementById('busca')?.value || '').toLowerCase().trim();
-  const armazenados = getStoredPend();
+function renderLista(){
+  const busca = (document.getElementById('busca')?.value||'').toLowerCase().trim();
 
-  let lista = todasPendencias.filter(o => {
-    const statusPend = armazenados[o.id]?.status || 'aguardando';
-    const dias = diasAtraso(o.data_servico);
-    if (filtroAtivo === 'urgente' && dias <= 7) return false;
-    if (filtroAtivo === 'atencao' && (dias < 1 || dias > 7)) return false;
-    if (filtroAtivo === 'aguardando' && statusPend !== 'aguardando') return false;
-    if (filtroAtivo === 'contato' && statusPend !== 'contato') return false;
-    if (busca) {
-      const text = [
-        o.obras?.nome_cliente || '',
-        o.obras?.endereco || '',
-        o.tecnicoNome || '',
-        o.descricao || '',
-        o.servico || '',
-      ].join(' ').toLowerCase();
-      if (!text.includes(busca)) return false;
+  const filtradas = pendencias.filter(p=>{
+    if(equipeAtiva !== 'todas' && p.equipe !== equipeAtiva) return false;
+    if(statusAtivo !== 'todos' && p.status !== statusAtivo) return false;
+    if(busca){
+      const txt = [p.obras?.nome_cliente||'', p.obra_outro||'', p.descricao||''].join(' ').toLowerCase();
+      if(!txt.includes(busca)) return false;
     }
     return true;
   });
 
-  // Ordena por dias atraso desc
-  lista.sort((a, b) => diasAtraso(b.data_servico) - diasAtraso(a.data_servico));
+  // Atualiza badge total (abertos, não resolvidos)
+  const abertas = pendencias.filter(p=>p.status!=='resolvida').length;
+  document.getElementById('badge-total').textContent = abertas;
 
-  document.getElementById('badge-total').textContent = todasPendencias.length;
-
-  if (lista.length === 0) {
-    document.getElementById('lista-pendencias').innerHTML = `
-      <div class="empty-state">
-        <i data-lucide="check-circle-2" style="color:var(--primary);opacity:.6"></i>
-        <p>Nenhuma pendência encontrada${busca ? ' para "' + escHtml(busca) + '"' : ''}.</p>
-      </div>`;
-    lucide.createIcons();
-    return;
-  }
-
-  // Agrupa por urgência
-  const grupos = [
-    { key: 'urgente', label: 'Urgente', sub: 'mais de 7 dias', cls: 'ct-red', items: lista.filter(o => diasAtraso(o.data_servico) > 7 && (armazenados[o.id]?.status || 'aguardando') !== 'resolvida') },
-    { key: 'atencao', label: 'Atenção',  sub: '1 a 7 dias',     cls: 'ct-am',  items: lista.filter(o => diasAtraso(o.data_servico) >= 1 && diasAtraso(o.data_servico) <= 7 && (armazenados[o.id]?.status || 'aguardando') !== 'resolvida') },
-    { key: 'contato', label: 'Contato feito / Em resolução', sub: '', cls: 'ct-bl', items: lista.filter(o => ['contato','em_resolucao'].includes(armazenados[o.id]?.status)) },
-  ].filter(g => g.items.length > 0 && (filtroAtivo === 'todos' || filtroAtivo === g.key || filtroAtivo === 'aguardando' || filtroAtivo === 'contato'));
-
-  let html = '';
-  for (const grupo of grupos) {
-    if (filtroAtivo !== 'todos' && filtroAtivo !== grupo.key && !(filtroAtivo === 'contato' && grupo.key === 'contato') && !(filtroAtivo === 'aguardando')) continue;
-    if (grupo.items.length === 0) continue;
-    html += `<div class="grupo-titulo">${grupo.label} <span class="${grupo.cls}">${grupo.items.length}</span>${grupo.sub ? ` <span style="font-size:10px;color:var(--text-3);font-weight:400">${grupo.sub}</span>` : ''}</div>`;
-    for (const o of grupo.items) {
-      const dias = diasAtraso(o.data_servico);
-      const statusPend = armazenados[o.id]?.status || 'aguardando';
-      const cc = cardClass(dias, statusPend);
-      const [y, m, d] = o.data_servico.split('-');
-      const dataFmt = `${d}/${m}/${y}`;
-      const nota = o.observacao_supervisor || '';
-      html += `
-      <div class="pend-card ${cc}" id="pend-${o.id}">
-        <div class="pend-top">
-          <div class="pend-info">
-            <div class="pend-cliente">${escHtml(o.obras?.nome_cliente || 'Cliente não informado')}</div>
-            <div class="pend-meta">
-              <span><i data-lucide="calendar"></i> ${dataFmt}</span>
-              ${o.tecnicoNome ? `<span><i data-lucide="user"></i> ${escHtml(o.tecnicoNome)}</span>` : ''}
-              ${o.obras?.endereco ? `<span><i data-lucide="map-pin"></i> ${escHtml(o.obras.endereco)}</span>` : ''}
-              ${o.descricao ? `<span style="color:var(--text-3)">${escHtml(o.descricao.substring(0,60))}${o.descricao.length>60?'…':''}</span>` : ''}
-            </div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
-            ${badgeDias(dias)}
-            ${badgeStatus(o.id, statusPend)}
-          </div>
-        </div>
-        ${nota ? `<div class="pend-nota" id="nota-view-${o.id}">${escHtml(nota)}</div>` : `<div id="nota-view-${o.id}" style="display:none"></div>`}
-        <textarea class="pend-nota-edit" id="nota-edit-${o.id}" placeholder="Adicionar observação sobre esta pendência..." style="display:none">${escHtml(nota)}</textarea>
-        <div class="pend-acoes">
-          <button class="btn-acao btn-salvar-nota" id="btn-salvar-${o.id}" onclick="salvarNota(${o.id})" style="display:none">
-            <i data-lucide="save"></i> Salvar nota
-          </button>
-          <button class="btn-acao" id="btn-edit-nota-${o.id}" onclick="toggleNotaEdit(${o.id})" title="${nota ? 'Editar' : 'Adicionar'} observação">
-            <i data-lucide="${nota ? 'pencil' : 'plus'}"></i> ${nota ? 'Editar nota' : 'Adicionar nota'}
-          </button>
-          ${statusPend !== 'resolvida' ? `<button class="btn-acao btn-resolver" onclick="marcarResolvida(${o.id})"><i data-lucide="check-circle-2"></i> Marcar resolvida</button>` : ''}
-          <a href="supervisor.html" class="btn-acao" style="text-decoration:none;"><i data-lucide="external-link"></i> Ver no supervisor</a>
-        </div>
-      </div>`;
-    }
-  }
-
-  // Resolve nota edit toggles — precisa de JS inline
-  document.getElementById('lista-pendencias').innerHTML = html;
-
-  // Mostra o btn-salvar ao editar
-  document.querySelectorAll('.pend-nota-edit').forEach(el => {
-    el.addEventListener('input', () => {
-      const osId = el.id.replace('nota-edit-','');
-      const saveBtn = document.getElementById(`btn-salvar-${osId}`);
-      if (saveBtn) saveBtn.style.display = el.style.display !== 'none' ? '' : 'none';
-    });
+  // Atualiza contadores das tabs
+  ['todas','cabeamento','eletrica','audio_video','automacao','regional_norte'].forEach(eq=>{
+    const el = document.getElementById(`ct-${eq}`);
+    if(!el) return;
+    const c = eq==='todas'
+      ? pendencias.filter(p=>p.status!=='resolvida').length
+      : pendencias.filter(p=>p.equipe===eq && p.status!=='resolvida').length;
+    el.textContent = c;
   });
+
+  const lista = document.getElementById('lista-pend');
+  if(filtradas.length === 0){
+    lista.innerHTML = `<div class="empty-state">
+      <i data-lucide="inbox"></i>
+      <p style="font-size:14px;color:var(--text-2);margin-bottom:4px">Nenhuma pendência encontrada</p>
+      <p style="font-size:12px;color:var(--text-3)">Clique em "Cadastrar Pendência" para adicionar</p>
+    </div>`;
+    lucide.createIcons(); return;
+  }
+
+  // Ordena: urgentes primeiro, depois por data desc
+  const ord = [...filtradas].sort((a,b)=>{
+    if(a.urgente && !b.urgente) return -1;
+    if(!a.urgente && b.urgente) return 1;
+    return new Date(b.criado_em) - new Date(a.criado_em);
+  });
+
+  lista.innerHTML = ord.map(p=>{
+    const st     = STATUS_INFO[p.status] || STATUS_INFO.aberta;
+    const obra   = p.obras?.nome_cliente || p.obra_outro || '—';
+    const eqCls  = `eq-${p.equipe}`;
+    const dataFmt = new Date(p.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+    return `<div class="pend-card ${p.urgente?'urgente':''} ${p.status==='resolvida'?'resolvida':''}" id="pcard-${p.id}">
+      <div class="card-top">
+        <div style="flex:1;min-width:0">
+          <div class="card-equipe-row">
+            <span class="badge badge-equipe ${eqCls}">${escHtml(EQUIPE_LABEL[p.equipe]||p.equipe)}</span>
+            ${p.urgente?`<span class="badge badge-urgente"><i data-lucide="alert-triangle" style="display:inline-block;width:10px;height:10px;vertical-align:middle"></i> Urgente</span>`:''}
+          </div>
+          <div class="card-obra">${escHtml(obra)}</div>
+          <div class="card-meta">${dataFmt}</div>
+        </div>
+        <span class="badge ${st.cls}">${st.label}</span>
+      </div>
+      <div class="card-descricao">${escHtml(p.descricao)}</div>
+      <div class="card-acoes">
+        <button class="btn-st ${p.status==='resolvida'?'active-resolvida':''}" onclick="mudarStatus(${p.id},'resolvida')">
+          <i data-lucide="check-circle-2"></i> Resolvida
+        </button>
+        <button class="btn-st ${p.status==='pendencia_cliente'?'active-pendencia_cliente':''}" onclick="mudarStatus(${p.id},'pendencia_cliente')">
+          <i data-lucide="user"></i> Pend. cliente
+        </button>
+        <button class="btn-st ${p.status==='pendencia_solucao'?'active-pendencia_solucao':''}" onclick="mudarStatus(${p.id},'pendencia_solucao')">
+          <i data-lucide="building-2"></i> Pend. Solução
+        </button>
+        <button class="btn-st" onclick="editarPendencia(${p.id})" style="margin-left:auto">
+          <i data-lucide="pencil"></i> Editar
+        </button>
+        <button class="btn-excluir" onclick="excluirPendencia(${p.id})">
+          <i data-lucide="trash-2"></i>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
 
   lucide.createIcons();
 }
 
-async function recarregar() {
-  document.getElementById('lista-pendencias').innerHTML = '<div class="loading"><div class="spinner-inline"></div><p>Atualizando...</p></div>';
-  await carregarPendencias();
+async function mudarStatus(id, novoStatus){
+  const { error } = await db.from('pendencias').update({status:novoStatus,atualizado_em:new Date().toISOString()}).eq('id',id);
+  if(error){mostrarToast('Erro: '+error.message,'err');return;}
+  const p = pendencias.find(x=>x.id===id);
+  if(p) p.status = novoStatus;
+  renderLista();
+  mostrarToast('Status atualizado.','ok');
 }
 
-async function carregarPendencias() {
-  const hoje = new Date().toISOString().split('T')[0];
+async function excluirPendencia(id){
+  if(!confirm('Excluir esta pendência?')) return;
+  const {error} = await db.from('pendencias').delete().eq('id',id);
+  if(error){mostrarToast('Erro: '+error.message,'err');return;}
+  pendencias = pendencias.filter(x=>x.id!==id);
+  renderLista();
+  mostrarToast('Pendência excluída.','ok');
+}
 
-  const [{ data: osData, error }, { data: tecList }] = await Promise.all([
-    db.from('ordens_de_servico')
-      .select('*, obras(nome_cliente, endereco)')
-      .lt('data_servico', hoje)
-      .not('status_aprovacao', 'in', '("concluida","aprovada")')
-      .order('data_servico', { ascending: true }),
-    db.from('tecnicos').select('id, nome')
-  ]);
+function editarPendencia(id){
+  const p = pendencias.find(x=>x.id===id);
+  if(!p) return;
+  editandoId = id;
+  document.getElementById('modal-titulo').textContent = 'Editar Pendência';
+  document.getElementById('f-equipe').value   = p.equipe;
+  document.getElementById('f-descricao').value = p.descricao;
+  document.getElementById('f-urgente').checked = !!p.urgente;
+  if(p.obra_id){
+    document.getElementById('f-obra').value = p.obra_id;
+    document.getElementById('outro-wrap').style.display='none';
+  } else {
+    document.getElementById('f-obra').value = 'outro';
+    document.getElementById('outro-wrap').style.display='block';
+    document.getElementById('f-obra-outro').value = p.obra_outro||'';
+  }
+  document.getElementById('erro-form').style.display='none';
+  document.getElementById('overlay-modal').style.display='flex';
+  lucide.createIcons();
+}
 
-  if (error) {
-    document.getElementById('lista-pendencias').innerHTML = `<div class="empty-state"><p style="color:var(--red-text)">Erro: ${escHtml(error.message)}</p></div>`;
-    return;
+function abrirModal(){
+  editandoId = null;
+  document.getElementById('modal-titulo').textContent = 'Cadastrar Pendência';
+  document.getElementById('f-equipe').value   = equipeAtiva !== 'todas' ? equipeAtiva : '';
+  document.getElementById('f-obra').value     = '';
+  document.getElementById('f-obra-outro').value = '';
+  document.getElementById('f-descricao').value = '';
+  document.getElementById('f-urgente').checked = false;
+  document.getElementById('outro-wrap').style.display='none';
+  document.getElementById('erro-form').style.display='none';
+  document.getElementById('overlay-modal').style.display='flex';
+  lucide.createIcons();
+}
+
+function fecharModal(){
+  document.getElementById('overlay-modal').style.display='none';
+  editandoId = null;
+}
+
+function fecharModalFora(e){
+  if(e.target === document.getElementById('overlay-modal')) fecharModal();
+}
+
+async function salvarPendencia(){
+  const equipe    = document.getElementById('f-equipe').value;
+  const obraVal   = document.getElementById('f-obra').value;
+  const obraOutro = document.getElementById('f-obra-outro').value.trim();
+  const descricao = document.getElementById('f-descricao').value.trim();
+  const urgente   = document.getElementById('f-urgente').checked;
+  const erroEl    = document.getElementById('erro-form');
+
+  if(!equipe){erroEl.textContent='Selecione a equipe.';erroEl.style.display='block';return;}
+  if(!descricao){erroEl.textContent='Descreva a pendência.';erroEl.style.display='block';return;}
+  if(obraVal==='outro' && !obraOutro){erroEl.textContent='Informe o cliente/obra.';erroEl.style.display='block';return;}
+  erroEl.style.display='none';
+
+  const btn = document.getElementById('btn-salvar');
+  btn.disabled=true; btn.textContent='Salvando...';
+
+  const payload = {
+    equipe,
+    obra_id:    obraVal && obraVal !== 'outro' ? Number(obraVal) : null,
+    obra_outro: obraVal === 'outro' ? obraOutro : null,
+    descricao,
+    urgente,
+    atualizado_em: new Date().toISOString(),
+  };
+
+  let error;
+  if(editandoId){
+    ({error} = await db.from('pendencias').update(payload).eq('id',editandoId));
+    if(!error){
+      const idx = pendencias.findIndex(x=>x.id===editandoId);
+      if(idx>=0){
+        pendencias[idx]={...pendencias[idx],...payload};
+        // recarga obra
+        if(payload.obra_id){
+          const obra = obras.find(o=>o.id===payload.obra_id);
+          pendencias[idx].obras = obra ? {nome_cliente:obra.nome_cliente} : null;
+        } else { pendencias[idx].obras = null; }
+      }
+    }
+  } else {
+    payload.status     = 'aberta';
+    payload.criado_por = meuTecId;
+    payload.criado_em  = new Date().toISOString();
+    const {data, error:e} = await db.from('pendencias').insert(payload).select('*, obras(nome_cliente)').single();
+    error = e;
+    if(!error && data) pendencias.unshift(data);
   }
 
-  const tecMap = Object.fromEntries((tecList || []).map(t => [t.id, t.nome]));
-  todasPendencias = (osData || []).map(o => ({
-    ...o,
-    tecnicoNome: tecMap[o.tecnico_id] || null
-  }));
+  btn.disabled=false; btn.textContent='Salvar';
 
+  if(error){erroEl.textContent='Erro: '+error.message;erroEl.style.display='block';return;}
+
+  fecharModal();
+  renderLista();
+  mostrarToast(editandoId ? 'Pendência atualizada.' : 'Pendência cadastrada.','ok');
+}
+
+async function carregarPendencias(){
+  const {data,error} = await db.from('pendencias')
+    .select('*, obras(nome_cliente)')
+    .order('criado_em',{ascending:false});
+  if(error){
+    document.getElementById('lista-pend').innerHTML=`<div class="empty-state"><p style="color:var(--red-text)">Erro ao carregar: ${escHtml(error.message)}</p></div>`;
+    lucide.createIcons(); return;
+  }
+  pendencias = data||[];
   renderLista();
 }
 
-// ── Topbar ──
-function renderTopbar(nome, role) {
-  const h = new Date().getHours();
-  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const primeiro = (nome || '').split(' ')[0];
-  const greetEl = document.getElementById('topbar-greeting');
-  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
-  const links = [
-    { href:'obras.html',            label:'Obras',            id:'obras',       roles:['supervisor','coordenador','agendamento'] },
-    { href:'agenda.html',           label:'Agenda Técnica',   id:'agenda',      roles:['supervisor','coordenador','agendamento'] },
-    { href:'agenda_vistorias.html', label:'Agenda Vistorias', id:'agenda-vis',  roles:['supervisor','coordenador','agendamento'] },
-    { href:'supervisor.html',       label:'Supervisor',       id:'supervisor',  roles:['supervisor','coordenador','agendamento'] },
-    { href:'pendencias.html',       label:'Pendências',       id:'pendencias',  roles:['supervisor','coordenador','agendamento'] },
-    { href:'admin.html',            label:'Admin',            id:'admin',       roles:['coordenador'] },
-  ];
-  const nav = document.getElementById('topbar-nav');
-  if (!nav) return;
-  nav.innerHTML = links
-    .filter(l => l.roles.includes(role))
-    .map(l => `<a href="${l.href}" ${l.id === 'pendencias' ? 'class="active"' : ''}>${l.label}</a>`)
-    .join('') + `<a href="#" class="nav-sair" onclick="sair()">Sair</a>`;
+async function carregarObras(){
+  const {data} = await db.from('obras').select('id,nome_cliente').order('nome_cliente');
+  obras = data||[];
+  const sel = document.getElementById('f-obra');
+  sel.innerHTML='<option value="">Selecione a obra...</option>'+
+    obras.map(o=>`<option value="${o.id}">${escHtml(o.nome_cliente)}</option>`).join('')+
+    '<option value="outro">— Outro (assistência / avulso) —</option>';
 }
 
-async function sair() { await db.auth.signOut(); window.location.href = 'login.html'; }
+function renderTopbar(nome,role){
+  const h=new Date().getHours();
+  const s=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
+  const primeiro=(nome||'').split(' ')[0];
+  const greetEl=document.getElementById('topbar-greeting');
+  if(greetEl&&primeiro) greetEl.textContent=`${s}, ${primeiro}`;
+  const links=[
+    {href:'obras.html',label:'Obras',id:'obras',roles:['supervisor','coordenador','agendamento']},
+    {href:'agenda.html',label:'Agenda Técnica',id:'agenda',roles:['supervisor','coordenador','agendamento']},
+    {href:'agenda_vistorias.html',label:'Agenda Vistorias',id:'agenda-vis',roles:['supervisor','coordenador','agendamento']},
+    {href:'supervisor.html',label:'Supervisor',id:'supervisor',roles:['supervisor','coordenador','agendamento']},
+    {href:'pendencias.html',label:'Pendências',id:'pendencias',roles:['supervisor','coordenador','agendamento']},
+    {href:'admin.html',label:'Admin',id:'admin',roles:['coordenador']},
+  ];
+  const nav=document.getElementById('topbar-nav');
+  if(!nav) return;
+  nav.innerHTML=links.filter(l=>l.roles.includes(role))
+    .map(l=>`<a href="${l.href}" ${l.id==='pendencias'?'class="active"':''}>${l.label}</a>`)
+    .join('')+`<a href="#" class="nav-sair" onclick="sair()">Sair</a>`;
+}
 
-// ── Init ──
-async function init() {
-  const { data: { session } } = await db.auth.getSession();
-  if (!session) { window.location.href = 'login.html'; return; }
+async function sair(){await db.auth.signOut();window.location.href='login.html';}
 
-  const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
-  if (!eu || !['supervisor','coordenador','agendamento'].includes(eu.role)) {
-    window.location.href = 'supervisor.html'; return;
+async function init(){
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){window.location.href='login.html';return;}
+
+  const {data:eu}=await db.from('tecnicos').select('id,role,nome').eq('auth_user_id',session.user.id).single();
+  if(!eu||!['supervisor','coordenador','agendamento'].includes(eu.role)){
+    window.location.href='supervisor.html';return;
   }
-
-  renderTopbar(eu.nome, eu.role);
-  applyTheme(localStorage.getItem('tema') || 'auto');
-  await carregarPendencias();
+  meuTecId=eu.id;
+  renderTopbar(eu.nome,eu.role);
+  applyTheme(localStorage.getItem('tema')||'auto');
+  await Promise.all([carregarObras(),carregarPendencias()]);
 }
 
 init();
