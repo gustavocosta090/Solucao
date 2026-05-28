@@ -6,7 +6,9 @@ import { getToken, getSiteId } from './_sharepoint.js';
 
 const TOKEN_ACESSO  = 'cria2026pastas';
 const SUPABASE_URL  = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
-const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
+// Usa service role key (bypassa RLS) se disponível, senão cai na anon key
+const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
 const ANO           = '2026';
 const EQUIPE_COD    = { 1: '01', 2: '02', 3: '03', 4: '04', 5: '05' };
 
