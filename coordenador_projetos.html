@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27i -->
+<!-- build: 2026-05-27j -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -430,6 +430,7 @@ function renderTopbar(nome, role, paginaAtiva) {
   if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
   const links = [
     { href:'coordenador_projetos.html', label:'Projetos',   id:'coordenador-projetos', roles:['coordenador_projetos'] },
+    { href:'dashboard.html',            label:'Painel Executivo',     id:'dashboard',           roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
     { href:'obras.html',                label:'Obras',       id:'obras',                roles:['coordenador_projetos'] },
     { href:'agenda.html',               label:'Agenda Técnica',      id:'agenda',               roles:['coordenador_projetos'] },
     { href:'supervisor.html',           label:'Supervisor',  id:'supervisor',            roles:['coordenador_projetos'] },

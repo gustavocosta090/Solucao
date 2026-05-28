@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<!-- build: 2026-05-27j -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Executivo — Solução Técnica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script>document.documentElement.dataset.theme = localStorage.getItem('tema') || 'auto';</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+  :root {
+    --bg:           #0A0A0A;
+    --surface-1:    #111111;
+    --surface-2:    #161616;
+    --surface-3:    #1B1B1B;
+    --primary:      #3ECF8E;
+    --text-1:       #FFFFFF;
+    --text-2:       #A1A1AA;
+    --text-3:       #52525B;
+    --border:       rgba(255,255,255,0.08);
+    --border-strong:rgba(255,255,255,0.12);
+
+    /* Cores de acento do painel */
+    --green:        #3ecf8e;
+    --green-dim:    rgba(62,207,142,0.12);
+    --green-glow:   rgba(62,207,142,0.20);
+    --indigo:       #818cf8;
+    --indigo-dim:   rgba(129,140,248,0.12);
+    --amber:        #fbbf24;
+    --amber-dim:    rgba(251,191,36,0.12);
+    --pink:         #f472b6;
+    --pink-dim:     rgba(244,114,182,0.12);
+    --blue:         #38bdf8;
+    --blue-dim:     rgba(56,189,248,0.12);
+    --purple:       #a78bfa;
+    --purple-dim:   rgba(167,139,250,0.12);
+    --teal:         #2dd4bf;
+    --teal-dim:     rgba(45,212,191,0.12);
+  }
+
+  :root[data-theme="light"] {
+    --bg:           #F4F4F5;
+    --surface-1:    #FFFFFF;
+    --surface-2:    #FAFAFA;
+    --surface-3:    #F0F0F1;
+    --text-1:       #09090B;
+    --text-2:       #71717A;
+    --text-3:       #A1A1AA;
+    --border:       rgba(0,0,0,0.08);
+    --border-strong:rgba(0,0,0,0.14);
+  }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="auto"] {
+      --bg:           #F4F4F5;
+      --surface-1:    #FFFFFF;
+      --surface-2:    #FAFAFA;
+      --surface-3:    #F0F0F1;
+      --text-1:       #09090B;
+      --text-2:       #71717A;
+      --text-3:       #A1A1AA;
+      --border:       rgba(0,0,0,0.08);
+      --border-strong:rgba(0,0,0,0.14);
+    }
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text-1);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── TOPBAR ─────────────────────────────────────────────── */
+  .topbar {
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    height: 56px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    gap: 12px;
+  }
+  .topbar-logo    { font-size:15px; font-weight:700; color:var(--text-1); letter-spacing:-0.2px; flex:1; }
+  .topbar-greeting{ font-size:13px; color:var(--text-2); margin-right:8px; }
+  .topbar-links   { display:flex; align-items:center; gap:4px; }
+  .topbar-links a {
+    color: var(--text-2); text-decoration:none; font-size:13px;
+    font-weight:500; padding:6px 12px; border-radius:6px;
+    transition: color .15s, background .15s;
+    white-space: nowrap;
+  }
+  .topbar-links a:hover  { color:var(--text-1); background:rgba(255,255,255,0.06); }
+  .topbar-links a.active { color:var(--text-1); background:rgba(255,255,255,0.07); }
+  .topbar-links a.nav-sair {
+    color:var(--text-2); border:1px solid var(--border-strong); margin-left:8px;
+  }
+  .topbar-links a.nav-sair:hover { color:var(--text-1); background:rgba(255,255,255,0.06); }
+
+  /* ── MAIN ────────────────────────────────────────────────── */
+  .main { padding:24px 28px; display:flex; flex-direction:column; gap:18px; }
+
+  /* ── HEADER DO PAINEL ───────────────────────────────────── */
+  .painel-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding-bottom:4px;
+  }
+  .painel-title { font-size:22px; font-weight:800; letter-spacing:-0.5px; color:var(--text-1); }
+  .painel-sub   { font-size:13px; color:var(--text-2); margin-top:3px; }
+  .painel-right { display:flex; align-items:center; gap:10px; }
+
+  .sim-badge {
+    font-size:11px; font-weight:500; padding:5px 12px; border-radius:7px;
+    background:var(--amber-dim); border:1px solid rgba(251,191,36,0.22); color:var(--amber);
+    display:flex; align-items:center; gap:5px;
+  }
+  .period-ctrl {
+    display:flex; background:var(--surface-2); border:1px solid var(--border);
+    border-radius:8px; padding:3px; gap:2px;
+  }
+  .period-btn {
+    padding:5px 16px; border-radius:6px; border:none; cursor:pointer;
+    font-family:inherit; font-size:12px; font-weight:600;
+    background:transparent; color:var(--text-2); transition:all .15s;
+  }
+  .period-btn.active { background:var(--primary); color:#fff; box-shadow:0 2px 10px rgba(62,207,142,0.3); }
+  .period-btn:not(.active):hover { color:var(--text-1); }
+
+  .print-btn {
+    padding:6px 14px; border-radius:7px; border:1px solid var(--border-strong);
+    background:transparent; color:var(--text-2); font-family:inherit;
+    font-size:12px; font-weight:500; cursor:pointer;
+    transition:all .15s; display:flex; align-items:center; gap:6px;
+  }
+  .print-btn:hover { color:var(--text-1); background:var(--surface-2); }
+
+  /* ── KPI CARDS ──────────────────────────────────────────── */
+  .kpi-row { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; }
+  .kpi {
+    background:var(--surface-1); border:1px solid var(--border);
+    border-radius:14px; padding:20px 20px 18px;
+    position:relative; overflow:hidden;
+    transition:border-color .2s, transform .2s; cursor:default;
+  }
+  .kpi:hover { border-color:var(--border-strong); transform:translateY(-1px); }
+  .kpi::after {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background: var(--kpi-color);
+  }
+  .kpi-top  { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; }
+  .kpi-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; background:var(--kpi-dim); }
+  .kpi-badge{ font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:6px; background:var(--kpi-dim); color:var(--kpi-color); white-space:nowrap; }
+  .kpi-value{ font-size:28px; font-weight:900; letter-spacing:-1.2px; color:var(--text-1); line-height:1; margin-bottom:5px; }
+  .kpi-label{ font-size:11.5px; color:var(--text-2); font-weight:400; line-height:1.4; }
+
+  /* ── SECTION LABEL ──────────────────────────────────────── */
+  .section-label {
+    font-size:10px; font-weight:700; letter-spacing:0.8px;
+    text-transform:uppercase; color:var(--text-3);
+  }
+
+  /* ── CARD GENÉRICO ──────────────────────────────────────── */
+  .card {
+    background:var(--surface-1); border:1px solid var(--border);
+    border-radius:14px; padding:22px;
+  }
+  .card-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
+  .card-title  { font-size:14px; font-weight:700; color:var(--text-1); letter-spacing:-0.1px; }
+  .card-sub    { font-size:12px; color:var(--text-2); margin-top:3px; }
+
+  .tag { font-size:11px; font-weight:600; padding:4px 10px; border-radius:20px; white-space:nowrap; }
+  .tag-green  { background:var(--green-dim);  color:var(--green);  }
+  .tag-indigo { background:var(--indigo-dim); color:var(--indigo); }
+  .tag-amber  { background:var(--amber-dim);  color:var(--amber);  }
+  .tag-blue   { background:var(--blue-dim);   color:var(--blue);   }
+
+  /* ── LAYOUTS ────────────────────────────────────────────── */
+  .row-2col       { display:grid; gap:14px; grid-template-columns:2fr 3fr; }
+  .row-2col-equal { display:grid; gap:14px; grid-template-columns:1fr 1fr; }
+
+  /* ── STATUS MINI-CARDS ──────────────────────────────────── */
+  .status-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .status-card {
+    background:var(--surface-1); border:1px solid var(--border);
+    border-radius:14px; padding:18px 20px;
+    position:relative; overflow:hidden;
+    transition:border-color .2s, transform .2s; cursor:default;
+  }
+  .status-card:hover { border-color:var(--border-strong); transform:translateY(-1px); }
+  .status-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--sc); }
+  .sc-top  { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .sc-icon { font-size:19px; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:var(--sc-dim); }
+  .sc-pct  { font-size:11px; font-weight:700; color:var(--sc); background:var(--sc-dim); padding:3px 8px; border-radius:6px; }
+  .sc-num  { font-size:34px; font-weight:900; letter-spacing:-1.2px; color:var(--text-1); line-height:1; margin-bottom:4px; }
+  .sc-lbl  { font-size:11.5px; color:var(--text-2); }
+  .sc-bar  { height:3px; border-radius:99px; background:var(--sc); margin-top:12px; }
+
+  /* ── PIPELINE ────────────────────────────────────────────── */
+  .pipeline-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:8px; }
+  .pipe-card {
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:12px; padding:14px 10px 12px;
+    text-align:center; position:relative; overflow:hidden;
+    transition:border-color .2s, transform .2s; cursor:default;
+  }
+  .pipe-card:hover { border-color:var(--border-strong); transform:translateY(-2px); }
+  .pipe-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--pc); }
+  .pipe-dot { width:7px; height:7px; border-radius:50%; background:var(--pc); display:inline-block; margin-bottom:6px; }
+  .pipe-num { font-size:30px; font-weight:900; letter-spacing:-1px; color:var(--text-1); line-height:1; margin-bottom:6px; }
+  .pipe-lbl { font-size:10px; color:var(--text-2); font-weight:500; line-height:1.4; }
+
+  /* ── EQUIPES EM CAMPO ───────────────────────────────────── */
+  .equipe-lista { display:flex; flex-direction:column; }
+  .equipe-row {
+    display:grid; grid-template-columns:1fr auto;
+    align-items:center; gap:16px;
+    padding:13px 0; border-bottom:1px solid var(--border);
+  }
+  .equipe-row:last-child { border-bottom:none; }
+  .equipe-left  { display:flex; flex-direction:column; gap:6px; }
+  .equipe-nome  { font-size:13px; font-weight:600; }
+  .equipe-tags  { display:flex; gap:5px; flex-wrap:wrap; }
+  .eq-tag {
+    font-size:10px; font-weight:600; padding:2px 8px; border-radius:5px;
+    background:var(--surface-3); color:var(--text-2); border:1px solid var(--border);
+  }
+  .equipe-right  { text-align:right; }
+  .equipe-num    { font-size:28px; font-weight:900; letter-spacing:-0.8px; color:var(--text-1); line-height:1; }
+  .equipe-sub    { font-size:10px; color:var(--text-3); margin-top:2px; }
+
+  /* ── DONUT ──────────────────────────────────────────────── */
+  .donut-layout { display:grid; grid-template-columns:160px 1fr; gap:24px; align-items:center; }
+  .donut-wrap   { position:relative; height:160px; }
+  .donut-legend { display:flex; flex-direction:column; gap:9px; }
+  .leg-item  { display:flex; align-items:center; gap:9px; }
+  .leg-dot   { width:9px; height:9px; border-radius:3px; flex-shrink:0; }
+  .leg-name  { font-size:12px; color:var(--text-2); flex:1; }
+  .leg-val   { font-size:12px; font-weight:700; color:var(--text-1); }
+  .leg-pct   { font-size:10.5px; color:var(--text-3); min-width:28px; text-align:right; }
+
+  /* ── RANKING BARS ───────────────────────────────────────── */
+  .rank-list { display:flex; flex-direction:column; gap:13px; }
+  .rank-item {}
+  .rank-top  { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+  .rank-name { font-size:13px; font-weight:500; color:var(--text-1); }
+  .rank-meta { font-size:11.5px; color:var(--text-2); }
+  .rank-bg   { height:5px; background:var(--surface-3); border-radius:99px; overflow:hidden; }
+  .rank-fill { height:100%; border-radius:99px; transition:width 1s cubic-bezier(.4,0,.2,1); }
+
+  /* ── COMPOSIÇÃO ─────────────────────────────────────────── */
+  .comp-row {
+    display:flex; align-items:center;
+    padding:13px 0; border-bottom:1px solid var(--border);
+  }
+  .comp-row:last-of-type { border-bottom:none; }
+  .comp-dot   { width:9px; height:9px; border-radius:3px; margin-right:12px; flex-shrink:0; }
+  .comp-label { font-size:13px; color:var(--text-2); flex:1; }
+  .comp-track { width:90px; height:5px; background:var(--surface-3); border-radius:99px; overflow:hidden; margin-right:14px; }
+  .comp-fill  { height:100%; border-radius:99px; }
+  .comp-val   { font-size:14px; font-weight:800; color:var(--text-1); min-width:80px; text-align:right; }
+  .comp-pct   { font-size:11px; color:var(--text-3); min-width:36px; text-align:right; }
+
+  /* ── ASSISTÊNCIAS ───────────────────────────────────────── */
+  .assist-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .assist-card {
+    background:var(--surface-1); border:1px solid var(--border);
+    border-radius:14px; padding:20px 22px;
+    display:flex; align-items:center; gap:16px;
+    transition:border-color .2s;
+  }
+  .assist-card:hover { border-color:var(--border-strong); }
+  .assist-icon { width:46px; height:46px; border-radius:13px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .assist-num  { font-size:26px; font-weight:900; letter-spacing:-0.8px; line-height:1; }
+  .assist-desc { font-size:11.5px; color:var(--text-2); margin-top:3px; }
+
+  /* ── CANVAS ─────────────────────────────────────────────── */
+  .canvas-wrap { position:relative; }
+
+  /* ── FOOTER ─────────────────────────────────────────────── */
+  .footer {
+    text-align:center; padding:20px 28px;
+    font-size:11px; color:var(--text-3);
+    border-top:1px solid var(--border);
+  }
+
+  /* ── MOBILE ─────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .topbar { padding:0 12px; gap:4px; }
+    .topbar-greeting { display:none; }
+    .topbar-links { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .topbar-links a { font-size:12px; padding:5px 8px; white-space:nowrap; }
+    .main { padding:16px 12px; gap:14px; }
+    .kpi-row { grid-template-columns:repeat(2,1fr); }
+    .status-row { grid-template-columns:repeat(2,1fr); }
+    .pipeline-grid { grid-template-columns:repeat(4,1fr); }
+    .row-2col, .row-2col-equal { grid-template-columns:1fr; }
+    .assist-row { grid-template-columns:repeat(2,1fr); }
+    .donut-layout { grid-template-columns:1fr; }
+  }
+
+  /* ── PRINT ──────────────────────────────────────────────── */
+  @media print {
+    .topbar { position:relative; }
+    .sim-badge, .period-ctrl, .print-btn, .nav-sair { display:none!important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
+</header>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- CABEÇALHO DO PAINEL -->
+  <div class="painel-header">
+    <div>
+      <div class="painel-title">Painel Executivo</div>
+      <div class="painel-sub">Visão estratégica · Obras, contratos e equipes</div>
+    </div>
+    <div class="painel-right">
+      <span class="sim-badge">⚡ Dados simulados</span>
+      <div class="period-ctrl">
+        <button class="period-btn" onclick="setPeriodo('2025',this)">2025</button>
+        <button class="period-btn active" onclick="setPeriodo('2026',this)">2026</button>
+      </div>
+      <button class="print-btn" onclick="window.print()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-row">
+    <div class="kpi" style="--kpi-color:var(--green);--kpi-dim:var(--green-dim)">
+      <div class="kpi-top"><div class="kpi-icon">💰</div><span class="kpi-badge">↑ 18%</span></div>
+      <div class="kpi-value" id="kv-volume">—</div>
+      <div class="kpi-label">Volume total de contratos</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--indigo);--kpi-dim:var(--indigo-dim)">
+      <div class="kpi-top"><div class="kpi-icon">📊</div><span class="kpi-badge">↑ 12%</span></div>
+      <div class="kpi-value" id="kv-ticket">—</div>
+      <div class="kpi-label">Ticket médio por obra</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--amber);--kpi-dim:var(--amber-dim)">
+      <div class="kpi-top"><div class="kpi-icon">🏗️</div><span class="kpi-badge">↑ 4 obras</span></div>
+      <div class="kpi-value" id="kv-obras">—</div>
+      <div class="kpi-label">Obras cadastradas</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--pink);--kpi-dim:var(--pink-dim)">
+      <div class="kpi-top"><div class="kpi-icon">⚙️</div><span class="kpi-badge">MO / Produto</span></div>
+      <div class="kpi-value" id="kv-mo">—</div>
+      <div class="kpi-label">Mão de obra sobre produtos</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--blue);--kpi-dim:var(--blue-dim)">
+      <div class="kpi-top"><div class="kpi-icon">🛠️</div><span class="kpi-badge" id="b-assist">8 cobradas</span></div>
+      <div class="kpi-value" id="kv-assist">—</div>
+      <div class="kpi-label">Receita em assistências</div>
+    </div>
+  </div>
+
+  <!-- STATUS ROW -->
+  <div>
+    <div class="section-label" style="margin-bottom:12px">Situação das obras</div>
+    <div class="status-row">
+      <div class="status-card" style="--sc:#3ecf8e;--sc-dim:rgba(62,207,142,0.12)">
+        <div class="sc-top"><div class="sc-icon">🏗️</div><span class="sc-pct" id="sp-andamento-pct">—%</span></div>
+        <div class="sc-num" id="sp-andamento">—</div>
+        <div class="sc-lbl">Obras em andamento</div>
+        <div class="sc-bar" id="sb-andamento" style="width:0%"></div>
+      </div>
+      <div class="status-card" style="--sc:#2dd4bf;--sc-dim:rgba(45,212,191,0.12)">
+        <div class="sc-top"><div class="sc-icon">⏳</div><span class="sc-pct" id="sp-finalizacao-pct">—%</span></div>
+        <div class="sc-num" id="sp-finalizacao">—</div>
+        <div class="sc-lbl">Em finalização</div>
+        <div class="sc-bar" id="sb-finalizacao" style="width:0%"></div>
+      </div>
+      <div class="status-card" style="--sc:#22c55e;--sc-dim:rgba(34,197,94,0.12)">
+        <div class="sc-top"><div class="sc-icon">📦</div><span class="sc-pct" id="sp-entregues-pct">—%</span></div>
+        <div class="sc-num" id="sp-entregues">—</div>
+        <div class="sc-lbl">Entregues ao cliente</div>
+        <div class="sc-bar" id="sb-entregues" style="width:0%"></div>
+      </div>
+      <div class="status-card" style="--sc:#6366f1;--sc-dim:rgba(99,102,241,0.12)">
+        <div class="sc-top"><div class="sc-icon">✅</div><span class="sc-pct" id="sp-concluidas-pct">—%</span></div>
+        <div class="sc-num" id="sp-concluidas">—</div>
+        <div class="sc-lbl">Projetos concluídos</div>
+        <div class="sc-bar" id="sb-concluidas" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIPELINE + EQUIPES -->
+  <div class="row-2col-equal" style="grid-template-columns:3fr 2fr">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Pipeline de Obras</div><div class="card-sub">Quantidade de obras em cada fase do processo</div></div>
+        <span class="tag tag-amber" id="tag-pipeline-total">— em campo</span>
+      </div>
+      <div class="pipeline-grid" id="pipelineGrid"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Equipes em Campo</div><div class="card-sub">Obras ativas e fases em execução por equipe</div></div>
+        <span class="tag tag-green" id="tag-equipes-total">— equipes</span>
+      </div>
+      <div class="equipe-lista" id="equipeLista"></div>
+    </div>
+  </div>
+
+  <!-- REGIONAL + CONSULTORES -->
+  <div class="row-2col">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Obras por Regional</div><div class="card-sub">Distribuição geográfica dos contratos</div></div>
+        <span class="tag tag-green" id="tag-total-obras">— obras</span>
+      </div>
+      <div class="donut-layout">
+        <div class="donut-wrap"><canvas id="chartRegional"></canvas></div>
+        <div class="donut-legend" id="legendRegional"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Ranking de Consultores</div><div class="card-sub">Volume em R$ e número de obras fechadas</div></div>
+        <span class="tag tag-indigo">Top 5</span>
+      </div>
+      <div class="rank-list" id="rankConsultores"></div>
+    </div>
+  </div>
+
+  <!-- EVOLUÇÃO MENSAL -->
+  <div class="card">
+    <div class="card-header">
+      <div><div class="card-title">Evolução Mensal de Contratos</div><div class="card-sub">Receita de produtos versus mão de obra por mês</div></div>
+      <span class="tag tag-amber" id="tag-acumulado">Acumulado —</span>
+    </div>
+    <div class="canvas-wrap" style="height:230px"><canvas id="chartEvolucao"></canvas></div>
+  </div>
+
+  <!-- ARQUITETOS + COMPOSIÇÃO -->
+  <div class="row-2col-equal">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Arquitetos Parceiros</div><div class="card-sub">Quem mais indica projetos para a Solução Técnica</div></div>
+        <span class="tag tag-green" id="tag-arq">— parceiros</span>
+      </div>
+      <div class="rank-list" id="rankArquitetos"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Composição dos Contratos</div><div class="card-sub">Divisão entre produtos fornecidos e mão de obra</div></div>
+      </div>
+      <div id="composicaoRows"></div>
+      <div class="canvas-wrap" style="height:52px;margin-top:20px"><canvas id="chartComposicao"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ASSISTÊNCIAS -->
+  <div>
+    <div class="section-label" style="margin-bottom:12px">Assistências técnicas</div>
+    <div class="assist-row">
+      <div class="assist-card">
+        <div class="assist-icon" style="background:var(--indigo-dim)">🛠️</div>
+        <div><div class="assist-num" id="av-total" style="color:var(--indigo)">—</div><div class="assist-desc">Assistências realizadas</div></div>
+      </div>
+      <div class="assist-card">
+        <div class="assist-icon" style="background:var(--green-dim)">✅</div>
+        <div><div class="assist-num" id="av-cobradas" style="color:var(--green)">—</div><div class="assist-desc">Assistências cobradas</div></div>
+      </div>
+      <div class="assist-card">
+        <div class="assist-icon" style="background:var(--pink-dim)">🔓</div>
+        <div><div class="assist-num" id="av-gratis" style="color:var(--pink)">—</div><div class="assist-desc">Prestadas sem cobrança</div></div>
+      </div>
+      <div class="assist-card">
+        <div class="assist-icon" style="background:var(--amber-dim)">💵</div>
+        <div><div class="assist-num" id="av-receita" style="color:var(--amber)">—</div><div class="assist-desc">Receita gerada em assistências</div></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  Solução Técnica · Painel Executivo · <span id="footer-periodo">2026</span> · Gerado em <span id="footer-data"></span>
+</footer>
+
+<script>
+// ── Supabase ───────────────────────────────────────────────────
+const { createClient } = supabase;
+const db = createClient(
+  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
+);
+
+// ── Perfis com acesso ao painel ────────────────────────────────
+const ROLES_PERMITIDOS = [
+  'supervisor','coordenador','agendamento',
+  'gerente_comercial','coordenador_projetos','projetista','vistoriador'
+];
+
+// ── Init ───────────────────────────────────────────────────────
+(async () => {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const { data: eu } = await db
+    .from('tecnicos')
+    .select('role, nome')
+    .eq('auth_user_id', session.user.id)
+    .single();
+
+  if (!eu || !ROLES_PERMITIDOS.includes(eu.role)) {
+    alert('Acesso não autorizado. Este painel é exclusivo para gestão.');
+    window.location.href = eu?.role === 'tecnico' || eu?.role === 'auxiliar'
+      ? 'tecnico_dashboard.html'
+      : 'login.html';
+    return;
+  }
+
+  renderTopbar(eu.nome, eu.role, 'dashboard');
+  document.getElementById('footer-data').textContent =
+    new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'});
+  renderAll(MOCK['2026']);
+})();
+
+// ── Topbar ─────────────────────────────────────────────────────
+function renderTopbar(nome, role, paginaAtiva) {
+  const h = new Date().getHours();
+  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = (nome || '').split(' ')[0];
+  const greetEl  = document.getElementById('topbar-greeting');
+  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
+
+  const links = [
+    { href:'obras.html',                label:'Obras',                id:'obras',               roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href:'agenda.html',               label:'Agenda Técnica',       id:'agenda',              roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href:'agenda_vistorias.html',     label:'Agenda de Vistorias',  id:'agenda-vistorias',    roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href:'vistoria.html',             label:'Minhas Vistorias',     id:'vistoria',            roles:['vistoriador'] },
+    { href:'vistoria.html',             label:'Relatórios de Vistoria',id:'relatorios-vistoria',roles:['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
+    { href:'os.html',                   label:'Fazer OS',             id:'os',                  roles:['tecnico','auxiliar'] },
+    { href:'supervisor.html',           label:'Supervisor',           id:'supervisor',          roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
+    { href:'pendencias.html',           label:'Pendências',           id:'pendencias',          roles:['supervisor','coordenador','agendamento'] },
+    { href:'admin.html',                label:'Admin',                id:'admin',               roles:['coordenador'] },
+    { href:'tecnico_dashboard.html',    label:'Minhas OSs',           id:'minhas-os',           roles:['tecnico','auxiliar'] },
+    { href:'gerente_comercial.html',    label:'Comercial',            id:'comercial',           roles:['gerente_comercial'] },
+    { href:'projetista.html',           label:'Meu Painel',           id:'projetista',          roles:['projetista'] },
+    { href:'coordenador_projetos.html', label:'Projetos',             id:'coordenador-projetos',roles:['coordenador_projetos'] },
+    { href:'dashboard.html',            label:'Painel Executivo',     id:'dashboard',           roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
+  ];
+
+  const nav = document.getElementById('topbar-nav');
+  if (!nav) return;
+  nav.innerHTML = links.filter(l => l.roles.includes(role))
+    .map(l => `<a href="${l.href}"${l.id === paginaAtiva ? ' class="active"' : ''}>${l.label}</a>`)
+    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
+}
+
+async function logout() {
+  await db.auth.signOut();
+  window.location.href = 'login.html';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DADOS SIMULADOS — substituir por queries Supabase reais
+// ═══════════════════════════════════════════════════════════════
+const MOCK = {
+  '2026': {
+    kpis: { volume:4_280_000, ticket:186_087, obras:23, mo:61, assist:48_500 },
+    regionais: [
+      { nome:'Sudeste',      obras:10, valor:1_950_000 },
+      { nome:'Sul',          obras:6,  valor:1_100_000 },
+      { nome:'Centro-Oeste', obras:4,  valor:780_000   },
+      { nome:'Norte',        obras:2,  valor:300_000   },
+      { nome:'Nordeste',     obras:1,  valor:150_000   },
+    ],
+    consultores: [
+      { nome:'Carlos Silva',  obras:8, valor:1_240_000 },
+      { nome:'Ana Lima',      obras:6, valor:980_000   },
+      { nome:'Ricardo Faria', obras:5, valor:860_000   },
+      { nome:'Juliana Costa', obras:3, valor:720_000   },
+      { nome:'Pedro Alves',   obras:1, valor:480_000   },
+    ],
+    arquitetos: [
+      { nome:'Studio Forma',     obras:5 },
+      { nome:'Arq. Renata Melo', obras:4 },
+      { nome:'BKO Arquitetura',  obras:3 },
+      { nome:'Loft Design',      obras:3 },
+      { nome:'Arq. Paulo Viana', obras:2 },
+      { nome:'Outros parceiros', obras:6 },
+    ],
+    evolucao: [
+      { mes:'Jan', produtos:180_000, servicos:95_000  },
+      { mes:'Fev', produtos:220_000, servicos:140_000 },
+      { mes:'Mar', produtos:310_000, servicos:180_000 },
+      { mes:'Abr', produtos:280_000, servicos:165_000 },
+      { mes:'Mai', produtos:340_000, servicos:210_000 },
+    ],
+    composicao: { produtos:2_653_600, servicos:1_626_400 },
+    assist: { total:12, cobradas:8, gratis:4, receita:48_500 },
+    fases: [
+      { key:'projeto_iniciado', label:'Projeto\nIniciado',  cor:'#818CF8', obras:5 },
+      { key:'cabeamento',       label:'Cabeamento',          cor:'#F59E0B', obras:4 },
+      { key:'eletrica',         label:'Elétrica',             cor:'#FBBF24', obras:3 },
+      { key:'audio_video',      label:'Áudio &\nVídeo',      cor:'#A78BFA', obras:2 },
+      { key:'automacao',        label:'Automação',             cor:'#3ECF8E', obras:2 },
+      { key:'em_finalizacao',   label:'Em\nFinalização',     cor:'#2DD4BF', obras:4 },
+      { key:'entregue',         label:'Entregue',              cor:'#22C55E', obras:2 },
+      { key:'concluido',        label:'Concluído',             cor:'#6366F1', obras:1 },
+    ],
+    status: { andamento:16, finalizacao:4, entregues:2, concluidas:1 },
+    equipes: [
+      { nome:'Equipe 01 · Elétrica',       cor:'#FBBF24', obras:8, fases:['Cabeamento','Elétrica','Finalização'] },
+      { nome:'Equipe 02 · Cabeamento',     cor:'#F59E0B', obras:6, fases:['Proj. Iniciado','Cabeamento'] },
+      { nome:'Equipe 03 · Áudio e Vídeo',  cor:'#A78BFA', obras:5, fases:['Áudio/Vídeo','Automação'] },
+      { nome:'Equipe 04 · Automação',       cor:'#3ECF8E', obras:4, fases:['Automação','Finalização'] },
+      { nome:'Equipe 05 · Regional Norte',  cor:'#38bdf8', obras:2, fases:['Proj. Iniciado'] },
+    ],
+  },
+  '2025': {
+    kpis: { volume:3_620_000, ticket:166_000, obras:19, mo:54, assist:31_200 },
+    regionais: [
+      { nome:'Sudeste',      obras:9, valor:1_720_000 },
+      { nome:'Sul',          obras:5, valor:900_000   },
+      { nome:'Centro-Oeste', obras:3, valor:640_000   },
+      { nome:'Norte',        obras:1, valor:200_000   },
+      { nome:'Nordeste',     obras:1, valor:160_000   },
+    ],
+    consultores: [
+      { nome:'Carlos Silva',  obras:7, valor:1_050_000 },
+      { nome:'Ana Lima',      obras:5, valor:840_000   },
+      { nome:'Ricardo Faria', obras:4, valor:720_000   },
+      { nome:'Juliana Costa', obras:2, valor:590_000   },
+      { nome:'Pedro Alves',   obras:1, valor:420_000   },
+    ],
+    arquitetos: [
+      { nome:'Studio Forma',     obras:4 },
+      { nome:'Arq. Renata Melo', obras:4 },
+      { nome:'BKO Arquitetura',  obras:2 },
+      { nome:'Loft Design',      obras:2 },
+      { nome:'Arq. Paulo Viana', obras:2 },
+      { nome:'Outros parceiros', obras:5 },
+    ],
+    evolucao: [
+      { mes:'Jan', produtos:150_000, servicos:80_000  },
+      { mes:'Fev', produtos:180_000, servicos:110_000 },
+      { mes:'Mar', produtos:260_000, servicos:150_000 },
+      { mes:'Abr', produtos:240_000, servicos:130_000 },
+      { mes:'Mai', produtos:290_000, servicos:170_000 },
+      { mes:'Jun', produtos:310_000, servicos:190_000 },
+      { mes:'Jul', produtos:280_000, servicos:160_000 },
+      { mes:'Ago', produtos:320_000, servicos:200_000 },
+      { mes:'Set', produtos:300_000, servicos:180_000 },
+      { mes:'Out', produtos:350_000, servicos:210_000 },
+      { mes:'Nov', produtos:330_000, servicos:195_000 },
+      { mes:'Dez', produtos:280_000, servicos:155_000 },
+    ],
+    composicao: { produtos:2_352_000, servicos:1_268_000 },
+    assist: { total:9, cobradas:6, gratis:3, receita:31_200 },
+    fases: [
+      { key:'projeto_iniciado', label:'Projeto\nIniciado',  cor:'#818CF8', obras:6 },
+      { key:'cabeamento',       label:'Cabeamento',          cor:'#F59E0B', obras:3 },
+      { key:'eletrica',         label:'Elétrica',             cor:'#FBBF24', obras:3 },
+      { key:'audio_video',      label:'Áudio &\nVídeo',      cor:'#A78BFA', obras:2 },
+      { key:'automacao',        label:'Automação',             cor:'#3ECF8E', obras:1 },
+      { key:'em_finalizacao',   label:'Em\nFinalização',     cor:'#2DD4BF', obras:2 },
+      { key:'entregue',         label:'Entregue',              cor:'#22C55E', obras:1 },
+      { key:'concluido',        label:'Concluído',             cor:'#6366F1', obras:1 },
+    ],
+    status: { andamento:15, finalizacao:2, entregues:1, concluidas:1 },
+    equipes: [
+      { nome:'Equipe 01 · Elétrica',       cor:'#FBBF24', obras:7, fases:['Cabeamento','Elétrica'] },
+      { nome:'Equipe 02 · Cabeamento',     cor:'#F59E0B', obras:5, fases:['Proj. Iniciado','Cabeamento'] },
+      { nome:'Equipe 03 · Áudio e Vídeo',  cor:'#A78BFA', obras:4, fases:['Áudio/Vídeo','Automação'] },
+      { nome:'Equipe 04 · Automação',       cor:'#3ECF8E', obras:2, fases:['Automação'] },
+      { nome:'Equipe 05 · Regional Norte',  cor:'#38bdf8', obras:1, fases:['Proj. Iniciado'] },
+    ],
+  },
+};
+
+// ── Paleta e Chart defaults ────────────────────────────────────
+const PAL = ['#3ecf8e','#818cf8','#fbbf24','#f472b6','#38bdf8','#a78bfa'];
+Chart.defaults.color       = '#A1A1AA';
+Chart.defaults.font.family = 'Inter';
+Chart.defaults.font.size   = 12;
+
+// ── Formatação ─────────────────────────────────────────────────
+const fmt = {
+  brl(v) {
+    if (v >= 1_000_000) return 'R$ ' + (v/1_000_000).toFixed(2).replace('.',',') + 'M';
+    if (v >= 1_000)     return 'R$ ' + (v/1_000).toFixed(0) + 'k';
+    return 'R$ ' + v.toLocaleString('pt-BR');
+  },
+  brlFull(v) { return 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}); },
+  pct(v) { return v + '%'; },
+  int(v) { return v.toLocaleString('pt-BR'); },
+};
+
+// ── Counter animation ──────────────────────────────────────────
+function counter(el, to, fmtFn, dur = 900) {
+  const start = performance.now();
+  const tick  = now => {
+    const p = Math.min((now - start) / dur, 1);
+    const e = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmtFn(Math.round(to * e));
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+const CH = {};
+
+// ── RENDER: KPIs ───────────────────────────────────────────────
+function renderKPIs(d) {
+  counter(document.getElementById('kv-volume'), d.kpis.volume, fmt.brl);
+  counter(document.getElementById('kv-ticket'), d.kpis.ticket, fmt.brl);
+  counter(document.getElementById('kv-obras'),  d.kpis.obras,  fmt.int);
+  counter(document.getElementById('kv-mo'),     d.kpis.mo,     fmt.pct);
+  counter(document.getElementById('kv-assist'), d.kpis.assist, fmt.brl);
+}
+
+// ── RENDER: Status ─────────────────────────────────────────────
+function renderStatus(d) {
+  const s = d.status, t = d.kpis.obras;
+  [['andamento',s.andamento],['finalizacao',s.finalizacao],['entregues',s.entregues],['concluidas',s.concluidas]]
+    .forEach(([key, val]) => {
+      const p = Math.round(val / t * 100);
+      counter(document.getElementById(`sp-${key}`), val, fmt.int, 700);
+      document.getElementById(`sp-${key}-pct`).textContent = p + '%';
+      document.getElementById(`sb-${key}`).style.width = p + '%';
+    });
+}
+
+// ── RENDER: Pipeline ───────────────────────────────────────────
+function renderPipeline(d) {
+  const emCampo = d.fases.filter(f => f.key !== 'concluido').reduce((s,f) => s+f.obras, 0);
+  document.getElementById('tag-pipeline-total').textContent = emCampo + ' em campo';
+  document.getElementById('pipelineGrid').innerHTML = d.fases.map(f => `
+    <div class="pipe-card" style="--pc:${f.cor}">
+      <div class="pipe-dot"></div>
+      <div class="pipe-num">${f.obras}</div>
+      <div class="pipe-lbl">${f.label.replace(/\\n/g,'<br>')}</div>
+    </div>`).join('');
+}
+
+// ── RENDER: Equipes ────────────────────────────────────────────
+function renderEquipes(d) {
+  document.getElementById('tag-equipes-total').textContent = d.equipes.length + ' equipes';
+  document.getElementById('equipeLista').innerHTML = d.equipes.map(e => `
+    <div class="equipe-row">
+      <div class="equipe-left">
+        <span class="equipe-nome" style="color:${e.cor}">${e.nome}</span>
+        <div class="equipe-tags">${e.fases.map(f => `<span class="eq-tag">${f}</span>`).join('')}</div>
+      </div>
+      <div class="equipe-right">
+        <div class="equipe-num">${e.obras}</div>
+        <div class="equipe-sub">obra${e.obras > 1 ? 's' : ''}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── RENDER: Regional ───────────────────────────────────────────
+function renderRegional(d) {
+  if (CH.regional) CH.regional.destroy();
+  const total = d.regionais.reduce((s,r) => s + r.obras, 0);
+  document.getElementById('tag-total-obras').textContent = total + ' obras';
+  CH.regional = new Chart(document.getElementById('chartRegional'), {
+    type: 'doughnut',
+    data: { labels:d.regionais.map(r=>r.nome), datasets:[{data:d.regionais.map(r=>r.obras),backgroundColor:PAL,borderWidth:0,hoverOffset:8}] },
+    options: {
+      responsive:true, maintainAspectRatio:false, cutout:'74%',
+      plugins: {
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>` ${c.label}: ${c.parsed} obras — ${fmt.brl(d.regionais[c.dataIndex].valor)}`}},
+      },
+    },
+  });
+  document.getElementById('legendRegional').innerHTML =
+    d.regionais.map((r,i) => `
+      <div class="leg-item">
+        <div class="leg-dot" style="background:${PAL[i]}"></div>
+        <span class="leg-name">${r.nome}</span>
+        <span class="leg-val">${r.obras}</span>
+        <span class="leg-pct">${Math.round(r.obras/total*100)}%</span>
+      </div>`).join('');
+}
+
+// ── RENDER: Consultores ────────────────────────────────────────
+function renderConsultores(d) {
+  const maxV = d.consultores[0].valor;
+  document.getElementById('rankConsultores').innerHTML = d.consultores.map((c,i) => `
+    <div class="rank-item">
+      <div class="rank-top">
+        <span class="rank-name">${i+1}. ${c.nome}</span>
+        <span class="rank-meta">${c.obras} obra${c.obras>1?'s':''} &nbsp;·&nbsp; ${fmt.brl(c.valor)}</span>
+      </div>
+      <div class="rank-bg">
+        <div class="rank-fill" style="width:${Math.round(c.valor/maxV*100)}%;background:${PAL[i%PAL.length]}"></div>
+      </div>
+    </div>`).join('');
+}
+
+// ── RENDER: Evolução Mensal ────────────────────────────────────
+function renderEvolucao(d) {
+  if (CH.evolucao) CH.evolucao.destroy();
+  const totalAcum = d.evolucao.reduce((s,e) => s + e.produtos + e.servicos, 0);
+  document.getElementById('tag-acumulado').textContent = 'Acumulado ' + fmt.brl(totalAcum);
+  CH.evolucao = new Chart(document.getElementById('chartEvolucao'), {
+    type: 'bar',
+    data: {
+      labels: d.evolucao.map(e => e.mes),
+      datasets: [
+        { label:'Produtos',   data:d.evolucao.map(e=>e.produtos), backgroundColor:'rgba(62,207,142,0.80)', borderRadius:5, borderSkipped:false, order:2 },
+        { label:'Mão de Obra',data:d.evolucao.map(e=>e.servicos), backgroundColor:'rgba(129,140,248,0.80)', borderRadius:5, borderSkipped:false, order:1 },
+        { label:'Total', type:'line', data:d.evolucao.map(e=>e.produtos+e.servicos), borderColor:'rgba(255,255,255,0.20)', borderWidth:1.5, borderDash:[4,4], pointRadius:3, pointBackgroundColor:'rgba(255,255,255,0.4)', fill:false, order:0 },
+      ],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, interaction:{mode:'index'},
+      scales: {
+        x: { grid:{color:'rgba(255,255,255,0.04)'}, border:{display:false} },
+        y: { grid:{color:'rgba(255,255,255,0.04)'}, border:{display:false}, ticks:{callback:v=>fmt.brl(v)} },
+      },
+      plugins: {
+        legend:{position:'top',align:'end',labels:{boxWidth:10,boxHeight:10,borderRadius:3,useBorderRadius:true,padding:18}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt.brlFull(c.parsed.y)}`}},
+      },
+    },
+  });
+}
+
+// ── RENDER: Arquitetos ─────────────────────────────────────────
+function renderArquitetos(d) {
+  const maxO = d.arquitetos[0].obras;
+  document.getElementById('tag-arq').textContent = d.arquitetos.filter(a=>a.nome!=='Outros parceiros').length + ' parceiros';
+  document.getElementById('rankArquitetos').innerHTML = d.arquitetos.map((a,i) => {
+    const isOutros = a.nome === 'Outros parceiros';
+    return `<div class="rank-item">
+      <div class="rank-top">
+        <span class="rank-name" style="${isOutros?'color:var(--text-3)':''}">${!isOutros?i+1+'. ':''}${a.nome}</span>
+        <span class="rank-meta">${a.obras} obra${a.obras>1?'s':''}</span>
+      </div>
+      <div class="rank-bg">
+        <div class="rank-fill" style="width:${Math.round(a.obras/maxO*100)}%;background:${isOutros?'var(--text-3)':PAL[i%PAL.length]}"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER: Composição ─────────────────────────────────────────
+function renderComposicao(d) {
+  if (CH.composicao) CH.composicao.destroy();
+  const { produtos, servicos } = d.composicao;
+  const total = produtos + servicos;
+  const pPct  = Math.round(produtos / total * 100);
+  const sPct  = 100 - pPct;
+  document.getElementById('composicaoRows').innerHTML = `
+    <div class="comp-row">
+      <div class="comp-dot" style="background:#3ecf8e"></div>
+      <span class="comp-label">Produtos</span>
+      <div class="comp-track"><div class="comp-fill" style="width:${pPct}%;background:#3ecf8e"></div></div>
+      <span class="comp-val">${fmt.brl(produtos)}</span><span class="comp-pct">${pPct}%</span>
+    </div>
+    <div class="comp-row">
+      <div class="comp-dot" style="background:#818cf8"></div>
+      <span class="comp-label">Mão de Obra</span>
+      <div class="comp-track"><div class="comp-fill" style="width:${sPct}%;background:#818cf8"></div></div>
+      <span class="comp-val">${fmt.brl(servicos)}</span><span class="comp-pct">${sPct}%</span>
+    </div>`;
+  CH.composicao = new Chart(document.getElementById('chartComposicao'), {
+    type:'bar',
+    data:{labels:[''],datasets:[{label:'Produtos',data:[produtos],backgroundColor:'#3ecf8e',borderRadius:6,barThickness:28},{label:'MO',data:[servicos],backgroundColor:'#818cf8',borderRadius:6,barThickness:28}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      scales:{x:{stacked:true,grid:{display:false},border:{display:false},ticks:{callback:v=>fmt.brl(v)}},y:{stacked:true,display:false}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt.brlFull(c.parsed.x)}`}}},
+    },
+  });
+}
+
+// ── RENDER: Assistências ───────────────────────────────────────
+function renderAssist(d) {
+  const a = d.assist;
+  document.getElementById('b-assist').textContent = a.cobradas + ' cobradas';
+  counter(document.getElementById('av-total'),    a.total,    fmt.int);
+  counter(document.getElementById('av-cobradas'), a.cobradas, fmt.int);
+  counter(document.getElementById('av-gratis'),   a.gratis,   fmt.int);
+  counter(document.getElementById('av-receita'),  a.receita,  fmt.brl);
+}
+
+// ── Troca de período ───────────────────────────────────────────
+function setPeriodo(ano, btn) {
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('footer-periodo').textContent = ano;
+  renderAll(MOCK[ano]);
+}
+
+// ── Render all ─────────────────────────────────────────────────
+function renderAll(d) {
+  renderKPIs(d);
+  renderStatus(d);
+  renderPipeline(d);
+  renderEquipes(d);
+  renderRegional(d);
+  renderConsultores(d);
+  renderEvolucao(d);
+  renderArquitetos(d);
+  renderComposicao(d);
+  renderAssist(d);
+}
+</script>
+</body>
+</html>

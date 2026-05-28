@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27i -->
+<!-- build: 2026-05-27j -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -404,6 +404,7 @@ function renderTopbar(nome, role, paginaAtiva) {
     { href:'obras.html',      label:'Obras',       id:'obras',      roles:['projetista'] },
     { href:'agenda.html',     label:'Agenda Técnica',      id:'agenda',     roles:['projetista'] },
     { href:'agenda_vistorias.html',  label:'Agenda de Vistorias', id:'agenda-vistorias', roles:['projetista'] },
+    { href:'dashboard.html', label:'Painel Executivo', id:'dashboard', roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
   ];
   const nav = document.getElementById('topbar-nav');
   if (!nav) return;

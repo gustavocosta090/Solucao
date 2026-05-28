@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27i -->
+<!-- build: 2026-05-27j -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -972,6 +972,7 @@ function renderTopbar(nome, role, paginaAtiva) {
     { href:'gerente_comercial.html',    label:'Comercial',           id:'comercial',          roles:['gerente_comercial'] },
     { href:'projetista.html',           label:'Meu Painel',          id:'projetista',         roles:['projetista'] },
     { href:'coordenador_projetos.html', label:'Projetos',            id:'coordenador-projetos', roles:['coordenador_projetos'] },
+    { href:'dashboard.html',            label:'Painel Executivo',     id:'dashboard',           roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
   ];
   const nav = document.getElementById('topbar-nav');
   if (!nav) return;

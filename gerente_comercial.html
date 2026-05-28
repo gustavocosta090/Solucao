@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27i -->
+<!-- build: 2026-05-27j -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -500,6 +500,7 @@ function renderTopbar(nome, role, paginaAtiva) {
     { href:'agenda.html',            label:'Agenda Técnica',      id:'agenda',    roles:['gerente_comercial'] },
     { href:'agenda_vistorias.html',  label:'Agenda de Vistorias', id:'agenda-vistorias', roles:['gerente_comercial'] },
     { href:'vistoria.html',          label:'Relatórios de Vistoria', id:'relatorios-vistoria', roles:['gerente_comercial'] },
+    { href:'dashboard.html', label:'Painel Executivo', id:'dashboard', roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
   ];
   const nav = document.getElementById('topbar-nav');
   if (!nav) return;
