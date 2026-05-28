@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27g -->
+<!-- build: 2026-05-27h -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -910,12 +910,13 @@ function equipeNomePasta(numeroOS, equipeNome = '') {
 
 // Faz upload de todas as fotos para o SharePoint via proxy Vercel
 // Retorna URLs do tipo /api/foto?path=... que funcionam no supervisor/obra_detail
-// Estrutura: {Cliente}/Fotos/Equipe {cod}/{Cliente} {numeroOS} - foto 01.jpg
+// Estrutura: Obras e Clientes {ano}/{Cliente}/Fotos/Equipe {cod}/{Cliente} {numeroOS} - foto 01.jpg
 async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
   const urls       = [];
   const nomeBase   = nomePastaCliente(nomeCliente);
   const equipe     = equipeNomePasta(numeroOS, equipeNome);
-  const folderPath = `${nomeBase}/Fotos/${equipe}`;
+  const ano        = (numeroOS || '').split('-')[0] || new Date().getFullYear();
+  const folderPath = `Obras e Clientes ${ano}/${nomeBase}/Fotos/${equipe}`;
 
   for (let i = 0; i < fotosSelecionadas.length; i++) {
     const f   = fotosSelecionadas[i];
@@ -1061,10 +1062,11 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, equipeNo
     if (statusEl) statusEl.innerHTML = `<span style="color:${cor}">☁️ OneDrive: ${msg}</span>`;
   };
 
-  // Estrutura: {Cliente}/Ordens de Serviço/Equipe {cod} - {nome}/{Cliente} {numeroOS}.pdf
+  // Estrutura: Obras e Clientes {ano}/{Cliente}/Ordens de Serviço/Equipe {cod} - {nome}/{Cliente} {numeroOS}.pdf
   const nomeBase   = nomePastaCliente(nomeCliente);
   const equipe     = equipeNomePasta(numeroOS, equipeNome);
-  const folderPath = `${nomeBase}/Ordens de Serviço/${equipe}`;
+  const ano        = (numeroOS || '').split('-')[0] || new Date().getFullYear();
+  const folderPath = `Obras e Clientes ${ano}/${nomeBase}/Ordens de Serviço/${equipe}`;
 
   // Pede URL de upload ao proxy Vercel (autenticação com Microsoft fica no servidor)
   // depois faz PUT direto para o Microsoft com a URL pré-autenticada retornada
