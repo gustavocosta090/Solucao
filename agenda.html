@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27b -->
+<!-- build: 2026-05-27f -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -727,6 +727,7 @@
     .container { padding: 0 12px !important; margin-top: 16px !important; margin-bottom: 16px !important; }
     main { padding: 20px 12px !important; }
     .form-grid { grid-template-columns: 1fr !important; }
+    .form-row { grid-template-columns: 1fr !important; }
     .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
     .card { padding: 16px !important; }
     .page-header h1 { font-size: 18px !important; }
@@ -740,6 +741,11 @@
     .stats-grid { grid-template-columns: 1fr !important; }
     .stat-card { padding: 14px !important; }
     .btn, button { font-size: 12px; }
+  }
+
+  /* ── Mobile: evita auto-zoom iOS (inputs precisam de 16px) ── */
+  @media (max-width: 768px) {
+    input, select, textarea { font-size: 16px !important; }
   }
 </style>
 </head>

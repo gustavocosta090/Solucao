@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27b -->
+<!-- build: 2026-05-27f -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -278,6 +278,11 @@
     .stats-grid { grid-template-columns: 1fr !important; }
     .stat-card { padding: 14px !important; }
     .btn, button { font-size: 12px; }
+  }
+
+  /* ── Mobile: evita auto-zoom iOS (inputs precisam de 16px) ── */
+  @media (max-width: 768px) {
+    input, select, textarea { font-size: 16px !important; }
   }
 </style>
 </head>

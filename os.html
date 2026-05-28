@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27b -->
+<!-- build: 2026-05-27f -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -188,6 +188,8 @@
     .container { padding: 0 12px !important; margin-top: 16px !important; margin-bottom: 16px !important; }
     main { padding: 20px 12px !important; }
     .form-grid { grid-template-columns: 1fr !important; }
+    .form-row { grid-template-columns: 1fr !important; }
+    .fotos-grid { grid-template-columns: repeat(2, 1fr); }
     .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
     .card { padding: 16px !important; }
     .page-header h1 { font-size: 18px !important; }
@@ -201,6 +203,11 @@
     .stats-grid { grid-template-columns: 1fr !important; }
     .stat-card { padding: 14px !important; }
     .btn, button { font-size: 12px; }
+  }
+
+  /* ── Mobile: evita auto-zoom iOS (inputs precisam de 16px) ── */
+  @media (max-width: 768px) {
+    input, select, textarea { font-size: 16px !important; }
   }
 </style>
 </head>
@@ -878,31 +885,42 @@ function removerFoto(id) {
   renderFotos();
 }
 
-// Sanitiza o nome do cliente para usar como nome de pasta no Storage
-// Ex: "João da Silva" → "joao_da_silva"
-function sanitizarNomePasta(nome) {
-  return (nome || 'sem-cliente')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')  // remove acentos
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '_')       // qualquer char especial → underscore
-    .replace(/_+/g, '_')              // múltiplos underscores → um só
-    .replace(/^_|_$/g, '')            // remove underscore no início/fim
-    .substring(0, 60);                // limita o tamanho
+// Prepara nome do cliente para pasta e arquivos no SharePoint
+// Preserva maiúsculas, acentos e espaços — remove apenas chars proibidos pelo SharePoint
+// Ex: "João da Silva" → "João da Silva"  /  "Cia A/B Ltda" → "Cia AB Ltda"
+function nomePastaCliente(nome) {
+  return (nome || 'Sem Cliente')
+    .replace(/[\/\\:*?"<>|#%~]/g, '')   // chars proibidos no SharePoint/OneDrive
+    .replace(/\s+/g, ' ')               // colapsa espaços múltiplos
+    .trim()
+    .substring(0, 60)
+    || 'Sem Cliente';
+}
+
+// Monta o nome da subpasta de equipe para o SharePoint
+// Ex: equipeNomePasta('2025-05-02-02-042', 'Elétrica') → "Equipe 02 - Elétrica"
+//     equipeNomePasta('2025-05-02-02-042')              → "Equipe 02"  (fallback)
+function equipeNomePasta(numeroOS, equipeNome = '') {
+  const partes = (numeroOS || '').split('-');
+  const cod    = partes.length >= 3 ? partes[2] : '00';
+  return equipeNome
+    ? `Equipe ${cod} - ${equipeNome}`
+    : `Equipe ${cod}`;
 }
 
 // Faz upload de todas as fotos para o SharePoint via proxy Vercel
 // Retorna URLs do tipo /api/foto?path=... que funcionam no supervisor/obra_detail
-async function uploadFotoSharePoint(nomeCliente, dataServico) {
+// Estrutura: {Cliente}/Fotos/Equipe {cod}/{Cliente} {numeroOS} - foto 01.jpg
+async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
   const urls       = [];
-  const pasta      = sanitizarNomePasta(nomeCliente);
-  const folderPath = `${OD_PASTA_RAIZ}/${pasta}`;
-  const ts         = Date.now();
+  const nomeBase   = nomePastaCliente(nomeCliente);
+  const equipe     = equipeNomePasta(numeroOS, equipeNome);
+  const folderPath = `${nomeBase}/Fotos/${equipe}`;
 
   for (let i = 0; i < fotosSelecionadas.length; i++) {
     const f   = fotosSelecionadas[i];
     const ext = (f.file.name.split('.').pop() || 'jpg').toLowerCase();
-    const filename = `${dataServico}_${ts}_foto-${String(i + 1).padStart(2, '0')}.${ext}`;
+    const filename = `${nomeBase} ${numeroOS} - foto ${String(i + 1).padStart(2, '0')}.${ext}`;
 
     const thumb = document.getElementById(`thumb-${f.id}`);
     if (thumb) thumb.innerHTML += `<div class="foto-uploading">${i + 1}/${fotosSelecionadas.length}</div>`;
@@ -945,8 +963,7 @@ async function uploadFotoSharePoint(nomeCliente, dataServico) {
   return urls;
 }
 
-// ── OneDrive via proxy Vercel / PDF ──────────────────────────
-const OD_PASTA_RAIZ = 'Ordens de Serviço';
+// ── SharePoint via proxy Vercel / PDF ────────────────────────
 
 function _gerarPDFOS(dados) {
   const { jsPDF } = window.jspdf;
@@ -1038,15 +1055,16 @@ function _gerarPDFOS(dados) {
   return doc.output('blob');
 }
 
-async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, dadosPDF }) {
+async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, equipeNome = '', dadosPDF }) {
   const statusEl = document.getElementById('onedrive-status');
   const set = (msg, cor = 'var(--text-2)') => {
     if (statusEl) statusEl.innerHTML = `<span style="color:${cor}">☁️ OneDrive: ${msg}</span>`;
   };
 
-  const pasta      = sanitizarNomePasta(nomeCliente);
-  const prefixo    = `${dataServico}_${(numeroOS || 'OS').replace(/[^a-zA-Z0-9-]/g, '_')}`;
-  const folderPath = `${OD_PASTA_RAIZ}/${pasta}`;
+  // Estrutura: {Cliente}/Ordens de Serviço/Equipe {cod} - {nome}/{Cliente} {numeroOS}.pdf
+  const nomeBase   = nomePastaCliente(nomeCliente);
+  const equipe     = equipeNomePasta(numeroOS, equipeNome);
+  const folderPath = `${nomeBase}/Ordens de Serviço/${equipe}`;
 
   // Pede URL de upload ao proxy Vercel (autenticação com Microsoft fica no servidor)
   // depois faz PUT direto para o Microsoft com a URL pré-autenticada retornada
@@ -1089,7 +1107,7 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, dadosPDF
     set('gerando PDF...');
     const pdfBlob = _gerarPDFOS(dadosPDF);
     set('enviando PDF...');
-    await uploadArquivo(pdfBlob, `${prefixo}.pdf`);
+    await uploadArquivo(pdfBlob, `${nomeBase} ${numeroOS}.pdf`);
     set('✅ PDF salvo no SharePoint', 'var(--primary)');
   } catch (e) {
     set(`falha no PDF: ${e.message}`, '#f87171');
@@ -1104,19 +1122,15 @@ async function enviarOS() {
   btn.textContent = 'Enviando...';
 
   try {
-    const obraId      = agendamentoSelecionado?.obras?.id || null;
-    const nomeCliente = agendamentoSelecionado?.obras?.nome_cliente
-                      || agendamentoSelecionado?.cliente_outro
+    // ag declarado aqui para usar em todo o bloco (inclusive no nome das fotos)
+    const ag          = agendamentoSelecionado;
+    const obraId      = ag?.obras?.id || null;
+    const nomeCliente = ag?.obras?.nome_cliente
+                      || ag?.cliente_outro
                       || null;
-    let fotoUrls = [];
-    if (fotosSelecionadas.length > 0) {
-      btn.textContent = `Enviando ${fotosSelecionadas.length} foto(s)...`;
-      const dataParaFoto = ag?.data || new Date().toISOString().slice(0, 10);
-      fotoUrls = await uploadFotoSharePoint(nomeCliente || 'sem-cliente', dataParaFoto);
-    }
+    let fotoUrls = [];   // preenchido após o banco (quando numeroOS já existe)
 
     // Auxiliares vêm dos checkboxes selecionados
-    const ag = agendamentoSelecionado;
 
     // Lê quem foi marcado nos checkboxes
     const checkedIds = Array.from(
@@ -1160,7 +1174,7 @@ async function enviarOS() {
       lista_equipamentos:  toggleState.eqp  === 'sim' ? document.getElementById('f-equipamentos').value : null,
       proximas_atividades: document.getElementById('f-proximas').value  || null,
       observacoes:         document.getElementById('f-obs').value       || null,
-      fotos_urls:          fotoUrls.length > 0 ? fotoUrls : null,
+      fotos_urls:          null,   // atualizado logo após o upload das fotos
       data_servico:        ag?.data || new Date().toISOString().split('T')[0],
       status_aprovacao:    'concluida',
       criado_em:           new Date().toISOString(),
@@ -1212,12 +1226,16 @@ async function enviarOS() {
     if (error) { alert('Erro ao enviar OS: ' + error.message); return; }
 
     // ── Gerar, salvar e exibir o número da OS (formato YYYY-MM-EE-NNN) ──
+    let equipeNome = '';   // nome da equipe para subpastas SharePoint ("Elétrica", etc.)
     if (savedOsId) {
       try {
         const EQUIPE_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
         const tecId = payload.tecnico_id || tecnicoLogado?.id;
-        const { data: teRow } = await db.from('tecnico_equipes').select('equipe_id').eq('tecnico_id', tecId).maybeSingle();
+        const { data: teRow } = await db.from('tecnico_equipes')
+          .select('equipe_id, equipes(nome)')
+          .eq('tecnico_id', tecId).maybeSingle();
         const equipeId = teRow?.equipe_id || 0;
+        equipeNome     = teRow?.equipes?.nome || '';   // ex: "Elétrica", "Cabeamento"
         const dt = payload.data_servico || new Date().toISOString().slice(0,10);
         const [y, m] = dt.split('-');
         const cod = EQUIPE_COD[equipeId] || '00';
@@ -1225,6 +1243,20 @@ async function enviarOS() {
         await db.from('ordens_de_servico').update({ numero_os: numeroOS }).eq('id', savedOsId);
         document.getElementById('os-numero').textContent = numeroOS;
       } catch(e) { console.warn('Não foi possível salvar número da OS:', e); }
+    }
+
+    // ── Upload fotos com nome definitivo (numeroOS já conhecido) ────────
+    // Formato: "Edilson Pissinati 2025-05-02-02-042 - foto 01.jpg"
+    if (fotosSelecionadas.length > 0 && savedOsId) {
+      btn.textContent = `Enviando ${fotosSelecionadas.length} foto(s)...`;
+      const numParaFoto = document.getElementById('os-numero').textContent
+                       || String(savedOsId).padStart(3, '0');
+      fotoUrls = await uploadFotoSharePoint(nomeCliente || 'Sem Cliente', numParaFoto, equipeNome);
+      if (fotoUrls.length > 0) {
+        await db.from('ordens_de_servico')
+          .update({ fotos_urls: fotoUrls })
+          .eq('id', savedOsId);
+      }
     }
 
     // Quem foi marcado entra nesta OS unificada; removemos a pendente individual dele.
@@ -1294,9 +1326,10 @@ async function enviarOS() {
 
       document.getElementById('onedrive-status').innerHTML = '';
       enviarParaOneDrive({
-        nomeCliente: nomeCliente || 'sem-cliente',
+        nomeCliente: nomeCliente || 'Sem Cliente',
         dataServico: payload.data_servico || new Date().toISOString().slice(0, 10),
         numeroOS:    numeroOSfinal,
+        equipeNome,
         dadosPDF: {
           numeroOS:     numeroOSfinal,
           cliente:      nomeCliente || '—',

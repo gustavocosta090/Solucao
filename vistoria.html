@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27b -->
+<!-- build: 2026-05-27f -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -73,6 +73,11 @@
   @media (max-width: 980px) { .grid { grid-template-columns:1fr; } .form-grid, .checklist { grid-template-columns:1fr; } .full { grid-column:auto; } }
   @media (max-width: 768px) { .topbar { padding:0 12px; } .topbar-greeting { display:none; } .wrap { margin:16px auto; } h1 { font-size:18px; } .stat-card { min-width:calc(50% - 6px); flex:1 1 calc(50% - 6px); } .card { padding:16px; } }
   @media (max-width: 480px) { .topbar-logo { font-size:13px; } .stats-row { gap:8px; } .stat-num { font-size:22px; } }
+
+  /* ── Mobile: evita auto-zoom iOS (inputs precisam de 16px) ── */
+  @media (max-width: 768px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
 </style>
 </head>
 <body>

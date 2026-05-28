@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27b -->
+<!-- build: 2026-05-27f -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -175,6 +175,11 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
   .page-header{flex-direction:column;align-items:flex-start}
   .btn-cadastrar{width:100%;justify-content:center}
 }
+
+  /* ── Mobile: evita auto-zoom iOS (inputs precisam de 16px) ── */
+  @media (max-width: 768px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
 </style>
 </head>
 <body>
