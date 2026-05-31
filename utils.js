@@ -46,7 +46,26 @@ function ciclarTema() {
 // Inicializar ícone do tema quando DOM estiver pronto
 window.addEventListener('DOMContentLoaded', function() {
   applyTheme(localStorage.getItem('tema') || 'auto');
+  initAppShell();
 });
+
+function initAppShell() {
+  var path = (location.pathname || '').split('/').pop() || '';
+  if (path === 'login.html' || document.querySelector('.login-card')) {
+    document.body.classList.add('login-modernized');
+  }
+
+  document.querySelectorAll('.topbar-logo').forEach(function(el) {
+    el.setAttribute('aria-label', 'Solução Técnica');
+  });
+
+  if (!document.querySelector('meta[name="theme-color"]')) {
+    var meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    meta.content = '#07090b';
+    document.head.appendChild(meta);
+  }
+}
 
 // ─── Toast ──────────────────────────────────────────────────────
 function showToast(mensagem, tipo, duracao) {

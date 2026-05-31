@@ -152,6 +152,8 @@
   }
   .print-btn:hover { color:var(--text-1); background:var(--surface-2); }
 
+  .print-document-header { display:none; }
+
   /* ── KPI CARDS ──────────────────────────────────────────── */
   .kpi-row { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; }
   .kpi {
@@ -347,10 +349,230 @@
 
   /* ── PRINT ──────────────────────────────────────────────── */
   @media print {
-    .topbar { position:relative; }
-    .sim-badge, .period-ctrl, .print-btn, .nav-sair { display:none!important; }
+    @page { size:A4 landscape; margin:10mm; }
+
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      box-shadow:none !important;
+      text-shadow:none !important;
+    }
+
+    html, body {
+      background:#f3f6f8 !important;
+      color:#111827 !important;
+      font-family:Inter, Arial, sans-serif !important;
+    }
+
+    body {
+      padding:0 !important;
+    }
+
+    body::before,
+    body::after,
+    .topbar,
+    .sim-badge,
+    .period-ctrl,
+    .print-btn,
+    .tema-btn,
+    .nav-sair {
+      display:none !important;
+    }
+
+    .print-document-header {
+      display:flex !important;
+      align-items:center;
+      justify-content:space-between;
+      gap:18px;
+      background:#0f172a !important;
+      color:#ffffff !important;
+      border-radius:12px;
+      padding:13px 16px;
+      margin:0 0 10px;
+      border:1px solid #0f172a;
+    }
+
+    .print-document-header img {
+      width:160px;
+      height:auto;
+      filter:brightness(0) invert(1);
+      display:block;
+    }
+
+    .print-doc-title {
+      text-align:right;
+    }
+
+    .print-doc-title strong {
+      display:block;
+      font-size:18px;
+      line-height:1.1;
+      letter-spacing:-0.02em;
+    }
+
+    .print-doc-title span {
+      display:block;
+      font-size:9px;
+      color:#cbd5e1 !important;
+      margin-top:4px;
+    }
+
+    .main {
+      max-width:none !important;
+      margin:0 !important;
+      padding:0 !important;
+      display:flex !important;
+      flex-direction:column !important;
+      gap:8px !important;
+    }
+
+    .painel-header {
+      border:1px solid #d9e2e8;
+      border-radius:10px;
+      padding:10px 12px;
+      background:#ffffff !important;
+      margin-bottom:0;
+    }
+
+    .painel-title {
+      color:#111827 !important;
+      font-size:17px !important;
+      font-weight:800 !important;
+    }
+
+    .painel-sub,
+    .card-sub,
+    .kpi-label,
+    .sc-lbl,
+    .assist-desc,
+    .footer {
+      color:#64748b !important;
+    }
+
+    .kpi-row {
+      grid-template-columns:repeat(5, 1fr) !important;
+      gap:7px !important;
+    }
+
+    .status-row,
+    .assist-row {
+      grid-template-columns:repeat(4, 1fr) !important;
+      gap:7px !important;
+    }
+
+    .row-2col,
+    .row-2col-equal {
+      grid-template-columns:1fr 1fr !important;
+      gap:8px !important;
+    }
+
+    .kpi,
+    .status-card,
+    .assist-card,
+    .card {
+      background:#ffffff !important;
+      border:1px solid #d9e2e8 !important;
+      border-radius:10px !important;
+      padding:10px 11px !important;
+      break-inside:avoid;
+      page-break-inside:avoid;
+    }
+
+    .kpi::after,
+    .status-card::after {
+      height:3px !important;
+      opacity:1 !important;
+    }
+
+    .kpi-icon,
+    .sc-icon,
+    .assist-icon {
+      width:28px !important;
+      height:28px !important;
+      border-radius:8px !important;
+      color:#0f172a !important;
+      background:#e8f7f4 !important;
+    }
+
+    .kpi-icon i,
+    .sc-icon i,
+    .assist-icon i {
+      width:15px !important;
+      height:15px !important;
+      stroke-width:2.4 !important;
+    }
+
+    .kpi-top,
+    .sc-top {
+      margin-bottom:7px !important;
+    }
+
+    .kpi-value {
+      font-size:19px !important;
+      color:#111827 !important;
+      letter-spacing:-0.03em !important;
+    }
+
+    .sc-num,
+    .assist-num {
+      font-size:22px !important;
+      color:#111827 !important;
+      letter-spacing:-0.03em !important;
+    }
+
+    .kpi-badge,
+    .sc-pct,
+    .tag {
+      color:#0f766e !important;
+      background:#e6fffa !important;
+      border:1px solid #99f6e4 !important;
+      font-size:8px !important;
+    }
+
+    .section-label {
+      color:#334155 !important;
+      margin-bottom:5px !important;
+      font-size:8px !important;
+    }
+
+    .card-header {
+      margin-bottom:8px !important;
+    }
+
+    .card-title {
+      color:#111827 !important;
+      font-size:11px !important;
+    }
+
+    .pipeline-grid {
+      gap:5px !important;
+    }
+
+    .pipe-card,
+    .equipe-item,
+    .rank-item,
+    .pct-row {
+      background:#f8fafc !important;
+      border-color:#e2e8f0 !important;
+    }
+
+    .canvas-wrap {
+      max-height:150px !important;
+    }
+
+    .footer {
+      display:block !important;
+      margin-top:8px !important;
+      padding-top:6px !important;
+      border-top:1px solid #d9e2e8 !important;
+      font-size:8px !important;
+      color:#64748b !important;
+      text-align:center !important;
+      background:transparent !important;
+    }
   }
 </style>
+<link rel="stylesheet" href="app-shell.css">
 </head>
 <body>
 
@@ -361,6 +583,14 @@
   <button id="tema-btn" class="tema-btn" onclick="ciclarTema()" title="Alternar tema" aria-label="Alternar tema">🖥️</button>
   <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
+
+<div class="print-document-header">
+  <img src="logosolucao.png" alt="Solução Técnica">
+  <div class="print-doc-title">
+    <strong>Painel Executivo</strong>
+    <span>Obras, contratos, equipes e assistências técnicas</span>
+  </div>
+</div>
 
 <!-- MAIN -->
 <main class="main">
@@ -387,27 +617,27 @@
   <!-- KPI CARDS -->
   <div class="kpi-row">
     <div class="kpi" style="--kpi-color:var(--green);--kpi-dim:var(--green-dim)">
-      <div class="kpi-top"><div class="kpi-icon">💰</div><span class="kpi-badge">↑ 18%</span></div>
+      <div class="kpi-top"><div class="kpi-icon"><i data-lucide="wallet-cards"></i></div><span class="kpi-badge">↑ 18%</span></div>
       <div class="kpi-value" id="kv-volume">—</div>
       <div class="kpi-label">Volume total de contratos</div>
     </div>
     <div class="kpi" style="--kpi-color:var(--indigo);--kpi-dim:var(--indigo-dim)">
-      <div class="kpi-top"><div class="kpi-icon">📊</div><span class="kpi-badge">↑ 12%</span></div>
+      <div class="kpi-top"><div class="kpi-icon"><i data-lucide="chart-no-axes-combined"></i></div><span class="kpi-badge">↑ 12%</span></div>
       <div class="kpi-value" id="kv-ticket">—</div>
       <div class="kpi-label">Ticket médio por obra</div>
     </div>
     <div class="kpi" style="--kpi-color:var(--amber);--kpi-dim:var(--amber-dim)">
-      <div class="kpi-top"><div class="kpi-icon">🏗️</div><span class="kpi-badge">↑ 4 obras</span></div>
+      <div class="kpi-top"><div class="kpi-icon"><i data-lucide="building-2"></i></div><span class="kpi-badge">↑ 4 obras</span></div>
       <div class="kpi-value" id="kv-obras">—</div>
       <div class="kpi-label">Obras cadastradas</div>
     </div>
     <div class="kpi" style="--kpi-color:var(--pink);--kpi-dim:var(--pink-dim)">
-      <div class="kpi-top"><div class="kpi-icon">⚙️</div><span class="kpi-badge">MO / Produto</span></div>
+      <div class="kpi-top"><div class="kpi-icon"><i data-lucide="settings-2"></i></div><span class="kpi-badge">MO / Produto</span></div>
       <div class="kpi-value" id="kv-mo">—</div>
       <div class="kpi-label">Mão de obra sobre produtos</div>
     </div>
     <div class="kpi" style="--kpi-color:var(--blue);--kpi-dim:var(--blue-dim)">
-      <div class="kpi-top"><div class="kpi-icon">🛠️</div><span class="kpi-badge" id="b-assist">8 cobradas</span></div>
+      <div class="kpi-top"><div class="kpi-icon"><i data-lucide="wrench"></i></div><span class="kpi-badge" id="b-assist">8 cobradas</span></div>
       <div class="kpi-value" id="kv-assist">—</div>
       <div class="kpi-label">Receita em assistências</div>
     </div>
@@ -418,25 +648,25 @@
     <div class="section-label" style="margin-bottom:12px">Situação das obras</div>
     <div class="status-row">
       <div class="status-card" style="--sc:#3ecf8e;--sc-dim:rgba(62,207,142,0.12)">
-        <div class="sc-top"><div class="sc-icon">🏗️</div><span class="sc-pct" id="sp-andamento-pct">—%</span></div>
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="construction"></i></div><span class="sc-pct" id="sp-andamento-pct">—%</span></div>
         <div class="sc-num" id="sp-andamento">—</div>
         <div class="sc-lbl">Obras em andamento</div>
         <div class="sc-bar" id="sb-andamento" style="width:0%"></div>
       </div>
       <div class="status-card" style="--sc:#2dd4bf;--sc-dim:rgba(45,212,191,0.12)">
-        <div class="sc-top"><div class="sc-icon">⏳</div><span class="sc-pct" id="sp-finalizacao-pct">—%</span></div>
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="timer"></i></div><span class="sc-pct" id="sp-finalizacao-pct">—%</span></div>
         <div class="sc-num" id="sp-finalizacao">—</div>
         <div class="sc-lbl">Em finalização</div>
         <div class="sc-bar" id="sb-finalizacao" style="width:0%"></div>
       </div>
       <div class="status-card" style="--sc:#22c55e;--sc-dim:rgba(34,197,94,0.12)">
-        <div class="sc-top"><div class="sc-icon">📦</div><span class="sc-pct" id="sp-entregues-pct">—%</span></div>
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="package-check"></i></div><span class="sc-pct" id="sp-entregues-pct">—%</span></div>
         <div class="sc-num" id="sp-entregues">—</div>
         <div class="sc-lbl">Entregues ao cliente</div>
         <div class="sc-bar" id="sb-entregues" style="width:0%"></div>
       </div>
       <div class="status-card" style="--sc:#6366f1;--sc-dim:rgba(99,102,241,0.12)">
-        <div class="sc-top"><div class="sc-icon">✅</div><span class="sc-pct" id="sp-concluidas-pct">—%</span></div>
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="badge-check"></i></div><span class="sc-pct" id="sp-concluidas-pct">—%</span></div>
         <div class="sc-num" id="sp-concluidas">—</div>
         <div class="sc-lbl">Projetos concluídos</div>
         <div class="sc-bar" id="sb-concluidas" style="width:0%"></div>
@@ -531,19 +761,19 @@
     <div class="section-label" style="margin-bottom:12px">Assistências técnicas</div>
     <div class="assist-row">
       <div class="assist-card">
-        <div class="assist-icon" style="background:var(--indigo-dim)">🛠️</div>
+        <div class="assist-icon" style="background:var(--indigo-dim)"><i data-lucide="wrench"></i></div>
         <div><div class="assist-num" id="av-total" style="color:var(--indigo)">—</div><div class="assist-desc">Assistências realizadas</div></div>
       </div>
       <div class="assist-card">
-        <div class="assist-icon" style="background:var(--green-dim)">✅</div>
+        <div class="assist-icon" style="background:var(--green-dim)"><i data-lucide="circle-check"></i></div>
         <div><div class="assist-num" id="av-cobradas" style="color:var(--green)">—</div><div class="assist-desc">Assistências cobradas</div></div>
       </div>
       <div class="assist-card">
-        <div class="assist-icon" style="background:var(--pink-dim)">🔓</div>
+        <div class="assist-icon" style="background:var(--pink-dim)"><i data-lucide="unlock"></i></div>
         <div><div class="assist-num" id="av-gratis" style="color:var(--pink)">—</div><div class="assist-desc">Prestadas sem cobrança</div></div>
       </div>
       <div class="assist-card">
-        <div class="assist-icon" style="background:var(--amber-dim)">💵</div>
+        <div class="assist-icon" style="background:var(--amber-dim)"><i data-lucide="banknote"></i></div>
         <div><div class="assist-num" id="av-receita" style="color:var(--amber)">—</div><div class="assist-desc">Receita gerada em assistências</div></div>
       </div>
     </div>
@@ -635,7 +865,7 @@ async function carregarEExibir(ano = null) {
   renderAll(d);
 
   if (badge) {
-    badge.textContent = `✅ ${(obras||[]).length} obras · atualizado`;
+    badge.textContent = `${(obras||[]).length} obras · atualizado`;
     badge.className = 'live-badge';
   }
 }

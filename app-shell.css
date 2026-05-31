@@ -1,0 +1,498 @@
+/* Solução shell — redesign global 2026-05-30 */
+:root {
+  --bg: #07090b !important;
+  --surface-1: rgba(15, 19, 22, 0.84) !important;
+  --surface-2: rgba(22, 27, 31, 0.78) !important;
+  --surface-3: rgba(28, 34, 39, 0.82) !important;
+  --primary: #5eead4 !important;
+  --primary-hover: #2dd4bf !important;
+  --primary-muted: rgba(94, 234, 212, 0.11) !important;
+  --secondary: #38bdf8 !important;
+  --text-1: #f8fafc !important;
+  --text-2: #a8b3bd !important;
+  --text-3: #64707b !important;
+  --border: rgba(148, 163, 184, 0.14) !important;
+  --border-strong: rgba(148, 163, 184, 0.24) !important;
+  --border-focus: rgba(94, 234, 212, 0.46) !important;
+  --radius: 10px !important;
+  --radius-card: 14px !important;
+  --radius-input: 9px !important;
+  --shadow-soft: 0 18px 70px rgba(0, 0, 0, 0.34);
+  --shell-w: 264px;
+}
+
+:root[data-theme="light"] {
+  --bg: #eef3f6 !important;
+  --surface-1: rgba(255, 255, 255, 0.84) !important;
+  --surface-2: rgba(249, 251, 252, 0.9) !important;
+  --surface-3: rgba(240, 245, 247, 0.92) !important;
+  --text-1: #111827 !important;
+  --text-2: #52606b !important;
+  --text-3: #84919d !important;
+  --border: rgba(15, 23, 42, 0.1) !important;
+  --border-strong: rgba(15, 23, 42, 0.18) !important;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] {
+    --bg: #eef3f6 !important;
+    --surface-1: rgba(255, 255, 255, 0.84) !important;
+    --surface-2: rgba(249, 251, 252, 0.9) !important;
+    --surface-3: rgba(240, 245, 247, 0.92) !important;
+    --text-1: #111827 !important;
+    --text-2: #52606b !important;
+    --text-3: #84919d !important;
+    --border: rgba(15, 23, 42, 0.1) !important;
+    --border-strong: rgba(15, 23, 42, 0.18) !important;
+  }
+}
+
+*, *::before, *::after {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(94, 234, 212, 0.32) transparent;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background:
+    radial-gradient(circle at 8% 8%, rgba(94, 234, 212, 0.12), transparent 30%),
+    radial-gradient(circle at 78% 12%, rgba(56, 189, 248, 0.12), transparent 34%),
+    linear-gradient(135deg, #07090b 0%, #0b1115 46%, #080a0c 100%) !important;
+  color: var(--text-1) !important;
+  letter-spacing: 0 !important;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.88), transparent 86%);
+}
+
+body:not(.login-modernized) {
+  padding-left: var(--shell-w);
+}
+
+/* Navigation shell */
+.topbar {
+  position: fixed !important;
+  inset: 0 auto 0 0 !important;
+  width: var(--shell-w) !important;
+  height: 100vh !important;
+  padding: 22px 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 14px !important;
+  background: linear-gradient(180deg, rgba(10, 14, 17, 0.94), rgba(12, 17, 20, 0.78)) !important;
+  border-right: 1px solid var(--border) !important;
+  border-bottom: 0 !important;
+  box-shadow: 18px 0 70px rgba(0, 0, 0, 0.26) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 500 !important;
+}
+
+.topbar-logo {
+  flex: 0 0 auto !important;
+  min-height: 66px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 11px !important;
+  color: var(--text-1) !important;
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+  padding: 0 6px 12px !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.topbar-logo::before {
+  content: "";
+  width: 170px;
+  height: 48px;
+  display: block;
+  background: url("logosolucao.png") left center / contain no-repeat;
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
+}
+
+.topbar-logo::after {
+  content: "";
+  display: none;
+}
+
+.topbar-greeting {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  padding: 10px 10px !important;
+  color: var(--text-2) !important;
+  font-size: 12px !important;
+  border: 1px solid var(--border) !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+  border-radius: 10px !important;
+}
+
+.topbar-links {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 5px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 4px 0 !important;
+}
+
+.topbar-links a {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  min-height: 38px !important;
+  padding: 9px 11px 9px 14px !important;
+  border-radius: 10px !important;
+  color: var(--text-2) !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  text-decoration: none !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  white-space: normal !important;
+}
+
+.topbar-links a:hover {
+  color: var(--text-1) !important;
+  background: rgba(255, 255, 255, 0.055) !important;
+  border-color: var(--border) !important;
+}
+
+.topbar-links a.active {
+  color: var(--text-1) !important;
+  background: linear-gradient(135deg, rgba(94, 234, 212, 0.16), rgba(56, 189, 248, 0.08)) !important;
+  border-color: rgba(94, 234, 212, 0.26) !important;
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.topbar-links a.nav-sair {
+  flex: 0 0 auto !important;
+  margin: 10px 0 0 !important;
+  color: #fca5a5 !important;
+  border-color: rgba(248, 113, 113, 0.22) !important;
+  background: rgba(248, 113, 113, 0.06) !important;
+}
+
+/* Page containers */
+main,
+.main,
+.container,
+.wrap {
+  max-width: min(1480px, calc(100vw - var(--shell-w) - 44px)) !important;
+}
+
+main,
+.main {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.container,
+.wrap {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.card,
+.obra-card,
+.stat-card,
+.modal,
+.login-card,
+.item,
+.ag-card,
+.card-ag,
+.os-card,
+.summary-card,
+.panel,
+.table-card,
+.filters-card,
+.obs-wrap,
+.vistoria-card {
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-soft) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.stat-card {
+  overflow: hidden;
+}
+
+.stat-card::after {
+  content: "";
+  display: block;
+  height: 3px;
+  margin: 14px -24px -24px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary), transparent);
+  opacity: 0.72;
+}
+
+input,
+select,
+textarea {
+  background: rgba(3, 7, 10, 0.62) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-input) !important;
+  color: var(--text-1) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.09), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+}
+
+button,
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-salvar,
+.btn-exportar,
+.btn-login,
+.btn-novo,
+.btn-aprovar,
+.btn-ver,
+.chip,
+.tab-btn,
+.filtro-btn {
+  border-radius: 10px !important;
+  letter-spacing: 0 !important;
+}
+
+.btn-primary,
+.btn-salvar,
+.btn-login,
+.btn-novo,
+button[type="submit"] {
+  background: linear-gradient(135deg, #5eead4, #38bdf8) !important;
+  color: #03110f !important;
+  border: 0 !important;
+  box-shadow: 0 12px 32px rgba(45, 212, 191, 0.18) !important;
+}
+
+.btn-secondary,
+.btn-exportar,
+.btn-ver,
+.filtro-btn,
+.tab-btn,
+.chip {
+  background: rgba(255, 255, 255, 0.045) !important;
+  color: var(--text-2) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.tab-btn.tab-active,
+.filtro-btn.ativo,
+.chip.active {
+  color: var(--text-1) !important;
+  border-color: rgba(94, 234, 212, 0.28) !important;
+  background: rgba(94, 234, 212, 0.12) !important;
+}
+
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 8px !important;
+}
+
+thead th {
+  border-bottom: 0 !important;
+  color: var(--text-3) !important;
+  font-size: 11px !important;
+}
+
+tbody tr {
+  background: rgba(255, 255, 255, 0.035) !important;
+}
+
+tbody td {
+  border-top: 1px solid var(--border) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+tbody td:first-child {
+  border-left: 1px solid var(--border) !important;
+  border-radius: 10px 0 0 10px !important;
+}
+
+tbody td:last-child {
+  border-right: 1px solid var(--border) !important;
+  border-radius: 0 10px 10px 0 !important;
+}
+
+.badge {
+  border-radius: 999px !important;
+  border: 1px solid currentColor !important;
+  background: color-mix(in srgb, currentColor 14%, transparent) !important;
+}
+
+/* Login receives a distinct product-style first screen */
+body.login-modernized {
+  padding-left: 0 !important;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body.login-modernized::before {
+  background:
+    linear-gradient(100deg, rgba(4, 9, 12, 0.88) 0%, rgba(4, 9, 12, 0.68) 38%, rgba(4, 9, 12, 0.16) 72%, rgba(4, 9, 12, 0.06) 100%),
+    url("bg-login.jpg") center / cover no-repeat !important;
+  mask-image: none;
+  z-index: 0;
+}
+
+body.login-modernized::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 10% 18%, rgba(94, 234, 212, 0.22), transparent 22%),
+    radial-gradient(circle at 30% 88%, rgba(56, 189, 248, 0.12), transparent 26%),
+    linear-gradient(90deg, rgba(7,9,11,.95) 0%, rgba(7,9,11,.58) 45%, rgba(7,9,11,.10) 72%, rgba(7,9,11,0) 100%);
+}
+
+body.login-modernized .page-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+body.login-modernized .brand-panel::before,
+body.login-modernized .login-panel::before {
+  display: none !important;
+}
+
+body.login-modernized .brand-panel {
+  padding-left: clamp(28px, 7vw, 96px) !important;
+}
+
+body.login-modernized .brand-subtitle {
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  max-width: 560px;
+  font-size: clamp(18px, 2.1vw, 28px) !important;
+  line-height: 1.16 !important;
+  color: rgba(248, 250, 252, 0.82) !important;
+}
+
+body.login-modernized .brand-divider {
+  width: 92px !important;
+  height: 3px !important;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary)) !important;
+}
+
+body.login-modernized .login-card {
+  max-width: 430px !important;
+  border-radius: 18px !important;
+  background: rgba(8, 13, 16, 0.74) !important;
+}
+
+body.login-modernized .card-header h2 {
+  font-size: 24px !important;
+}
+
+@media (max-width: 1180px) {
+  :root { --shell-w: 232px; }
+  .topbar-links a { font-size: 12px !important; padding-left: 11px !important; }
+}
+
+@media (max-width: 860px) {
+  body:not(.login-modernized) {
+    padding-left: 0;
+    padding-top: 64px;
+  }
+
+  .topbar {
+    inset: 0 0 auto 0 !important;
+    width: 100% !important;
+    height: 64px !important;
+    padding: 10px 12px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    overflow-x: auto !important;
+  }
+
+  .topbar-logo {
+    min-height: 0 !important;
+    width: auto !important;
+    padding: 0 12px 0 0 !important;
+    border-bottom: 0 !important;
+    border-right: 1px solid var(--border) !important;
+  }
+
+  .topbar-logo::before {
+    width: 124px;
+    height: 36px;
+  }
+
+  .topbar-logo::after {
+    content: "";
+  }
+
+  .topbar-greeting {
+    display: none !important;
+  }
+
+  .topbar-links {
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 0 !important;
+  }
+
+  .topbar-links a {
+    min-height: 34px !important;
+    white-space: nowrap !important;
+  }
+
+  main,
+  .main,
+  .container,
+  .wrap {
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  body.login-modernized {
+    padding-top: 0 !important;
+  }
+}
+
+@media (max-width: 720px) {
+  body.login-modernized .page-wrapper {
+    display: block !important;
+  }
+
+  body.login-modernized .brand-panel {
+    min-height: auto !important;
+    padding: 36px 22px 10px !important;
+  }
+
+  body.login-modernized .features-list {
+    display: none !important;
+  }
+
+  body.login-modernized .login-panel {
+    padding: 16px 18px 36px !important;
+  }
+}
