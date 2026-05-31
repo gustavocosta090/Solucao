@@ -354,7 +354,7 @@ body.login-modernized {
 
 body.login-modernized::before {
   background:
-    linear-gradient(100deg, rgba(4, 9, 12, 0.88) 0%, rgba(4, 9, 12, 0.68) 38%, rgba(4, 9, 12, 0.16) 72%, rgba(4, 9, 12, 0.06) 100%),
+    linear-gradient(90deg, rgba(4, 9, 12, 0.86) 0%, rgba(4, 9, 12, 0.64) 22%, rgba(4, 9, 12, 0.18) 38%, rgba(4, 9, 12, 0.03) 55%, rgba(4, 9, 12, 0) 100%),
     url("bg-login.jpg") center / cover no-repeat !important;
   mask-image: none;
   z-index: 0;
@@ -367,9 +367,8 @@ body.login-modernized::after {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 10% 18%, rgba(94, 234, 212, 0.22), transparent 22%),
-    radial-gradient(circle at 30% 88%, rgba(56, 189, 248, 0.12), transparent 26%),
-    linear-gradient(90deg, rgba(7,9,11,.95) 0%, rgba(7,9,11,.58) 45%, rgba(7,9,11,.10) 72%, rgba(7,9,11,0) 100%);
+    radial-gradient(circle at 6% 86%, rgba(94, 234, 212, 0.16), transparent 20%),
+    linear-gradient(90deg, rgba(7,9,11,.90) 0%, rgba(7,9,11,.46) 24%, rgba(7,9,11,.08) 42%, rgba(7,9,11,0) 64%);
 }
 
 body.login-modernized .page-wrapper {
@@ -494,5 +493,248 @@ body.login-modernized .card-header h2 {
 
   body.login-modernized .login-panel {
     padding: 16px 18px 36px !important;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 9mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  html,
+  body {
+    width: auto !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #f4f7f8 !important;
+    color: #111827 !important;
+  }
+
+  body::before,
+  body::after,
+  .topbar,
+  .tema-btn,
+  .sim-badge,
+  .period-ctrl,
+  .print-btn,
+  .nav-sair {
+    display: none !important;
+  }
+
+  .print-document-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    min-height: 24mm !important;
+    margin: 0 0 4mm !important;
+    padding: 5mm 6mm !important;
+    background: #111827 !important;
+    border: 0 !important;
+    border-radius: 4mm !important;
+    color: #ffffff !important;
+    break-after: avoid !important;
+  }
+
+  .print-document-header img {
+    width: 45mm !important;
+    height: auto !important;
+    display: block !important;
+    filter: brightness(0) invert(1) !important;
+  }
+
+  .print-doc-title {
+    text-align: right !important;
+  }
+
+  .print-doc-title strong {
+    display: block !important;
+    color: #ffffff !important;
+    font-size: 17pt !important;
+    line-height: 1.05 !important;
+    font-weight: 800 !important;
+  }
+
+  .print-doc-title span {
+    display: block !important;
+    margin-top: 2mm !important;
+    color: #cbd5e1 !important;
+    font-size: 8pt !important;
+  }
+
+  main,
+  .main,
+  .container,
+  .wrap {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .main {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3mm !important;
+  }
+
+  .painel-header {
+    background: #ffffff !important;
+    border: 1px solid #dbe4ea !important;
+    border-radius: 3mm !important;
+    padding: 3mm 4mm !important;
+    break-inside: avoid !important;
+  }
+
+  .painel-title,
+  .card-title,
+  .kpi-value,
+  .sc-num,
+  .assist-num,
+  .pipe-num,
+  .rank-nome,
+  .pct-nome {
+    color: #111827 !important;
+  }
+
+  .painel-title {
+    font-size: 15pt !important;
+  }
+
+  .painel-sub,
+  .card-sub,
+  .kpi-label,
+  .sc-lbl,
+  .assist-desc,
+  .rank-sub,
+  .pct-valor,
+  .footer {
+    color: #64748b !important;
+  }
+
+  .kpi-row {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 2mm !important;
+  }
+
+  .status-row,
+  .assist-row {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 2mm !important;
+  }
+
+  .row-2col,
+  .row-2col-equal {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 3mm !important;
+  }
+
+  .kpi,
+  .status-card,
+  .assist-card,
+  .card {
+    background: #ffffff !important;
+    border: 1px solid #dbe4ea !important;
+    border-radius: 3mm !important;
+    padding: 3mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .card-header,
+  .kpi-top,
+  .sc-top {
+    margin-bottom: 2mm !important;
+  }
+
+  .kpi-icon,
+  .sc-icon,
+  .assist-icon {
+    width: 8mm !important;
+    height: 8mm !important;
+    border-radius: 2mm !important;
+    background: #e6fffa !important;
+    color: #0f766e !important;
+  }
+
+  .kpi-icon i,
+  .sc-icon i,
+  .assist-icon i {
+    width: 4mm !important;
+    height: 4mm !important;
+    stroke-width: 2.2 !important;
+  }
+
+  .kpi-value {
+    font-size: 15pt !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  .sc-num,
+  .assist-num {
+    font-size: 18pt !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  .kpi-label,
+  .sc-lbl,
+  .assist-desc {
+    font-size: 7.5pt !important;
+    line-height: 1.25 !important;
+  }
+
+  .kpi-badge,
+  .sc-pct,
+  .tag {
+    color: #0f766e !important;
+    background: #e6fffa !important;
+    border: 1px solid #99f6e4 !important;
+    font-size: 6.7pt !important;
+  }
+
+  .section-label {
+    color: #334155 !important;
+    font-size: 7pt !important;
+    margin-bottom: 1.5mm !important;
+  }
+
+  .pipe-card,
+  .equipe-item,
+  .rank-item,
+  .pct-row {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  .pipeline-grid {
+    gap: 1.5mm !important;
+  }
+
+  .canvas-wrap {
+    max-height: 42mm !important;
+  }
+
+  .footer {
+    display: block !important;
+    margin-top: 3mm !important;
+    padding-top: 2mm !important;
+    border-top: 1px solid #dbe4ea !important;
+    background: transparent !important;
+    text-align: center !important;
+    font-size: 7pt !important;
   }
 }
