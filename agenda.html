@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-30o -->
+<!-- build: 2026-05-31 -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -394,6 +394,12 @@
       padding-bottom: 8px;
       border-bottom: 1px solid var(--border);
     }
+
+    /* ── Tipo serviço radio ── */
+    .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
+    .radio-option { display: flex; align-items: center; gap: 8px; padding: 9px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-2); transition: border-color .15s, color .15s; }
+    .radio-option input[type="radio"] { accent-color: var(--primary); width: 15px; height: 15px; }
+    .radio-option:has(input:checked) { border-color: var(--primary); color: var(--text-1); background: var(--primary-muted); }
 
     /* ── Equipe multi-select ── */
     .equipe-select { position: relative; }
@@ -886,6 +892,21 @@
     <div class="form-group">
       <label for="f-endereco">Endereço <span class="label-hint">(preenchido da obra, editável)</span></label>
       <input type="text" id="f-endereco" placeholder="Endereço do serviço..."/>
+    </div>
+
+    <!-- TIPO DO SERVIÇO -->
+    <div class="form-section-label">Tipo de serviço</div>
+    <div class="form-group" id="tipo-servico-group">
+      <div class="radio-group">
+        <label class="radio-option">
+          <input type="radio" name="tipo-servico" id="tipo-exec" value="execucao" checked>
+          Execução de projeto
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="tipo-servico" id="tipo-assist" value="assistencia">
+          Assistência técnica
+        </label>
+      </div>
     </div>
 
     <!-- EQUIPE -->
@@ -1398,15 +1419,16 @@ async function salvarAgendamento() {
   btn.textContent = 'Salvando...';
   erroEl.style.display = 'none';
 
-  const obraVal   = document.getElementById('f-obra').value;
-  const nomeOutro = document.getElementById('f-nome-outro').value.trim();
-  const endereco  = document.getElementById('f-endereco').value.trim();
-  const data      = document.getElementById('f-data').value;
-  const status    = document.getElementById('f-status').value;
-  const inicio    = document.getElementById('f-inicio').value;
-  const fim       = '';
-  const veiculo   = document.getElementById('f-veiculo').value;
-  const servico   = document.getElementById('f-servico').value;
+  const obraVal    = document.getElementById('f-obra').value;
+  const nomeOutro  = document.getElementById('f-nome-outro').value.trim();
+  const endereco   = document.getElementById('f-endereco').value.trim();
+  const data       = document.getElementById('f-data').value;
+  const status     = document.getElementById('f-status').value;
+  const inicio     = document.getElementById('f-inicio').value;
+  const fim        = '';
+  const veiculo    = document.getElementById('f-veiculo').value;
+  const servico    = document.getElementById('f-servico').value;
+  const tipoServico = document.querySelector('input[name="tipo-servico"]:checked')?.value || 'execucao';
 
   // Validações
   if (!obraVal) {
@@ -1507,6 +1529,7 @@ async function salvarAgendamento() {
           data_servico:     data,
           servico_planejado: servico                || null,
           status_aprovacao: 'pendente',
+          tipo_servico:     tipoServico,
           criado_em:        new Date().toISOString(),
         };
 
@@ -1532,7 +1555,11 @@ async function salvarAgendamento() {
     }
 
     fecharModal();
-    await carregarAgenda();
+    if (!agEditandoId && tipoServico === 'assistencia') {
+      window.location.href = 'assistencia.html';
+    } else {
+      await carregarAgenda();
+    }
   }
 
   btn.disabled  = false;

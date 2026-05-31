@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-30m -->
+<!-- build: 2026-05-31 -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -721,6 +721,18 @@ function renderPagina(obra) {
           <div class="obra-info-label">Cód. Shankya</div>
           <div class="obra-info-value"><i data-lucide="hash"></i>${obra.cod_shankya}</div>
         </div>` : ''}
+        ${obra.valor_total != null ? `<div class="obra-info-item">
+          <div class="obra-info-label">Valor total</div>
+          <div class="obra-info-value"><i data-lucide="wallet-cards"></i>${obra.valor_total != null ? 'R$ ' + parseFloat(obra.valor_total).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'}</div>
+        </div>` : ''}
+        ${(obra.valor_servicos != null || obra.valor_produtos != null) ? `<div class="obra-info-item">
+          <div class="obra-info-label">Mão de obra / Produtos</div>
+          <div class="obra-info-value"><i data-lucide="settings-2"></i>${obra.valor_servicos != null ? 'R$ ' + parseFloat(obra.valor_servicos).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'} / ${obra.valor_produtos != null ? 'R$ ' + parseFloat(obra.valor_produtos).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'}</div>
+        </div>` : ''}
+        ${obra.pct_servico != null ? `<div class="obra-info-item">
+          <div class="obra-info-label">% Mão de obra</div>
+          <div class="obra-info-value"><i data-lucide="percent"></i>${Math.round(parseFloat(obra.pct_servico) * 100)}%</div>
+        </div>` : ''}
       </div>
 
       ${editRow}
@@ -770,6 +782,7 @@ function renderPagina(obra) {
         <button class="filtro-btn ativo" onclick="filtrarOS(this,'todos')">Todas</button>
         <button class="filtro-btn" onclick="filtrarOS(this,'pendente')">Pendentes</button>
         <button class="filtro-btn" onclick="filtrarOS(this,'concluida')">Concluídas</button>
+        <button class="filtro-btn" onclick="filtrarOS(this,'plantao')">Plantão</button>
       </div>
       <div id="tabela-os" class="os-table-wrap">${renderTabelaOS(todasOS)}</div>
     </div>
@@ -839,11 +852,14 @@ function renderTabelaOS(lista) {
     const maisTag = nF > 3 ? `<span style="font-size:0.72rem;color:var(--text-3);margin-left:2px">+${nF-3}</span>` : '';
     const descricao = os.descricao_servicos || os.observacoes || os.atividades_realizadas || '—';
 
+    const plantaoBadge = os.tipo_servico === 'plantao'
+      ? `<span class="badge" style="background:rgba(79,70,229,0.12);color:#A78BFA;border:1px solid rgba(79,70,229,0.25);margin-left:4px;">🌙 Plantão</span>`
+      : '';
     return `<tr style="cursor:pointer;" onclick="verDetalheOS(${os.id})">
       <td style="color:var(--text-3);font-size:0.75rem;white-space:nowrap">${data}</td>
       <td style="color:var(--text-1);font-weight:600">${tec}</td>
       <td style="color:var(--text-2);font-size:0.8rem;max-width:260px">${descricao.length > 80 ? descricao.slice(0,80)+'…' : descricao}</td>
-      <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td><span class="badge ${st.cls}">${st.label}</span>${plantaoBadge}</td>
       <td onclick="event.stopPropagation()"><div class="fotos-mini">${minisFotos}${maisTag}</div></td>
     </tr>`;
   }).join('');
@@ -907,7 +923,14 @@ function filtrarOS(btn, status) {
   filtroStatus = status;
   document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
   btn.classList.add('ativo');
-  const filtradas = status === 'todos' ? todasOS : todasOS.filter(o => normStatus(o.status_aprovacao) === status);
+  let filtradas;
+  if (status === 'todos') {
+    filtradas = todasOS;
+  } else if (status === 'plantao') {
+    filtradas = todasOS.filter(o => o.tipo_servico === 'plantao');
+  } else {
+    filtradas = todasOS.filter(o => normStatus(o.status_aprovacao) === status);
+  }
   document.getElementById('tabela-os').innerHTML = renderTabelaOS(filtradas);
   lucide.createIcons();
 }

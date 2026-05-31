@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-30m -->
+<!-- build: 2026-05-31 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -747,9 +747,8 @@ let tdTecMap = {};  // id → { nome } para exibir equipe completa
 
   const hoje = new Date();
   const inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 90);
-  const futuro = new Date(hoje); futuro.setDate(futuro.getDate() + 60);
   document.getElementById('dataInicio').value = inicio.toISOString().split('T')[0];
-  document.getElementById('dataFim').value = futuro.toISOString().split('T')[0];
+  document.getElementById('dataFim').value = hoje.toISOString().split('T')[0];
 
   await carregarOSs();
 })();
@@ -793,7 +792,9 @@ async function carregarOSs() {
     }
   }
 
-  todasOSs = data || [];
+  const hojeISO = new Date().toISOString().split('T')[0];
+  // Técnico só vê OS do dia atual ou anteriores (agendas futuras não contam como pendente)
+  todasOSs = (data || []).filter(o => !o.data_servico || o.data_servico <= hojeISO);
 
   document.getElementById('statTotal').textContent     = todasOSs.length;
   document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;

@@ -241,6 +241,7 @@ function renderTopbar(nome, role, paginaAtiva) {
     { href: 'agenda.html',               label: 'Agenda Técnica',    id: 'agenda',               roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
     { href: 'agenda_plantao.html',       label: 'Agenda de Plantão',  id: 'agenda-plantao',       roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
     { href: 'agenda_vistorias.html',     label: 'Agenda de Vistorias',    id: 'agenda-vistorias',     roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
+    { href: 'assistencia.html',          label: 'Assistências',           id: 'assistencia',          roles: ['agendamento','coordenador','supervisor'] },
     { href: 'vistoria.html',             label: 'Minhas Vistorias',       id: 'vistoria',             roles: ['vistoriador'] },
     { href: 'vistoria.html',             label: 'Relatórios de Vistoria', id: 'relatorios-vistoria', roles: ['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
     { href: 'os.html',                   label: 'Fazer OS',               id: 'os',                   roles: ['tecnico','auxiliar'] },

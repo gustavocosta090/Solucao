@@ -2,9 +2,9 @@
 -- Rode no SQL Editor do Supabase depois de conferir nomes de colunas/tabelas.
 -- Objetivo: usuários logados leem o que precisam; escrita fica limitada por perfil.
 
-drop function if exists public.has_app_role(text[]);
-drop function if exists public.current_app_role();
-drop function if exists public.current_tecnico_id();
+drop function if exists public.has_app_role(text[]) cascade;
+drop function if exists public.current_app_role() cascade;
+drop function if exists public.current_tecnico_id() cascade;
 
 create function public.current_tecnico_id()
 returns bigint
@@ -209,3 +209,50 @@ drop policy if exists "storage_fotos_os_insert" on storage.objects;
 create policy "storage_fotos_os_insert" on storage.objects
 for insert to authenticated
 with check (bucket_id = 'fotos-os');
+
+-- ── TABELA: relatorios_assistencia ────────────────────────────────
+-- Rode este bloco UMA VEZ no SQL Editor do Supabase para criar a tabela.
+create table if not exists public.relatorios_assistencia (
+  id                bigserial primary key,
+  os_id             bigint references public.ordens_de_servico(id) on delete set null,
+  obra_id           bigint references public.obras(id) on delete set null,
+  tecnico_id        bigint references public.tecnicos(id) on delete set null,
+  cliente_outro     text,
+  data_servico      date,
+  cobrado           boolean default false,
+  valor_mo          numeric(12,2) default 0,
+  foi_garantia      boolean default false,
+  motivo_nao_cobrar text,
+  equipamentos      jsonb default '[]'::jsonb,
+  valor_equip       numeric(12,2) default 0,
+  observacoes       text,
+  status            text default 'pendente' check (status in ('pendente','concluido')),
+  criado_em         timestamptz default now(),
+  updated_at        timestamptz default now()
+);
+
+alter table public.relatorios_assistencia enable row level security;
+
+drop policy if exists "relatorios_assistencia_select" on public.relatorios_assistencia;
+create policy "relatorios_assistencia_select" on public.relatorios_assistencia
+for select to authenticated
+using (
+  public.has_app_role(array['coordenador','supervisor','agendamento','gerente_comercial','coordenador_projetos'])
+  or tecnico_id = public.current_tecnico_id()
+);
+
+drop policy if exists "relatorios_assistencia_insert" on public.relatorios_assistencia;
+create policy "relatorios_assistencia_insert" on public.relatorios_assistencia
+for insert to authenticated
+with check (public.has_app_role(array['coordenador','supervisor','agendamento']));
+
+drop policy if exists "relatorios_assistencia_update" on public.relatorios_assistencia;
+create policy "relatorios_assistencia_update" on public.relatorios_assistencia
+for update to authenticated
+using  (public.has_app_role(array['coordenador','supervisor','agendamento']))
+with check (public.has_app_role(array['coordenador','supervisor','agendamento']));
+
+drop policy if exists "relatorios_assistencia_delete" on public.relatorios_assistencia;
+create policy "relatorios_assistencia_delete" on public.relatorios_assistencia
+for delete to authenticated
+using (public.has_app_role(array['coordenador','supervisor']));

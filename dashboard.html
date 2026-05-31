@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-30o -->
+<!-- build: 2026-05-31 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -629,7 +629,7 @@
     <div class="kpi" style="--kpi-color:var(--amber);--kpi-dim:var(--amber-dim)">
       <div class="kpi-top"><div class="kpi-icon"><i data-lucide="building-2"></i></div><span class="kpi-badge">↑ 4 obras</span></div>
       <div class="kpi-value" id="kv-obras">—</div>
-      <div class="kpi-label">Obras cadastradas</div>
+      <div class="kpi-label">Obras ativas</div>
     </div>
     <div class="kpi" style="--kpi-color:var(--pink);--kpi-dim:var(--pink-dim)">
       <div class="kpi-top"><div class="kpi-icon"><i data-lucide="settings-2"></i></div><span class="kpi-badge">MO / Produto</span></div>
@@ -713,15 +713,6 @@
     </div>
   </div>
 
-  <!-- EVOLUÇÃO MENSAL -->
-  <div class="card">
-    <div class="card-header">
-      <div><div class="card-title">Evolução Mensal de Contratos</div><div class="card-sub">Receita de produtos versus mão de obra por mês</div></div>
-      <span class="tag tag-amber" id="tag-acumulado">Acumulado —</span>
-    </div>
-    <div class="canvas-wrap" style="height:230px"><canvas id="chartEvolucao"></canvas></div>
-  </div>
-
   <!-- ARQUITETOS + COMPOSIÇÃO -->
   <div class="row-2col-equal">
     <div class="card">
@@ -765,16 +756,16 @@
         <div><div class="assist-num" id="av-total" style="color:var(--indigo)">—</div><div class="assist-desc">Assistências realizadas</div></div>
       </div>
       <div class="assist-card">
-        <div class="assist-icon" style="background:var(--green-dim)"><i data-lucide="circle-check"></i></div>
-        <div><div class="assist-num" id="av-cobradas" style="color:var(--green)">—</div><div class="assist-desc">Assistências cobradas</div></div>
+        <div class="assist-icon" style="background:var(--green-dim)"><i data-lucide="clock"></i></div>
+        <div><div class="assist-num" id="av-mo" style="color:var(--green)">—</div><div class="assist-desc">Valor hora técnica</div></div>
       </div>
       <div class="assist-card">
-        <div class="assist-icon" style="background:var(--pink-dim)"><i data-lucide="unlock"></i></div>
-        <div><div class="assist-num" id="av-gratis" style="color:var(--pink)">—</div><div class="assist-desc">Prestadas sem cobrança</div></div>
+        <div class="assist-icon" style="background:var(--pink-dim)"><i data-lucide="package"></i></div>
+        <div><div class="assist-num" id="av-equip" style="color:var(--pink)">—</div><div class="assist-desc">Valor equipamentos</div></div>
       </div>
       <div class="assist-card">
         <div class="assist-icon" style="background:var(--amber-dim)"><i data-lucide="banknote"></i></div>
-        <div><div class="assist-num" id="av-receita" style="color:var(--amber)">—</div><div class="assist-desc">Receita gerada em assistências</div></div>
+        <div><div class="assist-num" id="av-receita" style="color:var(--amber)">—</div><div class="assist-desc">Receita total em assistências</div></div>
       </div>
     </div>
   </div>
@@ -849,10 +840,9 @@ async function carregarEExibir(ano = null) {
       .lt('criado_em',  `${ano+1}-01-01T00:00:00`);
   }
 
-  // Assistências (OS tipo assistência)
-  const [{ data: obras, error: oErr }, { data: oss }] = await Promise.all([
+  const [{ data: obras, error: oErr }, { data: relAssist }] = await Promise.all([
     obraQ.order('valor_total', { ascending: false, nullsFirst: false }),
-    db.from('ordens_de_servico').select('id, tipo_servico, status_aprovacao'),
+    db.from('relatorios_assistencia').select('id, status, cobrado, valor_mo, valor_equip'),
   ]);
 
   if (oErr) {
@@ -861,7 +851,7 @@ async function carregarEExibir(ano = null) {
     return;
   }
 
-  const d = buildData(obras || [], oss || []);
+  const d = buildData(obras || [], relAssist || []);
   renderAll(d);
 
   if (badge) {
@@ -870,15 +860,17 @@ async function carregarEExibir(ano = null) {
   }
 }
 
-function buildData(obras, oss) {
+function buildData(obras, relAssist) {
   const num = v => parseFloat(v) || 0;
 
   // Totais financeiros
   const total_servicos = obras.reduce((s, o) => s + num(o.valor_servicos), 0);
   const total_produtos = obras.reduce((s, o) => s + num(o.valor_produtos),  0);
   const total_volume   = obras.reduce((s, o) => s + num(o.valor_total),     0);
-  const n_obras        = obras.length;
-  const ticket         = n_obras > 0 ? Math.round(total_volume / n_obras) : 0;
+  const total_obras    = obras.length;
+  const obras_ativas   = obras.filter(o => o.fase_atual !== 'entrega_comercial');
+  const n_obras        = obras_ativas.length;
+  const ticket         = total_obras > 0 ? Math.round(total_volume / total_obras) : 0;
 
   // % médio de serviços
   const pctObras = obras.filter(o => o.pct_servico != null && !isNaN(parseFloat(o.pct_servico)));
@@ -932,25 +924,13 @@ function buildData(obras, oss) {
     .map(([nome, n]) => ({ nome, obras: n }))
     .sort((a, b) => b.obras - a.obras);
 
-  // Evolução mensal por criado_em
-  const evoMap = {};
-  obras.forEach(o => {
-    if (!o.criado_em) return;
-    const d   = new Date(o.criado_em);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const mes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d.getMonth()];
-    if (!evoMap[key]) evoMap[key] = { mes, produtos: 0, servicos: 0 };
-    evoMap[key].produtos += num(o.valor_produtos);
-    evoMap[key].servicos += num(o.valor_servicos);
-  });
-  const evolucao = Object.entries(evoMap)
-    .sort(([a],[b]) => a.localeCompare(b))
-    .map(([, v]) => ({ mes: v.mes, produtos: Math.round(v.produtos), servicos: Math.round(v.servicos) }));
-
   // Assistências
-  const assOss     = (oss || []).filter(o => o.tipo_servico === 'assistencia');
-  const assTotal   = assOss.length;
-  const assConcl   = assOss.filter(o => ['concluida','aprovada'].includes(o.status_aprovacao)).length;
+  const assTotal   = (relAssist || []).length;
+  const assConcl   = (relAssist || []).filter(r => r.status === 'concluido').length;
+  const assCobradas = (relAssist || []).filter(r => r.cobrado).length;
+  const assValMO   = (relAssist || []).reduce((s, r) => s + num(r.valor_mo), 0);
+  const assValEq   = (relAssist || []).reduce((s, r) => s + num(r.valor_equip), 0);
+  const assValTot  = assValMO + assValEq;
 
   // % por obra (para nova seção)
   const obras_pct = pctObras
@@ -962,13 +942,12 @@ function buildData(obras, oss) {
     .sort((a, b) => b.pct - a.pct);
 
   return {
-    kpis:       { volume: Math.round(total_volume), ticket, obras: n_obras, mo: Math.round(pct_med * 100), assist: 0 },
+    kpis:       { volume: Math.round(total_volume), ticket, obras: n_obras, total_obras, mo: Math.round(pct_med * 100), assist: Math.round(assValTot) },
     regionais:  regionais.length ? regionais : [{ nome: 'Sem dados regionais', obras: 0, valor: 0 }],
     consultores,
     arquitetos: arquitetos.length ? arquitetos : [{ nome: 'A preencher após cadastro completo', obras: 0 }],
-    evolucao:   evolucao.length   ? evolucao   : [],
     composicao: { produtos: Math.round(total_produtos), servicos: Math.round(total_servicos), pct_med },
-    assist:     { total: assTotal, cobradas: assConcl, gratis: assTotal - assConcl, receita: 0 },
+    assist:     { total: assTotal, concluidas: assConcl, cobradas: assCobradas, val_mo: Math.round(assValMO), val_equip: Math.round(assValEq), val_total: Math.round(assValTot) },
     fases,
     status,
     equipes:    [],
@@ -1020,7 +999,7 @@ function renderKPIs(d) {
 
 // ── RENDER: Status ─────────────────────────────────────────────
 function renderStatus(d) {
-  const s = d.status, t = d.kpis.obras || 1;
+  const s = d.status, t = d.kpis.total_obras || 1;
   [['andamento',s.andamento],['finalizacao',s.finalizacao],['entregues',s.entregues],['concluidas',s.concluidas]]
     .forEach(([key, val]) => {
       const p = Math.round(val / t * 100);
@@ -1112,35 +1091,6 @@ function renderConsultores(d) {
     </div>`).join('');
 }
 
-// ── RENDER: Evolução Mensal ────────────────────────────────────
-function renderEvolucao(d) {
-  if (CH.evolucao) CH.evolucao.destroy();
-  const totalAcum = d.evolucao.reduce((s,e) => s + e.produtos + e.servicos, 0);
-  document.getElementById('tag-acumulado').textContent = 'Acumulado ' + fmt.brl(totalAcum);
-  CH.evolucao = new Chart(document.getElementById('chartEvolucao'), {
-    type: 'bar',
-    data: {
-      labels: d.evolucao.map(e => e.mes),
-      datasets: [
-        { label:'Produtos',   data:d.evolucao.map(e=>e.produtos), backgroundColor:'rgba(62,207,142,0.80)', borderRadius:5, borderSkipped:false, order:2 },
-        { label:'Mão de Obra',data:d.evolucao.map(e=>e.servicos), backgroundColor:'rgba(129,140,248,0.80)', borderRadius:5, borderSkipped:false, order:1 },
-        { label:'Total', type:'line', data:d.evolucao.map(e=>e.produtos+e.servicos), borderColor:'rgba(255,255,255,0.20)', borderWidth:1.5, borderDash:[4,4], pointRadius:3, pointBackgroundColor:'rgba(255,255,255,0.4)', fill:false, order:0 },
-      ],
-    },
-    options: {
-      responsive:true, maintainAspectRatio:false, interaction:{mode:'index'},
-      scales: {
-        x: { grid:{color:'rgba(255,255,255,0.04)'}, border:{display:false} },
-        y: { grid:{color:'rgba(255,255,255,0.04)'}, border:{display:false}, ticks:{callback:v=>fmt.brl(v)} },
-      },
-      plugins: {
-        legend:{position:'top',align:'end',labels:{boxWidth:10,boxHeight:10,borderRadius:3,useBorderRadius:true,padding:18}},
-        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt.brlFull(c.parsed.y)}`}},
-      },
-    },
-  });
-}
-
 // ── RENDER: Arquitetos ─────────────────────────────────────────
 function renderArquitetos(d) {
   if (!d.arquitetos || d.arquitetos.length === 0) {
@@ -1203,10 +1153,10 @@ function renderComposicao(d) {
 function renderAssist(d) {
   const a = d.assist;
   document.getElementById('b-assist').textContent = a.cobradas + ' cobradas';
-  counter(document.getElementById('av-total'),    a.total,    fmt.int);
-  counter(document.getElementById('av-cobradas'), a.cobradas, fmt.int);
-  counter(document.getElementById('av-gratis'),   a.gratis,   fmt.int);
-  counter(document.getElementById('av-receita'),  a.receita,  fmt.brl);
+  counter(document.getElementById('av-total'),   a.total,     fmt.int);
+  counter(document.getElementById('av-mo'),      a.val_mo,    fmt.brl);
+  counter(document.getElementById('av-equip'),   a.val_equip, fmt.brl);
+  counter(document.getElementById('av-receita'), a.val_total, fmt.brl);
 }
 
 // ── RENDER: % de Serviços por Obra ─────────────────────────────
@@ -1256,7 +1206,6 @@ function renderAll(d) {
   renderEquipes(d);
   renderRegional(d);
   renderConsultores(d);
-  renderEvolucao(d);
   renderArquitetos(d);
   renderComposicao(d);
   renderPctObras(d);

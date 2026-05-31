@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<!-- build: 2026-05-31 -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solução Técnica — Assistências Técnicas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="utils.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:            #0A0A0A;
+      --surface-1:     #111111;
+      --surface-2:     #161616;
+      --surface-3:     #1B1B1B;
+      --primary:       #3ECF8E;
+      --primary-hover: #2EBF7E;
+      --primary-muted: rgba(62,207,142,0.10);
+      --secondary:     #4F46E5;
+      --amber:         #F59E0B;
+      --amber-dim:     rgba(245,158,11,0.12);
+      --red:           #EF4444;
+      --red-dim:       rgba(239,68,68,0.12);
+      --indigo:        #818CF8;
+      --indigo-dim:    rgba(129,140,248,0.12);
+      --pink:          #F472B6;
+      --pink-dim:      rgba(244,114,182,0.12);
+      --green:         #3ECF8E;
+      --green-dim:     rgba(62,207,142,0.12);
+      --text-1:        #FFFFFF;
+      --text-2:        #A1A1AA;
+      --text-3:        #52525B;
+      --border:        rgba(255,255,255,0.08);
+      --border-hover:  rgba(255,255,255,0.16);
+      --border-focus:  rgba(62,207,142,0.4);
+      --radius-card:   12px;
+      --radius-input:  6px;
+    }
+
+    [data-theme="light"] {
+      --bg:         #F8FAFC;
+      --surface-1:  #FFFFFF;
+      --surface-2:  #F1F5F9;
+      --surface-3:  #E2E8F0;
+      --text-1:     #0F172A;
+      --text-2:     #475569;
+      --text-3:     #94A3B8;
+      --border:     rgba(0,0,0,0.08);
+      --border-hover: rgba(0,0,0,0.14);
+    }
+
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-1); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+    /* ── Stats ── */
+    .stats-row { display: grid; grid-template-columns: repeat(6,1fr); gap: 12px; padding: 20px 24px 0; }
+    @media(max-width:900px) { .stats-row { grid-template-columns: repeat(3,1fr); } }
+    @media(max-width:500px) { .stats-row { grid-template-columns: repeat(2,1fr); } }
+    .stat-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 16px; }
+    .stat-num { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+    .stat-label { font-size: 0.72rem; color: var(--text-3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ── Filtros bar ── */
+    .filtros-bar { display: flex; align-items: center; gap: 8px; padding: 16px 24px; flex-wrap: wrap; }
+    .filtros-bar select, .filtros-bar input[type="text"], .filtros-bar input[type="date"] {
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-input);
+      color: var(--text-1); font-family: inherit; font-size: 0.82rem; padding: 7px 10px; outline: none;
+      transition: border-color .15s;
+    }
+    .filtros-bar select:focus, .filtros-bar input:focus { border-color: var(--border-focus); }
+    .filtros-bar select option { background: var(--surface-2); }
+    .busca-wrap { position: relative; flex: 1; min-width: 160px; }
+    .busca-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-3); pointer-events: none; }
+    .busca-wrap input { width: 100%; padding-left: 30px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+    /* ── Table ── */
+    .table-wrap { padding: 0 24px 24px; }
+    .table-container { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-card); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th { text-align: left; padding: 11px 14px; font-size: 0.7rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr { cursor: pointer; transition: background .1s; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+    .td-muted { color: var(--text-2); }
+    .td-center { text-align: center; }
+
+    /* ── Badges ── */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+    .badge-pendente  { background: var(--amber-dim);   color: var(--amber); }
+    .badge-concluido { background: var(--green-dim);   color: var(--green); }
+    .badge-cobrado   { background: var(--indigo-dim);  color: var(--indigo); }
+    .badge-gratuito  { background: var(--pink-dim);    color: var(--pink); }
+    .badge-garantia  { background: rgba(82,82,91,0.2); color: var(--text-3); }
+
+    /* ── Action button ── */
+    .btn-finalizar {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--primary-muted); border: 1px solid var(--primary);
+      color: var(--primary); border-radius: 6px; padding: 5px 10px;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: background .15s;
+    }
+    .btn-finalizar:hover { background: rgba(62,207,142,0.2); }
+    .btn-ver {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--text-2); border-radius: 6px; padding: 5px 10px;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: background .15s;
+    }
+    .btn-ver:hover { background: var(--surface-3); }
+
+    /* ── Empty / Loading ── */
+    .state-el { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 48px 24px; color: var(--text-3); }
+    .state-el i { width: 36px; height: 36px; }
+    .state-el p { font-size: 0.9rem; }
+
+    /* ── Pagination ── */
+    .paginacao { display: flex; align-items: center; gap: 4px; padding: 12px 16px; border-top: 1px solid var(--border); }
+    .btn-pag { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); border-radius: 6px; padding: 5px 10px; font-size: 0.8rem; cursor: pointer; font-family: inherit; transition: background .1s; }
+    .btn-pag:hover:not(:disabled) { background: var(--surface-3); }
+    .btn-pag.active { background: var(--primary-muted); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+    .btn-pag:disabled { opacity: 0.3; cursor: not-allowed; }
+    .pag-info { margin-left: 8px; font-size: 0.78rem; color: var(--text-3); }
+
+    /* ── Modal ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 500; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+    .modal-overlay.hidden { display: none; }
+    .modal { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 560px; }
+    .modal-header { display: flex; align-items: center; gap: 12px; padding: 20px 24px 16px; border-bottom: 1px solid var(--border); }
+    .modal-icon { width: 36px; height: 36px; background: var(--primary-muted); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .modal-icon i { width: 18px; height: 18px; color: var(--primary); }
+    .modal-title { font-size: 1rem; font-weight: 700; }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 16px 24px; border-top: 1px solid var(--border); }
+
+    /* ── OS info block ── */
+    .os-info-block { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; }
+    .os-info-row { display: flex; gap: 8px; font-size: 0.82rem; margin-bottom: 6px; }
+    .os-info-row:last-child { margin-bottom: 0; }
+    .os-info-label { color: var(--text-3); min-width: 80px; }
+    .os-info-val { color: var(--text-1); }
+
+    /* ── Form elements ── */
+    .form-section { margin-bottom: 20px; }
+    .form-section-label { font-size: 0.7rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.78rem; font-weight: 500; color: var(--text-2); margin-bottom: 6px; }
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group textarea,
+    .form-group select {
+      width: 100%; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-input); color: var(--text-1); font-family: inherit;
+      font-size: 0.85rem; padding: 9px 12px; outline: none; transition: border-color .15s;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--border-focus); }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-3); }
+
+    .radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .radio-option { display: flex; align-items: center; gap: 7px; padding: 8px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 0.83rem; color: var(--text-2); transition: border-color .15s, color .15s; }
+    .radio-option input[type="radio"] { accent-color: var(--primary); }
+    .radio-option:has(input:checked) { border-color: var(--primary); color: var(--text-1); background: var(--primary-muted); }
+
+    .sub-field { margin-top: 12px; padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; }
+    .sub-field.hidden { display: none; }
+
+    /* ── Equipamentos list ── */
+    .equip-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .equip-row { display: flex; gap: 8px; align-items: center; }
+    .equip-row input { flex: 1; }
+    .equip-row input.val { width: 120px; flex: none; }
+    .equip-remove { background: none; border: none; color: var(--text-3); cursor: pointer; padding: 4px; display: flex; align-items: center; }
+    .equip-remove:hover { color: var(--red); }
+    .equip-remove i { width: 14px; height: 14px; }
+    .btn-add-equip { display: inline-flex; align-items: center; gap: 6px; background: none; border: 1px dashed var(--border); color: var(--text-3); border-radius: 6px; padding: 7px 12px; font-size: 0.78rem; cursor: pointer; font-family: inherit; margin-top: 8px; transition: border-color .15s, color .15s; }
+    .btn-add-equip:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-add-equip i { width: 13px; height: 13px; }
+
+    /* ── Status toggle ── */
+    .status-toggle { display: flex; gap: 8px; }
+    .status-btn { flex: 1; padding: 9px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; font-size: 0.83rem; font-weight: 500; color: var(--text-2); cursor: pointer; font-family: inherit; transition: all .15s; }
+    .status-btn.active-pendente { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
+    .status-btn.active-concluido { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+
+    /* ── Modal buttons ── */
+    .btn-cancelar { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); border-radius: 8px; padding: 9px 18px; font-size: 0.85rem; cursor: pointer; font-family: inherit; }
+    .btn-salvar { background: var(--primary); border: none; color: #000; border-radius: 8px; padding: 9px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-salvar:hover { opacity: 0.88; }
+    .btn-salvar:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-salvar i { width: 15px; height: 15px; }
+
+    .modal-erro { display: none; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; padding: 10px 14px; font-size: 0.8rem; color: #f87171; margin-bottom: 16px; }
+
+    /* ── Page header ── */
+    .page-header { padding: 24px 24px 8px; display: flex; align-items: center; justify-content: space-between; }
+    .page-title { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; }
+    .page-sub { font-size: 0.8rem; color: var(--text-3); margin-top: 2px; }
+    .live-badge { font-size: 0.72rem; padding: 4px 10px; border-radius: 20px; background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
+    .live-badge.loading { color: var(--amber); border-color: var(--amber-dim); }
+  </style>
+  <link rel="stylesheet" href="app-shell.css">
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <button id="tema-btn" class="tema-btn" onclick="ciclarTema()" title="Alternar tema" aria-label="Alternar tema">🖥️</button>
+  <nav class="topbar-links" id="topbar-nav"></nav>
+</header>
+
+<!-- Page header -->
+<div class="page-header">
+  <div>
+    <div class="page-title">Assistências Técnicas</div>
+    <div class="page-sub">Relatórios de assistências · Finalização pelo agendamento</div>
+  </div>
+  <span class="live-badge loading" id="live-badge">↻ Carregando...</span>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-num" id="sTotal" style="color:var(--text-2)">—</div>
+    <div class="stat-label">Total</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="sPend" style="color:var(--amber)">—</div>
+    <div class="stat-label">Pendentes</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="sConcl" style="color:var(--green)">—</div>
+    <div class="stat-label">Concluídas</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="sValMO" style="color:var(--indigo)">—</div>
+    <div class="stat-label">Hora técnica</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="sValEq" style="color:var(--pink)">—</div>
+    <div class="stat-label">Equipamentos</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="sValTot" style="color:var(--primary)">—</div>
+    <div class="stat-label">Total arrecadado</div>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="filtros-bar">
+  <label for="fStatus" class="sr-only">Status</label>
+  <select id="fStatus" onchange="filtrar()">
+    <option value="">Todos os status</option>
+    <option value="pendente">Pendente</option>
+    <option value="concluido">Concluído</option>
+  </select>
+
+  <label for="fTecnico" class="sr-only">Técnico</label>
+  <select id="fTecnico" onchange="filtrar()">
+    <option value="">Todos os técnicos</option>
+  </select>
+
+  <input type="date" id="fDataInicio" onchange="filtrar()" title="Data início" aria-label="Data início">
+  <input type="date" id="fDataFim" onchange="filtrar()" title="Data fim" aria-label="Data fim">
+
+  <div class="busca-wrap">
+    <i data-lucide="search" class="busca-icon" aria-hidden="true"></i>
+    <input type="text" id="fBusca" placeholder="Buscar cliente ou serviço..." aria-label="Buscar" oninput="if(!this._fn)this._fn=debounce(filtrar);this._fn()">
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-wrap">
+  <div class="table-container">
+    <div id="loadingEl" class="state-el">
+      <i data-lucide="loader-circle"></i>
+      <p>Carregando assistências...</p>
+    </div>
+    <div id="emptyEl" class="state-el" style="display:none">
+      <i data-lucide="wrench"></i>
+      <p>Nenhuma assistência encontrada.</p>
+    </div>
+    <div id="tabelaEl" style="display:none">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Data</th>
+            <th scope="col">Técnico</th>
+            <th scope="col">Obra / Cliente</th>
+            <th scope="col">Cobrado</th>
+            <th scope="col">Hora técnica</th>
+            <th scope="col">Equipamentos</th>
+            <th scope="col">Total</th>
+            <th scope="col">Status</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="paginacao" id="paginacao"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay hidden" id="modalOverlay" onclick="fecharModalSeFora(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-icon"><i data-lucide="wrench"></i></div>
+      <div class="modal-title" id="modalTitulo">Finalizar Assistência</div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-erro" id="modalErro"></div>
+
+      <!-- OS Info -->
+      <div class="os-info-block" id="osInfoBlock"></div>
+
+      <!-- Cobrança -->
+      <div class="form-section">
+        <div class="form-section-label">Cobrança</div>
+        <div class="form-group">
+          <label>Foi cobrado?</label>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="cobrado" value="sim" onchange="onCobradoChange()"> Sim
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="cobrado" value="nao" onchange="onCobradoChange()"> Não
+            </label>
+          </div>
+        </div>
+
+        <div class="sub-field hidden" id="fieldValorMO">
+          <div class="form-group" style="margin-bottom:0">
+            <label for="fValorMO">Valor da mão de obra (R$)</label>
+            <input type="number" id="fValorMO" placeholder="0,00" min="0" step="0.01">
+          </div>
+        </div>
+
+        <div class="sub-field hidden" id="fieldNaoCobrado">
+          <div class="form-group">
+            <label>Foi garantia?</label>
+            <div class="radio-group">
+              <label class="radio-option">
+                <input type="radio" name="garantia" value="sim" onchange="onGarantiaChange()"> Sim
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="garantia" value="nao" onchange="onGarantiaChange()"> Não
+              </label>
+            </div>
+          </div>
+          <div class="form-group hidden" id="fieldMotivo" style="margin-bottom:0">
+            <label for="fMotivo">Motivo de não cobrar</label>
+            <textarea id="fMotivo" rows="2" placeholder="Ex: bonificação comercial, cliente em negociação..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Equipamentos -->
+      <div class="form-section">
+        <div class="form-section-label">Equipamentos vendidos</div>
+        <div class="form-group">
+          <label>Foram vendidos equipamentos?</label>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="vendeu" value="sim" onchange="onVendeuChange()"> Sim
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="vendeu" value="nao" onchange="onVendeuChange()"> Não
+            </label>
+          </div>
+        </div>
+        <div class="sub-field hidden" id="fieldEquipamentos">
+          <div class="equip-list" id="equipList"></div>
+          <button class="btn-add-equip" onclick="adicionarEquip()">
+            <i data-lucide="plus"></i> Adicionar equipamento
+          </button>
+        </div>
+      </div>
+
+      <!-- Observações -->
+      <div class="form-section">
+        <div class="form-section-label">Observações</div>
+        <div class="form-group" style="margin-bottom:0">
+          <textarea id="fObs" rows="3" placeholder="Observações adicionais sobre a assistência..."></textarea>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="form-section" style="margin-bottom:0">
+        <div class="form-section-label">Status do relatório</div>
+        <div class="status-toggle">
+          <button class="status-btn" id="btnPend" onclick="setStatus('pendente')">Pendente</button>
+          <button class="status-btn" id="btnConcl" onclick="setStatus('concluido')">Concluído</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-salvar" id="btnSalvar" onclick="salvarRelatorio()">
+        <i data-lucide="save"></i> Salvar relatório
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ROLES_PERMITIDOS = ['agendamento','coordenador','supervisor'];
+const PER_PAGE = 25;
+
+let todasOS     = [];  // OS com tipo_servico='assistencia'
+let todosRel    = {};  // Map os_id → relatorio
+let filtrados   = [];
+let pagAtual    = 1;
+let statusModal = 'pendente';
+let editingOsId = null;
+let editingRelId = null;
+let equipamentos = [];  // [{nome, valor}]
+
+// ── Formatação ──────────────────────────────────────────────────
+function brl(v) {
+  if (!v || isNaN(v)) return 'R$ 0';
+  v = parseFloat(v);
+  if (v >= 1_000_000) return 'R$ ' + (v/1_000_000).toFixed(2).replace('.',',') + 'M';
+  if (v >= 1_000)     return 'R$ ' + (v/1_000).toFixed(0) + 'k';
+  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+
+function brlFull(v) {
+  return 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ── Init ────────────────────────────────────────────────────────
+(async () => {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
+  if (!eu || !ROLES_PERMITIDOS.includes(eu.role)) {
+    window.location.href = eu?.role === 'tecnico' || eu?.role === 'auxiliar' ? 'tecnico_dashboard.html' : 'login.html';
+    return;
+  }
+
+  renderTopbar(eu.nome, eu.role, 'assistencia');
+  applyTheme(localStorage.getItem('tema') || 'auto');
+  lucide.createIcons();
+
+  await carregarDados();
+})();
+
+// ── Carregar dados ──────────────────────────────────────────────
+async function carregarDados() {
+  const badge = document.getElementById('live-badge');
+
+  const [{ data: osList, error: osErr }, { data: relList, error: relErr }] = await Promise.all([
+    db.from('ordens_de_servico')
+      .select('id, tecnico_id, obra_id, cliente_outro, data_servico, servico_planejado, status_aprovacao, tecnicos(id, nome), obras(nome_cliente)')
+      .eq('tipo_servico', 'assistencia')
+      .order('data_servico', { ascending: false }),
+    db.from('relatorios_assistencia')
+      .select('*'),
+  ]);
+
+  if (osErr) {
+    badge.textContent = '⚠ Erro';
+    showToast('Erro ao carregar OS: ' + osErr.message, 'error');
+    document.getElementById('loadingEl').innerHTML = '<div style="color:var(--amber);padding:20px;">Erro ao carregar dados.</div>';
+    return;
+  }
+
+  todasOS = osList || [];
+
+  // Map os_id → relatorio
+  todosRel = {};
+  (relList || []).forEach(r => { todosRel[r.os_id] = r; });
+
+  // Popula select de técnicos
+  const sel = document.getElementById('fTecnico');
+  const tecnMap = new Map();
+  todasOS.forEach(o => {
+    if (o.tecnicos && !tecnMap.has(o.tecnico_id)) {
+      tecnMap.set(o.tecnico_id, o.tecnicos.nome);
+    }
+  });
+  tecnMap.forEach((nome, id) => {
+    sel.innerHTML += `<option value="${id}">${escHtml(nome)}</option>`;
+  });
+
+  badge.textContent = `${todasOS.length} assistências · atualizado`;
+  badge.className = 'live-badge';
+
+  filtrar();
+}
+
+// ── Filtrar ──────────────────────────────────────────────────────
+function filtrar() {
+  const fSt   = document.getElementById('fStatus').value;
+  const fTec  = document.getElementById('fTecnico').value;
+  const fDi   = document.getElementById('fDataInicio').value;
+  const fDf   = document.getElementById('fDataFim').value;
+  const fB    = document.getElementById('fBusca').value.toLowerCase();
+
+  filtrados = todasOS.filter(o => {
+    const rel    = todosRel[o.id];
+    const status = rel ? rel.status : 'pendente';
+    const tid    = String(o.tecnico_id || '');
+    const cliente = (o.obras?.nome_cliente || o.cliente_outro || '').toLowerCase();
+    const servico = (o.servico_planejado || '').toLowerCase();
+    return (!fSt  || status === fSt)
+        && (!fTec || tid === fTec)
+        && (!fDi  || !o.data_servico || o.data_servico >= fDi)
+        && (!fDf  || !o.data_servico || o.data_servico <= fDf)
+        && (!fB   || cliente.includes(fB) || servico.includes(fB) || (o.tecnicos?.nome || '').toLowerCase().includes(fB));
+  });
+
+  pagAtual = 1;
+  renderStats();
+  renderTabela();
+}
+
+// ── Stats ────────────────────────────────────────────────────────
+function renderStats() {
+  const relList = Object.values(todosRel);
+  const total   = todasOS.length;
+  const pend    = todasOS.filter(o => !todosRel[o.id] || todosRel[o.id].status === 'pendente').length;
+  const concl   = todasOS.filter(o => todosRel[o.id]?.status === 'concluido').length;
+  const valMO   = relList.reduce((s,r) => s + (parseFloat(r.valor_mo)||0), 0);
+  const valEq   = relList.reduce((s,r) => s + (parseFloat(r.valor_equip)||0), 0);
+  const valTot  = valMO + valEq;
+
+  document.getElementById('sTotal').textContent  = total;
+  document.getElementById('sPend').textContent    = pend;
+  document.getElementById('sConcl').textContent   = concl;
+  document.getElementById('sValMO').textContent   = brl(valMO);
+  document.getElementById('sValEq').textContent   = brl(valEq);
+  document.getElementById('sValTot').textContent  = brl(valTot);
+}
+
+// ── Tabela ───────────────────────────────────────────────────────
+function renderTabela() {
+  const loading = document.getElementById('loadingEl');
+  const empty   = document.getElementById('emptyEl');
+  const tabela  = document.getElementById('tabelaEl');
+
+  loading.style.display = 'none';
+
+  if (!filtrados.length) {
+    tabela.style.display = 'none';
+    empty.style.display  = 'flex';
+    lucide.createIcons();
+    return;
+  }
+
+  tabela.style.display = 'block';
+  empty.style.display  = 'none';
+
+  const start = (pagAtual - 1) * PER_PAGE;
+  const pagina = filtrados.slice(start, start + PER_PAGE);
+
+  document.getElementById('tbody').innerHTML = pagina.map(o => {
+    const rel     = todosRel[o.id];
+    const status  = rel ? rel.status : 'pendente';
+    const cobrado = rel?.cobrado;
+    const valMO   = rel ? parseFloat(rel.valor_mo) || 0 : null;
+    const valEq   = rel ? parseFloat(rel.valor_equip) || 0 : null;
+    const valTot  = rel ? (valMO + valEq) : null;
+
+    const data = o.data_servico
+      ? new Date(o.data_servico + 'T12:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'2-digit'})
+      : '—';
+    const cliente = escHtml(o.obras?.nome_cliente || o.cliente_outro || '—');
+    const tecnico = escHtml(o.tecnicos?.nome || '—');
+
+    const stBadge = status === 'concluido'
+      ? '<span class="badge badge-concluido">Concluído</span>'
+      : '<span class="badge badge-pendente">Pendente</span>';
+
+    let cobBadge = '—';
+    if (rel) {
+      if (cobrado) {
+        cobBadge = '<span class="badge badge-cobrado">Sim</span>';
+      } else if (rel.foi_garantia) {
+        cobBadge = '<span class="badge badge-garantia">Garantia</span>';
+      } else {
+        cobBadge = '<span class="badge badge-gratuito">Não</span>';
+      }
+    }
+
+    const moStr  = valMO  != null ? brl(valMO)  : '<span style="color:var(--text-3)">—</span>';
+    const eqStr  = valEq  != null ? brl(valEq)  : '<span style="color:var(--text-3)">—</span>';
+    const totStr = valTot != null ? brl(valTot) : '<span style="color:var(--text-3)">—</span>';
+
+    const btnAcao = rel
+      ? `<button class="btn-ver" onclick="abrirModal(${o.id}, event)"><i data-lucide="eye" style="width:12px;height:12px"></i> Ver</button>`
+      : `<button class="btn-finalizar" onclick="abrirModal(${o.id}, event)"><i data-lucide="check-circle" style="width:12px;height:12px"></i> Finalizar</button>`;
+
+    return `<tr onclick="abrirModal(${o.id})">
+      <td class="td-muted">${data}</td>
+      <td>${tecnico}</td>
+      <td>${cliente}</td>
+      <td>${cobBadge}</td>
+      <td>${moStr}</td>
+      <td>${eqStr}</td>
+      <td style="font-weight:600">${totStr}</td>
+      <td>${stBadge}</td>
+      <td class="td-center">${btnAcao}</td>
+    </tr>`;
+  }).join('');
+
+  lucide.createIcons();
+  renderPaginacao();
+}
+
+function renderPaginacao() {
+  const total = Math.ceil(filtrados.length / PER_PAGE);
+  const pag   = document.getElementById('paginacao');
+  if (total <= 1) {
+    pag.innerHTML = `<span class="pag-info">${filtrados.length} assistência(s)</span>`;
+    return;
+  }
+  let html = `<button class="btn-pag" onclick="irPag(${pagAtual-1})" ${pagAtual===1?'disabled':''}>‹</button>`;
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || Math.abs(i - pagAtual) <= 2)
+      html += `<button class="btn-pag ${i===pagAtual?'active':''}" onclick="irPag(${i})">${i}</button>`;
+    else if (Math.abs(i - pagAtual) === 3)
+      html += `<span style="color:var(--text-3);padding:0 4px">…</span>`;
+  }
+  html += `<button class="btn-pag" onclick="irPag(${pagAtual+1})" ${pagAtual===total?'disabled':''}>›</button>`;
+  html += `<span class="pag-info">${filtrados.length} assistências</span>`;
+  pag.innerHTML = html;
+}
+
+function irPag(p) {
+  const total = Math.ceil(filtrados.length / PER_PAGE);
+  if (p < 1 || p > total) return;
+  pagAtual = p;
+  renderTabela();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Modal ─────────────────────────────────────────────────────────
+function abrirModal(osId, evt) {
+  if (evt) evt.stopPropagation();
+
+  const os  = todasOS.find(o => o.id === osId);
+  if (!os) return;
+
+  const rel = todosRel[osId];
+
+  editingOsId  = osId;
+  editingRelId = rel ? rel.id : null;
+  equipamentos = [];
+
+  // Título
+  document.getElementById('modalTitulo').textContent = rel ? 'Relatório de Assistência' : 'Finalizar Assistência';
+
+  // OS info
+  const data = os.data_servico
+    ? new Date(os.data_servico + 'T12:00').toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long', year:'numeric'})
+    : '—';
+  document.getElementById('osInfoBlock').innerHTML = `
+    <div class="os-info-row"><span class="os-info-label">Técnico:</span><span class="os-info-val">${escHtml(os.tecnicos?.nome || '—')}</span></div>
+    <div class="os-info-row"><span class="os-info-label">Data:</span><span class="os-info-val">${data}</span></div>
+    <div class="os-info-row"><span class="os-info-label">Cliente:</span><span class="os-info-val">${escHtml(os.obras?.nome_cliente || os.cliente_outro || '—')}</span></div>
+    ${os.servico_planejado ? `<div class="os-info-row"><span class="os-info-label">Serviço:</span><span class="os-info-val">${escHtml(os.servico_planejado)}</span></div>` : ''}
+  `;
+
+  // Reset form
+  document.querySelectorAll('input[name="cobrado"]').forEach(r => r.checked = false);
+  document.querySelectorAll('input[name="garantia"]').forEach(r => r.checked = false);
+  document.querySelectorAll('input[name="vendeu"]').forEach(r => r.checked = false);
+  document.getElementById('fValorMO').value = '';
+  document.getElementById('fMotivo').value  = '';
+  document.getElementById('fObs').value     = '';
+  document.getElementById('modalErro').style.display = 'none';
+  document.getElementById('fieldValorMO').classList.add('hidden');
+  document.getElementById('fieldNaoCobrado').classList.add('hidden');
+  document.getElementById('fieldMotivo').classList.add('hidden');
+  document.getElementById('fieldEquipamentos').classList.add('hidden');
+  document.getElementById('equipList').innerHTML = '';
+
+  // Fill existing data
+  if (rel) {
+    const cobVal = rel.cobrado ? 'sim' : 'nao';
+    document.querySelector(`input[name="cobrado"][value="${cobVal}"]`).checked = true;
+    onCobradoChange();
+
+    if (rel.cobrado) {
+      document.getElementById('fValorMO').value = rel.valor_mo || '';
+    } else {
+      const garVal = rel.foi_garantia ? 'sim' : 'nao';
+      document.querySelector(`input[name="garantia"][value="${garVal}"]`).checked = true;
+      onGarantiaChange();
+      document.getElementById('fMotivo').value = rel.motivo_nao_cobrar || '';
+    }
+
+    if (Array.isArray(rel.equipamentos) && rel.equipamentos.length > 0) {
+      document.querySelector('input[name="vendeu"][value="sim"]').checked = true;
+      document.getElementById('fieldEquipamentos').classList.remove('hidden');
+      rel.equipamentos.forEach(e => adicionarEquip(e.nome, e.valor));
+    } else {
+      document.querySelector('input[name="vendeu"][value="nao"]').checked = true;
+    }
+
+    document.getElementById('fObs').value = rel.observacoes || '';
+    setStatus(rel.status || 'pendente');
+  } else {
+    setStatus('pendente');
+  }
+
+  document.getElementById('modalOverlay').classList.remove('hidden');
+  lucide.createIcons();
+}
+
+function fecharModal() {
+  document.getElementById('modalOverlay').classList.add('hidden');
+  editingOsId  = null;
+  editingRelId = null;
+}
+
+function fecharModalSeFora(evt) {
+  if (evt.target === document.getElementById('modalOverlay')) fecharModal();
+}
+
+// ── Form handlers ────────────────────────────────────────────────
+function onCobradoChange() {
+  const val = document.querySelector('input[name="cobrado"]:checked')?.value;
+  document.getElementById('fieldValorMO').classList.toggle('hidden', val !== 'sim');
+  document.getElementById('fieldNaoCobrado').classList.toggle('hidden', val !== 'nao');
+}
+
+function onGarantiaChange() {
+  const val = document.querySelector('input[name="garantia"]:checked')?.value;
+  document.getElementById('fieldMotivo').classList.toggle('hidden', val !== 'nao');
+}
+
+function onVendeuChange() {
+  const val = document.querySelector('input[name="vendeu"]:checked')?.value;
+  document.getElementById('fieldEquipamentos').classList.toggle('hidden', val !== 'sim');
+}
+
+function setStatus(s) {
+  statusModal = s;
+  document.getElementById('btnPend').className  = 'status-btn' + (s === 'pendente'  ? ' active-pendente'  : '');
+  document.getElementById('btnConcl').className = 'status-btn' + (s === 'concluido' ? ' active-concluido' : '');
+}
+
+// ── Equipamentos dinâmicos ──────────────────────────────────────
+function adicionarEquip(nome = '', valor = '') {
+  const idx = equipamentos.length;
+  equipamentos.push({ nome: String(nome), valor: parseFloat(valor) || 0 });
+
+  const row = document.createElement('div');
+  row.className = 'equip-row';
+  row.dataset.idx = idx;
+  row.innerHTML = `
+    <input type="text" placeholder="Nome do equipamento" value="${escHtml(String(nome))}" oninput="equipamentos[${idx}].nome=this.value">
+    <input type="number" class="val" placeholder="R$" value="${valor || ''}" min="0" step="0.01" oninput="equipamentos[${idx}].valor=parseFloat(this.value)||0">
+    <button class="equip-remove" onclick="removerEquip(this)" title="Remover">
+      <i data-lucide="x"></i>
+    </button>
+  `;
+  document.getElementById('equipList').appendChild(row);
+  lucide.createIcons();
+}
+
+function removerEquip(btn) {
+  const row = btn.closest('.equip-row');
+  const idx = parseInt(row.dataset.idx);
+  equipamentos.splice(idx, 1);
+  row.remove();
+  // Re-index
+  document.querySelectorAll('.equip-row').forEach((r, i) => {
+    r.dataset.idx = i;
+    r.querySelectorAll('input').forEach((inp, j) => {
+      const field = j === 0 ? 'nome' : 'valor';
+      inp.setAttribute('oninput', `equipamentos[${i}].${field}=${j===1?'parseFloat(this.value)||0':'this.value'}`);
+    });
+    r.querySelector('.equip-remove').setAttribute('onclick', 'removerEquip(this)');
+  });
+}
+
+// ── Salvar relatório ─────────────────────────────────────────────
+async function salvarRelatorio() {
+  const btn    = document.getElementById('btnSalvar');
+  const erroEl = document.getElementById('modalErro');
+  erroEl.style.display = 'none';
+
+  const cobrado = document.querySelector('input[name="cobrado"]:checked')?.value;
+  if (!cobrado) {
+    erroEl.textContent = 'Informe se a assistência foi cobrada.';
+    erroEl.style.display = 'block';
+    return;
+  }
+
+  const isCobrado   = cobrado === 'sim';
+  const valorMO     = isCobrado ? (parseFloat(document.getElementById('fValorMO').value) || 0) : 0;
+  const foiGarantia = !isCobrado && document.querySelector('input[name="garantia"]:checked')?.value === 'sim';
+  const motivo      = !isCobrado && !foiGarantia ? document.getElementById('fMotivo').value.trim() : null;
+  const vendeu      = document.querySelector('input[name="vendeu"]:checked')?.value === 'sim';
+  const equips      = vendeu ? equipamentos.filter(e => e.nome.trim()) : [];
+  const valorEquip  = equips.reduce((s, e) => s + (parseFloat(e.valor) || 0), 0);
+  const obs         = document.getElementById('fObs').value.trim();
+
+  const os = todasOS.find(o => o.id === editingOsId);
+
+  const payload = {
+    os_id:             editingOsId,
+    obra_id:           os?.obra_id || null,
+    tecnico_id:        os?.tecnico_id || null,
+    cliente_outro:     os?.cliente_outro || null,
+    data_servico:      os?.data_servico || null,
+    cobrado:           isCobrado,
+    valor_mo:          valorMO,
+    foi_garantia:      !isCobrado ? foiGarantia : false,
+    motivo_nao_cobrar: motivo || null,
+    equipamentos:      equips,
+    valor_equip:       Math.round(valorEquip * 100) / 100,
+    observacoes:       obs || null,
+    status:            statusModal,
+    updated_at:        new Date().toISOString(),
+  };
+
+  btn.disabled    = true;
+  btn.textContent = 'Salvando...';
+
+  let error;
+  if (editingRelId) {
+    const res = await db.from('relatorios_assistencia').update(payload).eq('id', editingRelId);
+    error = res.error;
+    if (!error) todosRel[editingOsId] = { ...todosRel[editingOsId], ...payload, id: editingRelId };
+  } else {
+    const res = await db.from('relatorios_assistencia').insert({ ...payload, criado_em: new Date().toISOString() }).select('id').single();
+    error = res.error;
+    if (!error && res.data) todosRel[editingOsId] = { ...payload, id: res.data.id, criado_em: new Date().toISOString() };
+  }
+
+  btn.disabled  = false;
+  btn.innerHTML = '<i data-lucide="save"></i> Salvar relatório';
+  lucide.createIcons();
+
+  if (error) {
+    erroEl.textContent   = 'Erro ao salvar: ' + error.message;
+    erroEl.style.display = 'block';
+    return;
+  }
+
+  showToast('Relatório salvo com sucesso!', 'success');
+  fecharModal();
+  renderStats();
+  filtrar();
+}
+</script>
+</body>
+</html>

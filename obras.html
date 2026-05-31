@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-30n -->
+<!-- build: 2026-05-31 -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -680,6 +680,7 @@
       <button class="filtro-btn" data-fase="audio_video" aria-pressed="false">Áudio e Vídeo</button>
       <button class="filtro-btn" data-fase="automacao" aria-pressed="false">Automação</button>
       <button class="filtro-btn" data-fase="em_finalizacao" aria-pressed="false">Em Finalização</button>
+      <button class="filtro-btn" data-fase="entrega_comercial" aria-pressed="false">Entregues</button>
     </div>
     <div class="busca-wrap">
       <i data-lucide="search" class="busca-icon" aria-hidden="true"></i>
@@ -876,7 +877,7 @@
   // ── Renderizar cards ────────────────────────────────────────
   function renderizar() {
     let obras = faseFiltro === 'todas'
-      ? todasObras
+      ? todasObras.filter(o => o.fase_atual !== 'entrega_comercial')
       : todasObras.filter(o => o.fase_atual === faseFiltro);
 
     if (termoBusca) {

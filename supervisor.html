@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-30m -->
+<!-- build: 2026-05-31 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1002,6 +1002,42 @@
   .bh-table .td-h { color:#A5B4FC; font-weight:700; }
   .bh-total-row { background:rgba(79,70,229,.06); }
 
+  /* ===== VIEW TABS ===== */
+  .view-tabs {
+    display: flex;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+
+  .view-tab {
+    padding: 13px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: -1px;
+  }
+
+  .view-tab i { width: 14px; height: 14px; }
+  .view-tab:hover { color: var(--text-2); }
+  .view-tab.active { color: var(--text-1); border-bottom-color: var(--primary); }
+
+  /* Badges vistoria */
+  .badge-cabeamento { background: rgba(245,158,11,0.12); color: #F59E0B; border-color: rgba(245,158,11,0.22); }
+  .badge-eletrica   { background: rgba(251,191,36,0.12); color: #FBBF24; border-color: rgba(251,191,36,0.22); }
+  .badge-audio_video{ background: rgba(167,139,250,0.12);color: #A78BFA; border-color: rgba(167,139,250,0.22); }
+  .badge-automacao  { background: rgba(62,207,142,0.12); color: var(--primary); border-color: rgba(62,207,142,0.22); }
+  .badge-inconformidade { background: rgba(245,158,11,0.1); color: var(--amber-text); border-color: rgba(245,158,11,0.2); }
+
   /* ===== RESPONSIVE ===== */
   .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
@@ -1087,8 +1123,49 @@
   </div>
 </div>
 
-<!-- Filtros -->
-<div class="filtros-bar" role="search" aria-label="Filtros e busca de ordens de serviço">
+<!-- View tabs -->
+<div class="view-tabs">
+  <button class="view-tab active" id="tabBtnOS" onclick="mudarView('os')">
+    <i data-lucide="clipboard-list"></i> Ordens de Serviço
+  </button>
+  <button class="view-tab" id="tabBtnVistoria" onclick="mudarView('vistoria')">
+    <i data-lucide="clipboard-check"></i> Vistorias
+  </button>
+  <button class="view-tab" id="tabBtnAssist" onclick="mudarView('assist')">
+    <i data-lucide="wrench"></i> Assistências
+  </button>
+</div>
+
+<!-- Stats Assistências (hidden) -->
+<div class="stats-row" id="assistStatsRow" style="display:none">
+  <div class="stat-card">
+    <div class="stat-num" id="asTotal" style="color:var(--text-2)">—</div>
+    <div class="stat-label">Total</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="asPend" style="color:var(--amber)">—</div>
+    <div class="stat-label">Pendentes</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="asConcl" style="color:var(--primary)">—</div>
+    <div class="stat-label">Concluídas</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="asValMO" style="color:var(--indigo)">—</div>
+    <div class="stat-label">Hora técnica</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="asValEq" style="color:var(--pink)">—</div>
+    <div class="stat-label">Equipamentos</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="asValTot" style="color:var(--green)">—</div>
+    <div class="stat-label">Total arrecadado</div>
+  </div>
+</div>
+
+<!-- Filtros OS -->
+<div class="filtros-bar" id="osFiltrosBar" role="search" aria-label="Filtros e busca de ordens de serviço">
   <label for="fTecnico" class="sr-only">Técnico</label>
   <select id="fTecnico" onchange="filtrar()" aria-label="Filtrar por técnico">
     <option value="">Todos os técnicos</option>
@@ -1103,9 +1180,10 @@
   </select>
   <label for="fTipo" class="sr-only">Tipo</label>
   <select id="fTipo" onchange="filtrar()" aria-label="Filtrar por tipo">
-    <option value="">Execução + Assistência</option>
+    <option value="">Todos os tipos</option>
     <option value="execucao">Execução</option>
     <option value="assistencia">Assistência</option>
+    <option value="plantao">Plantão</option>
   </select>
   <input type="date" id="fDataInicio" onchange="filtrar()" title="Data início" aria-label="Data de início">
   <input type="date" id="fDataFim" onchange="filtrar()" title="Data fim" aria-label="Data de fim">
@@ -1123,7 +1201,7 @@
   </button>
 </div>
 
-<div class="container">
+<div class="container" id="osContainer">
   <div class="table-wrap">
     <div id="loadingEl" class="loading">
       <span class="spinner"></span>
@@ -1149,6 +1227,117 @@
     <div id="emptyEl" class="empty" style="display:none;">
       <i data-lucide="clipboard-list"></i>
       <p>Nenhuma OS encontrada com os filtros selecionados.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Filtros Vistorias (hidden) -->
+<div class="filtros-bar" id="vistFiltrosBar" style="display:none;" role="search" aria-label="Filtros de vistorias">
+  <label for="vfTipo" class="sr-only">Tipo</label>
+  <select id="vfTipo" onchange="filtrarVistorias()" aria-label="Tipo de vistoria">
+    <option value="">Todos os tipos</option>
+    <option value="cabeamento">Cabeamento</option>
+    <option value="eletrica">Elétrica</option>
+    <option value="audio_video">Áudio e Vídeo</option>
+    <option value="automacao">Automação</option>
+  </select>
+  <label for="vfStatus" class="sr-only">Status</label>
+  <select id="vfStatus" onchange="filtrarVistorias()" aria-label="Status da vistoria">
+    <option value="">Todos os status</option>
+    <option value="pendente">Pendente</option>
+    <option value="concluido">Concluído</option>
+  </select>
+  <label for="vfVistoriador" class="sr-only">Vistoriador</label>
+  <select id="vfVistoriador" onchange="filtrarVistorias()" aria-label="Vistoriador">
+    <option value="">Todos os vistoriadores</option>
+  </select>
+  <input type="date" id="vfDataInicio" onchange="filtrarVistorias()" title="Data início" aria-label="Data de início">
+  <input type="date" id="vfDataFim" onchange="filtrarVistorias()" title="Data fim" aria-label="Data de fim">
+  <div class="input-busca-wrap">
+    <i data-lucide="search" aria-hidden="true"></i>
+    <input type="text" id="vfBusca" placeholder="Buscar obra..." aria-label="Buscar obra" oninput="if(!this._vFn)this._vFn=debounce(filtrarVistorias);this._vFn()">
+  </div>
+</div>
+
+<!-- Container Vistorias (hidden) -->
+<div class="container" id="vistContainer" style="display:none;">
+  <div class="table-wrap">
+    <div id="vistLoadingEl" class="loading">
+      <span class="spinner"></span>
+      Carregando vistorias...
+    </div>
+    <div id="vistTabelaEl" style="display:none;">
+      <table id="tabelaVistorias">
+        <thead>
+          <tr>
+            <th scope="col">Data</th>
+            <th scope="col">Tipo</th>
+            <th scope="col">Obra</th>
+            <th scope="col">Vistoriador</th>
+            <th scope="col">Status</th>
+            <th scope="col">Inconformidade</th>
+            <th scope="col">Mídias</th>
+          </tr>
+        </thead>
+        <tbody id="vistTbody"></tbody>
+      </table>
+      <div class="paginacao" id="vistPaginacao" role="navigation" aria-label="Paginação vistorias"></div>
+    </div>
+    <div id="vistEmptyEl" class="empty" style="display:none;">
+      <i data-lucide="clipboard-check"></i>
+      <p>Nenhuma vistoria encontrada com os filtros selecionados.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Filtros Assistências (hidden) -->
+<div class="filtros-bar" id="assistFiltrosBar" role="search" aria-label="Filtros assistências" style="display:none">
+  <label for="afStatus" class="sr-only">Status</label>
+  <select id="afStatus" onchange="filtrarAssistencias()">
+    <option value="">Todos os status</option>
+    <option value="pendente">Pendente</option>
+    <option value="concluido">Concluído</option>
+  </select>
+  <label for="afTecnico" class="sr-only">Técnico</label>
+  <select id="afTecnico" onchange="filtrarAssistencias()">
+    <option value="">Todos os técnicos</option>
+  </select>
+  <input type="date" id="afDataInicio" onchange="filtrarAssistencias()" title="Data início" aria-label="Data início">
+  <input type="date" id="afDataFim" onchange="filtrarAssistencias()" title="Data fim" aria-label="Data fim">
+  <div class="busca-wrap">
+    <i data-lucide="search" class="busca-icon" aria-hidden="true"></i>
+    <input type="text" id="afBusca" placeholder="Buscar cliente ou técnico..." aria-label="Buscar assistência" oninput="if(!this._afn)this._afn=debounce(filtrarAssistencias);this._afn()">
+  </div>
+</div>
+
+<!-- Container Assistências (hidden) -->
+<div class="container" id="assistContainer" style="display:none;">
+  <div class="table-wrap">
+    <div id="assistLoadingEl" class="loading">
+      <span class="spinner"></span>
+      Carregando assistências...
+    </div>
+    <div id="assistTabelaEl" style="display:none;">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Data</th>
+            <th scope="col">Técnico</th>
+            <th scope="col">Obra / Cliente</th>
+            <th scope="col">Cobrado</th>
+            <th scope="col">Hora técnica</th>
+            <th scope="col">Equipamentos</th>
+            <th scope="col">Total</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody id="assistTbody"></tbody>
+      </table>
+      <div class="paginacao" id="assistPaginacao" role="navigation" aria-label="Paginação assistências"></div>
+    </div>
+    <div id="assistEmptyEl" class="empty" style="display:none;">
+      <i data-lucide="wrench"></i>
+      <p>Nenhuma assistência encontrada.</p>
     </div>
   </div>
 </div>
@@ -1350,8 +1539,12 @@ function formatarHorasBH(minutos) {
 }
 
 function atualizarStats() {
+  const hoje = new Date().toISOString().split('T')[0];
   document.getElementById('sTot').textContent = filtradas.length;
-  document.getElementById('sPend').textContent = filtradas.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
+  document.getElementById('sPend').textContent = filtradas.filter(o =>
+    (!o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada') &&
+    (!o.data_servico || o.data_servico <= hoje)
+  ).length;
   document.getElementById('sAprov').textContent = filtradas.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
   document.getElementById('sFotos').textContent = filtradas.filter(o => o.fotos_urls?.length > 0).length;
   document.getElementById('sNoturna').textContent = filtradas.filter(isAgendaNoturna).length;
@@ -2267,6 +2460,426 @@ async function exportarPDFOS(osId) {
 document.getElementById('modalOS').addEventListener('click', e => {
   if (e.target === document.getElementById('modalOS')) fecharModal();
 });
+
+// ===== VISTORIAS =====
+let todasVistorias = [];
+let filtradas_v    = [];
+let viewMode       = 'os';
+let vistPage       = 1;
+const VIST_PER_PAGE = 25;
+
+let todasAssist    = [];
+let todasRelAssist = {};  // Map os_id → relatorio
+let filtradas_a    = [];
+let assistPage     = 1;
+const ASSIST_PER_PAGE = 25;
+
+const TIPO_VIST_LABELS = {
+  cabeamento:  'Cabeamento',
+  eletrica:    'Elétrica',
+  audio_video: 'Áudio e Vídeo',
+  automacao:   'Automação',
+};
+
+const CHECKLIST_VIST = {
+  cabeamento:  ['Tubulações conforme projeto','Pontos identificados/local correto','Cabeamento passado','Cabos identificados na central','Caixas e conduítes sem obstrução','Infraestrutura permite pendências','Acabamento adequado','Pendências registradas'],
+  eletrica:    ['Obra limpa e segura','Quadro de automação energizado','Rack/quadro de rede com energia','Circuitos conferidos','Equipamentos bem fixados','Aterramento/proteção aparentes','Pendências de hardware/elétrica','Libera continuidade'],
+  audio_video: ['Caixas cortadas conforme projeto','Caixas alinhadas','Central com energia correta','Cabos chegam na central','Cabos identificados','Pontos no local previsto','Pendências de AV','Ambiente liberado'],
+  automacao:   ['Condição para equipamentos finais','Dispositivos bem fixados','Pontos conferem com projeto','Quadro organizado','Rede/energia disponíveis','Cenários pendentes identificados','Instalação com qualidade','Liberada próxima etapa'],
+};
+
+function mudarView(mode) {
+  viewMode = mode;
+  document.getElementById('tabBtnOS').classList.toggle('active', mode === 'os');
+  document.getElementById('tabBtnVistoria').classList.toggle('active', mode === 'vistoria');
+  document.getElementById('tabBtnAssist').classList.toggle('active', mode === 'assist');
+
+  document.getElementById('statsRow').style.display       = mode !== 'assist' ? '' : 'none';
+  document.getElementById('assistStatsRow').style.display = mode === 'assist' ? '' : 'none';
+
+  document.getElementById('osFiltrosBar').style.display    = mode === 'os' ? '' : 'none';
+  document.getElementById('osContainer').style.display     = mode === 'os' ? '' : 'none';
+  document.getElementById('vistFiltrosBar').style.display  = mode === 'vistoria' ? '' : 'none';
+  document.getElementById('vistContainer').style.display   = mode === 'vistoria' ? '' : 'none';
+  document.getElementById('assistFiltrosBar').style.display = mode === 'assist' ? '' : 'none';
+  document.getElementById('assistContainer').style.display  = mode === 'assist' ? '' : 'none';
+
+  if (mode === 'vistoria' && todasVistorias.length === 0) carregarVistorias();
+  if (mode === 'assist' && todasAssist.length === 0) carregarAssistencias();
+  lucide.createIcons();
+}
+
+async function carregarVistorias() {
+  document.getElementById('vistLoadingEl').style.display = 'flex';
+  document.getElementById('vistTabelaEl').style.display  = 'none';
+  document.getElementById('vistEmptyEl').style.display   = 'none';
+
+  const { data, error } = await db
+    .from('relatorios_vistoria')
+    .select('*, obras(nome_cliente, endereco), tecnicos(id, nome)')
+    .order('data_vistoria', { ascending: false });
+
+  document.getElementById('vistLoadingEl').style.display = 'none';
+
+  if (error) {
+    document.getElementById('vistLoadingEl').innerHTML =
+      `<div style="color:var(--red-text);padding:20px;">Erro ao carregar vistorias: ${error.message}</div>`;
+    document.getElementById('vistLoadingEl').style.display = 'flex';
+    return;
+  }
+
+  todasVistorias = data || [];
+
+  // Popula select de vistoriadores (únicos)
+  const sel = document.getElementById('vfVistoriador');
+  const vistos = new Map();
+  todasVistorias.forEach(v => {
+    if (v.tecnicos && !vistos.has(v.vistoriador_id ?? v.tecnicos.id)) {
+      vistos.set(v.vistoriador_id ?? v.tecnicos.id, v.tecnicos.nome);
+    }
+  });
+  vistos.forEach((nome, id) => {
+    sel.innerHTML += `<option value="${id}">${escHtml(nome)}</option>`;
+  });
+
+  filtrarVistorias();
+}
+
+function filtrarVistorias() {
+  const fTipo = document.getElementById('vfTipo').value;
+  const fSt   = document.getElementById('vfStatus').value;
+  const fVis  = document.getElementById('vfVistoriador').value;
+  const fDi   = document.getElementById('vfDataInicio').value;
+  const fDf   = document.getElementById('vfDataFim').value;
+  const fBusca = document.getElementById('vfBusca').value.toLowerCase();
+
+  filtradas_v = todasVistorias.filter(v => {
+    const vid = String(v.vistoriador_id ?? v.tecnicos?.id ?? '');
+    return (!fTipo  || v.tipo_vistoria === fTipo)
+        && (!fSt    || v.status === fSt)
+        && (!fVis   || vid === fVis)
+        && (!fDi    || !v.data_vistoria || v.data_vistoria >= fDi)
+        && (!fDf    || !v.data_vistoria || v.data_vistoria <= fDf)
+        && (!fBusca || (v.obras?.nome_cliente || '').toLowerCase().includes(fBusca));
+  });
+
+  vistPage = 1;
+  renderTabelaVistorias();
+}
+
+function renderTabelaVistorias() {
+  const start  = (vistPage - 1) * VIST_PER_PAGE;
+  const pagina = filtradas_v.slice(start, start + VIST_PER_PAGE);
+
+  if (!filtradas_v.length) {
+    document.getElementById('vistTabelaEl').style.display = 'none';
+    document.getElementById('vistEmptyEl').style.display  = 'block';
+    lucide.createIcons();
+    return;
+  }
+
+  document.getElementById('vistTabelaEl').style.display = 'block';
+  document.getElementById('vistEmptyEl').style.display  = 'none';
+
+  document.getElementById('vistTbody').innerHTML = pagina.map(v => {
+    const data       = v.data_vistoria
+      ? new Date(v.data_vistoria + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' })
+      : '—';
+    const tipoLabel  = TIPO_VIST_LABELS[v.tipo_vistoria] || v.tipo_vistoria || '—';
+    const nMidias    = Array.isArray(v.midias_urls) ? v.midias_urls.length : 0;
+    const stBadge    = v.status === 'concluido'
+      ? '<span class="badge badge-aprovada">Concluído</span>'
+      : '<span class="badge badge-pendente">Pendente</span>';
+    const incBadge   = v.inconformidade
+      ? '<span class="badge badge-inconformidade">Sim</span>'
+      : '<span style="color:var(--text-3)">—</span>';
+
+    return `<tr style="cursor:pointer;" onclick="verVistoria(${v.id})">
+      <td class="td-muted">${data}</td>
+      <td><span class="badge badge-${v.tipo_vistoria || ''}">${escHtml(tipoLabel)}</span></td>
+      <td title="${escHtml(v.obras?.endereco || '')}">${escHtml(v.obras?.nome_cliente || '—')}</td>
+      <td>${escHtml(v.tecnicos?.nome || '—')}</td>
+      <td>${stBadge}</td>
+      <td>${incBadge}</td>
+      <td class="td-center">${nMidias > 0
+        ? `<span class="fotos-chip"><i data-lucide="image"></i>${nMidias}</span>`
+        : '<span style="color:var(--text-3)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  lucide.createIcons();
+
+  // Paginação
+  const totalPages = Math.ceil(filtradas_v.length / VIST_PER_PAGE);
+  const pag = document.getElementById('vistPaginacao');
+  if (totalPages <= 1) {
+    pag.innerHTML = `<span class="pag-info">${filtradas_v.length} vistoria(s)</span>`;
+    return;
+  }
+  let html = `<button class="btn-pag" onclick="irPaginaVist(${vistPage - 1})" ${vistPage === 1 ? 'disabled' : ''}>‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || Math.abs(i - vistPage) <= 2)
+      html += `<button class="btn-pag ${i === vistPage ? 'active' : ''}" onclick="irPaginaVist(${i})">${i}</button>`;
+    else if (Math.abs(i - vistPage) === 3)
+      html += `<span style="color:var(--text-3);padding:0 4px;">…</span>`;
+  }
+  html += `<button class="btn-pag" onclick="irPaginaVist(${vistPage + 1})" ${vistPage === totalPages ? 'disabled' : ''}>›</button>`;
+  html += `<span class="pag-info">${filtradas_v.length} vistorias</span>`;
+  pag.innerHTML = html;
+}
+
+function irPaginaVist(p) {
+  const total = Math.ceil(filtradas_v.length / VIST_PER_PAGE);
+  if (p < 1 || p > total) return;
+  vistPage = p;
+  renderTabelaVistorias();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── ASSISTÊNCIAS ───────────────────────────────────────────────
+function brlA(v) {
+  v = parseFloat(v) || 0;
+  if (v >= 1_000_000) return 'R$ ' + (v/1_000_000).toFixed(2).replace('.',',') + 'M';
+  if (v >= 1_000)     return 'R$ ' + (v/1_000).toFixed(0) + 'k';
+  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+
+async function carregarAssistencias() {
+  document.getElementById('assistLoadingEl').style.display = 'flex';
+  document.getElementById('assistTabelaEl').style.display  = 'none';
+  document.getElementById('assistEmptyEl').style.display   = 'none';
+
+  const [{ data: osList, error: osErr }, { data: relList }] = await Promise.all([
+    db.from('ordens_de_servico')
+      .select('id, tecnico_id, obra_id, cliente_outro, data_servico, servico_planejado, tecnicos(id, nome), obras(nome_cliente)')
+      .eq('tipo_servico', 'assistencia')
+      .order('data_servico', { ascending: false }),
+    db.from('relatorios_assistencia').select('*'),
+  ]);
+
+  document.getElementById('assistLoadingEl').style.display = 'none';
+
+  if (osErr) {
+    document.getElementById('assistLoadingEl').innerHTML =
+      `<div style="color:var(--red-text,#f87171);padding:20px;">Erro: ${osErr.message}</div>`;
+    document.getElementById('assistLoadingEl').style.display = 'flex';
+    return;
+  }
+
+  todasAssist = osList || [];
+  todasRelAssist = {};
+  (relList || []).forEach(r => { todasRelAssist[r.os_id] = r; });
+
+  // Popula select de técnicos
+  const sel = document.getElementById('afTecnico');
+  if (sel.options.length <= 1) {
+    const tMap = new Map();
+    todasAssist.forEach(o => {
+      if (o.tecnicos && !tMap.has(o.tecnico_id)) tMap.set(o.tecnico_id, o.tecnicos.nome);
+    });
+    tMap.forEach((nome, id) => { sel.innerHTML += `<option value="${id}">${escHtml(nome)}</option>`; });
+  }
+
+  renderAssistStats();
+  filtrarAssistencias();
+}
+
+function renderAssistStats() {
+  const relList = Object.values(todasRelAssist);
+  document.getElementById('asTotal').textContent  = todasAssist.length;
+  document.getElementById('asPend').textContent   = todasAssist.filter(o => !todasRelAssist[o.id] || todasRelAssist[o.id].status === 'pendente').length;
+  document.getElementById('asConcl').textContent  = todasAssist.filter(o => todasRelAssist[o.id]?.status === 'concluido').length;
+  document.getElementById('asValMO').textContent  = brlA(relList.reduce((s,r) => s + (parseFloat(r.valor_mo)||0), 0));
+  document.getElementById('asValEq').textContent  = brlA(relList.reduce((s,r) => s + (parseFloat(r.valor_equip)||0), 0));
+  document.getElementById('asValTot').textContent = brlA(relList.reduce((s,r) => s + (parseFloat(r.valor_mo)||0) + (parseFloat(r.valor_equip)||0), 0));
+}
+
+function filtrarAssistencias() {
+  const fSt  = document.getElementById('afStatus').value;
+  const fTec = document.getElementById('afTecnico').value;
+  const fDi  = document.getElementById('afDataInicio').value;
+  const fDf  = document.getElementById('afDataFim').value;
+  const fB   = document.getElementById('afBusca').value.toLowerCase();
+
+  filtradas_a = todasAssist.filter(o => {
+    const rel    = todasRelAssist[o.id];
+    const status = rel ? rel.status : 'pendente';
+    const tid    = String(o.tecnico_id || '');
+    const cliente = (o.obras?.nome_cliente || o.cliente_outro || '').toLowerCase();
+    return (!fSt  || status === fSt)
+        && (!fTec || tid === fTec)
+        && (!fDi  || !o.data_servico || o.data_servico >= fDi)
+        && (!fDf  || !o.data_servico || o.data_servico <= fDf)
+        && (!fB   || cliente.includes(fB) || (o.tecnicos?.nome || '').toLowerCase().includes(fB));
+  });
+
+  assistPage = 1;
+  renderTabelaAssistencias();
+}
+
+function renderTabelaAssistencias() {
+  const start  = (assistPage - 1) * ASSIST_PER_PAGE;
+  const pagina = filtradas_a.slice(start, start + ASSIST_PER_PAGE);
+
+  if (!filtradas_a.length) {
+    document.getElementById('assistTabelaEl').style.display = 'none';
+    document.getElementById('assistEmptyEl').style.display  = 'block';
+    lucide.createIcons();
+    return;
+  }
+
+  document.getElementById('assistTabelaEl').style.display = 'block';
+  document.getElementById('assistEmptyEl').style.display  = 'none';
+
+  document.getElementById('assistTbody').innerHTML = pagina.map(o => {
+    const rel    = todasRelAssist[o.id];
+    const status = rel ? rel.status : 'pendente';
+    const valMO  = rel ? parseFloat(rel.valor_mo) || 0 : null;
+    const valEq  = rel ? parseFloat(rel.valor_equip) || 0 : null;
+    const valTot = rel ? (valMO + valEq) : null;
+
+    const data = o.data_servico
+      ? new Date(o.data_servico + 'T12:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'2-digit'})
+      : '—';
+
+    const stBadge = status === 'concluido'
+      ? '<span class="badge badge-aprovada">Concluído</span>'
+      : '<span class="badge badge-pendente">Pendente</span>';
+
+    let cobBadge = '<span style="color:var(--text-3)">—</span>';
+    if (rel) {
+      cobBadge = rel.cobrado
+        ? '<span class="badge" style="background:var(--indigo-dim,rgba(129,140,248,.12));color:var(--indigo)">Sim</span>'
+        : rel.foi_garantia
+          ? '<span class="badge" style="background:rgba(82,82,91,.2);color:var(--text-3)">Garantia</span>'
+          : '<span class="badge" style="background:var(--pink-dim,rgba(244,114,182,.12));color:var(--pink)">Não</span>';
+    }
+
+    const moStr  = valMO  != null ? brlA(valMO)  : '<span style="color:var(--text-3)">—</span>';
+    const eqStr  = valEq  != null ? brlA(valEq)  : '<span style="color:var(--text-3)">—</span>';
+    const totStr = valTot != null ? `<strong>${brlA(valTot)}</strong>` : '<span style="color:var(--text-3)">—</span>';
+
+    return `<tr>
+      <td class="td-muted">${data}</td>
+      <td>${escHtml(o.tecnicos?.nome || '—')}</td>
+      <td>${escHtml(o.obras?.nome_cliente || o.cliente_outro || '—')}</td>
+      <td>${cobBadge}</td>
+      <td>${moStr}</td>
+      <td>${eqStr}</td>
+      <td>${totStr}</td>
+      <td>${stBadge}</td>
+    </tr>`;
+  }).join('');
+
+  lucide.createIcons();
+
+  const totalPages = Math.ceil(filtradas_a.length / ASSIST_PER_PAGE);
+  const pag = document.getElementById('assistPaginacao');
+  if (totalPages <= 1) {
+    pag.innerHTML = `<span class="pag-info">${filtradas_a.length} assistência(s)</span>`;
+    return;
+  }
+  let html = `<button class="btn-pag" onclick="irPaginaAssist(${assistPage - 1})" ${assistPage === 1 ? 'disabled' : ''}>‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || Math.abs(i - assistPage) <= 2)
+      html += `<button class="btn-pag ${i === assistPage ? 'active' : ''}" onclick="irPaginaAssist(${i})">${i}</button>`;
+    else if (Math.abs(i - assistPage) === 3)
+      html += `<span style="color:var(--text-3);padding:0 4px">…</span>`;
+  }
+  html += `<button class="btn-pag" onclick="irPaginaAssist(${assistPage + 1})" ${assistPage === totalPages ? 'disabled' : ''}>›</button>`;
+  html += `<span class="pag-info">${filtradas_a.length} assistências</span>`;
+  pag.innerHTML = html;
+}
+
+function irPaginaAssist(p) {
+  const total = Math.ceil(filtradas_a.length / ASSIST_PER_PAGE);
+  if (p < 1 || p > total) return;
+  assistPage = p;
+  renderTabelaAssistencias();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function verVistoria(id) {
+  const v = todasVistorias.find(x => x.id === id);
+  if (!v) return;
+
+  const data       = v.data_vistoria
+    ? new Date(v.data_vistoria + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
+    : '—';
+  const tipoLabel  = TIPO_VIST_LABELS[v.tipo_vistoria] || v.tipo_vistoria || '—';
+  const checkLabels = CHECKLIST_VIST[v.tipo_vistoria] || [];
+  const checklist  = v.checklist || {};
+
+  const checksHtml = Object.keys(checklist).length
+    ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:5px;margin-top:6px;">
+        ${Object.entries(checklist).map(([idx, ok]) =>
+          `<div style="color:${ok ? 'var(--primary)' : 'var(--text-3)'};font-size:12px;">
+            ${ok ? '✓' : '○'} ${escHtml(checkLabels[Number(idx)] || `Item ${Number(idx) + 1}`)}
+          </div>`
+        ).join('')}
+       </div>`
+    : '';
+
+  const midias = Array.isArray(v.midias_urls) ? v.midias_urls : [];
+  const fotosMidias = midias.filter(m => m.tipo !== 'video').map(m => m.url);
+  const midiasHtml = midias.length
+    ? `<div class="fotos-section">
+        <div class="fotos-section-label">Fotos e vídeos (${midias.length})</div>
+        <div class="fotos-grid">
+          ${midias.map((m, i) => m.tipo === 'video'
+            ? `<div class="foto-item"><video src="${escHtml(m.url)}" controls style="width:100%;height:100%;object-fit:cover;"></video></div>`
+            : `<div class="foto-item" onclick="abrirLightbox(${fotosMidias.indexOf(m.url)}, ${JSON.stringify(fotosMidias).replace(/</g,'\\u003c')})">
+                 <img src="${escHtml(m.url)}" alt="mídia ${i + 1}" loading="lazy">
+                 <a class="foto-link-overlay" href="${escHtml(m.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+                   <i data-lucide="external-link"></i>
+                 </a>
+               </div>`
+          ).join('')}
+        </div>
+       </div>`
+    : '';
+
+  const DV = (label, valor, full = false) => valor
+    ? `<div class="detail-item ${full ? 'full' : ''}">
+         <label>${escHtml(label)}</label>
+         <span style="white-space:pre-line">${escHtml(String(valor))}</span>
+       </div>`
+    : '';
+
+  const html = `
+    <div class="detail-grid">
+      ${DV('Tipo de vistoria', tipoLabel)}
+      ${DV('Data', data)}
+      ${DV('Vistoriador', v.tecnicos?.nome)}
+      ${DV('Obra', v.obras?.nome_cliente)}
+      <div class="detail-item">
+        <label>Status</label>
+        <span><span class="badge badge-${v.status === 'concluido' ? 'aprovada' : 'pendente'}">
+          ${v.status === 'concluido' ? 'Concluído' : 'Pendente'}
+        </span></span>
+      </div>
+      ${v.inconformidade
+        ? `<div class="detail-item"><label>Inconformidade</label>
+           <span style="color:var(--amber-text)">${escHtml(v.descricao_inconformidade || 'Sim')}</span></div>`
+        : ''}
+      ${DV('Objetivo', v.objetivo_vistoria, true)}
+      ${DV('Situação atual da obra', v.situacao_atual_obra, true)}
+      ${DV('Pontos positivos', v.pontos_positivos, true)}
+      ${DV('Pontos de atenção', v.pontos_atencao, true)}
+      ${checksHtml
+        ? `<div class="detail-item full"><label>Checklist</label>${checksHtml}</div>`
+        : ''}
+    </div>
+    ${midiasHtml}`;
+
+  document.getElementById('modalTitulo').innerHTML =
+    `<span style="font-size:0.75em;font-weight:500;color:var(--text-3);display:block;margin-bottom:2px;">
+       ${escHtml(tipoLabel)} · ${escHtml(v.obras?.nome_cliente || 'Obra')}
+     </span>Relatório de Vistoria`;
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalOS').classList.add('open');
+  lucide.createIcons();
+}
 </script>
 <script>lucide.createIcons(); applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>
