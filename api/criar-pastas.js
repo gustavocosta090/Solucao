@@ -1,10 +1,10 @@
 // api/criar-pastas.js — cria estrutura de pastas SharePoint para todos os clientes
-// Endpoint de uso único, protegido por token.
-// Chamada: POST /api/criar-pastas  com header  Authorization: Bearer cria2026pastas
+// Endpoint de uso administrativo, protegido por token em variável de ambiente.
+// Chamada: POST /api/criar-pastas com header Authorization: Bearer <CRIAR_PASTAS_TOKEN>
 
 import { getToken, getSiteId } from './_sharepoint.js';
 
-const TOKEN_ACESSO  = 'cria2026pastas';
+const TOKEN_ACESSO  = process.env.CRIAR_PASTAS_TOKEN;
 const SUPABASE_URL  = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
 // Usa service role key (bypassa RLS) se disponível, senão cai na anon key
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY ||
@@ -62,7 +62,11 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST')   return res.status(405).json({ erro: 'Método não permitido' });
 
-  // Proteção simples por token
+  if (!TOKEN_ACESSO) {
+    return res.status(503).json({ erro: 'CRIAR_PASTAS_TOKEN não configurado no servidor' });
+  }
+
+  // Proteção simples por token administrativo
   const auth = req.headers.authorization || '';
   if (auth.replace('Bearer ', '').trim() !== TOKEN_ACESSO) {
     return res.status(401).json({ erro: 'Token inválido' });

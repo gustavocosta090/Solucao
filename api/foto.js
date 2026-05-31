@@ -4,11 +4,29 @@
 
 import { getToken, getSiteId } from './_sharepoint.js';
 
+function caminhoFotoSeguro(filePath) {
+  const path = String(filePath || '').trim();
+  if (!path.startsWith('Obras e Clientes ')) return false;
+  if (path.includes('..')) return false;
+  if (/[\\:*?"<>|#%~]/.test(path)) return false;
+
+  const partes = path.split('/').filter(Boolean);
+  if (partes.length < 5) return false;
+
+  const area = partes[2];
+  const nomeArquivo = partes[partes.length - 1] || '';
+  const ext = nomeArquivo.split('.').pop()?.toLowerCase();
+
+  if (!['Fotos', 'Ordens de Serviço'].includes(area)) return false;
+  return ['jpg', 'jpeg', 'png', 'webp', 'heic', 'pdf'].includes(ext);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
 
   const filePath = req.query.path;
   if (!filePath) return res.status(400).send('path obrigatório');
+  if (!caminhoFotoSeguro(filePath)) return res.status(400).send('path inválido');
 
   try {
     const token  = await getToken();

@@ -288,6 +288,7 @@
       <select id="f-tipo-servico">
         <option value="execucao">Execução</option>
         <option value="assistencia">Assistência</option>
+        <option value="plantao">Plantão</option>
       </select>
     </div>
     <div class="form-group">
@@ -297,6 +298,50 @@
     <div class="form-group">
       <label>O que foi realizado</label>
       <textarea id="f-realizado" rows="3" placeholder="Descreva o que foi feito..."></textarea>
+    </div>
+    <div id="plantao-bloco" style="display:none;margin-top:12px;border:1px solid var(--border);border-radius:10px;padding:14px;background:rgba(62,207,142,0.05);">
+      <div class="secao-titulo" style="margin-bottom:12px;">Atendimento de plantão</div>
+      <div class="form-group">
+        <label>Atendeu algum cliente?</label>
+        <select id="f-plantao-atendeu" onchange="atualizarPlantaoCampos()">
+          <option value="nao">Não</option>
+          <option value="sim">Sim</option>
+        </select>
+      </div>
+      <div id="plantao-detalhes" style="display:none">
+        <div class="form-group">
+          <label>Nome do cliente atendido</label>
+          <input type="text" id="f-plantao-cliente" placeholder="Nome do cliente..."/>
+        </div>
+        <div class="form-group">
+          <label>Foi remoto ou presencial?</label>
+          <select id="f-plantao-modalidade">
+            <option value="remoto">Remoto</option>
+            <option value="presencial">Presencial</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Foi possível resolver o problema?</label>
+          <select id="f-plantao-resolvido" onchange="atualizarPlantaoCampos()">
+            <option value="sim">Sim</option>
+            <option value="nao">Não</option>
+          </select>
+        </div>
+        <div class="form-group" id="plantao-agenda-tecnica-wrap" style="display:none">
+          <label>Precisa marcar agenda técnica para resolver o cliente?</label>
+          <select id="f-plantao-agenda-tecnica">
+            <option value="nao">Não</option>
+            <option value="sim">Sim</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Precisa trocar algum equipamento?</label>
+          <select id="f-plantao-troca-equipamento">
+            <option value="nao">Não</option>
+            <option value="sim">Sim</option>
+          </select>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -425,6 +470,7 @@ let osSelecionadaId        = null;  // ID da OS pendente existente (para UPDATE)
 let tecnicos               = [];
 let fotosSelecionadas      = [];
 let equipeFull             = []; // todos os IDs da equipe do agendamento
+let osEhPlantao            = false;
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
   const { data: { session } } = await db.auth.getSession();
@@ -722,6 +768,7 @@ async function abrirFormulario(agId, osId = null) {
       const obra     = ag.obras;
       const cliente  = obra?.nome_cliente || ag.cliente_outro || '—';
       const endereco = ag.endereco_outro || obra?.endereco || '';
+      osEhPlantao = ag.cliente_outro === 'Plantão de automação e rede';
 
       document.getElementById('os-cliente').textContent = cliente;
       document.getElementById('os-meta').textContent =
@@ -741,6 +788,12 @@ async function abrirFormulario(agId, osId = null) {
 
       // Pré-preenche serviço planejado
       if (ag.servico) document.getElementById('f-planejado').value = ag.servico;
+      if (osEhPlantao) {
+        document.getElementById('f-tipo-servico').value = 'plantao';
+        document.getElementById('f-planejado').value = 'Plantão de automação e rede';
+        document.getElementById('plantao-bloco').style.display = 'block';
+        document.getElementById('f-realizado').placeholder = 'Resumo do atendimento de plantão...';
+      }
     }
   }
 
@@ -756,6 +809,11 @@ async function abrirFormulario(agId, osId = null) {
       if (os.sistema_automacao)   document.getElementById('f-automacao').value    = os.sistema_automacao;
       if (os.horario_inicio)      document.getElementById('f-inicio').value       = os.horario_inicio.slice(0,5);
       if (os.horario_fim)         document.getElementById('f-fim').value          = os.horario_fim.slice(0,5);
+      if (os.tipo_servico === 'plantao') {
+        osEhPlantao = true;
+        document.getElementById('f-tipo-servico').value = 'plantao';
+        document.getElementById('plantao-bloco').style.display = 'block';
+      }
     }
   }
 
@@ -803,8 +861,9 @@ function toggle(campo, valor) {
 }
 
 function resetarForm() {
+  osEhPlantao = false;
   ['prob','mat','ret','eqp'].forEach(c => toggle(c,'nao'));
-  ['f-planejado','f-realizado','f-problema','f-material','f-retorno','f-equipamentos','f-proximas','f-obs']
+  ['f-planejado','f-realizado','f-problema','f-material','f-retorno','f-equipamentos','f-proximas','f-obs','f-plantao-cliente']
     .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   document.getElementById('f-tipo-servico').value        = 'execucao';
   document.getElementById('f-automacao').value          = '';
@@ -820,6 +879,40 @@ function resetarForm() {
   equipeFull = [];
   fotosSelecionadas = [];
   document.getElementById('fotos-grid').innerHTML = '';
+  document.getElementById('plantao-bloco').style.display = 'none';
+  document.getElementById('plantao-detalhes').style.display = 'none';
+  document.getElementById('f-plantao-atendeu').value = 'nao';
+  document.getElementById('f-plantao-modalidade').value = 'remoto';
+  document.getElementById('f-plantao-resolvido').value = 'sim';
+  document.getElementById('f-plantao-agenda-tecnica').value = 'nao';
+  document.getElementById('f-plantao-troca-equipamento').value = 'nao';
+}
+
+function atualizarPlantaoCampos() {
+  const atendeu = document.getElementById('f-plantao-atendeu')?.value === 'sim';
+  const resolvido = document.getElementById('f-plantao-resolvido')?.value !== 'nao';
+  document.getElementById('plantao-detalhes').style.display = atendeu ? 'block' : 'none';
+  document.getElementById('plantao-agenda-tecnica-wrap').style.display = (atendeu && !resolvido) ? 'block' : 'none';
+}
+
+function montarResumoPlantao(textoManual) {
+  const atendeu = document.getElementById('f-plantao-atendeu')?.value === 'sim';
+  if (!atendeu) {
+    return textoManual || 'Plantão realizado sem atendimento a cliente.';
+  }
+  const cliente = document.getElementById('f-plantao-cliente')?.value.trim();
+  const modalidade = document.getElementById('f-plantao-modalidade')?.value || 'remoto';
+  const resolvido = document.getElementById('f-plantao-resolvido')?.value === 'sim';
+  const agendaTecnica = document.getElementById('f-plantao-agenda-tecnica')?.value === 'sim';
+  const troca = document.getElementById('f-plantao-troca-equipamento')?.value === 'sim';
+  return [
+    `Cliente atendido: ${cliente}`,
+    `Atendimento: ${modalidade === 'presencial' ? 'Presencial' : 'Remoto'}`,
+    `Problema resolvido: ${resolvido ? 'Sim' : 'Não'}`,
+    !resolvido ? `Precisa marcar agenda técnica: ${agendaTecnica ? 'Sim' : 'Não'}` : null,
+    `Precisa trocar equipamento: ${troca ? 'Sim' : 'Não'}`,
+    textoManual ? `Resumo: ${textoManual}` : null,
+  ].filter(Boolean).join('\n');
 }
 
 // ── Upload de fotos ──────────────────────────────────────────
@@ -875,6 +968,15 @@ function equipeNomePasta(numeroOS, equipeNome = '') {
     : `Equipe ${cod}`;
 }
 
+async function headersUploadProtegido() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session?.access_token) throw new Error('Sessão expirada. Faça login novamente.');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${session.access_token}`,
+  };
+}
+
 // Faz upload de todas as fotos para o SharePoint via proxy Vercel
 // Retorna URLs do tipo /api/foto?path=... que funcionam no supervisor/obra_detail
 // Estrutura: Obras e Clientes {ano}/{Cliente}/Fotos/Equipe {cod}/{Cliente} {numeroOS} - foto 01.jpg
@@ -897,7 +999,7 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
       // 1. Pede sessão de upload ao proxy
       const initRes = await fetch('/api/upload', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await headersUploadProtegido(),
         body:    JSON.stringify({ path: folderPath, filename, contentType: f.file.type }),
       });
       if (!initRes.ok) throw new Error(await initRes.text());
@@ -1040,7 +1142,7 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, equipeNo
   const uploadArquivo = async (blob, filename) => {
     const initRes = await fetch('/api/upload', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await headersUploadProtegido(),
       body:    JSON.stringify({
         path:        folderPath,
         filename,
@@ -1087,7 +1189,17 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, equipeNo
 // ── Enviar OS ─────────────────────────────────────────────────
 async function enviarOS() {
   // ── Validação obrigatória ────────────────────────────────────
-  const realizado = (document.getElementById('f-realizado')?.value || '').trim();
+  const realizadoManual = (document.getElementById('f-realizado')?.value || '').trim();
+  if (osEhPlantao) {
+    const atendeu = document.getElementById('f-plantao-atendeu').value === 'sim';
+    const clientePlantao = document.getElementById('f-plantao-cliente').value.trim();
+    if (atendeu && !clientePlantao) {
+      showToast('Informe o nome do cliente atendido no plantão.', 'warning');
+      document.getElementById('f-plantao-cliente')?.focus();
+      return;
+    }
+  }
+  const realizado = osEhPlantao ? montarResumoPlantao(realizadoManual) : realizadoManual;
   if (!realizado) {
     showToast('Preencha o campo "O que foi realizado" antes de enviar.', 'warning');
     document.getElementById('f-realizado')?.focus();
@@ -1135,20 +1247,24 @@ async function enviarOS() {
       auxiliar2_id:        pid2                                   || null,
       auxiliar3_id:        pid3                                   || null,
       consultor_id:        ag?.obras?.consultores?.id             || null,
-      tipo_servico:        document.getElementById('f-tipo-servico')?.value || 'execucao',
+      tipo_servico:        osEhPlantao ? 'plantao' : (document.getElementById('f-tipo-servico')?.value || 'execucao'),
       horario_inicio:      document.getElementById('f-inicio').value    || null,
       horario_fim:         document.getElementById('f-fim').value       || null,
       servico_planejado:   document.getElementById('f-planejado').value || null,
-      servicos_realizados: document.getElementById('f-realizado').value || null,
-      houve_problema:      toggleState.prob === 'sim',
-      descricao_problema:  toggleState.prob === 'sim' ? document.getElementById('f-problema').value : null,
+      servicos_realizados: realizado || null,
+      houve_problema:      osEhPlantao ? document.getElementById('f-plantao-resolvido')?.value === 'nao' : toggleState.prob === 'sim',
+      descricao_problema:  osEhPlantao
+        ? (document.getElementById('f-plantao-resolvido')?.value === 'nao' ? 'Atendimento de plantão não resolvido.' : null)
+        : (toggleState.prob === 'sim' ? document.getElementById('f-problema').value : null),
       faltou_material:     toggleState.mat  === 'sim',
       lista_material:      toggleState.mat  === 'sim' ? document.getElementById('f-material').value  : null,
       retornou_material:   toggleState.ret  === 'sim',
       lista_retorno:       toggleState.ret  === 'sim' ? document.getElementById('f-retorno').value   : null,
       sistema_automacao:   document.getElementById('f-automacao').value || null,
-      retorno_equipamento: toggleState.eqp  === 'sim',
-      lista_equipamentos:  toggleState.eqp  === 'sim' ? document.getElementById('f-equipamentos').value : null,
+      retorno_equipamento: osEhPlantao ? document.getElementById('f-plantao-troca-equipamento')?.value === 'sim' : toggleState.eqp  === 'sim',
+      lista_equipamentos:  osEhPlantao
+        ? (document.getElementById('f-plantao-troca-equipamento')?.value === 'sim' ? 'Precisa trocar equipamento.' : null)
+        : (toggleState.eqp  === 'sim' ? document.getElementById('f-equipamentos').value : null),
       proximas_atividades: document.getElementById('f-proximas').value  || null,
       observacoes:         document.getElementById('f-obs').value       || null,
       fotos_urls:          null,   // atualizado logo após o upload das fotos
@@ -1215,7 +1331,8 @@ async function enviarOS() {
         equipeNome     = teRow?.equipes?.nome || '';   // ex: "Elétrica", "Cabeamento"
         const dt = payload.data_servico || new Date().toISOString().slice(0,10);
         const [y, m] = dt.split('-');
-        const cod = EQUIPE_COD[equipeId] || '00';
+        const cod = osEhPlantao ? '09' : (EQUIPE_COD[equipeId] || '00');
+        if (osEhPlantao) equipeNome = 'Plantão';
         const numeroOS = `${y}-${m}-${cod}-${String(savedOsId).padStart(3,'0')}`;
         await db.from('ordens_de_servico').update({ numero_os: numeroOS }).eq('id', savedOsId);
         document.getElementById('os-numero').textContent = numeroOS;

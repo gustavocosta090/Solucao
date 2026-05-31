@@ -1,19 +1,19 @@
 /* Solução shell — redesign global 2026-05-30 */
 :root {
-  --bg: #07090b !important;
-  --surface-1: rgba(15, 19, 22, 0.84) !important;
-  --surface-2: rgba(22, 27, 31, 0.78) !important;
-  --surface-3: rgba(28, 34, 39, 0.82) !important;
-  --primary: #5eead4 !important;
-  --primary-hover: #2dd4bf !important;
-  --primary-muted: rgba(94, 234, 212, 0.11) !important;
-  --secondary: #38bdf8 !important;
-  --text-1: #f8fafc !important;
-  --text-2: #a8b3bd !important;
-  --text-3: #64707b !important;
-  --border: rgba(148, 163, 184, 0.14) !important;
-  --border-strong: rgba(148, 163, 184, 0.24) !important;
-  --border-focus: rgba(94, 234, 212, 0.46) !important;
+  --bg: #0A0A0A !important;
+  --surface-1: rgba(17, 17, 17, 0.88) !important;
+  --surface-2: rgba(22, 22, 22, 0.86) !important;
+  --surface-3: rgba(27, 27, 27, 0.88) !important;
+  --primary: #3ECF8E !important;
+  --primary-hover: #2EBF7E !important;
+  --primary-muted: rgba(62, 207, 142, 0.10) !important;
+  --secondary: #4F46E5 !important;
+  --text-1: #FFFFFF !important;
+  --text-2: #A1A1AA !important;
+  --text-3: #52525B !important;
+  --border: rgba(255, 255, 255, 0.08) !important;
+  --border-strong: rgba(255, 255, 255, 0.12) !important;
+  --border-focus: rgba(62, 207, 142, 0.42) !important;
   --radius: 10px !important;
   --radius-card: 14px !important;
   --radius-input: 9px !important;
@@ -49,7 +49,7 @@
 
 *, *::before, *::after {
   scrollbar-width: thin;
-  scrollbar-color: rgba(94, 234, 212, 0.32) transparent;
+  scrollbar-color: rgba(62, 207, 142, 0.32) transparent;
 }
 
 html {
@@ -58,9 +58,9 @@ html {
 
 body {
   background:
-    radial-gradient(circle at 8% 8%, rgba(94, 234, 212, 0.12), transparent 30%),
-    radial-gradient(circle at 78% 12%, rgba(56, 189, 248, 0.12), transparent 34%),
-    linear-gradient(135deg, #07090b 0%, #0b1115 46%, #080a0c 100%) !important;
+    radial-gradient(circle at 8% 8%, rgba(62, 207, 142, 0.10), transparent 30%),
+    radial-gradient(circle at 78% 12%, rgba(79, 70, 229, 0.08), transparent 34%),
+    linear-gradient(135deg, #0A0A0A 0%, #101010 46%, #0A0A0A 100%) !important;
   color: var(--text-1) !important;
   letter-spacing: 0 !important;
 }
@@ -93,7 +93,7 @@ body:not(.login-modernized) {
   flex-direction: column !important;
   align-items: stretch !important;
   gap: 14px !important;
-  background: linear-gradient(180deg, rgba(10, 14, 17, 0.94), rgba(12, 17, 20, 0.78)) !important;
+  background: linear-gradient(180deg, rgba(17, 17, 17, 0.96), rgba(12, 12, 12, 0.84)) !important;
   border-right: 1px solid var(--border) !important;
   border-bottom: 0 !important;
   box-shadow: 18px 0 70px rgba(0, 0, 0, 0.26) !important;
@@ -176,8 +176,8 @@ body:not(.login-modernized) {
 
 .topbar-links a.active {
   color: var(--text-1) !important;
-  background: linear-gradient(135deg, rgba(94, 234, 212, 0.16), rgba(56, 189, 248, 0.08)) !important;
-  border-color: rgba(94, 234, 212, 0.26) !important;
+  background: linear-gradient(135deg, rgba(62, 207, 142, 0.16), rgba(62, 207, 142, 0.06)) !important;
+  border-color: rgba(62, 207, 142, 0.26) !important;
   box-shadow: inset 3px 0 0 var(--primary);
 }
 
@@ -259,7 +259,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--border-focus) !important;
-  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.09), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  box-shadow: 0 0 0 3px rgba(62, 207, 142, 0.10), inset 0 1px 0 rgba(255,255,255,0.04) !important;
 }
 
 button,
@@ -284,10 +284,10 @@ button,
 .btn-login,
 .btn-novo,
 button[type="submit"] {
-  background: linear-gradient(135deg, #5eead4, #38bdf8) !important;
+  background: linear-gradient(135deg, #3ECF8E, #4F46E5) !important;
   color: #03110f !important;
   border: 0 !important;
-  box-shadow: 0 12px 32px rgba(45, 212, 191, 0.18) !important;
+  box-shadow: 0 12px 32px rgba(62, 207, 142, 0.18) !important;
 }
 
 .btn-secondary,
@@ -305,8 +305,8 @@ button[type="submit"] {
 .filtro-btn.ativo,
 .chip.active {
   color: var(--text-1) !important;
-  border-color: rgba(94, 234, 212, 0.28) !important;
-  background: rgba(94, 234, 212, 0.12) !important;
+  border-color: rgba(62, 207, 142, 0.28) !important;
+  background: rgba(62, 207, 142, 0.10) !important;
 }
 
 table {
@@ -367,7 +367,7 @@ body.login-modernized::after {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 6% 86%, rgba(94, 234, 212, 0.16), transparent 20%),
+    radial-gradient(circle at 6% 86%, rgba(62, 207, 142, 0.16), transparent 20%),
     linear-gradient(90deg, rgba(7,9,11,.90) 0%, rgba(7,9,11,.46) 24%, rgba(7,9,11,.08) 42%, rgba(7,9,11,0) 64%);
 }
 
@@ -716,7 +716,7 @@ body.login-modernized .card-header h2 {
   .equipe-item,
   .rank-item,
   .pct-row {
-    background: #f8fafc !important;
+    background: #FFFFFF !important;
     border-color: #e2e8f0 !important;
   }
 

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Solução Técnica — Agenda Técnica</title>
+  <title>Solução Técnica — Agenda de Plantão</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
@@ -779,25 +779,25 @@
 
   <div class="controles-acoes">
     <!-- Botão programação semanal de técnico (substitui o antigo disparar-dia fixo) -->
-    <button class="btn-semana-tec" id="btn-semana-tec" onclick="abrirModalSemana()" title="Gerar e disparar programação semanal de um técnico">
+    <button class="btn-semana-tec" id="btn-semana-tec" onclick="abrirModalSemana()" title="Gerar e disparar programação semanal de plantão">
       <i data-lucide="calendar-range"></i>
-      <span>Prog. semanal</span>
+      <span>Plantão semanal</span>
     </button>
 
     <!-- Date picker: seleciona o dia a disparar -->
     <input type="date" id="data-dispatch" class="input-data-dispatch" title="Selecionar data para disparar agenda">
 
     <!-- Disparar agenda do dia selecionado -->
-    <button class="btn-whatsapp" id="btn-whatsapp" onclick="dispararAgendaWhatsapp()" title="Gerar imagem da agenda do dia selecionado e copiar pro clipboard">
+    <button class="btn-whatsapp" id="btn-whatsapp" onclick="dispararAgendaWhatsapp()" title="Gerar imagem do plantão do dia selecionado e copiar pro clipboard">
       <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
       </svg>
-      <span>Disparar dia</span>
+      <span>Disparar plantão</span>
     </button>
 
     <button class="btn-novo" id="btn-novo" onclick="abrirModal()">
       <i data-lucide="plus"></i>
-      Novo agendamento
+      Novo plantão
     </button>
   </div>
 </div>
@@ -822,13 +822,13 @@
 </div>
 
 <!-- Modal programação semanal técnico -->
-<div class="overlay" id="overlay-semana" onclick="fecharModalSemana(event)" style="display:none" role="dialog" aria-modal="true" aria-label="Programação semanal do técnico">
+<div class="overlay" id="overlay-semana" onclick="fecharModalSemana(event)" style="display:none" role="dialog" aria-modal="true" aria-label="Programação semanal de plantão">
   <div class="modal" style="max-width:460px">
     <div class="modal-header">
       <div class="modal-header-icon" style="background:rgba(139,92,246,0.12);border-color:rgba(139,92,246,0.25);color:#A78BFA">
         <i data-lucide="calendar-range" aria-hidden="true"></i>
       </div>
-      <div class="modal-title" id="modal-semana-titulo">Programação semanal do técnico</div>
+      <div class="modal-title" id="modal-semana-titulo">Programação semanal de plantão</div>
     </div>
     <div id="modal-semana-erro" role="alert" aria-live="assertive" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:14px;"></div>
     <div class="form-group">
@@ -843,7 +843,7 @@
       <small style="color:var(--text-3);font-size:11px;margin-top:5px;display:block">Qualquer dia da semana desejada</small>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px">
-      <button class="btn-semana-tec" style="flex:1;justify-content:center;padding:10px" onclick="gerarProgramacaoSemanal()">
+      <button class="btn-semana-tec" style="flex:1;justify-content:center;padding:10px" onclick="gerarProgramacaoSemanalPlantao()">
         <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
         Gerar e disparar
       </button>
@@ -859,44 +859,24 @@
       <div class="modal-header-icon">
         <i data-lucide="calendar" aria-hidden="true"></i>
       </div>
-      <div class="modal-title" id="modal-titulo">Novo Agendamento</div>
+      <div class="modal-title" id="modal-titulo">Novo Plantão</div>
     </div>
 
     <div id="modal-erro" role="alert" aria-live="assertive" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:16px;"></div>
 
-    <!-- OBRA / CLIENTE -->
-    <div class="form-section-label">Obra / Cliente</div>
-
-    <div class="form-group">
-      <label for="f-obra">Obra</label>
-      <select id="f-obra" onchange="onObraChange()">
-        <option value="">Selecione a obra...</option>
-        <option value="outro">— Outro (assistência / avulso) —</option>
-      </select>
-    </div>
-
-    <!-- Campos para "Outro" -->
-    <div id="outro-fields" style="display:none">
-      <div class="form-group">
-        <label for="f-nome-outro">Nome do cliente</label>
-        <input type="text" id="f-nome-outro" placeholder="Nome do cliente para assistência..."/>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label for="f-endereco">Endereço <span class="label-hint">(preenchido da obra, editável)</span></label>
-      <input type="text" id="f-endereco" placeholder="Endereço do serviço..."/>
-    </div>
+    <input type="hidden" id="f-obra" value="outro"/>
+    <input type="hidden" id="f-nome-outro" value="Plantão de automação e rede"/>
+    <input type="hidden" id="f-endereco"/>
 
     <!-- EQUIPE -->
     <div class="form-section-label">Equipe</div>
 
     <div class="form-group">
-      <label id="equipe-label">Quem vai <span class="label-hint">(selecione todos)</span></label>
+      <label id="equipe-label">Técnico de plantão <span class="label-hint">(selecione um)</span></label>
       <div class="equipe-select" id="equipe-select" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="equipe-label">
         <div class="equipe-trigger" id="equipe-trigger" onclick="toggleEquipeDropdown()">
           <div class="equipe-chips-wrap" id="equipe-chips-wrap">
-            <span id="equipe-placeholder" class="equipe-placeholder">Selecione a equipe...</span>
+            <span id="equipe-placeholder" class="equipe-placeholder">Selecione o técnico...</span>
           </div>
           <svg id="equipe-arrow" class="equipe-arrow" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
@@ -907,7 +887,7 @@
     </div>
 
     <!-- AGENDAMENTO -->
-    <div class="form-section-label">Agendamento</div>
+    <div class="form-section-label">Plantão</div>
 
     <div class="form-row">
       <div class="form-group">
@@ -915,7 +895,7 @@
         <input type="date" id="f-data"/>
       </div>
       <div class="form-group">
-        <label for="f-status">Status</label>
+        <label for="f-status">Confirmação</label>
         <select id="f-status">
           <option value="confirmado">Confirmado</option>
           <option value="nao_confirmado">Não confirmado</option>
@@ -938,8 +918,8 @@
     </div>
 
     <div class="form-group">
-      <label for="f-servico">Serviço a realizar</label>
-      <textarea id="f-servico" rows="3" placeholder="Descreva o serviço..."></textarea>
+      <label for="f-servico">Observação do plantão</label>
+      <textarea id="f-servico" rows="3" placeholder="Ex: plantão de feriado, cobertura especial, observações para o técnico..."></textarea>
     </div>
 
     <div class="modal-footer">
@@ -986,7 +966,7 @@ async function init() {
   if (!session) { window.location.href = 'login.html'; return; }
 
   const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
-  renderTopbar(eu?.nome, eu?.role, 'agenda');
+  renderTopbar(eu?.nome, eu?.role, 'agenda-plantao');
   roleAtual = eu?.role;
 
   const podeEditar = ['agendamento', 'coordenador', 'supervisor'].includes(roleAtual);
@@ -1093,7 +1073,7 @@ async function carregarAgenda() {
     return;
   }
 
-  agendamentos = (agResult.data || []).filter(ag => ag.cliente_outro !== 'Plantão de automação e rede');
+  agendamentos = (agResult.data || []).filter(ag => ag.cliente_outro === 'Plantão de automação e rede');
 
   // Monta mapa de número de OS por agendamento (usa o primeiro encontrado)
   osNumeroMap = {};
@@ -1133,7 +1113,7 @@ function renderGrade(dias) {
 
     const cards = ags.length
       ? ags.map(cardHTML).join('')
-      : `<div class="coluna-vazia">Sem agendamentos</div>`;
+      : `<div class="coluna-vazia">Sem plantão</div>`;
 
     return `
       <div class="coluna">
@@ -1143,8 +1123,8 @@ function renderGrade(dias) {
             <div class="dia-data ${isHoje(dia) ? 'hoje' : ''}">${fmtBR(dia)}</div>
           </div>
           <div style="display:flex;align-items:center;gap:4px;">
-            ${['agendamento','coordenador','supervisor'].includes(roleAtual) ? `<button class="btn-dispatch-dia" onclick="dispararDia('${dataStr}')" title="Disparar agenda deste dia no WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>` : ''}
-            ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento"><i data-lucide="plus"></i></button>`}
+            ${['agendamento','coordenador','supervisor'].includes(roleAtual) ? `<button class="btn-dispatch-dia" onclick="dispararDia('${dataStr}')" title="Disparar plantão deste dia no WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>` : ''}
+            ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo plantão"><i data-lucide="plus"></i></button>`}
           </div>
         </div>
         <div class="coluna-body">${cards}</div>
@@ -1166,16 +1146,17 @@ function cardHTML(ag) {
   }).filter(Boolean);
 
   const tecs    = nomes.join(' · ') || '—';
-  const cliente = ag.obras?.nome_cliente || ag.cliente_outro || '—';
-  const end     = ag.endereco_outro || ag.obras?.endereco || '';
+  const cliente = 'PLANTÃO DE AUTOMAÇÃO E REDE';
+  const end     = '';
   const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
 
   return `
     <div class="card-ag card-${status}" ${modoVisualizacao ? '' : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`} style="${modoVisualizacao ? 'cursor:default' : ''}">
-      <div class="ag-tecs">${escHtml(hora ? hora + ' · ' : '')}${escHtml(tecs)}</div>
-      <div class="ag-cliente">${escHtml(cliente)}</div>
+      <div class="ag-cliente" style="color:#f87171;font-weight:800;">${escHtml(cliente)}</div>
+      <div class="ag-tecs">Técnico: ${escHtml(tecs)}</div>
+      ${hora ? `<div class="ag-detalhe"><i data-lucide="clock"></i>${escHtml(hora)}</div>` : ''}
       ${end ? `<div class="ag-detalhe"><i data-lucide="map-pin"></i>${escHtml(end)}</div>` : ''}
-      ${ag.servico ? `<div class="ag-detalhe"><i data-lucide="wrench"></i>${escHtml(ag.servico)}</div>` : ''}
+      ${ag.servico ? `<div class="ag-detalhe"><i data-lucide="message-square"></i>${escHtml(ag.servico)}</div>` : ''}
       ${ag.obras?.arquiteto_responsavel ? `<div class="ag-detalhe"><i data-lucide="hard-hat"></i>Arq: ${escHtml(ag.obras.arquiteto_responsavel)}</div>` : ''}
       ${ag.obras?.consultores?.nome ? `<div class="ag-detalhe"><i data-lucide="user-check"></i>Consultor: ${escHtml(ag.obras.consultores.nome)}</div>` : ''}
       ${ag.veiculo ? `<div class="ag-detalhe"><i data-lucide="car"></i>${escHtml(ag.veiculo)}</div>` : ''}
@@ -1213,6 +1194,11 @@ function fecharEquipeDropdown() {
 
 function toggleTecnicoEquipe(idStr, evt) {
   if (evt) evt.stopPropagation();
+  equipesSelecionadas = equipesSelecionadas.includes(idStr) ? [] : [idStr];
+  renderEquipeChips();
+  renderEquipeDropdownItems();
+  fecharEquipeDropdown();
+  return;
   const idx = equipesSelecionadas.indexOf(idStr);
   if (idx === -1) {
     equipesSelecionadas.push(idStr);
@@ -1277,7 +1263,7 @@ function onObraChange() {
   const outroFields = document.getElementById('outro-fields');
   const endInput    = document.getElementById('f-endereco');
 
-  outroFields.style.display = val === 'outro' ? 'block' : 'none';
+  if (outroFields) outroFields.style.display = val === 'outro' ? 'block' : 'none';
 
   if (val && val !== 'outro') {
     const obra = obras.find(o => String(o.id) === val);
@@ -1292,6 +1278,7 @@ function onObraChange() {
 // ── Preencher select de obras ────────────────────────────────
 function preencherSelects() {
   const selObra = document.getElementById('f-obra');
+  if (!selObra || selObra.tagName === 'INPUT') { renderEquipeDropdownItems(); return; }
   selObra.innerHTML = '<option value="">Selecione a obra...</option><option value="outro">— Outro (assistência / avulso) —</option>';
   obras.forEach(o => {
     const opt = document.createElement('option');
@@ -1317,12 +1304,11 @@ async function abrirModal(data = '') {
   preencherSelects();
   renderEquipeChips();
 
-  document.getElementById('modal-titulo').textContent   = 'Novo Agendamento';
+  document.getElementById('modal-titulo').textContent   = 'Novo Plantão';
   document.getElementById('modal-erro').style.display   = 'none';
-  document.getElementById('f-obra').value               = '';
+  document.getElementById('f-obra').value               = 'outro';
   document.getElementById('f-endereco').value           = '';
-  document.getElementById('outro-fields').style.display = 'none';
-  document.getElementById('f-nome-outro').value         = '';
+  document.getElementById('f-nome-outro').value         = 'Plantão de automação e rede';
   document.getElementById('f-status').value             = 'confirmado';
   document.getElementById('f-inicio').value             = '';
   document.getElementById('f-fim').value                = '';
@@ -1356,17 +1342,14 @@ async function editarAgendamento(id) {
   renderEquipeDropdownItems();
   fecharEquipeDropdown();
 
-  document.getElementById('modal-titulo').textContent = 'Editar Agendamento';
+  document.getElementById('modal-titulo').textContent = 'Editar Plantão';
   document.getElementById('modal-erro').style.display = 'none';
 
-  const obraVal = ag.obra_id ? String(ag.obra_id) : (ag.cliente_outro ? 'outro' : '');
-  document.getElementById('f-obra').value               = obraVal;
-  document.getElementById('outro-fields').style.display = ag.cliente_outro ? 'block' : 'none';
-  document.getElementById('f-nome-outro').value         = ag.cliente_outro || '';
+  document.getElementById('f-obra').value               = 'outro';
+  document.getElementById('f-nome-outro').value         = 'Plantão de automação e rede';
 
   // Endereço: prioriza override salvo, senão pega da obra
-  const obraLocal = obras.find(o => String(o.id) === String(ag.obra_id));
-  document.getElementById('f-endereco').value = ag.endereco_outro || obraLocal?.endereco || '';
+  document.getElementById('f-endereco').value = '';
 
   document.getElementById('f-data').value    = ag.data            || '';
   document.getElementById('f-status').value  = ag.status          || 'confirmado';
@@ -1398,9 +1381,9 @@ async function salvarAgendamento() {
   btn.textContent = 'Salvando...';
   erroEl.style.display = 'none';
 
-  const obraVal   = document.getElementById('f-obra').value;
-  const nomeOutro = document.getElementById('f-nome-outro').value.trim();
-  const endereco  = document.getElementById('f-endereco').value.trim();
+  const obraVal   = 'outro';
+  const nomeOutro = 'Plantão de automação e rede';
+  const endereco  = '';
   const data      = document.getElementById('f-data').value;
   const status    = document.getElementById('f-status').value;
   const inicio    = document.getElementById('f-inicio').value;
@@ -1409,14 +1392,8 @@ async function salvarAgendamento() {
   const servico   = document.getElementById('f-servico').value;
 
   // Validações
-  if (!obraVal) {
-    mostrarErroModal('Selecione a obra ou escolha "Outro".'); return;
-  }
-  if (obraVal === 'outro' && !nomeOutro) {
-    mostrarErroModal('Informe o nome do cliente.'); return;
-  }
   if (equipesSelecionadas.length === 0) {
-    mostrarErroModal('Selecione pelo menos uma pessoa para a equipe.'); return;
+    mostrarErroModal('Selecione o técnico de plantão.'); return;
   }
   if (!data) {
     mostrarErroModal('Selecione a data.'); return;
@@ -1445,7 +1422,7 @@ async function salvarAgendamento() {
     hora_inicio: inicio  || null,
     hora_fim:    null,
     veiculo:     veiculo || null,
-    servico:     servico || null,
+    servico:     servico || 'Plantão de automação e rede',
   };
 
   // Retorna { error, id } — id é o agendamento inserido/editado
@@ -1505,7 +1482,8 @@ async function salvarAgendamento() {
           endereco_servico: endereco                || null,
           tecnico_id:       tecnicoId,
           data_servico:     data,
-          servico_planejado: servico                || null,
+          tipo_servico:      'plantao',
+          servico_planejado: 'Plantão de automação e rede',
           status_aprovacao: 'pendente',
           criado_em:        new Date().toISOString(),
         };
@@ -1620,7 +1598,7 @@ async function dispararAgendaWhatsapp() {
 
   if (agHoje.length === 0) {
     const [y, m, d2] = hoje.split('-');
-    mostrarToast(`Não há agendamentos para ${d2}/${m}/${y}.`, 'err');
+    mostrarToast(`Não há plantões para ${d2}/${m}/${y}.`, 'err');
     return;
   }
 
@@ -1676,8 +1654,8 @@ async function dispararAgendaWhatsapp() {
   // Monta card de cada agendamento com inline styles
   const cardsHTML = ordenados.map((ag) => {
     const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
-    const cliente = escHtml(ag.obras?.nome_cliente || ag.cliente_outro || '—');
-    const end     = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
+    const cliente = 'PLANTÃO DE AUTOMAÇÃO E REDE';
+    const end     = '';
     const serv    = escHtml(ag.servico || '');
     const veic    = escHtml(ag.veiculo || '');
 
@@ -1687,14 +1665,14 @@ async function dispararAgendaWhatsapp() {
     const eq  = equipeDoAg(ag);
     const cor = eq ? (COR_EQ[Object.keys(EQUIPE_INFO).find(k => EQUIPE_INFO[k].nome === eq.nome)] || eq.cor) : '#334155';
 
-    const detalhe = [serv, end, veic ? `Veículo: ${veic}` : ''].filter(Boolean);
+    const detalhe = [veic ? `Veículo: ${veic}` : '', serv].filter(Boolean);
 
     return `<div style="background:${SURF};border-radius:7px;padding:13px 15px;margin-bottom:9px;border-left:3px solid ${cor};">
       <div style="display:flex;align-items:baseline;gap:13px;">
         <span style="font-size:14px;font-weight:700;color:${GOLD};flex-shrink:0;min-width:46px;font-variant-numeric:tabular-nums;">${hora}</span>
-        <span style="font-size:14px;font-weight:700;color:${T1};flex:1;line-height:1.3;">${cliente}</span>
+        <span style="font-size:14px;font-weight:800;color:#F87171;flex:1;line-height:1.3;">${cliente}</span>
       </div>
-      ${tecStr ? `<div style="font-size:11px;color:${T2};margin-top:5px;padding-left:59px;">${escHtml(tecStr)}</div>` : ''}
+      ${tecStr ? `<div style="font-size:12px;color:${T1};font-weight:700;margin-top:5px;padding-left:59px;">Técnico: ${escHtml(tecStr)}</div>` : ''}
       ${detalhe.length ? `<div style="margin-top:3px;padding-left:59px;">${detalhe.map(d => `<div style="font-size:11px;color:${T2};margin-top:1px;">${d}</div>`).join('')}</div>` : ''}
     </div>`;
   }).join('');
@@ -1706,7 +1684,7 @@ async function dispararAgendaWhatsapp() {
       ${logoB64 ? `<img src="${logoB64}" style="height:26px;opacity:0.92;">` : `<span style="font-size:14px;font-weight:800;color:${T1};">SOLUÇÃO TÉCNICA</span>`}
       <div style="width:1px;height:32px;background:${BRDR};"></div>
       <div style="flex:1;">
-        <div style="font-size:10px;font-weight:700;color:${GOLD};letter-spacing:0.09em;text-transform:uppercase;">Agenda do Dia</div>
+        <div style="font-size:10px;font-weight:700;color:${GOLD};letter-spacing:0.09em;text-transform:uppercase;">AGENDA DE PLANTÃO</div>
         <div style="font-size:16px;font-weight:700;color:${T1};margin-top:3px;">${dataFmt}</div>
       </div>
       <div style="text-align:right;">
@@ -1821,7 +1799,7 @@ async function carregarLogoBase64Branco(url) {
   });
 }
 
-async function gerarProgramacaoSemanal() {
+async function gerarProgramacaoSemanalPlantao() {
   const tecId   = Number(document.getElementById('semana-tec-id').value);
   const refDate = document.getElementById('semana-data-ref').value;
   const erroEl  = document.getElementById('modal-semana-erro');
@@ -1836,14 +1814,14 @@ async function gerarProgramacaoSemanal() {
   fecharModalSemanaBtn();
   mostrarToast('⏳ Gerando imagem horizontal...', 'ok');
 
-  // Calcula seg–sex da semana da data de referência
+  // Calcula seg-dom da semana da data de referência
   const base = new Date(refDate + 'T12:00');
   const diaSemana = base.getDay() === 0 ? 7 : base.getDay();
   const seg = new Date(base); seg.setDate(base.getDate() - diaSemana + 1);
-  const diasSemana = Array.from({length:5}, (_, i) => { const d = new Date(seg); d.setDate(seg.getDate()+i); return d; });
+  const diasSemana = Array.from({length:7}, (_, i) => { const d = new Date(seg); d.setDate(seg.getDate()+i); return d; });
   const datasISO = diasSemana.map(fmtISO);
 
-  // Filtra agendamentos dessa semana onde o técnico participa
+  // Filtra plantões dessa semana onde o técnico participa
   const agSemana = agendamentos.filter(ag =>
     datasISO.includes(ag.data) &&
     [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].includes(tecId)
@@ -1854,7 +1832,7 @@ async function gerarProgramacaoSemanal() {
   const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
   const [yy, mm, dd] = datasISO[0].split('-');
-  const [ye, me, de] = datasISO[4].split('-');
+  const [ye, me, de] = datasISO[6].split('-');
   const periodoFmt = `${dd}/${mm}/${yy.slice(2)} – ${de}/${me}/${ye.slice(2)}`;
   const geradoEm   = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
 
@@ -1886,13 +1864,14 @@ async function gerarProgramacaoSemanal() {
       ? `<div style="padding:24px 8px;text-align:center;font-size:11px;color:${S_T3};font-style:italic;">Sem serviços</div>`
       : ags.map(ag => {
           const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
-          const cliente = escHtml(ag.obras?.nome_cliente || ag.cliente_outro || '—');
+          const cliente = 'PLANTÃO DE AUTOMAÇÃO E REDE';
           const serv    = escHtml(ag.servico || '');
-          const end     = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
+          const end     = '';
           const corEq   = COR_EQ[ag.equipe_id] || '#334155';
           return `<div style="background:${S_BG};border-radius:6px;padding:10px 11px;margin-bottom:7px;border-left:3px solid ${corEq};">
             <div style="font-size:11px;font-weight:700;color:${S_GOLD};margin-bottom:3px;font-variant-numeric:tabular-nums;">${hora}</div>
-            <div style="font-size:12px;font-weight:700;color:${S_T1};line-height:1.3;${serv||end?'margin-bottom:5px;':''}">${cliente}</div>
+            <div style="font-size:12px;font-weight:800;color:#F87171;line-height:1.3;${serv||end?'margin-bottom:5px;':''}">${cliente}</div>
+            <div style="font-size:11px;font-weight:700;color:${S_T1};line-height:1.35;margin-bottom:2px;">Técnico: ${escHtml(tec.nome)}</div>
             ${serv ? `<div style="font-size:10px;color:${S_T2};line-height:1.35;margin-bottom:2px;">${serv}</div>` : ''}
             ${end  ? `<div style="font-size:10px;color:${S_T3};line-height:1.3;">${end}</div>` : ''}
           </div>`;
@@ -1907,7 +1886,16 @@ async function gerarProgramacaoSemanal() {
     </div>`;
   }
 
-  const colunasHTML = datasISO.map((iso, i) => colunaHTML(iso, i)).join('');
+  const indicesComPlantao = datasISO
+    .map((iso, i) => ({ iso, i }))
+    .filter(item => agSemana.some(ag => ag.data === item.iso));
+
+  if (indicesComPlantao.length === 0) {
+    mostrarToast('Este técnico não tem plantão nesta semana.', 'err');
+    return;
+  }
+
+  const colunasHTML = indicesComPlantao.map(item => colunaHTML(item.iso, item.i)).join('');
 
   const card = document.getElementById('agenda-card');
   card.style.width = '1500px';
@@ -1918,12 +1906,12 @@ async function gerarProgramacaoSemanal() {
         : `<span style="font-size:15px;font-weight:800;color:${S_T1};">SOLUÇÃO TÉCNICA</span>`}
       <div style="width:1px;height:34px;background:${S_BRDR};"></div>
       <div style="flex:1;">
-        <div style="font-size:10px;font-weight:700;color:${S_GOLD};letter-spacing:0.09em;text-transform:uppercase;">Programação Semanal</div>
+        <div style="font-size:10px;font-weight:700;color:${S_GOLD};letter-spacing:0.09em;text-transform:uppercase;">Agenda de Plantão</div>
         <div style="font-size:18px;font-weight:700;color:${S_T1};margin-top:3px;">${escHtml(tec.nome)}</div>
       </div>
       <div style="text-align:right;">
         <div style="font-size:13px;color:${S_T2};">${periodoFmt}</div>
-        <div style="font-size:9px;color:${S_T3};margin-top:4px;">${agSemana.length} serviço${agSemana.length !== 1 ? 's' : ''} · Gerado em ${geradoEm}</div>
+        <div style="font-size:9px;color:${S_T3};margin-top:4px;">${agSemana.length} plantão${agSemana.length !== 1 ? 'ões' : ''} · Gerado em ${geradoEm}</div>
       </div>
     </div>
     <div style="height:2px;background:linear-gradient(90deg,${S_GOLD} 0%,rgba(196,168,130,0.08) 100%);"></div>

@@ -62,7 +62,7 @@ function initAppShell() {
   if (!document.querySelector('meta[name="theme-color"]')) {
     var meta = document.createElement('meta');
     meta.name = 'theme-color';
-    meta.content = '#07090b';
+    meta.content = '#0A0A0A';
     document.head.appendChild(meta);
   }
 }
@@ -239,6 +239,7 @@ function renderTopbar(nome, role, paginaAtiva) {
   var links = [
     { href: 'obras.html',                label: 'Obras',                  id: 'obras',                roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
     { href: 'agenda.html',               label: 'Agenda Técnica',    id: 'agenda',               roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href: 'agenda_plantao.html',       label: 'Agenda de Plantão',  id: 'agenda-plantao',       roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
     { href: 'agenda_vistorias.html',     label: 'Agenda de Vistorias',    id: 'agenda-vistorias',     roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
     { href: 'vistoria.html',             label: 'Minhas Vistorias',       id: 'vistoria',             roles: ['vistoriador'] },
     { href: 'vistoria.html',             label: 'Relatórios de Vistoria', id: 'relatorios-vistoria', roles: ['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },

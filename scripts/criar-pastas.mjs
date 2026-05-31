@@ -13,7 +13,7 @@
 //
 //        MS_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 //        MS_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-//        MS_CLIENT_SECRET=XGI8Q~...
+//        MS_CLIENT_SECRET=cole_o_valor_aqui
 //        MS_SHAREPOINT_HOST=suaempresa.sharepoint.com
 //        MS_SHAREPOINT_SITE_PATH=/sites/NomeSite
 //
