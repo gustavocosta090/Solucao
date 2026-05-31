@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31e -->
+<!-- build: 2026-05-31h -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -840,9 +840,16 @@ async function carregarEExibir(ano = null) {
       .lt('criado_em',  `${ano+1}-01-01T00:00:00`);
   }
 
+  let relAssistQ = db.from('relatorios_assistencia').select('id, status, cobrado, valor_mo, valor_equip, criado_em');
+  if (ano) {
+    relAssistQ = relAssistQ
+      .gte('criado_em', `${ano}-01-01T00:00:00`)
+      .lt('criado_em',  `${ano+1}-01-01T00:00:00`);
+  }
+
   const [{ data: obras, error: oErr }, { data: relAssist }] = await Promise.all([
     obraQ.order('valor_total', { ascending: false, nullsFirst: false }),
-    db.from('relatorios_assistencia').select('id, status, cobrado, valor_mo, valor_equip'),
+    relAssistQ,
   ]);
 
   if (oErr) {

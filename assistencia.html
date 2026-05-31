@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31e -->
+<!-- build: 2026-05-31h -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -292,6 +292,10 @@
     <i data-lucide="search" class="busca-icon" aria-hidden="true"></i>
     <input type="text" id="fBusca" placeholder="Buscar cliente ou serviço..." aria-label="Buscar" oninput="if(!this._fn)this._fn=debounce(filtrar);this._fn()">
   </div>
+
+  <button onclick="exportarCSV()" title="Exportar lista filtrada em CSV" style="display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:transparent;border:1px solid var(--border-strong);border-radius:6px;color:var(--text-2);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;white-space:nowrap;flex-shrink:0;">
+    <i data-lucide="download" style="width:13px;height:13px;"></i> CSV
+  </button>
 </div>
 
 <!-- Table -->
@@ -490,9 +494,14 @@ async function carregarDados() {
   ]);
 
   if (osErr) {
-    badge.textContent = '⚠ Erro';
-    showToast('Erro ao carregar OS: ' + osErr.message, 'error');
-    document.getElementById('loadingEl').innerHTML = '<div style="color:var(--amber);padding:20px;text-align:center;">Erro ao carregar dados.</div>';
+    if (badge) badge.textContent = '⚠ Erro';
+    document.getElementById('loadingEl').innerHTML = `
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="color:var(--amber);margin-bottom:12px;">Erro ao carregar OS: ${escHtml(osErr.message)}</div>
+        <button onclick="carregarDados()" style="padding:8px 18px;background:var(--primary);border:none;border-radius:6px;color:#000;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">
+          Tentar novamente
+        </button>
+      </div>`;
     return;
   }
 
@@ -899,6 +908,47 @@ async function salvarRelatorio() {
   fecharModal();
   renderStats();
   filtrar();
+}
+
+function exportarCSV() {
+  if (!filtrados.length) { showToast('Nenhum dado para exportar.', 'warning'); return; }
+
+  const esc = v => {
+    const s = String(v ?? '').replace(/"/g, '""');
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
+  };
+
+  const cabecalho = ['Data','Técnico','Cliente','Serviço','Cobrado','Valor MO','Equipamentos','Total','Status'];
+  const linhas = filtrados.map(o => {
+    const rel = todosRel[o.id] || {};
+    const data = o.data_servico
+      ? new Date(o.data_servico + 'T12:00').toLocaleDateString('pt-BR')
+      : '';
+    const valMO   = parseFloat(rel.valor_mo)    || 0;
+    const valEq   = parseFloat(rel.valor_equip) || 0;
+    const total   = valMO + valEq;
+    const equips  = Array.isArray(rel.equipamentos) ? rel.equipamentos.map(e => e.nome).join('; ') : '';
+    return [
+      data,
+      o.tecnicos?.nome || '',
+      o.obras?.nome_cliente || '',
+      o.servico_planejado || '',
+      rel.cobrado === true ? 'Sim' : rel.cobrado === false ? 'Não' : '',
+      valMO   ? valMO.toFixed(2).replace('.', ',')   : '',
+      equips,
+      total   ? total.toFixed(2).replace('.', ',')   : '',
+      rel.status || '',
+    ].map(esc).join(',');
+  });
+
+  const csv  = [cabecalho.join(','), ...linhas].join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `assistencias_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function gerarPDFRelatorio() {

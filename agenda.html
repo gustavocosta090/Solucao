@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31e -->
+<!-- build: 2026-05-31h -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1130,7 +1130,10 @@ async function carregarAgenda() {
 
   if (agResult.error) {
     document.getElementById('grade').innerHTML =
-      `<div class="spinner-wrap"><p style="color:#f87171">Erro: ${agResult.error.message}</p></div>`;
+      `<div class="spinner-wrap" style="flex-direction:column;gap:12px;">
+        <p style="color:#f87171">Erro ao carregar: ${escHtml(agResult.error.message)}</p>
+        <button onclick="carregarAgenda()" style="padding:7px 18px;background:var(--primary);border:none;border-radius:6px;color:#000;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">Tentar novamente</button>
+      </div>`;
     return;
   }
 

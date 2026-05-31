@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31e -->
+<!-- build: 2026-05-31h -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1095,7 +1095,20 @@
   <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
-<!-- Stats -->
+<!-- View tabs -->
+<div class="view-tabs">
+  <button class="view-tab active" id="tabBtnOS" onclick="mudarView('os')">
+    <i data-lucide="clipboard-list"></i> Ordens de Serviço
+  </button>
+  <button class="view-tab" id="tabBtnVistoria" onclick="mudarView('vistoria')">
+    <i data-lucide="clipboard-check"></i> Vistorias
+  </button>
+  <button class="view-tab" id="tabBtnAssist" onclick="mudarView('assist')">
+    <i data-lucide="wrench"></i> Assistências
+  </button>
+</div>
+
+<!-- Stats OS -->
 <div class="stats-row" id="statsRow">
   <div class="stat-card">
     <div class="stat-num" id="sTot" style="color: var(--text-2);">—</div>
@@ -1123,17 +1136,24 @@
   </div>
 </div>
 
-<!-- View tabs -->
-<div class="view-tabs">
-  <button class="view-tab active" id="tabBtnOS" onclick="mudarView('os')">
-    <i data-lucide="clipboard-list"></i> Ordens de Serviço
-  </button>
-  <button class="view-tab" id="tabBtnVistoria" onclick="mudarView('vistoria')">
-    <i data-lucide="clipboard-check"></i> Vistorias
-  </button>
-  <button class="view-tab" id="tabBtnAssist" onclick="mudarView('assist')">
-    <i data-lucide="wrench"></i> Assistências
-  </button>
+<!-- Stats Vistorias (hidden) -->
+<div class="stats-row" id="vistStatsRow" style="display:none">
+  <div class="stat-card">
+    <div class="stat-num" id="vsTot" style="color:var(--text-2)">—</div>
+    <div class="stat-label">Total</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="vsPend" style="color:var(--amber)">—</div>
+    <div class="stat-label">Pendentes</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="vsConcl" style="color:var(--primary)">—</div>
+    <div class="stat-label">Concluídas</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="vsInconf" style="color:var(--red-text,#f87171)">—</div>
+    <div class="stat-label">Inconformidades</div>
+  </div>
 </div>
 
 <!-- Stats Assistências (hidden) -->
@@ -1394,10 +1414,12 @@ let sortDir = 'desc';
 let lbFotos = [];
 let lbIdx = 0;
 let osSendoVisualizada = null;
+let _authUserId = null;
 // Init
 (async () => {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
+  _authUserId = session.user.id;
 
   const { data: eu } = await db
     .from('tecnicos')
@@ -1450,7 +1472,13 @@ async function carregarOSs() {
 
   if (osError) {
     console.error('Erro ao carregar OSs:', osError);
-    document.getElementById('loadingEl').innerHTML = `<div style="color:var(--red-text);padding:20px;">Erro ao carregar OS: ${osError.message}</div>`;
+    document.getElementById('loadingEl').innerHTML = `
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="color:var(--red-text);margin-bottom:12px;">Erro ao carregar OSs: ${escHtml(osError.message)}</div>
+        <button onclick="carregarOSs()" style="padding:8px 18px;background:var(--primary);border:none;border-radius:6px;color:#000;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">
+          Tentar novamente
+        </button>
+      </div>`;
     return;
   }
 
@@ -1879,13 +1907,17 @@ function verOS(id) {
     </div>`;
   }
 
-  // Botão PDF sempre disponível no rodapé do modal
+  // Botão PDF + placeholder do histórico
   html += `
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
       <button class="btn-pdf-os" onclick="exportarPDFOS(${os.id})">
         <i data-lucide="file-down"></i> Gerar PDF desta OS
       </button>
       <span style="font-size:11px;color:var(--text-3)">Para enviar ao técnico ou arquivar</span>
+    </div>
+    <div id="historico-os-wrap" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Histórico</div>
+      <div id="historico-os-body" style="font-size:12px;color:var(--text-3);">Carregando...</div>
     </div>`;
 
   const tipoLabel = (os.tipo_servico || 'execucao') === 'assistencia' ? 'Assistência' : 'Execução';
@@ -1894,6 +1926,36 @@ function verOS(id) {
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('modalOS').classList.add('open');
   lucide.createIcons();
+  carregarHistoricoOS(os.id);
+}
+
+async function carregarHistoricoOS(osId) {
+  const el = document.getElementById('historico-os-body');
+  if (!el) return;
+
+  const { data, error } = await db
+    .from('os_historico')
+    .select('status_anterior, status_novo, observacao, criado_em')
+    .eq('os_id', osId)
+    .order('criado_em', { ascending: false });
+
+  if (error || !data || !data.length) {
+    el.textContent = error ? 'Erro ao carregar histórico.' : 'Nenhuma alteração registrada ainda.';
+    return;
+  }
+
+  const STATUS_PT = { pendente: 'Pendente', concluida: 'Concluída', aprovada: 'Aprovada', reprovada: 'Reprovada' };
+  el.innerHTML = data.map(h => {
+    const dt   = new Date(h.criado_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    const de   = STATUS_PT[h.status_anterior] || h.status_anterior || '—';
+    const para = STATUS_PT[h.status_novo]     || h.status_novo     || '—';
+    return `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">
+      <span style="color:var(--text-3);flex-shrink:0;min-width:110px;">${escHtml(dt)}</span>
+      <span>${escHtml(de)} → <strong style="color:var(--primary);">${escHtml(para)}</strong>
+        ${h.observacao ? `<br><span style="color:var(--text-3);">${escHtml(h.observacao)}</span>` : ''}
+      </span>
+    </div>`;
+  }).join('');
 }
 
 function fecharModal() { document.getElementById('modalOS').classList.remove('open'); }
@@ -1921,6 +1983,9 @@ async function reabrirOSModal() {
 }
 
 async function mudarStatusOS(id, status, obs) {
+  const osAtual = todasOSs.find(o => o.id === id);
+  const statusAnterior = osAtual?.status_aprovacao || 'pendente';
+
   const { error } = await db
     .from('ordens_de_servico')
     .update({
@@ -1932,9 +1997,18 @@ async function mudarStatusOS(id, status, obs) {
 
   if (error) { showToast('Erro: ' + error.message, 'error'); return; }
 
+  // Gravar no histórico (fire-and-forget — não bloqueia a UI)
+  db.from('os_historico').insert({
+    os_id:           id,
+    user_id:         _authUserId,
+    status_anterior: statusAnterior,
+    status_novo:     status,
+    observacao:      obs || null,
+    criado_em:       new Date().toISOString(),
+  });
+
   // Atualizar local
-  const os = todasOSs.find(o => o.id === id);
-  if (os) { os.status_aprovacao = status; os.observacao_supervisor = obs || null; }
+  if (osAtual) { osAtual.status_aprovacao = status; osAtual.observacao_supervisor = obs || null; }
 
   filtrar();
 }
@@ -2494,8 +2568,9 @@ function mudarView(mode) {
   document.getElementById('tabBtnVistoria').classList.toggle('active', mode === 'vistoria');
   document.getElementById('tabBtnAssist').classList.toggle('active', mode === 'assist');
 
-  document.getElementById('statsRow').style.display       = mode !== 'assist' ? '' : 'none';
-  document.getElementById('assistStatsRow').style.display = mode === 'assist' ? '' : 'none';
+  document.getElementById('statsRow').style.display       = mode === 'os'      ? '' : 'none';
+  document.getElementById('vistStatsRow').style.display   = mode === 'vistoria' ? '' : 'none';
+  document.getElementById('assistStatsRow').style.display = mode === 'assist'   ? '' : 'none';
 
   document.getElementById('osFiltrosBar').style.display    = mode === 'os' ? '' : 'none';
   document.getElementById('osContainer').style.display     = mode === 'os' ? '' : 'none';
@@ -2529,6 +2604,7 @@ async function carregarVistorias() {
   }
 
   todasVistorias = data || [];
+  renderVistStats();
 
   // Popula select de vistoriadores (únicos)
   const sel = document.getElementById('vfVistoriador');
@@ -2543,6 +2619,13 @@ async function carregarVistorias() {
   });
 
   filtrarVistorias();
+}
+
+function renderVistStats() {
+  document.getElementById('vsTot').textContent   = todasVistorias.length;
+  document.getElementById('vsPend').textContent  = todasVistorias.filter(v => v.status !== 'concluido').length;
+  document.getElementById('vsConcl').textContent = todasVistorias.filter(v => v.status === 'concluido').length;
+  document.getElementById('vsInconf').textContent = todasVistorias.filter(v => v.inconformidade).length;
 }
 
 function filtrarVistorias() {
@@ -2651,7 +2734,7 @@ async function carregarAssistencias() {
 
   const [{ data: osList, error: osErr }, { data: relList }] = await Promise.all([
     db.from('ordens_de_servico')
-      .select('id, tecnico_id, obra_id, cliente_outro, data_servico, servico_planejado, tecnicos!tecnico_id(id, nome), obras(nome_cliente)')
+      .select('id, tecnico_id, obra_id, data_servico, servico_planejado, tecnicos!tecnico_id(id, nome), obras(nome_cliente)')
       .eq('tipo_servico', 'assistencia')
       .order('data_servico', { ascending: false }),
     db.from('relatorios_assistencia').select('*'),
