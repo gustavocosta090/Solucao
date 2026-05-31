@@ -256,3 +256,56 @@ drop policy if exists "relatorios_assistencia_delete" on public.relatorios_assis
 create policy "relatorios_assistencia_delete" on public.relatorios_assistencia
 for delete to authenticated
 using (public.has_app_role(array['coordenador','supervisor']));
+
+-- ── MIGRATION: FK ON DELETE SET NULL para permitir demissão de técnicos ────
+-- Rode este bloco UMA VEZ no SQL Editor do Supabase.
+-- Isso permite deletar um técnico da tabela sem apagar o histórico de OS.
+-- As OS ficam com tecnico_id = NULL (histórico preservado, nome some).
+
+-- ordens_de_servico
+alter table public.ordens_de_servico
+  drop constraint if exists ordens_de_servico_tecnico_id_fkey,
+  drop constraint if exists ordens_de_servico_auxiliar_id_fkey,
+  drop constraint if exists ordens_de_servico_auxiliar2_id_fkey,
+  drop constraint if exists ordens_de_servico_auxiliar3_id_fkey;
+
+alter table public.ordens_de_servico
+  add constraint ordens_de_servico_tecnico_id_fkey
+    foreign key (tecnico_id)   references public.tecnicos(id) on delete set null,
+  add constraint ordens_de_servico_auxiliar_id_fkey
+    foreign key (auxiliar_id)  references public.tecnicos(id) on delete set null,
+  add constraint ordens_de_servico_auxiliar2_id_fkey
+    foreign key (auxiliar2_id) references public.tecnicos(id) on delete set null,
+  add constraint ordens_de_servico_auxiliar3_id_fkey
+    foreign key (auxiliar3_id) references public.tecnicos(id) on delete set null;
+
+-- agendamentos
+alter table public.agendamentos
+  drop constraint if exists agendamentos_tecnico_id_fkey,
+  drop constraint if exists agendamentos_auxiliar_id_fkey,
+  drop constraint if exists agendamentos_auxiliar2_id_fkey,
+  drop constraint if exists agendamentos_auxiliar3_id_fkey;
+
+alter table public.agendamentos
+  add constraint agendamentos_tecnico_id_fkey
+    foreign key (tecnico_id)   references public.tecnicos(id) on delete set null,
+  add constraint agendamentos_auxiliar_id_fkey
+    foreign key (auxiliar_id)  references public.tecnicos(id) on delete set null,
+  add constraint agendamentos_auxiliar2_id_fkey
+    foreign key (auxiliar2_id) references public.tecnicos(id) on delete set null,
+  add constraint agendamentos_auxiliar3_id_fkey
+    foreign key (auxiliar3_id) references public.tecnicos(id) on delete set null;
+
+-- tecnico_equipes
+alter table public.tecnico_equipes
+  drop constraint if exists tecnico_equipes_tecnico_id_fkey;
+alter table public.tecnico_equipes
+  add constraint tecnico_equipes_tecnico_id_fkey
+    foreign key (tecnico_id) references public.tecnicos(id) on delete cascade;
+
+-- relatorios_vistoria
+alter table public.relatorios_vistoria
+  drop constraint if exists relatorios_vistoria_vistoriador_id_fkey;
+alter table public.relatorios_vistoria
+  add constraint relatorios_vistoria_vistoriador_id_fkey
+    foreign key (vistoriador_id) references public.tecnicos(id) on delete set null;

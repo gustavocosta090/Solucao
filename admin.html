@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31a -->
+<!-- build: 2026-05-31b -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -419,7 +419,7 @@
     border-radius: 12px;
     padding: 28px;
     width: 100%;
-    max-width: 400px;
+    max-width: 520px;
   }
 
   .modal-header {
@@ -493,6 +493,35 @@
   @media (max-width: 768px) {
     input, select, textarea { font-size: 16px !important; }
   }
+
+  /* ── Equipes checkboxes ── */
+  .equipes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 7px;
+    margin-top: 2px;
+  }
+  .equipe-check {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--text-2);
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .equipe-check:hover { border-color: var(--border-strong); color: var(--text-1); }
+  .equipe-check.checked { border-color: var(--border-focus); background: var(--primary-muted); color: var(--primary); }
+  .equipe-check input[type="checkbox"] {
+    width: 14px; height: 14px;
+    accent-color: var(--primary);
+    cursor: pointer; padding: 0; border: none; background: none; flex-shrink: 0;
+  }
 </style>
 <link rel="stylesheet" href="app-shell.css">
 </head>
@@ -548,6 +577,10 @@
       <div class="form-group">
         <label>Senha inicial *</label>
         <input type="password" id="novaSenha" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+      </div>
+      <div class="form-group full">
+        <label>Equipe(s)</label>
+        <div class="equipes-grid" id="equipesCreate"></div>
       </div>
     </div>
 
@@ -633,6 +666,10 @@
       <label>Nova senha, se quiser alterar</label>
       <input type="password" id="editSenha" placeholder="Deixe vazio para manter" autocomplete="new-password">
     </div>
+    <div class="form-group" style="margin-top:8px;">
+      <label>Equipe(s)</label>
+      <div class="equipes-grid" id="equipesEdit"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="fecharModalEditar()">Cancelar</button>
       <button class="btn-primary" onclick="confirmarEdicao()" style="margin-top:0;">Salvar</button>
@@ -664,8 +701,41 @@ const LOGIN_DOMAIN = 'solucaotecnica.local';
 
 
 let tecnicos = [];
+let todasEquipes = [];
 let resetUserId = null;
 let editandoUsuario = null;
+
+async function carregarEquipes() {
+  const { data } = await db.from('equipes').select('id, nome').order('nome');
+  todasEquipes = data || [];
+  renderEquipesCheckboxes('equipesCreate', []);
+}
+
+function renderEquipesCheckboxes(containerId, selecionadas = []) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (todasEquipes.length === 0) {
+    container.innerHTML = '<span style="font-size:12px;color:var(--text-3);">Nenhuma equipe cadastrada.</span>';
+    return;
+  }
+  container.innerHTML = todasEquipes.map(eq => {
+    const sel = selecionadas.includes(Number(eq.id));
+    return `<label class="equipe-check${sel ? ' checked' : ''}">
+      <input type="checkbox" value="${eq.id}"${sel ? ' checked' : ''} onchange="toggleEquipeLabel(this)">
+      ${escHtml(eq.nome)}
+    </label>`;
+  }).join('');
+}
+
+function toggleEquipeLabel(cb) {
+  cb.closest('.equipe-check').classList.toggle('checked', cb.checked);
+}
+
+function getSelectedEquipes(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return [];
+  return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => Number(cb.value));
+}
 function normalizarUsuario(v) {
   return String(v || '')
     .trim()
@@ -715,6 +785,7 @@ async function chamarAdminFunction(payload) {
 
   renderTopbar(eu.nome, eu.role, 'admin');
 
+  await carregarEquipes();
   await carregarDados();
 })();
 
@@ -788,11 +859,23 @@ async function criarUsuario() {
       password: senha,
     });
 
+    // Assign equipes to the newly created tecnico
+    const equipeIds = getSelectedEquipes('equipesCreate');
+    if (equipeIds.length > 0) {
+      const { data: novoTecnico } = await db.from('tecnicos')
+        .select('id').eq('nome', nome).order('id', { ascending: false }).limit(1).single();
+      if (novoTecnico) {
+        await db.from('tecnico_equipes')
+          .insert(equipeIds.map(eqId => ({ tecnico_id: novoTecnico.id, equipe_id: eqId })));
+      }
+    }
+
     mostrarSucesso(`Conta criada com sucesso. Usuário: ${usuario}. Entregue a senha temporária por um canal seguro.`);
     document.getElementById('novoNome').value = '';
     document.getElementById('novoEmailContato').value = '';
     document.getElementById('novoUsuario').value = '';
     document.getElementById('novaSenha').value = '';
+    renderEquipesCheckboxes('equipesCreate', []);
     await carregarDados();
 
   } catch (err) {
@@ -810,6 +893,9 @@ function abrirEditar(tecnicoId) {
   document.getElementById('editRole').value = usuario.role || 'tecnico';
   document.getElementById('editUsuario').value = usuario.username || '';
   document.getElementById('editSenha').value = '';
+  const selecionadas = (usuario.tecnico_equipes || [])
+    .map(te => Number(te.equipes?.id || te.equipe_id)).filter(Boolean);
+  renderEquipesCheckboxes('equipesEdit', selecionadas);
   document.getElementById('modalEditar').classList.add('open');
 }
 
@@ -842,6 +928,14 @@ async function confirmarEdicao() {
       username,
       password,
     });
+
+    // Update equipes: delete all then re-insert selected
+    const equipeIds = getSelectedEquipes('equipesEdit');
+    await db.from('tecnico_equipes').delete().eq('tecnico_id', editandoUsuario.id);
+    if (equipeIds.length > 0) {
+      await db.from('tecnico_equipes')
+        .insert(equipeIds.map(eqId => ({ tecnico_id: editandoUsuario.id, equipe_id: eqId })));
+    }
 
     fecharModalEditar();
     mostrarSucesso('Usuário atualizado com sucesso.');
