@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-30m -->
+<!-- build: 2026-05-30o -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -316,6 +316,35 @@
     .donut-layout { grid-template-columns:1fr; }
   }
 
+  /* ── Live badge ─────────────────────────────────────────── */
+  .live-badge {
+    font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px;
+    background:rgba(62,207,142,0.12); color:var(--green);
+    border:1px solid rgba(62,207,142,0.25); letter-spacing:0.02em;
+  }
+  .live-badge.loading { background:rgba(251,191,36,0.12); color:var(--amber); border-color:rgba(251,191,36,0.25); }
+
+  /* ── Pct Obras table ─────────────────────────────────────── */
+  .pct-row {
+    display:grid; grid-template-columns:1fr auto auto; gap:8px;
+    align-items:center; padding:7px 0;
+    border-bottom:1px solid var(--border);
+    font-size:0.82rem;
+  }
+  .pct-row:last-child { border-bottom:none; }
+  .pct-nome { color:var(--text-1); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pct-bar-wrap { display:flex; align-items:center; gap:8px; width:140px; }
+  .pct-bar-track { flex:1; height:5px; background:var(--surface-3); border-radius:3px; overflow:hidden; }
+  .pct-bar-fill { height:100%; border-radius:3px; background:var(--pink); }
+  .pct-num { font-size:0.78rem; font-weight:700; color:var(--pink); min-width:36px; text-align:right; }
+  .pct-valor { font-size:0.72rem; color:var(--text-3); text-align:right; white-space:nowrap; }
+  .pct-media-line {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 0 4px; font-size:0.8rem; color:var(--text-2);
+    border-top:1px solid var(--border); margin-top:12px;
+  }
+  .pct-media-val { font-weight:700; font-size:1rem; color:var(--pink); }
+
   /* ── PRINT ──────────────────────────────────────────────── */
   @media print {
     .topbar { position:relative; }
@@ -343,7 +372,7 @@
       <div class="painel-sub">Visão estratégica · Obras, contratos e equipes</div>
     </div>
     <div class="painel-right">
-      <span class="sim-badge">⚡ Dados simulados</span>
+      <span class="live-badge loading" id="live-badge">↻ Carregando...</span>
       <div class="period-ctrl">
         <button class="period-btn" onclick="setPeriodo('2025',this)">2025</button>
         <button class="period-btn active" onclick="setPeriodo('2026',this)">2026</button>
@@ -478,7 +507,23 @@
       </div>
       <div id="composicaoRows"></div>
       <div class="canvas-wrap" style="height:52px;margin-top:20px"><canvas id="chartComposicao"></canvas></div>
+      <div class="pct-media-line">
+        <span>Média de serviço sobre o total</span>
+        <span class="pct-media-val" id="pct-media-geral">—%</span>
+      </div>
     </div>
+  </div>
+
+  <!-- % SERVIÇOS POR OBRA -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">% de Serviços por Obra</div>
+        <div class="card-sub">Proporção de mão de obra em relação ao valor total de cada contrato</div>
+      </div>
+      <span class="tag tag-pink" id="tag-pct-avg">Média —%</span>
+    </div>
+    <div id="pctObrasWrap" style="max-height:380px;overflow-y:auto;padding-right:4px;"></div>
   </div>
 
   <!-- ASSISTÊNCIAS -->
@@ -511,13 +556,24 @@
 </footer>
 
 <script>
-// ── Supabase ───────────────────────────────────────────────────
-
 // ── Perfis com acesso ao painel ────────────────────────────────
 const ROLES_PERMITIDOS = [
   'supervisor','coordenador','agendamento',
   'gerente_comercial','coordenador_projetos','projetista','vistoriador'
 ];
+
+// ── Fases ──────────────────────────────────────────────────────
+const FASE_INFO = {
+  nao_iniciado:     { label:'Não\nIniciado',    cor:'#52525B', cat:'andamento'  },
+  projeto_iniciado: { label:'Projeto\nIniciado', cor:'#818CF8', cat:'andamento'  },
+  projeto_concluido:{ label:'Projeto\nConcluído',cor:'#6366F1', cat:'andamento'  },
+  cabeamento:       { label:'Cabeamento',         cor:'#F59E0B', cat:'andamento'  },
+  eletrica:         { label:'Elétrica',            cor:'#FBBF24', cat:'andamento'  },
+  audio_video:      { label:'Áudio &\nVídeo',     cor:'#A78BFA', cat:'andamento'  },
+  automacao:        { label:'Automação',            cor:'#3ECF8E', cat:'andamento'  },
+  em_finalizacao:   { label:'Em\nFinalização',    cor:'#2DD4BF', cat:'finalizacao'},
+  entrega_comercial:{ label:'Entregue',             cor:'#22C55E', cat:'entregues' },
+};
 
 // ── Init ───────────────────────────────────────────────────────
 (async () => {
@@ -542,126 +598,154 @@ const ROLES_PERMITIDOS = [
   applyTheme(localStorage.getItem('tema') || 'auto');
   document.getElementById('footer-data').textContent =
     new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'});
-  renderAll(MOCK['2026']);
+
+  await carregarEExibir();
 })();
 
-// ── Topbar ─────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
-//  DADOS SIMULADOS — substituir por queries Supabase reais
+//  DADOS REAIS — Supabase
 // ═══════════════════════════════════════════════════════════════
-const MOCK = {
-  '2026': {
-    kpis: { volume:4_280_000, ticket:186_087, obras:23, mo:61, assist:48_500 },
-    regionais: [
-      { nome:'Sudeste',      obras:10, valor:1_950_000 },
-      { nome:'Sul',          obras:6,  valor:1_100_000 },
-      { nome:'Centro-Oeste', obras:4,  valor:780_000   },
-      { nome:'Norte',        obras:2,  valor:300_000   },
-      { nome:'Nordeste',     obras:1,  valor:150_000   },
-    ],
-    consultores: [
-      { nome:'Carlos Silva',  obras:8, valor:1_240_000 },
-      { nome:'Ana Lima',      obras:6, valor:980_000   },
-      { nome:'Ricardo Faria', obras:5, valor:860_000   },
-      { nome:'Juliana Costa', obras:3, valor:720_000   },
-      { nome:'Pedro Alves',   obras:1, valor:480_000   },
-    ],
-    arquitetos: [
-      { nome:'Studio Forma',     obras:5 },
-      { nome:'Arq. Renata Melo', obras:4 },
-      { nome:'BKO Arquitetura',  obras:3 },
-      { nome:'Loft Design',      obras:3 },
-      { nome:'Arq. Paulo Viana', obras:2 },
-      { nome:'Outros parceiros', obras:6 },
-    ],
-    evolucao: [
-      { mes:'Jan', produtos:180_000, servicos:95_000  },
-      { mes:'Fev', produtos:220_000, servicos:140_000 },
-      { mes:'Mar', produtos:310_000, servicos:180_000 },
-      { mes:'Abr', produtos:280_000, servicos:165_000 },
-      { mes:'Mai', produtos:340_000, servicos:210_000 },
-    ],
-    composicao: { produtos:2_653_600, servicos:1_626_400 },
-    assist: { total:12, cobradas:8, gratis:4, receita:48_500 },
-    fases: [
-      { key:'projeto_iniciado', label:'Projeto\nIniciado',  cor:'#818CF8', obras:5 },
-      { key:'cabeamento',       label:'Cabeamento',          cor:'#F59E0B', obras:4 },
-      { key:'eletrica',         label:'Elétrica',             cor:'#FBBF24', obras:3 },
-      { key:'audio_video',      label:'Áudio &\nVídeo',      cor:'#A78BFA', obras:2 },
-      { key:'automacao',        label:'Automação',             cor:'#3ECF8E', obras:2 },
-      { key:'em_finalizacao',   label:'Em\nFinalização',     cor:'#2DD4BF', obras:4 },
-      { key:'entregue',         label:'Entregue',              cor:'#22C55E', obras:2 },
-      { key:'concluido',        label:'Concluído',             cor:'#6366F1', obras:1 },
-    ],
-    status: { andamento:16, finalizacao:4, entregues:2, concluidas:1 },
-    equipes: [
-      { nome:'Equipe 01 · Elétrica',       cor:'#FBBF24', obras:8, fases:['Cabeamento','Elétrica','Finalização'] },
-      { nome:'Equipe 02 · Cabeamento',     cor:'#F59E0B', obras:6, fases:['Proj. Iniciado','Cabeamento'] },
-      { nome:'Equipe 03 · Áudio e Vídeo',  cor:'#A78BFA', obras:5, fases:['Áudio/Vídeo','Automação'] },
-      { nome:'Equipe 04 · Automação',       cor:'#3ECF8E', obras:4, fases:['Automação','Finalização'] },
-      { nome:'Equipe 05 · Regional Norte',  cor:'#38bdf8', obras:2, fases:['Proj. Iniciado'] },
-    ],
-  },
-  '2025': {
-    kpis: { volume:3_620_000, ticket:166_000, obras:19, mo:54, assist:31_200 },
-    regionais: [
-      { nome:'Sudeste',      obras:9, valor:1_720_000 },
-      { nome:'Sul',          obras:5, valor:900_000   },
-      { nome:'Centro-Oeste', obras:3, valor:640_000   },
-      { nome:'Norte',        obras:1, valor:200_000   },
-      { nome:'Nordeste',     obras:1, valor:160_000   },
-    ],
-    consultores: [
-      { nome:'Carlos Silva',  obras:7, valor:1_050_000 },
-      { nome:'Ana Lima',      obras:5, valor:840_000   },
-      { nome:'Ricardo Faria', obras:4, valor:720_000   },
-      { nome:'Juliana Costa', obras:2, valor:590_000   },
-      { nome:'Pedro Alves',   obras:1, valor:420_000   },
-    ],
-    arquitetos: [
-      { nome:'Studio Forma',     obras:4 },
-      { nome:'Arq. Renata Melo', obras:4 },
-      { nome:'BKO Arquitetura',  obras:2 },
-      { nome:'Loft Design',      obras:2 },
-      { nome:'Arq. Paulo Viana', obras:2 },
-      { nome:'Outros parceiros', obras:5 },
-    ],
-    evolucao: [
-      { mes:'Jan', produtos:150_000, servicos:80_000  },
-      { mes:'Fev', produtos:180_000, servicos:110_000 },
-      { mes:'Mar', produtos:260_000, servicos:150_000 },
-      { mes:'Abr', produtos:240_000, servicos:130_000 },
-      { mes:'Mai', produtos:290_000, servicos:170_000 },
-      { mes:'Jun', produtos:310_000, servicos:190_000 },
-      { mes:'Jul', produtos:280_000, servicos:160_000 },
-      { mes:'Ago', produtos:320_000, servicos:200_000 },
-      { mes:'Set', produtos:300_000, servicos:180_000 },
-      { mes:'Out', produtos:350_000, servicos:210_000 },
-      { mes:'Nov', produtos:330_000, servicos:195_000 },
-      { mes:'Dez', produtos:280_000, servicos:155_000 },
-    ],
-    composicao: { produtos:2_352_000, servicos:1_268_000 },
-    assist: { total:9, cobradas:6, gratis:3, receita:31_200 },
-    fases: [
-      { key:'projeto_iniciado', label:'Projeto\nIniciado',  cor:'#818CF8', obras:6 },
-      { key:'cabeamento',       label:'Cabeamento',          cor:'#F59E0B', obras:3 },
-      { key:'eletrica',         label:'Elétrica',             cor:'#FBBF24', obras:3 },
-      { key:'audio_video',      label:'Áudio &\nVídeo',      cor:'#A78BFA', obras:2 },
-      { key:'automacao',        label:'Automação',             cor:'#3ECF8E', obras:1 },
-      { key:'em_finalizacao',   label:'Em\nFinalização',     cor:'#2DD4BF', obras:2 },
-      { key:'entregue',         label:'Entregue',              cor:'#22C55E', obras:1 },
-      { key:'concluido',        label:'Concluído',             cor:'#6366F1', obras:1 },
-    ],
-    status: { andamento:15, finalizacao:2, entregues:1, concluidas:1 },
-    equipes: [
-      { nome:'Equipe 01 · Elétrica',       cor:'#FBBF24', obras:7, fases:['Cabeamento','Elétrica'] },
-      { nome:'Equipe 02 · Cabeamento',     cor:'#F59E0B', obras:5, fases:['Proj. Iniciado','Cabeamento'] },
-      { nome:'Equipe 03 · Áudio e Vídeo',  cor:'#A78BFA', obras:4, fases:['Áudio/Vídeo','Automação'] },
-      { nome:'Equipe 04 · Automação',       cor:'#3ECF8E', obras:2, fases:['Automação'] },
-      { nome:'Equipe 05 · Regional Norte',  cor:'#38bdf8', obras:1, fases:['Proj. Iniciado'] },
-    ],
-  },
-};
+async function carregarEExibir(ano = null) {
+  const badge = document.getElementById('live-badge');
+  if (badge) { badge.textContent = '↻ Carregando...'; badge.className = 'live-badge loading'; }
+
+  // Obras com dados financeiros
+  let obraQ = db.from('obras').select(
+    'id, nome_cliente, fase_atual, regional, valor_servicos, valor_produtos, valor_total, pct_servico, criado_em, consultores(nome), arquiteto_responsavel'
+  );
+  if (ano) {
+    obraQ = obraQ
+      .gte('criado_em', `${ano}-01-01T00:00:00`)
+      .lt('criado_em',  `${ano+1}-01-01T00:00:00`);
+  }
+
+  // Assistências (OS tipo assistência)
+  const [{ data: obras, error: oErr }, { data: oss }] = await Promise.all([
+    obraQ.order('valor_total', { ascending: false, nullsFirst: false }),
+    db.from('ordens_de_servico').select('id, tipo_servico, status_aprovacao'),
+  ]);
+
+  if (oErr) {
+    if (badge) badge.textContent = '⚠ Erro ao carregar';
+    showToast('Erro ao carregar obras: ' + oErr.message, 'error');
+    return;
+  }
+
+  const d = buildData(obras || [], oss || []);
+  renderAll(d);
+
+  if (badge) {
+    badge.textContent = `✅ ${(obras||[]).length} obras · atualizado`;
+    badge.className = 'live-badge';
+  }
+}
+
+function buildData(obras, oss) {
+  const num = v => parseFloat(v) || 0;
+
+  // Totais financeiros
+  const total_servicos = obras.reduce((s, o) => s + num(o.valor_servicos), 0);
+  const total_produtos = obras.reduce((s, o) => s + num(o.valor_produtos),  0);
+  const total_volume   = obras.reduce((s, o) => s + num(o.valor_total),     0);
+  const n_obras        = obras.length;
+  const ticket         = n_obras > 0 ? Math.round(total_volume / n_obras) : 0;
+
+  // % médio de serviços
+  const pctObras = obras.filter(o => o.pct_servico != null && !isNaN(parseFloat(o.pct_servico)));
+  const pct_med  = pctObras.length > 0
+    ? pctObras.reduce((s, o) => s + parseFloat(o.pct_servico), 0) / pctObras.length
+    : 0;
+
+  // Regionais
+  const regMap = {};
+  obras.forEach(o => {
+    const r = o.regional || 'Não informado';
+    if (!regMap[r]) regMap[r] = { nome: r, obras: 0, valor: 0 };
+    regMap[r].obras++;
+    regMap[r].valor += num(o.valor_total);
+  });
+  const regionais = Object.values(regMap).sort((a, b) => b.valor - a.valor);
+
+  // Consultores
+  const consMap = {};
+  obras.forEach(o => {
+    const c = o.consultores?.nome || 'Sem consultor';
+    if (!consMap[c]) consMap[c] = { nome: c, obras: 0, valor: 0 };
+    consMap[c].obras++;
+    consMap[c].valor += num(o.valor_total);
+  });
+  const consultores = Object.values(consMap).sort((a, b) => b.valor - a.valor).slice(0, 5);
+
+  // Pipeline (fases)
+  const faseCount = {};
+  obras.forEach(o => { const f = o.fase_atual || 'nao_iniciado'; faseCount[f] = (faseCount[f]||0) + 1; });
+  const fases = Object.keys(FASE_INFO)
+    .filter(k => faseCount[k])
+    .map(k => ({ key: k, label: FASE_INFO[k].label, cor: FASE_INFO[k].cor, obras: faseCount[k] }));
+
+  // Status
+  const status = { andamento: 0, finalizacao: 0, entregues: 0, concluidas: 0 };
+  obras.forEach(o => {
+    const cat = FASE_INFO[o.fase_atual]?.cat || 'andamento';
+    status[cat] = (status[cat] || 0) + 1;
+  });
+
+  // Arquitetos
+  const arqMap = {};
+  obras.forEach(o => {
+    if (o.arquiteto_responsavel) {
+      if (!arqMap[o.arquiteto_responsavel]) arqMap[o.arquiteto_responsavel] = 0;
+      arqMap[o.arquiteto_responsavel]++;
+    }
+  });
+  const arquitetos = Object.entries(arqMap)
+    .map(([nome, n]) => ({ nome, obras: n }))
+    .sort((a, b) => b.obras - a.obras);
+
+  // Evolução mensal por criado_em
+  const evoMap = {};
+  obras.forEach(o => {
+    if (!o.criado_em) return;
+    const d   = new Date(o.criado_em);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const mes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d.getMonth()];
+    if (!evoMap[key]) evoMap[key] = { mes, produtos: 0, servicos: 0 };
+    evoMap[key].produtos += num(o.valor_produtos);
+    evoMap[key].servicos += num(o.valor_servicos);
+  });
+  const evolucao = Object.entries(evoMap)
+    .sort(([a],[b]) => a.localeCompare(b))
+    .map(([, v]) => ({ mes: v.mes, produtos: Math.round(v.produtos), servicos: Math.round(v.servicos) }));
+
+  // Assistências
+  const assOss     = (oss || []).filter(o => o.tipo_servico === 'assistencia');
+  const assTotal   = assOss.length;
+  const assConcl   = assOss.filter(o => ['concluida','aprovada'].includes(o.status_aprovacao)).length;
+
+  // % por obra (para nova seção)
+  const obras_pct = pctObras
+    .map(o => ({
+      nome:  o.nome_cliente || `Obra #${o.id}`,
+      pct:   parseFloat(o.pct_servico),
+      valor: num(o.valor_total),
+    }))
+    .sort((a, b) => b.pct - a.pct);
+
+  return {
+    kpis:       { volume: Math.round(total_volume), ticket, obras: n_obras, mo: Math.round(pct_med * 100), assist: 0 },
+    regionais:  regionais.length ? regionais : [{ nome: 'Sem dados regionais', obras: 0, valor: 0 }],
+    consultores,
+    arquitetos: arquitetos.length ? arquitetos : [{ nome: 'A preencher após cadastro completo', obras: 0 }],
+    evolucao:   evolucao.length   ? evolucao   : [],
+    composicao: { produtos: Math.round(total_produtos), servicos: Math.round(total_servicos), pct_med },
+    assist:     { total: assTotal, cobradas: assConcl, gratis: assTotal - assConcl, receita: 0 },
+    fases,
+    status,
+    equipes:    [],
+    obras_pct,
+  };
+}
+
 
 // ── Paleta e Chart defaults ────────────────────────────────────
 const PAL = ['#3ecf8e','#818cf8','#fbbf24','#f472b6','#38bdf8','#a78bfa'];
@@ -706,7 +790,7 @@ function renderKPIs(d) {
 
 // ── RENDER: Status ─────────────────────────────────────────────
 function renderStatus(d) {
-  const s = d.status, t = d.kpis.obras;
+  const s = d.status, t = d.kpis.obras || 1;
   [['andamento',s.andamento],['finalizacao',s.finalizacao],['entregues',s.entregues],['concluidas',s.concluidas]]
     .forEach(([key, val]) => {
       const p = Math.round(val / t * 100);
@@ -730,6 +814,14 @@ function renderPipeline(d) {
 
 // ── RENDER: Equipes ────────────────────────────────────────────
 function renderEquipes(d) {
+  if (!d.equipes || d.equipes.length === 0) {
+    document.getElementById('tag-equipes-total').textContent = '—';
+    document.getElementById('equipeLista').innerHTML =
+      `<div style="color:var(--text-3);font-size:0.82rem;padding:16px 0;text-align:center;">
+        Ver agendamentos por equipe na <a href="agenda.html" style="color:var(--primary)">Agenda</a>
+      </div>`;
+    return;
+  }
   document.getElementById('tag-equipes-total').textContent = d.equipes.length + ' equipes';
   document.getElementById('equipeLista').innerHTML = d.equipes.map(e => `
     <div class="equipe-row">
@@ -766,13 +858,18 @@ function renderRegional(d) {
         <div class="leg-dot" style="background:${PAL[i]}"></div>
         <span class="leg-name">${r.nome}</span>
         <span class="leg-val">${r.obras}</span>
-        <span class="leg-pct">${Math.round(r.obras/total*100)}%</span>
+        <span class="leg-pct">${total > 0 ? Math.round(r.obras/total*100) : 0}%</span>
       </div>`).join('');
 }
 
 // ── RENDER: Consultores ────────────────────────────────────────
 function renderConsultores(d) {
-  const maxV = d.consultores[0].valor;
+  if (!d.consultores || d.consultores.length === 0) {
+    document.getElementById('rankConsultores').innerHTML =
+      '<div style="color:var(--text-3);font-size:0.82rem;padding:16px 0;text-align:center;">Nenhum consultor com obras cadastradas.</div>';
+    return;
+  }
+  const maxV = d.consultores[0].valor || 1;
   document.getElementById('rankConsultores').innerHTML = d.consultores.map((c,i) => `
     <div class="rank-item">
       <div class="rank-top">
@@ -816,7 +913,13 @@ function renderEvolucao(d) {
 
 // ── RENDER: Arquitetos ─────────────────────────────────────────
 function renderArquitetos(d) {
-  const maxO = d.arquitetos[0].obras;
+  if (!d.arquitetos || d.arquitetos.length === 0) {
+    document.getElementById('tag-arq').textContent = '0 parceiros';
+    document.getElementById('rankArquitetos').innerHTML =
+      '<div style="color:var(--text-3);font-size:0.82rem;padding:16px 0;text-align:center;">Preencha o campo arquiteto nas obras para ver os parceiros.</div>';
+    return;
+  }
+  const maxO = Math.max(d.arquitetos[0].obras, 1);
   document.getElementById('tag-arq').textContent = d.arquitetos.filter(a=>a.nome!=='Outros parceiros').length + ' parceiros';
   document.getElementById('rankArquitetos').innerHTML = d.arquitetos.map((a,i) => {
     const isOutros = a.nome === 'Outros parceiros';
@@ -835,9 +938,9 @@ function renderArquitetos(d) {
 // ── RENDER: Composição ─────────────────────────────────────────
 function renderComposicao(d) {
   if (CH.composicao) CH.composicao.destroy();
-  const { produtos, servicos } = d.composicao;
+  const { produtos, servicos, pct_med } = d.composicao;
   const total = produtos + servicos;
-  const pPct  = Math.round(produtos / total * 100);
+  const pPct  = total > 0 ? Math.round(produtos / total * 100) : 50;
   const sPct  = 100 - pPct;
   document.getElementById('composicaoRows').innerHTML = `
     <div class="comp-row">
@@ -852,6 +955,10 @@ function renderComposicao(d) {
       <div class="comp-track"><div class="comp-fill" style="width:${sPct}%;background:#818cf8"></div></div>
       <span class="comp-val">${fmt.brl(servicos)}</span><span class="comp-pct">${sPct}%</span>
     </div>`;
+  // Média % de serviços
+  const avgPct = pct_med != null ? Math.round(pct_med * 100) : sPct;
+  const elMedia = document.getElementById('pct-media-geral');
+  if (elMedia) elMedia.textContent = avgPct + '%';
   CH.composicao = new Chart(document.getElementById('chartComposicao'), {
     type:'bar',
     data:{labels:[''],datasets:[{label:'Produtos',data:[produtos],backgroundColor:'#3ecf8e',borderRadius:6,barThickness:28},{label:'MO',data:[servicos],backgroundColor:'#818cf8',borderRadius:6,barThickness:28}]},
@@ -872,12 +979,43 @@ function renderAssist(d) {
   counter(document.getElementById('av-receita'),  a.receita,  fmt.brl);
 }
 
+// ── RENDER: % de Serviços por Obra ─────────────────────────────
+function renderPctObras(d) {
+  const wrap = document.getElementById('pctObrasWrap');
+  const tag  = document.getElementById('tag-pct-avg');
+  if (!wrap) return;
+
+  if (!d.obras_pct || d.obras_pct.length === 0) {
+    wrap.innerHTML =
+      '<div style="color:var(--text-3);font-size:0.82rem;padding:20px 0;text-align:center;">Nenhuma obra com dado de % de serviço cadastrado.<br>Execute o SQL de importação para preencher.</div>';
+    if (tag) tag.textContent = 'Média —%';
+    return;
+  }
+
+  const avg = d.composicao.pct_med != null ? Math.round(d.composicao.pct_med * 100) : 0;
+  if (tag) tag.textContent = `Média ${avg}%`;
+
+  const maxPct = d.obras_pct[0]?.pct || 0.01;   // maior valor = 100% da barra
+  wrap.innerHTML = d.obras_pct.map(o => {
+    const pctNum = Math.round(o.pct * 100);
+    const barW   = Math.round((o.pct / maxPct) * 100);
+    return `<div class="pct-row">
+      <span class="pct-nome" title="${escHtml(o.nome)}">${escHtml(o.nome)}</span>
+      <div class="pct-bar-wrap">
+        <div class="pct-bar-track"><div class="pct-bar-fill" style="width:${barW}%"></div></div>
+        <span class="pct-num">${pctNum}%</span>
+      </div>
+      <span class="pct-valor">${fmt.brl(o.valor)}</span>
+    </div>`;
+  }).join('');
+}
+
 // ── Troca de período ───────────────────────────────────────────
 function setPeriodo(ano, btn) {
   document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('footer-periodo').textContent = ano;
-  renderAll(MOCK[ano]);
+  carregarEExibir(parseInt(ano));
 }
 
 // ── Render all ─────────────────────────────────────────────────
@@ -891,6 +1029,7 @@ function renderAll(d) {
   renderEvolucao(d);
   renderArquitetos(d);
   renderComposicao(d);
+  renderPctObras(d);
   renderAssist(d);
 }
 </script>
