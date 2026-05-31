@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31b -->
+<!-- build: 2026-05-31c -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -478,7 +478,7 @@ async function carregarDados() {
 
   const [{ data: osList, error: osErr }, { data: relList, error: relErr }] = await Promise.all([
     db.from('ordens_de_servico')
-      .select('id, tecnico_id, obra_id, cliente_outro, data_servico, servico_planejado, status_aprovacao, tecnicos!tecnico_id(id, nome), obras(nome_cliente)')
+      .select('id, tecnico_id, obra_id, data_servico, servico_planejado, status_aprovacao, tecnicos!tecnico_id(id, nome), obras(nome_cliente)')
       .eq('tipo_servico', 'assistencia')
       .order('data_servico', { ascending: false }),
     db.from('relatorios_assistencia')
@@ -528,7 +528,7 @@ function filtrar() {
     const rel    = todosRel[o.id];
     const status = rel ? rel.status : 'pendente';
     const tid    = String(o.tecnico_id || '');
-    const cliente = (o.obras?.nome_cliente || o.cliente_outro || '').toLowerCase();
+    const cliente = (o.obras?.nome_cliente || '').toLowerCase();
     const servico = (o.servico_planejado || '').toLowerCase();
     return (!fSt  || status === fSt)
         && (!fTec || tid === fTec)
@@ -610,7 +610,7 @@ function renderTabela() {
     const data = o.data_servico
       ? new Date(o.data_servico + 'T12:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'2-digit'})
       : '—';
-    const cliente = escHtml(o.obras?.nome_cliente || o.cliente_outro || '—');
+    const cliente = escHtml(o.obras?.nome_cliente || '—');
     const tecnico = escHtml(o.tecnicos?.nome || '—');
 
     const stBadge = status === 'concluido'
@@ -705,7 +705,7 @@ function abrirModal(osId, evt) {
   document.getElementById('osInfoBlock').innerHTML = `
     <div class="os-info-row"><span class="os-info-label">Técnico:</span><span class="os-info-val">${escHtml(os.tecnicos?.nome || '—')}</span></div>
     <div class="os-info-row"><span class="os-info-label">Data:</span><span class="os-info-val">${data}</span></div>
-    <div class="os-info-row"><span class="os-info-label">Cliente:</span><span class="os-info-val">${escHtml(os.obras?.nome_cliente || os.cliente_outro || '—')}</span></div>
+    <div class="os-info-row"><span class="os-info-label">Cliente:</span><span class="os-info-val">${escHtml(os.obras?.nome_cliente || '—')}</span></div>
     ${os.servico_planejado ? `<div class="os-info-row"><span class="os-info-label">Serviço:</span><span class="os-info-val">${escHtml(os.servico_planejado)}</span></div>` : ''}
   `;
 
@@ -852,7 +852,6 @@ async function salvarRelatorio() {
     os_id:             editingOsId,
     obra_id:           os?.obra_id || null,
     tecnico_id:        os?.tecnico_id || null,
-    cliente_outro:     os?.cliente_outro || null,
     data_servico:      os?.data_servico || null,
     cobrado:           isCobrado,
     valor_mo:          valorMO,
