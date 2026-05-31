@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31c -->
+<!-- build: 2026-05-31d -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -2640,7 +2640,7 @@ function irPaginaVist(p) {
 function brlA(v) {
   v = parseFloat(v) || 0;
   if (v >= 1_000_000) return 'R$ ' + (v/1_000_000).toFixed(2).replace('.',',') + 'M';
-  if (v >= 1_000)     return 'R$ ' + (v/1_000).toFixed(0) + 'k';
+  if (v >= 1_000)     return 'R$ ' + (v/1_000).toFixed(1).replace(/\.0$/, '').replace('.',',') + 'k';
   return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
 }
 
