@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31d -->
+<!-- build: 2026-05-31e -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -931,10 +931,12 @@ async function confirmarEdicao() {
 
     // Update equipes: delete all then re-insert selected
     const equipeIds = getSelectedEquipes('equipesEdit');
-    await db.from('tecnico_equipes').delete().eq('tecnico_id', editandoUsuario.id);
+    const { error: delErr } = await db.from('tecnico_equipes').delete().eq('tecnico_id', editandoUsuario.id);
+    if (delErr) throw new Error('Erro ao remover equipes antigas: ' + delErr.message);
     if (equipeIds.length > 0) {
-      await db.from('tecnico_equipes')
+      const { error: insErr } = await db.from('tecnico_equipes')
         .insert(equipeIds.map(eqId => ({ tecnico_id: editandoUsuario.id, equipe_id: eqId })));
+      if (insErr) throw new Error('Erro ao salvar equipes: ' + insErr.message);
     }
 
     fecharModalEditar();

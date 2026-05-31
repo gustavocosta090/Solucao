@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31d -->
+<!-- build: 2026-05-31e -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -519,6 +519,25 @@ async function init() {
 
 // ── Carregar agendamentos + OSs ───────────────────────────────
 async function carregarAgendamentosHoje() {
+  const lista = document.getElementById('lista-agendamentos');
+  try {
+    await _carregarAgendamentosHoje();
+  } catch(e) {
+    console.error('[SAOS] Erro ao carregar agendamentos:', e);
+    lista.innerHTML = `
+      <div class="lista-vazia">
+        <i data-lucide="wifi-off"></i>
+        <p>Erro ao carregar agendamentos.</p>
+        <small>${escHtml(e.message || 'Verifique sua conexão.')}</small>
+        <button class="btn-primary" onclick="carregarAgendamentosHoje()" style="margin-top:16px;">
+          <i data-lucide="refresh-cw"></i> Tentar novamente
+        </button>
+      </div>`;
+    lucide.createIcons();
+  }
+}
+
+async function _carregarAgendamentosHoje() {
   const hoje    = new Date().toISOString().split('T')[0];
   // Busca até 60 dias atrás para pegar OSs pendentes antigas, mas nunca datas futuras
   const passado = new Date(); passado.setDate(passado.getDate() - 60);
@@ -561,11 +580,12 @@ async function carregarAgendamentosHoje() {
     }
   }
 
-  // OSs: busca sem limite de data para pegar OSs pendentes antigas também
+  // OSs: filtra pelo mesmo janela de 60 dias dos agendamentos para evitar crescimento ilimitado
   let osRaw = null;
 
   const osR1 = await db.from('ordens_de_servico')
     .select('id, agendamento_id, obra_id, status_aprovacao, data_servico, criado_em, tecnico_id')
+    .gte('data_servico', dataInicio)
     .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`);
 
   if (!osR1.error) {
@@ -574,6 +594,7 @@ async function carregarAgendamentosHoje() {
     // Fallback 2: sem auxiliar2/3
     const osR2 = await db.from('ordens_de_servico')
       .select('id, obra_id, status_aprovacao, data_servico, criado_em, tecnico_id')
+      .gte('data_servico', dataInicio)
       .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id}`);
     if (!osR2.error) {
       osRaw = osR2.data;
@@ -581,6 +602,7 @@ async function carregarAgendamentosHoje() {
       // Fallback 3: mínimo — só tecnico_id
       const osR3 = await db.from('ordens_de_servico')
         .select('id, obra_id, status_aprovacao, data_servico, criado_em, tecnico_id')
+        .gte('data_servico', dataInicio)
         .eq('tecnico_id', id);
       osRaw = osR3.data || [];
     }
@@ -980,32 +1002,40 @@ async function headersUploadProtegido() {
 // Faz upload de todas as fotos para o SharePoint via proxy Vercel
 // Retorna URLs do tipo /api/foto?path=... que funcionam no supervisor/obra_detail
 // Estrutura: Obras e Clientes {ano}/{Cliente}/Fotos/Equipe {cod}/{Cliente} {numeroOS} - foto 01.jpg
+// Paralelo em lotes de 3 para reduzir tempo total sem sobrecarregar o proxy
 async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
-  const urls       = [];
-  const nomeBase   = nomePastaCliente(nomeCliente);
-  const equipe     = equipeNomePasta(numeroOS, equipeNome);
-  const ano        = (numeroOS || '').split('-')[0] || new Date().getFullYear();
+  const urls     = new Array(fotosSelecionadas.length).fill(null);
+  const nomeBase = nomePastaCliente(nomeCliente);
+  const equipe   = equipeNomePasta(numeroOS, equipeNome);
+  const ano      = (numeroOS || '').split('-')[0] || new Date().getFullYear();
   const folderPath = `Obras e Clientes ${ano}/${nomeBase}/Fotos/${equipe}`;
+  const total    = fotosSelecionadas.length;
+  let concluidas = 0;
 
-  for (let i = 0; i < fotosSelecionadas.length; i++) {
-    const f   = fotosSelecionadas[i];
-    const ext = (f.file.name.split('.').pop() || 'jpg').toLowerCase();
+  const uploadUma = async (f, i) => {
+    const ext      = (f.file.name.split('.').pop() || 'jpg').toLowerCase();
     const filename = `${nomeBase} ${numeroOS} - foto ${String(i + 1).padStart(2, '0')}.${ext}`;
+    const thumb    = document.getElementById(`thumb-${f.id}`);
 
-    const thumb = document.getElementById(`thumb-${f.id}`);
-    if (thumb) thumb.innerHTML += `<div class="foto-uploading">${i + 1}/${fotosSelecionadas.length}</div>`;
+    const atualizarProgresso = (texto) => {
+      if (!thumb) return;
+      const overlay = thumb.querySelector('.foto-uploading');
+      if (overlay) overlay.textContent = texto;
+      else thumb.innerHTML += `<div class="foto-uploading">${texto}</div>`;
+    };
+
+    atualizarProgresso(`${i + 1}/${total}`);
 
     try {
-      // 1. Pede sessão de upload ao proxy
+      const hdrs = await headersUploadProtegido();
       const initRes = await fetch('/api/upload', {
         method:  'POST',
-        headers: await headersUploadProtegido(),
+        headers: hdrs,
         body:    JSON.stringify({ path: folderPath, filename, contentType: f.file.type }),
       });
       if (!initRes.ok) throw new Error(await initRes.text());
       const { uploadUrl, filePath } = await initRes.json();
 
-      // 2. Envia direto ao Microsoft (uploadUrl é pré-autenticada)
       const CHUNK = 5 * 1024 * 1024;
       let start = 0;
       while (start < f.file.size) {
@@ -1024,13 +1054,23 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
         start = end;
       }
 
-      // 3. URL proxy para exibir no app (supervisor, obra_detail)
-      urls.push(`/api/foto?path=${encodeURIComponent(filePath)}`);
+      urls[i] = `/api/foto?path=${encodeURIComponent(filePath)}`;
+      concluidas++;
+      atualizarProgresso(`✓ ${concluidas}/${total}`);
     } catch (e) {
       console.warn(`Foto ${i + 1} falhou:`, e.message);
+      atualizarProgresso('✗');
     }
+  };
+
+  // Processar em lotes de 3 em paralelo
+  const LOTE = 3;
+  for (let i = 0; i < fotosSelecionadas.length; i += LOTE) {
+    const lote = fotosSelecionadas.slice(i, i + LOTE);
+    await Promise.all(lote.map((f, j) => uploadUma(f, i + j)));
   }
-  return urls;
+
+  return urls.filter(Boolean);
 }
 
 // ── SharePoint via proxy Vercel / PDF ────────────────────────
@@ -1458,11 +1498,21 @@ function novaOS()       { mostrarTela('tela-lista'); carregarAgendamentosHoje();
 function voltarLista()  { mostrarTela('tela-lista'); carregarAgendamentosHoje(); }
 function irHistorico()  { window.location.href = 'tecnico_dashboard.html'; }
 
+let _osFormAberto = false;
+
 function mostrarTela(id) {
   document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
   document.getElementById(id).classList.add('ativa');
   window.scrollTo(0, 0);
+  _osFormAberto = (id === 'tela-form');
 }
+
+window.addEventListener('beforeunload', function(e) {
+  if (_osFormAberto && fotosSelecionadas.length > 0) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
 
 // Drag & drop
 const uploadArea = document.getElementById('upload-area');

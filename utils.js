@@ -1,10 +1,25 @@
-// utils.js — Solução Técnica, build 2026-05-30m
+// utils.js — Solução Técnica, build 2026-05-31e
 // Utilitários compartilhados. Carregado após @supabase/supabase-js via <script src="utils.js">.
 
 // ─── Supabase client ────────────────────────────────────────────
 const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Redireciona para login quando a sessão expirar ou o usuário for deslogado
+db.auth.onAuthStateChange(function(event, session) {
+  if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+    var path = (location.pathname || '').split('/').pop() || '';
+    if (path !== 'login.html' && path !== '') {
+      window.location.href = 'login.html';
+    }
+  }
+});
+
+// Captura promises rejeitadas sem .catch() para não engolir erros silenciosamente
+window.addEventListener('unhandledrejection', function(e) {
+  console.error('[SAOS] Promise não tratada:', e.reason);
+});
 
 // ─── Escape HTML ────────────────────────────────────────────────
 function escHtml(v) {
@@ -272,17 +287,37 @@ function renderTopbar(nome, role, paginaAtiva) {
 }
 
 // ─── Query Cache ────────────────────────────────────────────────
-// Armazena resultados de queries em memória com TTL.
+// Armazena resultados em memória + sessionStorage com TTL.
+// sessionStorage persiste durante a navegação entre páginas da mesma aba.
 // Uso: const data = await cachedQuery('key', 300, () => db.from(...).then(r => r.data));
 var _qCache = Object.create(null);
+var _CACHE_PREFIX = 'saos_qc_';
 
 async function cachedQuery(key, ttlSeconds, queryFn) {
-  var now    = Date.now();
-  var ttlMs  = (ttlSeconds || 300) * 1000;
-  var cached = _qCache[key];
-  if (cached && now < cached.expires) return cached.data;
+  var now   = Date.now();
+  var ttlMs = (ttlSeconds || 300) * 1000;
+
+  // 1. Checar memória (mais rápido, zero parse)
+  var mem = _qCache[key];
+  if (mem && now < mem.expires) return mem.data;
+
+  // 2. Checar sessionStorage (sobrevive a navegação entre páginas)
+  try {
+    var raw = sessionStorage.getItem(_CACHE_PREFIX + key);
+    if (raw) {
+      var entry = JSON.parse(raw);
+      if (now < entry.expires) {
+        _qCache[key] = entry; // reaquecer memória
+        return entry.data;
+      }
+    }
+  } catch(e) { /* quota ou parse error — ignora */ }
+
+  // 3. Buscar do servidor
   var data = await queryFn();
-  _qCache[key] = { data: data, expires: now + ttlMs };
+  var obj  = { data: data, expires: now + ttlMs };
+  _qCache[key] = obj;
+  try { sessionStorage.setItem(_CACHE_PREFIX + key, JSON.stringify(obj)); } catch(e) {}
   return data;
 }
 
@@ -290,8 +325,14 @@ async function cachedQuery(key, ttlSeconds, queryFn) {
 function invalidateCache(key) {
   if (key) {
     delete _qCache[key];
+    try { sessionStorage.removeItem(_CACHE_PREFIX + key); } catch(e) {}
   } else {
     _qCache = Object.create(null);
+    try {
+      Object.keys(sessionStorage)
+        .filter(function(k) { return k.indexOf(_CACHE_PREFIX) === 0; })
+        .forEach(function(k) { sessionStorage.removeItem(k); });
+    } catch(e) {}
   }
 }
 

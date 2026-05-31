@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31d -->
+<!-- build: 2026-05-31e -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -574,7 +574,7 @@
 <div id="modal-senha" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
   <div style="background:#161616;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:28px;max-width:400px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
     <h3 style="font-size:15px;font-weight:700;color:#fff;margin-bottom:8px;">🔑 Troque sua senha</h3>
-    <p style="font-size:13px;color:#A1A1AA;margin-bottom:20px;line-height:1.6;">Você entrou com a senha padrão <strong style="color:#fff;">123456</strong>. Defina uma senha pessoal para continuar com segurança.</p>
+    <p style="font-size:13px;color:#A1A1AA;margin-bottom:20px;line-height:1.6;">Você entrou com a senha padrão <strong style="color:#fff;">123456</strong>. Por segurança, é obrigatório definir uma senha pessoal antes de continuar.</p>
     <div style="margin-bottom:12px;">
       <label style="display:block;font-size:11px;font-weight:600;color:#A1A1AA;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Nova senha</label>
       <input id="ms-nova" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:9px 12px;color:#fff;font-size:14px;font-family:inherit;outline:none;">
@@ -584,8 +584,7 @@
       <input id="ms-confirma" type="password" placeholder="Repita a nova senha" autocomplete="new-password" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:9px 12px;color:#fff;font-size:14px;font-family:inherit;outline:none;">
     </div>
     <div style="display:flex;gap:8px;">
-      <button onclick="fecharModalSenha()" style="flex:1;padding:9px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#A1A1AA;cursor:pointer;font-size:13px;font-family:inherit;">Agora não</button>
-      <button onclick="salvarNovaSenha()" id="ms-btn" style="flex:2;padding:9px;background:#3ECF8E;border:none;border-radius:6px;color:#000;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;">Salvar senha</button>
+      <button onclick="salvarNovaSenha()" id="ms-btn" style="width:100%;padding:9px;background:#3ECF8E;border:none;border-radius:6px;color:#000;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;">Salvar senha e continuar</button>
     </div>
   </div>
 </div>
@@ -627,7 +626,6 @@ function oferecerTrocaSenhaInicial(senhaDigitada, userId) {
 async function fecharModalSenha() {
   const modal = document.getElementById('modal-senha');
   if (modal) modal.style.display = 'none';
-  // "Agora não" — redireciona após fechar
   if (_pendingUserId) {
     const uid = _pendingUserId;
     _pendingUserId = null;

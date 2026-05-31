@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31d -->
+<!-- build: 2026-05-31e -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -774,13 +774,8 @@
     <button onclick="mudarSemana(1)"><i data-lucide="chevron-right"></i></button>
   </div>
 
-  <div class="filtros-equipe">
+  <div class="filtros-equipe" id="filtros-equipe">
     <button class="filtro-btn ativo" data-equipe="todas">Todas equipes</button>
-    <button class="filtro-btn" data-equipe="1">Cabeamento</button>
-    <button class="filtro-btn" data-equipe="2">Elétrica</button>
-    <button class="filtro-btn" data-equipe="3">Áudio e Vídeo</button>
-    <button class="filtro-btn" data-equipe="4">Automação</button>
-    <button class="filtro-btn" data-equipe="5">Regional Norte</button>
   </div>
 
   <div class="controles-acoes">
@@ -986,6 +981,7 @@ let agendamentos      = [];
 let obras             = [];
 let tecnicos          = [];
 let tecnicoEquipes    = [];
+let equipesDisponiveis = []; // { id, nome } — carregadas do banco
 let agEditandoId      = null;
 let equipesSelecionadas = []; // array de IDs (string)
 let equipeDropdownAberto = false;
@@ -1077,7 +1073,7 @@ async function carregarObras() {
 }
 
 async function carregarTecnicos() {
-  const [t, te] = await Promise.all([
+  const [t, te, eq] = await Promise.all([
     cachedQuery('agenda-tecnicos', 600, async () => {
       let { data: d, error: e1 } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
       if (e1 || !d) {
@@ -1090,9 +1086,33 @@ async function carregarTecnicos() {
       const { data } = await db.from('tecnico_equipes').select('tecnico_id, equipe_id');
       return data || [];
     }),
+    cachedQuery('agenda-equipes', 3600, async () => {
+      const { data } = await db.from('equipes').select('id, nome').order('nome');
+      return data || [];
+    }),
   ]);
-  tecnicos       = t;
-  tecnicoEquipes = te;
+  tecnicos           = t;
+  tecnicoEquipes     = te;
+  equipesDisponiveis = eq;
+  renderFiltrosEquipe();
+}
+
+function renderFiltrosEquipe() {
+  const container = document.getElementById('filtros-equipe');
+  if (!container) return;
+  // Remover botões antigos exceto "Todas equipes"
+  container.innerHTML = '<button class="filtro-btn ativo" data-equipe="todas">Todas equipes</button>'
+    + equipesDisponiveis.map(eq =>
+        `<button class="filtro-btn" data-equipe="${eq.id}">${escHtml(eq.nome)}</button>`
+      ).join('');
+  container.querySelectorAll('.filtro-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
+      btn.classList.add('ativo');
+      filtroEquipe = btn.dataset.equipe;
+      renderGrade(diasDaSemana(semanaOffset));
+    });
+  });
 }
 
 async function carregarAgenda() {
@@ -1380,6 +1400,17 @@ async function editarAgendamento(id) {
   document.getElementById('modal-titulo').textContent = 'Editar Agendamento';
   document.getElementById('modal-erro').style.display = 'none';
 
+  // Pré-preencher tipo_servico a partir da OS associada ao agendamento
+  db.from('ordens_de_servico')
+    .select('tipo_servico')
+    .eq('agendamento_id', id)
+    .limit(1)
+    .maybeSingle()
+    .then(({ data: osAssoc }) => {
+      const tipo = osAssoc?.tipo_servico || 'execucao';
+      document.querySelectorAll('input[name="tipo-servico"]').forEach(r => { r.checked = r.value === tipo; });
+    });
+
   const obraVal = ag.obra_id ? String(ag.obra_id) : (ag.cliente_outro ? 'outro' : '');
   document.getElementById('f-obra').value               = obraVal;
   document.getElementById('outro-fields').style.display = ag.cliente_outro ? 'block' : 'none';
@@ -1450,6 +1481,35 @@ async function salvarAgendamento() {
     btn.disabled            = false;
     btn.innerHTML           = '<i data-lucide="save"></i> Salvar';
     lucide.createIcons();
+  }
+
+  // Verificar conflito de agendamento: técnico já alocado neste dia?
+  const techIds = equipesSelecionadas.map(Number).filter(Boolean);
+  const { data: mesmaData } = await db.from('agendamentos')
+    .select('id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, obras(nome_cliente), cliente_outro')
+    .eq('data', data);
+
+  const conflitos = (mesmaData || []).filter(c => {
+    if (agEditandoId && c.id === agEditandoId) return false;
+    const cTecs = [c.tecnico_id, c.auxiliar_id, c.auxiliar2_id, c.auxiliar3_id].filter(Boolean).map(Number);
+    return techIds.some(id => cTecs.includes(id));
+  });
+
+  if (conflitos.length > 0) {
+    const descricoes = conflitos.map(c => c.obras?.nome_cliente || c.cliente_outro || 'outro').join(', ');
+    const prosseguir = await new Promise(resolve => {
+      confirmModal(
+        `Atenção: um ou mais técnicos já têm agendamento nesta data (${descricoes}). Deseja salvar mesmo assim?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!prosseguir) {
+      btn.disabled  = false;
+      btn.innerHTML = '<i data-lucide="save"></i> Salvar';
+      lucide.createIcons();
+      return;
+    }
   }
 
   // Mapeia equipe → colunas DB (max 4)
@@ -1600,15 +1660,7 @@ async function excluirAgendamento() {
   }); // confirmModal
 }
 
-// ── Filtros de equipe ────────────────────────────────────────
-document.querySelectorAll('.filtro-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
-    btn.classList.add('ativo');
-    filtroEquipe = btn.dataset.equipe;
-    renderGrade(diasDaSemana(semanaOffset));
-  });
-});
+// ── Filtros de equipe — renderizados dinamicamente em renderFiltrosEquipe() ──
 
 // Fecha dropdown da equipe ao clicar fora
 document.addEventListener('click', function(e) {
