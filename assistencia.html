@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31 -->
+<!-- build: 2026-05-31a -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -201,6 +201,13 @@
 
     .modal-erro { display: none; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; padding: 10px 14px; font-size: 0.8rem; color: #f87171; margin-bottom: 16px; }
 
+    /* ── Alert banner ── */
+    .alert-banner { display: none; margin: 12px 24px 0; background: var(--amber-dim); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 12px 18px; display: flex; align-items: center; gap: 10px; font-size: 0.83rem; }
+    .alert-banner.hidden { display: none !important; }
+    .alert-banner i { width: 16px; height: 16px; color: var(--amber); flex-shrink: 0; }
+    .alert-banner strong { color: var(--amber); }
+    .alert-banner span { color: var(--text-2); }
+
     /* ── Page header ── */
     .page-header { padding: 24px 24px 8px; display: flex; align-items: center; justify-content: space-between; }
     .page-title { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; }
@@ -255,6 +262,12 @@
     <div class="stat-num" id="sValTot" style="color:var(--primary)">—</div>
     <div class="stat-label">Total arrecadado</div>
   </div>
+</div>
+
+<!-- Banner de pendentes -->
+<div class="alert-banner hidden" id="alertPendentes">
+  <i data-lucide="clock-alert"></i>
+  <span><strong id="alertCount">0</strong> relatório(s) aguardando preenchimento — clique em <strong>Finalizar</strong> para registrar.</span>
 </div>
 
 <!-- Filtros -->
@@ -465,7 +478,7 @@ async function carregarDados() {
 
   const [{ data: osList, error: osErr }, { data: relList, error: relErr }] = await Promise.all([
     db.from('ordens_de_servico')
-      .select('id, tecnico_id, obra_id, cliente_outro, data_servico, servico_planejado, status_aprovacao, tecnicos(id, nome), obras(nome_cliente)')
+      .select('id, tecnico_id, obra_id, cliente_outro, data_servico, servico_planejado, status_aprovacao, tecnicos!tecnico_id(id, nome), obras(nome_cliente)')
       .eq('tipo_servico', 'assistencia')
       .order('data_servico', { ascending: false }),
     db.from('relatorios_assistencia')
@@ -475,13 +488,13 @@ async function carregarDados() {
   if (osErr) {
     badge.textContent = '⚠ Erro';
     showToast('Erro ao carregar OS: ' + osErr.message, 'error');
-    document.getElementById('loadingEl').innerHTML = '<div style="color:var(--amber);padding:20px;">Erro ao carregar dados.</div>';
+    document.getElementById('loadingEl').innerHTML = '<div style="color:var(--amber);padding:20px;text-align:center;">Erro ao carregar dados.</div>';
     return;
   }
 
   todasOS = osList || [];
 
-  // Map os_id → relatorio
+  // Map os_id → relatorio (graceful: tabela pode não existir ainda)
   todosRel = {};
   (relList || []).forEach(r => { todosRel[r.os_id] = r; });
 
@@ -524,6 +537,14 @@ function filtrar() {
         && (!fB   || cliente.includes(fB) || servico.includes(fB) || (o.tecnicos?.nome || '').toLowerCase().includes(fB));
   });
 
+  // Pendentes primeiro, depois por data desc
+  filtrados.sort((a, b) => {
+    const aPend = !todosRel[a.id] || todosRel[a.id].status === 'pendente' ? 0 : 1;
+    const bPend = !todosRel[b.id] || todosRel[b.id].status === 'pendente' ? 0 : 1;
+    if (aPend !== bPend) return aPend - bPend;
+    return (b.data_servico || '').localeCompare(a.data_servico || '');
+  });
+
   pagAtual = 1;
   renderStats();
   renderTabela();
@@ -545,6 +566,16 @@ function renderStats() {
   document.getElementById('sValMO').textContent   = brl(valMO);
   document.getElementById('sValEq').textContent   = brl(valEq);
   document.getElementById('sValTot').textContent  = brl(valTot);
+
+  // Banner de alerta
+  const banner = document.getElementById('alertPendentes');
+  if (pend > 0) {
+    document.getElementById('alertCount').textContent = pend;
+    banner.classList.remove('hidden');
+    lucide.createIcons();
+  } else {
+    banner.classList.add('hidden');
+  }
 }
 
 // ── Tabela ───────────────────────────────────────────────────────
@@ -601,9 +632,11 @@ function renderTabela() {
     const eqStr  = valEq  != null ? brl(valEq)  : '<span style="color:var(--text-3)">—</span>';
     const totStr = valTot != null ? brl(valTot) : '<span style="color:var(--text-3)">—</span>';
 
-    const btnAcao = rel
-      ? `<button class="btn-ver" onclick="abrirModal(${o.id}, event)"><i data-lucide="eye" style="width:12px;height:12px"></i> Ver</button>`
-      : `<button class="btn-finalizar" onclick="abrirModal(${o.id}, event)"><i data-lucide="check-circle" style="width:12px;height:12px"></i> Finalizar</button>`;
+    const btnAcao = !rel
+      ? `<button class="btn-finalizar" onclick="abrirModal(${o.id}, event)"><i data-lucide="check-circle" style="width:12px;height:12px"></i> Finalizar</button>`
+      : status === 'pendente'
+        ? `<button class="btn-finalizar" onclick="abrirModal(${o.id}, event)"><i data-lucide="pencil" style="width:12px;height:12px"></i> Editar</button>`
+        : `<button class="btn-ver" onclick="abrirModal(${o.id}, event)"><i data-lucide="eye" style="width:12px;height:12px"></i> Ver</button>`;
 
     return `<tr onclick="abrirModal(${o.id})">
       <td class="td-muted">${data}</td>

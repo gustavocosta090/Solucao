@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31 -->
+<!-- build: 2026-05-31a -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -2651,7 +2651,7 @@ async function carregarAssistencias() {
 
   const [{ data: osList, error: osErr }, { data: relList }] = await Promise.all([
     db.from('ordens_de_servico')
-      .select('id, tecnico_id, obra_id, cliente_outro, data_servico, servico_planejado, tecnicos(id, nome), obras(nome_cliente)')
+      .select('id, tecnico_id, obra_id, cliente_outro, data_servico, servico_planejado, tecnicos!tecnico_id(id, nome), obras(nome_cliente)')
       .eq('tipo_servico', 'assistencia')
       .order('data_servico', { ascending: false }),
     db.from('relatorios_assistencia').select('*'),

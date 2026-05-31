@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31 -->
+<!-- build: 2026-05-31a -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -736,9 +736,9 @@ async function carregarDados() {
       ? `<div class="btn-actions">
           <button class="btn-sm btn-edit" onclick="abrirEditar(${t.id})" title="Editar usuário"><i data-lucide="pencil"></i> Editar</button>
           <button class="btn-sm btn-reset" data-user-id="${escHtml(t.auth_user_id)}" data-nome="${escHtml(t.nome)}" onclick="abrirReset(this.dataset.userId, this.dataset.nome)" title="Redefinir senha"><i data-lucide="key-round"></i> Senha</button>
-          <button class="btn-sm btn-delete" onclick="apagarUsuario(${t.id})" title="Apagar acesso"><i data-lucide="trash-2"></i> Apagar</button>
+          <button class="btn-sm btn-delete" onclick="apagarUsuario(${t.id})" title="Demitir funcionário"><i data-lucide="user-x"></i> Demitir</button>
         </div>`
-      : `<span style="color:var(--text-3);font-size:12px;">—</span>`;
+      : `<button class="btn-sm btn-delete" onclick="removerTecnico(${t.id}, '${escHtml(t.nome)}')" title="Remover registro"><i data-lucide="trash-2"></i> Remover</button>`;
 
     tbody.innerHTML += `
       <tr>
@@ -853,22 +853,54 @@ async function confirmarEdicao() {
 
 async function apagarUsuario(tecnicoId) {
   const usuario = tecnicos.find(t => Number(t.id) === Number(tecnicoId));
-  if (!usuario?.auth_user_id) return;
+  if (!usuario) return;
 
   confirmModal(
-    'Apagar o acesso de ' + usuario.nome + '? O histórico de OS ficará preservado, mas essa pessoa não conseguirá mais entrar no sistema.',
+    `Demitir ${usuario.nome}? O acesso ao sistema será revogado e a pessoa sumirá da lista. Histórico de OS é preservado.`,
     async () => {
       try {
-        await chamarAdminFunction({
-          action: 'delete_user',
-          tecnicoId: usuario.id,
-          userId: usuario.auth_user_id,
-          nome: usuario.nome,
-        });
-        mostrarSucesso('Acesso apagado com sucesso.');
+        // 1. Revogar conta auth (se tiver)
+        if (usuario.auth_user_id) {
+          await chamarAdminFunction({
+            action: 'delete_user',
+            tecnicoId: usuario.id,
+            userId: usuario.auth_user_id,
+            nome: usuario.nome,
+          });
+        }
+
+        // 2. Apagar registro da tabela tecnicos
+        const { error: delErr } = await db.from('tecnicos').delete().eq('id', tecnicoId);
+
+        if (delErr) {
+          // FK constraint (pessoa tem OS vinculadas): garante sem acesso e avisa
+          await db.from('tecnicos').update({ auth_user_id: null }).eq('id', tecnicoId);
+          mostrarErro(
+            `Acesso de ${usuario.nome} revogado, mas o registro não pôde ser removido pois existem OS vinculadas. ` +
+            'Execute o SQL de migration (FK SET NULL) no Supabase para remoção completa.'
+          );
+        } else {
+          mostrarSucesso(`${usuario.nome} removido com sucesso.`);
+        }
+
         await carregarDados();
       } catch (err) {
-        mostrarErro(err.message || 'Erro ao apagar usuário.');
+        mostrarErro(err.message || 'Erro ao remover funcionário.');
+      }
+    }
+  );
+}
+
+async function removerTecnico(tecnicoId, nome) {
+  confirmModal(
+    `Remover completamente o registro de ${nome}? Esta ação não pode ser desfeita.`,
+    async () => {
+      const { error } = await db.from('tecnicos').delete().eq('id', tecnicoId);
+      if (error) {
+        mostrarErro(`Não foi possível remover: ${error.message}`);
+      } else {
+        mostrarSucesso(`${nome} removido com sucesso.`);
+        await carregarDados();
       }
     }
   );
