@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27j -->
+<!-- build: 2026-05-30m -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -8,8 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
+  <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <style>
@@ -415,11 +416,6 @@
 </div>
 
 <script>
-const { createClient } = supabase;
-const db = createClient(
-  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
-);
 
 // ── Estado ────────────────────────────────────────────────────
 let tecnicoLogado          = null;
@@ -428,13 +424,6 @@ let osSelecionadaId        = null;  // ID da OS pendente existente (para UPDATE)
 let tecnicos               = [];
 let fotosSelecionadas      = [];
 let equipeFull             = []; // todos os IDs da equipe do agendamento
-
-function escHtml(v) {
-  return String(v ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
-
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
   const { data: { session } } = await db.auth.getSession();
@@ -480,36 +469,6 @@ async function init() {
 }
 
 // ── Topbar ────────────────────────────────────────────────────
-function renderTopbar(nome, role, paginaAtiva) {
-  const h = new Date().getHours();
-  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const primeiro = (nome || '').split(' ')[0];
-  const greetEl = document.getElementById('topbar-greeting');
-  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
-  const links = [
-    { href:'obras.html',                label:'Obras',               id:'obras',              roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'agenda.html',               label:'Agenda Técnica',      id:'agenda',             roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'agenda_vistorias.html',     label:'Agenda de Vistorias', id:'agenda-vistorias',   roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'vistoria.html',             label:'Minhas Vistorias',    id:'vistoria',           roles:['vistoriador'] },
-    { href:'vistoria.html',             label:'Relatórios de Vistoria', id:'relatorios-vistoria', roles:['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
-    { href:'os.html',                   label:'Fazer OS',            id:'os',                 roles:['tecnico','auxiliar'] },
-    { href:'supervisor.html',           label:'Supervisor',          id:'supervisor',         roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href:'pendencias.html',           label:'Pendências',          id:'pendencias',         roles:['supervisor','coordenador','agendamento'] },
-    { href:'admin.html',                label:'Admin',               id:'admin',              roles:['coordenador'] },
-    { href:'tecnico_dashboard.html',    label:'Minhas OSs',          id:'minhas-os',          roles:['tecnico','auxiliar'] },
-    { href:'gerente_comercial.html',    label:'Comercial',           id:'comercial',          roles:['gerente_comercial'] },
-    { href:'projetista.html',           label:'Meu Painel',          id:'projetista',         roles:['projetista'] },
-    { href:'coordenador_projetos.html', label:'Projetos',            id:'coordenador-projetos', roles:['coordenador_projetos'] },
-    { href:'dashboard.html',            label:'Painel Executivo',     id:'dashboard',           roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
-  ];
-  const nav = document.getElementById('topbar-nav');
-  if (!nav) return;
-  nav.innerHTML = links.filter(l => l.roles.includes(role))
-    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
-    .join('') + `<a href="#" class="nav-sair" onclick="sair()">Sair</a>`;
-}
-
-async function sair() { await db.auth.signOut(); window.location.href = 'login.html'; }
 
 // ── Carregar agendamentos + OSs ───────────────────────────────
 async function carregarAgendamentosHoje() {
@@ -586,7 +545,7 @@ async function carregarAgendamentosHoje() {
     lista.innerHTML = `
       <div class="lista-vazia">
         <i data-lucide="calendar-x"></i>
-        <p>Nenhum agendamento nos últimos 14 dias.</p>
+        <p>Nenhum agendamento nos últimos 60 dias.</p>
         <small>Verifique a agenda com seu coordenador.</small>
       </div>`;
     lucide.createIcons();
@@ -784,9 +743,9 @@ async function abrirFormulario(agId, osId = null) {
     }
   }
 
-  // Se existe OS pendente, carrega dados parcialmente preenchidos
-  if (osId) {
-    const { data: os } = await db.from('ordens_de_servico').select('*').eq('id', osId).single();
+  // Se existe OS pendente (parâmetro original ou encontrada via fallback), carrega dados
+  if (osSelecionadaId) {
+    const { data: os } = await db.from('ordens_de_servico').select('*').eq('id', osSelecionadaId).single();
     if (os) {
       if (os.servico_planejado && !document.getElementById('f-planejado').value)
         document.getElementById('f-planejado').value = os.servico_planejado;
@@ -846,6 +805,7 @@ function resetarForm() {
   ['prob','mat','ret','eqp'].forEach(c => toggle(c,'nao'));
   ['f-planejado','f-realizado','f-problema','f-material','f-retorno','f-equipamentos','f-proximas','f-obs']
     .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('f-tipo-servico').value        = 'execucao';
   document.getElementById('f-automacao').value          = '';
   document.getElementById('f-inicio').value             = '';
   document.getElementById('f-fim').value                = '';
@@ -865,7 +825,7 @@ function resetarForm() {
 function adicionarFotos(files) {
   Array.from(files).forEach(file => {
     // 500 MB por arquivo (fotos e vídeos)
-    if (file.size > 500 * 1024 * 1024) { alert(`${file.name} é maior que 500MB.`); return; }
+    if (file.size > 500 * 1024 * 1024) { showToast(`${file.name} é maior que 500 MB. Escolha um arquivo menor.`, 'warning'); return; }
     const isVideo  = file.type.startsWith('video/');
     const preview  = URL.createObjectURL(file);   // rápido, não carrega o arquivo inteiro na memória
     fotosSelecionadas.push({ file, preview, isVideo, id: Date.now() + Math.random() });
@@ -1125,6 +1085,14 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, equipeNo
 
 // ── Enviar OS ─────────────────────────────────────────────────
 async function enviarOS() {
+  // ── Validação obrigatória ────────────────────────────────────
+  const realizado = (document.getElementById('f-realizado')?.value || '').trim();
+  if (!realizado) {
+    showToast('Preencha o campo "O que foi realizado" antes de enviar.', 'warning');
+    document.getElementById('f-realizado')?.focus();
+    return;
+  }
+
   const btn = document.getElementById('btn-enviar');
   btn.disabled    = true;
   btn.textContent = 'Enviando...';
@@ -1231,7 +1199,7 @@ async function enviarOS() {
       }
     }
 
-    if (error) { alert('Erro ao enviar OS: ' + error.message); return; }
+    if (error) { showToast('Erro ao enviar OS: ' + error.message, 'error'); return; }
 
     // ── Gerar, salvar e exibir o número da OS (formato YYYY-MM-EE-NNN) ──
     let equipeNome = '';   // nome da equipe para subpastas SharePoint ("Elétrica", etc.)
@@ -1369,7 +1337,7 @@ async function enviarOS() {
 }
 
 function novaOS()       { mostrarTela('tela-lista'); carregarAgendamentosHoje(); }
-function voltarLista()  { mostrarTela('tela-lista'); }
+function voltarLista()  { mostrarTela('tela-lista'); carregarAgendamentosHoje(); }
 function irHistorico()  { window.location.href = 'tecnico_dashboard.html'; }
 
 function mostrarTela(id) {
@@ -1386,5 +1354,6 @@ uploadArea.addEventListener('drop',      e => { e.preventDefault(); uploadArea.c
 
 init();
 </script>
+<script>applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>
 </html>

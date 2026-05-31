@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27j -->
+<!-- build: 2026-05-30m -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -8,8 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
+  <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -448,11 +449,6 @@
 </div>
 
 <script>
-const { createClient } = window.supabase;
-const db = createClient(
-  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
-);
 
 const params = new URLSearchParams(location.search);
 const obraId = parseInt(params.get('id'));
@@ -504,36 +500,6 @@ const CHECKLIST_VISTORIA = {
 
 // Roles com permissão de editar campos da obra
 const PODE_EDITAR = ['coordenador', 'supervisor', 'agendamento', 'coordenador_projetos'];
-
-function renderTopbar(nome, role, paginaAtiva) {
-  const h = new Date().getHours();
-  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const primeiro = (nome || '').split(' ')[0];
-  const greetEl = document.getElementById('topbar-greeting');
-  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
-  const links = [
-    { href:'obras.html',                label:'Obras',               id:'obras',              roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'agenda.html',               label:'Agenda Técnica',      id:'agenda',             roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'agenda_vistorias.html',     label:'Agenda de Vistorias', id:'agenda-vistorias',   roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'vistoria.html',             label:'Minhas Vistorias',    id:'vistoria',           roles:['vistoriador'] },
-    { href:'vistoria.html',             label:'Relatórios de Vistoria', id:'relatorios-vistoria', roles:['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
-    { href:'os.html',                   label:'Fazer OS',            id:'os',                 roles:['tecnico','auxiliar'] },
-    { href:'supervisor.html',           label:'Supervisor',          id:'supervisor',         roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href:'pendencias.html',           label:'Pendências',          id:'pendencias',         roles:['supervisor','coordenador','agendamento'] },
-    { href:'admin.html',                label:'Admin',               id:'admin',              roles:['coordenador'] },
-    { href:'tecnico_dashboard.html',    label:'Minhas OSs',          id:'minhas-os',          roles:['tecnico','auxiliar'] },
-    { href:'gerente_comercial.html',    label:'Comercial',           id:'comercial',          roles:['gerente_comercial'] },
-    { href:'projetista.html',           label:'Meu Painel',          id:'projetista',         roles:['projetista'] },
-    { href:'coordenador_projetos.html', label:'Projetos',            id:'coordenador-projetos', roles:['coordenador_projetos'] },
-    { href:'dashboard.html',            label:'Painel Executivo',     id:'dashboard',           roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
-  ];
-  const nav = document.getElementById('topbar-nav');
-  if (!nav) return;
-  nav.innerHTML = links.filter(l => l.roles.includes(role))
-    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
-    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
-}
-
 async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
@@ -551,18 +517,12 @@ async function init() {
 
   await carregarObra();
 }
-
-async function logout() {
-  await db.auth.signOut();
-  window.location.href = 'login.html';
-}
-
 // ── Salvar campo genérico da obra ──
 async function salvarCampo(campo, valor) {
   if (!obraId) return;
   const { error } = await db.from('obras').update({ [campo]: valor }).eq('id', obraId);
   if (error) {
-    alert('Erro ao salvar: ' + error.message);
+    showToast('Erro ao salvar: ' + error.message, 'error');
     return false;
   }
   mostrarSalvo('save-indicator-' + campo);
@@ -605,7 +565,7 @@ async function salvarObservacoes() {
   if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="save"></i> Salvar'; lucide.createIcons(); }
 
   if (error) {
-    alert('Erro ao salvar: ' + error.message);
+    showToast('Erro ao salvar: ' + error.message, 'error');
     return;
   }
   const msg = document.getElementById('obs-saved-msg');
@@ -873,7 +833,7 @@ function renderTabelaOS(lista) {
     const nF    = (os.fotos_urls || []).length;
 
     const minisFotos = (os.fotos_urls || []).slice(0,3).map((url, fi) =>
-      `<img class="foto-mini" src="${url}" alt="foto" onclick="event.stopPropagation();abrirLightboxOS(${idx},${fi})">`
+      `<img class="foto-mini" src="${url}" alt="foto" onclick="event.stopPropagation();abrirLightboxOS(${os.id},${fi})">`
     ).join('');
     const maisTag = nF > 3 ? `<span style="font-size:0.72rem;color:var(--text-3);margin-left:2px">+${nF-3}</span>` : '';
     const descricao = os.descricao_servicos || os.observacoes || os.atividades_realizadas || '—';
@@ -889,7 +849,7 @@ function renderTabelaOS(lista) {
 
   return `<table>
     <thead><tr>
-      <th>Data</th><th>Técnico</th><th>Descrição</th><th>Status</th><th>Fotos</th>
+      <th scope="col">Data</th><th scope="col">Técnico</th><th scope="col">Descrição</th><th scope="col">Status</th><th scope="col">Fotos</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
@@ -1018,14 +978,16 @@ function verDetalheOS(id) {
   }
 
   modal.innerHTML = `
-    <div style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;padding:28px;">
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-os-titulo" style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;padding:28px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <h3 style="font-size:16px;font-weight:700;color:var(--text-1);">Detalhes da OS</h3>
-        <button onclick="fecharDetalheOS()" style="background:none;border:1px solid var(--border);cursor:pointer;color:var(--text-2);font-size:13px;padding:6px 10px;border-radius:6px;font-family:inherit;">Fechar</button>
+        <h3 id="modal-os-titulo" style="font-size:16px;font-weight:700;color:var(--text-1);">Detalhes da OS</h3>
+        <button onclick="fecharDetalheOS()" aria-label="Fechar detalhes da OS" style="background:none;border:1px solid var(--border);cursor:pointer;color:var(--text-2);font-size:13px;padding:6px 10px;border-radius:6px;font-family:inherit;">Fechar</button>
       </div>
       ${html}
     </div>`;
   modal.style.display = 'flex';
+  // Move foco para o modal
+  setTimeout(() => { const d = modal.querySelector('[role="dialog"]'); if (d) d.focus?.(); }, 50);
   lucide.createIcons();
 }
 
@@ -1059,10 +1021,10 @@ function verDetalheVistoria(id) {
   }
 
   modal.innerHTML = `
-    <div style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;max-width:760px;width:100%;max-height:85vh;overflow-y:auto;padding:28px;">
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-vist-titulo" style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;max-width:760px;width:100%;max-height:85vh;overflow-y:auto;padding:28px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <h3 style="font-size:16px;font-weight:700;color:var(--text-1);">Relatório de Vistoria</h3>
-        <button onclick="fecharDetalheOS()" style="background:none;border:1px solid var(--border);cursor:pointer;color:var(--text-2);font-size:13px;padding:6px 10px;border-radius:6px;font-family:inherit;">Fechar</button>
+        <h3 id="modal-vist-titulo" style="font-size:16px;font-weight:700;color:var(--text-1);">Relatório de Vistoria</h3>
+        <button onclick="fecharDetalheOS()" aria-label="Fechar relatório de vistoria" style="background:none;border:1px solid var(--border);cursor:pointer;color:var(--text-2);font-size:13px;padding:6px 10px;border-radius:6px;font-family:inherit;">Fechar</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;">
         <div><label style="font-size:11px;color:var(--text-3);text-transform:uppercase;">Tipo</label><div style="margin-top:5px;color:var(--text-1);">${escHtml(TIPO_VISTORIA_LABELS[v.tipo_vistoria] || v.tipo_vistoria)}</div></div>
@@ -1098,7 +1060,10 @@ function abrirLightbox(idx) {
   document.getElementById('lightbox').classList.add('aberto');
 }
 
-function abrirLightboxOS(osIdx, fotoIdx) {
+function abrirLightboxOS(osId, fotoIdx) {
+  // Localiza a OS pelo ID (funciona mesmo quando tabela está filtrada)
+  const osIdx = todasOS.findIndex(o => o.id == osId);
+  if (osIdx < 0) return;
   let globalIdx = 0;
   for (let i = 0; i < osIdx; i++) globalIdx += (todasOS[i].fotos_urls || []).length;
   globalIdx += fotoIdx;
@@ -1124,10 +1089,6 @@ function mostrarFotoLb() {
 }
 
 // ── Helper: escapar HTML ──
-function escHtml(str) {
-  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') fecharLightbox();
   if (e.key === 'ArrowLeft') navLightbox(-1);
@@ -1136,6 +1097,6 @@ document.addEventListener('keydown', e => {
 
 init();
 </script>
-<script>lucide.createIcons();</script>
+<script>lucide.createIcons(); applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>
 </html>

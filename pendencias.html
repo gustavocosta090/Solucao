@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27j -->
+<!-- build: 2026-05-30m -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -8,8 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
+<script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -235,7 +236,7 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
     <button class="filtro-st" data-st="resolvida" onclick="setStatus(this,'resolvida')">Resolvidas</button>
     <div class="busca-wrap">
       <i data-lucide="search" class="busca-icon" style="width:14px;height:14px"></i>
-      <input type="text" id="busca" placeholder="Buscar obra, descrição..." oninput="renderLista()">
+      <input type="text" id="busca" placeholder="Buscar obra, descrição..." oninput="if(!this._dFn)this._dFn=debounce(renderLista);this._dFn()">
     </div>
   </div>
 
@@ -251,14 +252,14 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 </div>
 
 <!-- Modal cadastro/edição -->
-<div class="overlay" id="overlay-modal" style="display:none" onclick="fecharModalFora(event)">
-  <div class="modal-pend" id="modal-pend">
-    <h2><i data-lucide="clipboard-list"></i> <span id="modal-titulo">Cadastrar Pendência</span></h2>
+<div class="overlay" id="overlay-modal" style="display:none" onclick="fecharModalFora(event)" role="presentation">
+  <div class="modal-pend" id="modal-pend" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+    <h2><i data-lucide="clipboard-list" aria-hidden="true"></i> <span id="modal-titulo">Cadastrar Pendência</span></h2>
 
     <div class="erro-form" id="erro-form"></div>
 
     <div class="form-group">
-      <label>Equipe</label>
+      <label for="f-equipe">Equipe</label>
       <select id="f-equipe">
         <option value="">Selecione a equipe...</option>
         <option value="cabeamento">Cabeamento</option>
@@ -270,7 +271,7 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
     </div>
 
     <div class="form-group">
-      <label>Obra / Cliente</label>
+      <label for="f-obra">Obra / Cliente</label>
       <select id="f-obra" onchange="onObraChange()">
         <option value="">Carregando obras...</option>
         <option value="outro">— Outro (assistência / avulso) —</option>
@@ -285,7 +286,7 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
     </div>
 
     <div class="form-group">
-      <label>Pendências e solicitações</label>
+      <label for="f-descricao">Pendências e solicitações</label>
       <textarea id="f-descricao" rows="4" placeholder="Descreva as pendências, solicitações do cliente, pontos a resolver..."></textarea>
     </div>
 
@@ -302,9 +303,6 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 </div>
 
 <script>
-const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let pendencias  = [];
 let obras       = [];
@@ -313,9 +311,6 @@ let editandoId  = null;
 let equipeAtiva = 'todas';
 let statusAtivo = 'todos';
 let toastTimer  = null;
-
-function escHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-
 const EQUIPE_LABEL = {
   cabeamento:'Cabeamento', eletrica:'Elétrica', audio_video:'Áudio e Vídeo',
   automacao:'Automação', regional_norte:'Regional Norte'
@@ -326,17 +321,6 @@ const STATUS_INFO = {
   pendencia_solucao:  { label:'Pendência Solução', cls:'badge-pendencia_solucao', icon:'building-2' },
   resolvida:          { label:'Resolvida',          cls:'badge-resolvida',         icon:'check-circle-2' },
 };
-
-function mostrarToast(msg, tipo='ok'){
-  const el = document.getElementById('toast');
-  el.style.background = tipo === 'err' ? 'rgba(239,68,68,0.12)' : 'var(--surface-1)';
-  el.style.borderColor = tipo === 'err' ? 'rgba(239,68,68,0.3)' : 'var(--border-strong)';
-  document.getElementById('toast-msg').textContent = msg;
-  el.classList.add('visivel');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>el.classList.remove('visivel'), 3500);
-}
-
 function setEquipe(el, eq){
   document.querySelectorAll('.tab-btn').forEach(b=>{
     b.classList.remove('ativo');
@@ -447,20 +431,21 @@ function renderLista(){
 
 async function mudarStatus(id, novoStatus){
   const { error } = await db.from('pendencias').update({status:novoStatus,atualizado_em:new Date().toISOString()}).eq('id',id);
-  if(error){mostrarToast('Erro: '+error.message,'err');return;}
+  if(error){showToast('Erro: '+error.message, 'error');return;}
   const p = pendencias.find(x=>x.id===id);
   if(p) p.status = novoStatus;
   renderLista();
-  mostrarToast('Status atualizado.','ok');
+  showToast('Status atualizado.', 'success');
 }
 
 async function excluirPendencia(id){
-  if(!confirm('Excluir esta pendência?')) return;
-  const {error} = await db.from('pendencias').delete().eq('id',id);
-  if(error){mostrarToast('Erro: '+error.message,'err');return;}
-  pendencias = pendencias.filter(x=>x.id!==id);
-  renderLista();
-  mostrarToast('Pendência excluída.','ok');
+  confirmModal('Excluir esta pendência?', async () => {
+    const {error} = await db.from('pendencias').delete().eq('id',id);
+    if(error){showToast('Erro: '+error.message, 'error');return;}
+    pendencias = pendencias.filter(x=>x.id!==id);
+    renderLista();
+    showToast('Pendência excluída.', 'success');
+  });
 }
 
 function editarPendencia(id){
@@ -561,7 +546,7 @@ async function salvarPendencia(){
 
   fecharModal();
   renderLista();
-  mostrarToast(editandoId ? 'Pendência atualizada.' : 'Pendência cadastrada.','ok');
+  showToast(editandoId ? 'Pendência atualizada.' : 'Pendência cadastrada.', 'success');
 }
 
 async function carregarPendencias(){
@@ -584,31 +569,6 @@ async function carregarObras(){
     obras.map(o=>`<option value="${o.id}">${escHtml(o.nome_cliente)}</option>`).join('')+
     '<option value="outro">— Outro (assistência / avulso) —</option>';
 }
-
-function renderTopbar(nome,role){
-  const h=new Date().getHours();
-  const s=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
-  const primeiro=(nome||'').split(' ')[0];
-  const greetEl=document.getElementById('topbar-greeting');
-  if(greetEl&&primeiro) greetEl.textContent=`${s}, ${primeiro}`;
-  const links=[
-    {href:'obras.html',label:'Obras',id:'obras',roles:['supervisor','coordenador','agendamento']},
-    {href:'agenda.html',label:'Agenda Técnica',id:'agenda',roles:['supervisor','coordenador','agendamento']},
-    {href:'agenda_vistorias.html',label:'Agenda Vistorias',id:'agenda-vis',roles:['supervisor','coordenador','agendamento']},
-    {href:'supervisor.html',label:'Supervisor',id:'supervisor',roles:['supervisor','coordenador','agendamento']},
-    {href:'pendencias.html',label:'Pendências',id:'pendencias',roles:['supervisor','coordenador','agendamento']},
-    {href:'admin.html',label:'Admin',id:'admin',roles:['coordenador']},
-    { href:'dashboard.html', label:'Painel Executivo', id:'dashboard', roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
-  ];
-  const nav=document.getElementById('topbar-nav');
-  if(!nav) return;
-  nav.innerHTML=links.filter(l=>l.roles.includes(role))
-    .map(l=>`<a href="${l.href}" ${l.id==='pendencias'?'class="active"':''}>${l.label}</a>`)
-    .join('')+`<a href="#" class="nav-sair" onclick="sair()">Sair</a>`;
-}
-
-async function sair(){await db.auth.signOut();window.location.href='login.html';}
-
 async function init(){
   const {data:{session}}=await db.auth.getSession();
   if(!session){window.location.href='login.html';return;}

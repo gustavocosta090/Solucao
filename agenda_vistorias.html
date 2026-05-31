@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27j -->
+<!-- build: 2026-05-30n -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -8,8 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
+  <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
@@ -634,22 +635,22 @@
 </div>
 
 <!-- Modal -->
-<div class="overlay" id="overlay" onclick="fecharModalFora(event)">
+<div class="overlay" id="overlay" onclick="fecharModalFora(event)" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
   <div class="modal">
     <div class="modal-header">
       <div class="modal-header-icon">
-        <i data-lucide="search"></i>
+        <i data-lucide="search" aria-hidden="true"></i>
       </div>
       <div class="modal-title" id="modal-titulo">Nova Vistoria</div>
     </div>
 
-    <div id="modal-erro" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:16px;"></div>
+    <div id="modal-erro" role="alert" aria-live="assertive" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:16px;"></div>
 
     <!-- OBRA -->
     <div class="form-section-label">Obra</div>
 
     <div class="form-group">
-      <label>Obra / Cliente</label>
+      <label for="f-obra">Obra / Cliente</label>
       <select id="f-obra">
         <option value="">Selecione a obra...</option>
       </select>
@@ -660,13 +661,13 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label>Vistoriador</label>
+        <label for="f-vistoriador">Vistoriador</label>
         <select id="f-vistoriador">
           <option value="">Selecione...</option>
         </select>
       </div>
       <div class="form-group">
-        <label>Tipo de vistoria</label>
+        <label for="f-tipo">Tipo de vistoria</label>
         <select id="f-tipo">
           <option value="cabeamento">Cabeamento</option>
           <option value="eletrica">Elétrica</option>
@@ -681,11 +682,11 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label>Data</label>
+        <label for="f-data">Data</label>
         <input type="date" id="f-data"/>
       </div>
       <div class="form-group">
-        <label>Hora início</label>
+        <label for="f-hora">Hora início</label>
         <input type="time" id="f-hora"/>
       </div>
     </div>
@@ -705,7 +706,7 @@
     </div>
 
     <div class="form-group">
-      <label>Veículo (placa)</label>
+      <label for="f-veiculo">Veículo (placa)</label>
       <input type="text" id="f-veiculo" placeholder="Ex: STRADA-TYR7C97"/>
     </div>
 
@@ -713,18 +714,18 @@
     <div class="form-section-label">Detalhes</div>
 
     <div class="form-group">
-      <label>Objetivo da vistoria</label>
+      <label for="f-objetivo">Objetivo da vistoria</label>
       <textarea id="f-objetivo" placeholder="O que será avaliado nesta visita?"></textarea>
     </div>
 
     <div class="form-group">
-      <label>Observação</label>
+      <label for="f-observacao">Observação</label>
       <textarea id="f-observacao" placeholder="Informações adicionais..."></textarea>
     </div>
 
     <div class="modal-footer">
       <button class="btn-excluir" id="btn-excluir" onclick="excluirVistoria()" style="display:none">
-        <i data-lucide="trash-2"></i>
+        <i data-lucide="trash-2" aria-hidden="true"></i>
         Excluir
       </button>
       <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
@@ -737,11 +738,6 @@
 </div>
 
 <script>
-const { createClient } = window.supabase;
-const db = createClient(
-  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
-);
 
 const ROLES_EDITAR = ['coordenador','supervisor','agendamento','projetista','gerente_comercial','coordenador_projetos'];
 
@@ -753,13 +749,6 @@ let vistoriadores   = [];
 let editandoId      = null;
 let modoVisualizacao = false;
 let roleAtual       = null;
-
-function escHtml(v) {
-  return String(v ?? '').replace(/[&<>"']/g, c => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[c]));
-}
-
 const DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -803,42 +792,6 @@ async function init() {
   preencherSelects();
   await carregarVistorias();
 }
-
-function renderTopbar(nome, role, paginaAtiva) {
-  const h = new Date().getHours();
-  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const primeiro = (nome || '').split(' ')[0];
-  const greetEl = document.getElementById('topbar-greeting');
-  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
-
-  const links = [
-    { href:'obras.html',                label:'Obras',                  id:'obras',              roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'agenda.html',               label:'Agenda Técnica',         id:'agenda',             roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'agenda_vistorias.html',     label:'Agenda de Vistorias',    id:'agenda-vistorias',   roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'vistoria.html',             label:'Minhas Vistorias',       id:'vistoria',           roles:['vistoriador'] },
-    { href:'vistoria.html',             label:'Relatórios de Vistoria', id:'relatorios-vistoria', roles:['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
-    { href:'os.html',                   label:'Fazer OS',               id:'os',                 roles:['tecnico','auxiliar'] },
-    { href:'supervisor.html',           label:'Supervisor',             id:'supervisor',         roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href:'pendencias.html',           label:'Pendências',          id:'pendencias',         roles:['supervisor','coordenador','agendamento'] },
-    { href:'admin.html',                label:'Admin',                  id:'admin',              roles:['coordenador'] },
-    { href:'tecnico_dashboard.html',    label:'Minhas OSs',             id:'minhas-os',          roles:['tecnico','auxiliar'] },
-    { href:'gerente_comercial.html',    label:'Comercial',              id:'comercial',          roles:['gerente_comercial'] },
-    { href:'projetista.html',           label:'Meu Painel',             id:'projetista',         roles:['projetista'] },
-    { href:'coordenador_projetos.html', label:'Projetos',               id:'coordenador-projetos', roles:['coordenador_projetos'] },
-    { href:'dashboard.html',            label:'Painel Executivo',     id:'dashboard',           roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
-  ];
-  const nav = document.getElementById('topbar-nav');
-  if (!nav) return;
-  nav.innerHTML = links.filter(l => l.roles.includes(role))
-    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
-    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
-}
-
-async function logout() {
-  await db.auth.signOut();
-  window.location.href = 'login.html';
-}
-
 // ── Datas ────────────────────────────────────────────────────────
 function getSegunda(offset = 0) {
   const hoje = new Date();
@@ -868,13 +821,17 @@ function isHoje(d) {
 
 // ── Carregar dados ────────────────────────────────────────────────
 async function carregarObras() {
-  const { data } = await db.from('obras').select('id, nome_cliente, endereco').order('nome_cliente');
-  obras = data || [];
+  obras = await cachedQuery('av-obras', 300, async () => {
+    const { data } = await db.from('obras').select('id, nome_cliente, endereco').order('nome_cliente');
+    return data || [];
+  });
 }
 
 async function carregarVistoriadores() {
-  const { data } = await db.from('tecnicos').select('id, nome').eq('role', 'vistoriador').order('nome');
-  vistoriadores = data || [];
+  vistoriadores = await cachedQuery('av-vistoriadores', 600, async () => {
+    const { data } = await db.from('tecnicos').select('id, nome').eq('role', 'vistoriador').order('nome');
+    return data || [];
+  });
 }
 
 async function carregarVistorias() {
@@ -1127,7 +1084,7 @@ async function salvarVistoria() {
 // ── Excluir vistoria ──────────────────────────────────────────────
 async function excluirVistoria() {
   if (!editandoId) return;
-  if (!confirm('Excluir esta vistoria e o relatório vinculado?')) return;
+  confirmModal('Excluir esta vistoria e o relatório vinculado?', async () => {
 
   // Apagar relatórios de vistoria pendentes vinculados
   await db.from('relatorios_vistoria')
@@ -1136,9 +1093,10 @@ async function excluirVistoria() {
     .eq('status', 'pendente');
 
   const { error } = await db.from('agendamentos_vistoria').delete().eq('id', editandoId);
-  if (error) { alert('Erro ao excluir: ' + error.message); return; }
+  if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
   fecharModal();
   await carregarVistorias();
+  }); // confirmModal
 }
 
 // ── Filtros de tipo ────────────────────────────────────────────────
@@ -1324,6 +1282,6 @@ async function dispararAgendaWhatsapp() {
 // ── Iniciar ────────────────────────────────────────────────────────
 init();
 </script>
-<script>lucide.createIcons();</script>
+<script>lucide.createIcons(); applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>
 </html>

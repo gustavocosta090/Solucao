@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27j -->
+<!-- build: 2026-05-30n -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -8,8 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
+  <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -670,32 +671,33 @@
 
   <!-- Filtros + Busca -->
   <div class="filtros-bar">
-    <div class="filtros">
-      <button class="filtro-btn ativo" data-fase="todas">Todas</button>
-      <button class="filtro-btn" data-fase="projeto_iniciado">Projeto Iniciado</button>
-      <button class="filtro-btn" data-fase="cabeamento">Cabeamento</button>
-      <button class="filtro-btn" data-fase="eletrica">Elétrica</button>
-      <button class="filtro-btn" data-fase="audio_video">Audio e Video</button>
-      <button class="filtro-btn" data-fase="automacao">Automacao</button>
-      <button class="filtro-btn" data-fase="em_finalizacao">Em Finalizacao</button>
+    <div class="filtros" role="group" aria-label="Filtrar por fase">
+      <button class="filtro-btn ativo" data-fase="todas" aria-pressed="true">Todas</button>
+      <button class="filtro-btn" data-fase="projeto_iniciado" aria-pressed="false">Projeto Iniciado</button>
+      <button class="filtro-btn" data-fase="cabeamento" aria-pressed="false">Cabeamento</button>
+      <button class="filtro-btn" data-fase="eletrica" aria-pressed="false">Elétrica</button>
+      <button class="filtro-btn" data-fase="audio_video" aria-pressed="false">Áudio e Vídeo</button>
+      <button class="filtro-btn" data-fase="automacao" aria-pressed="false">Automação</button>
+      <button class="filtro-btn" data-fase="em_finalizacao" aria-pressed="false">Em Finalização</button>
     </div>
     <div class="busca-wrap">
-      <i data-lucide="search" class="busca-icon"></i>
+      <i data-lucide="search" class="busca-icon" aria-hidden="true"></i>
       <input
         type="text"
         id="campo-busca"
         class="campo-busca"
         placeholder="Buscar cliente, endereço, código..."
-        oninput="buscar(this.value)"
+        aria-label="Buscar obras"
+        oninput="if(!this._dFn)this._dFn=debounce(v=>buscar(v));this._dFn(this.value)"
         autocomplete="off"
       >
-      <button class="busca-limpar" id="busca-limpar" onclick="limparBusca()" title="Limpar busca">
-        <i data-lucide="x"></i>
+      <button class="busca-limpar" id="busca-limpar" onclick="limparBusca()" title="Limpar busca" aria-label="Limpar busca">
+        <i data-lucide="x" aria-hidden="true"></i>
       </button>
     </div>
   </div>
 
-  <div class="contador" id="contador"></div>
+  <div class="contador" id="contador" aria-live="polite" aria-atomic="true"></div>
 
   <!-- Conteúdo dinâmico -->
   <div id="conteudo">
@@ -708,35 +710,35 @@
 </main>
 
 <!-- Modal Nova Obra -->
-<div class="overlay" id="overlay" onclick="fecharModalFora(event)">
+<div class="overlay" id="overlay" onclick="fecharModalFora(event)" role="dialog" aria-modal="true" aria-labelledby="modal-obras-titulo">
   <div class="modal">
     <div class="modal-header">
       <div class="modal-header-icon">
         <i data-lucide="building-2"></i>
       </div>
-      <h2>Nova Obra</h2>
+      <h2 id="modal-obras-titulo">Nova Obra</h2>
     </div>
 
-    <div class="alert-sucesso" id="alertSucesso"></div>
-    <div class="alert-erro" id="alertErro"></div>
+    <div class="alert-sucesso" id="alertSucesso" role="status" aria-live="polite"></div>
+    <div class="alert-erro" id="alertErro" role="alert" aria-live="assertive"></div>
 
     <div class="form-group">
-      <label>Nome do Cliente *</label>
-      <input type="text" id="f-cliente" placeholder="Ex: Joao Silva">
+      <label for="f-cliente">Nome do Cliente *</label>
+      <input type="text" id="f-cliente" placeholder="Ex: João Silva" autocomplete="off">
     </div>
 
     <div class="form-group">
-      <label>Endereco da Obra</label>
-      <input type="text" id="f-endereco" placeholder="Rua, numero, bairro, cidade">
+      <label for="f-endereco">Endereço da Obra</label>
+      <input type="text" id="f-endereco" placeholder="Rua, número, bairro, cidade" autocomplete="off">
     </div>
 
     <div class="form-row">
       <div class="form-group">
-        <label>Arquiteto Responsavel</label>
-        <input type="text" id="f-arquiteto" placeholder="Nome do arquiteto">
+        <label for="f-arquiteto">Arquiteto Responsável</label>
+        <input type="text" id="f-arquiteto" placeholder="Nome do arquiteto" autocomplete="off">
       </div>
       <div class="form-group">
-        <label>Consultor</label>
+        <label for="f-consultor">Consultor</label>
         <select id="f-consultor">
           <option value="">Selecione...</option>
         </select>
@@ -745,28 +747,35 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label>Fase Atual</label>
+        <label for="f-fase">Fase Atual</label>
         <select id="f-fase">
-          <option value="nao_iniciado">Nao Iniciado</option>
+          <option value="nao_iniciado">Não Iniciado</option>
           <option value="projeto_iniciado">Projeto Iniciado</option>
-          <option value="projeto_concluido">Projeto Concluido</option>
+          <option value="projeto_concluido">Projeto Concluído</option>
           <option value="cabeamento">Cabeamento</option>
-          <option value="eletrica">Eletrica</option>
-          <option value="audio_video">Audio e Video</option>
-          <option value="automacao">Automacao</option>
-          <option value="em_finalizacao">Em Finalizacao</option>
+          <option value="eletrica">Elétrica</option>
+          <option value="audio_video">Áudio e Vídeo</option>
+          <option value="automacao">Automação</option>
+          <option value="em_finalizacao">Em Finalização</option>
           <option value="entrega_comercial">Entrega Comercial</option>
         </select>
       </div>
       <div class="form-group">
-        <label>Status de Compra</label>
-        <input type="text" id="f-status-compra" placeholder="Ex: Ativo, Pausado...">
+        <label for="f-status-compra">Status de Compra</label>
+        <select id="f-status-compra">
+          <option value="">Selecione...</option>
+          <option value="Aguardando orçamento">Aguardando orçamento</option>
+          <option value="Material pendente">Material pendente</option>
+          <option value="Material entregue">Material entregue</option>
+          <option value="Sem pendência">Sem pendência</option>
+          <option value="Pausado">Pausado</option>
+        </select>
       </div>
     </div>
 
     <div class="form-group">
-      <label>Codigo Shankya</label>
-      <input type="text" id="f-shankya" placeholder="Ex: SHK-001">
+      <label for="f-shankya">Código Shankya</label>
+      <input type="text" id="f-shankya" placeholder="Ex: SHK-001" autocomplete="off">
     </div>
 
     <div class="modal-footer">
@@ -780,31 +789,22 @@
 </div>
 
 <script>
-  const { createClient } = supabase;
-  const db = createClient(
-    'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
-  );
 
   const FASES = {
-    projeto_iniciado: { label: 'Projeto Iniciado', prazo: '> 180 dias' },
+    nao_iniciado:     { label: 'Não Iniciado',     prazo: '—'           },
+    projeto_iniciado: { label: 'Projeto Iniciado', prazo: '> 180 dias'  },
+    projeto_concluido:{ label: 'Projeto Concluído',prazo: '—'           },
     cabeamento:       { label: 'Cabeamento',        prazo: '~120 dias'  },
-    eletrica:         { label: 'Eletrica',           prazo: 'Imediato'   },
-    audio_video:      { label: 'Audio e Video',     prazo: 'Imediato'   },
-    automacao:        { label: 'Automacao',          prazo: 'Imediato'   },
-    em_finalizacao:   { label: 'Em Finalizacao',    prazo: '—'          },
+    eletrica:         { label: 'Elétrica',          prazo: 'Imediato'   },
+    audio_video:      { label: 'Áudio e Vídeo',    prazo: 'Imediato'   },
+    automacao:        { label: 'Automação',         prazo: 'Imediato'   },
+    em_finalizacao:   { label: 'Em Finalização',   prazo: '—'          },
+    entrega_comercial:{ label: 'Entrega Comercial', prazo: '—'          },
   };
 
   let todasObras  = [];
   let faseFiltro  = 'todas';
   let termoBusca  = '';
-
-  function escHtml(v) {
-    return String(v ?? '').replace(/[&<>"']/g, c => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[c]));
-  }
-
   // ── Auth check ──────────────────────────────────────────────
   let userRole = 'tecnico';
 
@@ -829,9 +829,12 @@
 
   // ── Carregar consultores para o modal ───────────────────────
   async function carregarConsultores() {
-    const { data } = await db.from('consultores').select('id, nome').order('nome');
+    const data = await cachedQuery('consultores', 600, async () => {
+      const { data: d } = await db.from('consultores').select('id, nome').order('nome');
+      return d || [];
+    });
     const sel = document.getElementById('f-consultor');
-    (data || []).forEach(c => {
+    data.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c.id; opt.textContent = c.nome;
       sel.appendChild(opt);
@@ -938,10 +941,7 @@
           <i data-lucide="map-pin"></i>
           ${escHtml(obra.endereco || '—')}
         </div>
-        <div class="card-info">
-          <i data-lucide="hard-hat"></i>
-          Arq: ${escHtml(obra.arquiteto_responsavel ?? '—')}
-        </div>
+        ${obra.arquiteto_responsavel ? `<div class="card-info"><i data-lucide="hard-hat"></i>Arq: ${escHtml(obra.arquiteto_responsavel)}</div>` : ''}
         <div class="card-info">
           <i data-lucide="user"></i>
           Consultor: ${escHtml(consultor)}
@@ -961,8 +961,8 @@
           <h3>Erro ao carregar obras</h3>
           <code>${escHtml(error.message)}</code>
           <div class="dica">
-            <strong>Solucao recomendada:</strong> mantenha o Row Level Security (RLS) ativo
-            e revise as politicas de acesso para cada perfil.
+            <strong>Solução recomendada:</strong> mantenha o Row Level Security (RLS) ativo
+            e revise as políticas de acesso para cada perfil.
           </div>
         </div>
       </div>`;
@@ -972,8 +972,12 @@
   // ── Filtros de fase ──────────────────────────────────────────
   document.querySelectorAll('.filtro-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
+      document.querySelectorAll('.filtro-btn').forEach(b => {
+        b.classList.remove('ativo');
+        b.setAttribute('aria-pressed', 'false');
+      });
       btn.classList.add('ativo');
+      btn.setAttribute('aria-pressed', 'true');
       faseFiltro = btn.dataset.fase;
       renderizar();
     });
@@ -987,8 +991,12 @@
       sessionStorage.removeItem('obraFaseFilter');
       const btn = document.querySelector(`.filtro-btn[data-fase="${savedFase}"]`);
       if (btn) {
-        document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
+        document.querySelectorAll('.filtro-btn').forEach(b => {
+          b.classList.remove('ativo');
+          b.setAttribute('aria-pressed', 'false');
+        });
         btn.classList.add('ativo');
+        btn.setAttribute('aria-pressed', 'true');
         faseFiltro = savedFase;
         // pisca o botão para indicar o filtro ativo
         btn.style.transition = 'none';
@@ -1005,8 +1013,8 @@
     document.getElementById('f-endereco').value     = '';
     document.getElementById('f-arquiteto').value    = '';
     document.getElementById('f-consultor').value    = '';
-    document.getElementById('f-fase').value         = 'nao_iniciado';
-    document.getElementById('f-status-compra').value= '';
+    document.getElementById('f-fase').value          = 'nao_iniciado';
+    document.getElementById('f-status-compra').value = '';
     document.getElementById('f-shankya').value      = '';
     document.getElementById('alertSucesso').style.display = 'none';
     document.getElementById('alertErro').style.display    = 'none';
@@ -1024,7 +1032,7 @@
   async function salvarObra() {
     const cliente = document.getElementById('f-cliente').value.trim();
     if (!cliente) {
-      mostrarErroModal('O nome do cliente e obrigatorio.');
+      mostrarErroModal('O nome do cliente é obrigatório.');
       return;
     }
 
@@ -1070,50 +1078,10 @@
     document.getElementById('alertErro').style.display = 'block';
     document.getElementById('alertSucesso').style.display = 'none';
   }
-
-  function renderTopbar(nome, role, paginaAtiva) {
-    const h = new Date().getHours();
-    const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-    const primeiro = (nome || '').split(' ')[0];
-    const greetEl = document.getElementById('topbar-greeting');
-    if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
-
-    const links = [
-    { href:'obras.html',                label:'Obras',               id:'obras',              roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'agenda.html',               label:'Agenda Técnica',      id:'agenda',             roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'agenda_vistorias.html',     label:'Agenda de Vistorias', id:'agenda-vistorias',   roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'vistoria.html',             label:'Minhas Vistorias',    id:'vistoria',           roles:['vistoriador'] },
-    { href:'vistoria.html',             label:'Relatórios de Vistoria', id:'relatorios-vistoria', roles:['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
-    { href:'os.html',                   label:'Fazer OS',            id:'os',                 roles:['tecnico','auxiliar'] },
-    { href:'supervisor.html',           label:'Supervisor',          id:'supervisor',         roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href:'pendencias.html',           label:'Pendências',          id:'pendencias',         roles:['supervisor','coordenador','agendamento'] },
-    { href:'admin.html',                label:'Admin',               id:'admin',              roles:['coordenador'] },
-    { href:'tecnico_dashboard.html',    label:'Minhas OSs',          id:'minhas-os',          roles:['tecnico','auxiliar'] },
-    { href:'gerente_comercial.html',    label:'Comercial',           id:'comercial',          roles:['gerente_comercial'] },
-    { href:'projetista.html',           label:'Meu Painel',          id:'projetista',         roles:['projetista'] },
-    { href:'coordenador_projetos.html', label:'Projetos',            id:'coordenador-projetos', roles:['coordenador_projetos'] },
-    { href:'dashboard.html',            label:'Painel Executivo',     id:'dashboard',           roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
-  ];
-
-    const nav = document.getElementById('topbar-nav');
-    if (!nav) return;
-    nav.innerHTML = links
-      .filter(l => l.roles.includes(role))
-      .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
-      .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
-
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-  }
-
-  async function logout() {
-    await db.auth.signOut();
-    window.location.href = 'login.html';
-  }
-
   // ── Iniciar ─────────────────────────────────────────────────
   init();
 </script>
 
-<script>lucide.createIcons();</script>
+<script>lucide.createIcons(); applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27j -->
+<!-- build: 2026-05-30n -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -8,8 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
+<script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -276,19 +277,8 @@
 </div>
 
 <script>
-const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
-const { createClient } = window.supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let allObras = [];
-
-function escHtml(v) {
-  return String(v ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
-
 (async () => {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
@@ -302,7 +292,7 @@ function escHtml(v) {
   renderTopbar(eu.nome, eu.role, 'projetista');
   await carregarObras();
 
-  document.getElementById('searchInput').addEventListener('input', renderGrid);
+  document.getElementById('searchInput').addEventListener('input', debounce(renderGrid));
 })();
 
 async function carregarObras() {
@@ -392,32 +382,7 @@ function badgeEtapa(fase_atual) {
   const [cls, label] = map[fase_atual] || ['badge-default', fase_atual || '—'];
   return `<span class="badge ${escHtml(cls)}">${escHtml(label)}</span>`;
 }
-
-function renderTopbar(nome, role, paginaAtiva) {
-  const h = new Date().getHours();
-  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const primeiro = (nome || '').split(' ')[0];
-  const greetEl = document.getElementById('topbar-greeting');
-  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
-  const links = [
-    { href:'projetista.html', label:'Meu Painel', id:'projetista', roles:['projetista'] },
-    { href:'obras.html',      label:'Obras',       id:'obras',      roles:['projetista'] },
-    { href:'agenda.html',     label:'Agenda Técnica',      id:'agenda',     roles:['projetista'] },
-    { href:'agenda_vistorias.html',  label:'Agenda de Vistorias', id:'agenda-vistorias', roles:['projetista'] },
-    { href:'dashboard.html', label:'Painel Executivo', id:'dashboard', roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
-  ];
-  const nav = document.getElementById('topbar-nav');
-  if (!nav) return;
-  nav.innerHTML = links.filter(l => l.roles.includes(role))
-    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
-    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
-}
-
-async function logout() {
-  await db.auth.signOut();
-  window.location.href = 'login.html';
-}
 </script>
-<script>lucide.createIcons();</script>
+<script>lucide.createIcons(); applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>
 </html>

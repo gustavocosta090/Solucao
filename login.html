@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27j -->
+<!-- build: 2026-05-30m -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -8,8 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
+<script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   :root {
@@ -568,10 +569,27 @@
 
 </div>
 
+<!-- Modal troca de senha inicial -->
+<div id="modal-senha" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
+  <div style="background:#161616;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:28px;max-width:400px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
+    <h3 style="font-size:15px;font-weight:700;color:#fff;margin-bottom:8px;">🔑 Troque sua senha</h3>
+    <p style="font-size:13px;color:#A1A1AA;margin-bottom:20px;line-height:1.6;">Você entrou com a senha padrão <strong style="color:#fff;">123456</strong>. Defina uma senha pessoal para continuar com segurança.</p>
+    <div style="margin-bottom:12px;">
+      <label style="display:block;font-size:11px;font-weight:600;color:#A1A1AA;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Nova senha</label>
+      <input id="ms-nova" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:9px 12px;color:#fff;font-size:14px;font-family:inherit;outline:none;">
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:11px;font-weight:600;color:#A1A1AA;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Confirmar senha</label>
+      <input id="ms-confirma" type="password" placeholder="Repita a nova senha" autocomplete="new-password" style="width:100%;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:9px 12px;color:#fff;font-size:14px;font-family:inherit;outline:none;">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="fecharModalSenha()" style="flex:1;padding:9px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#A1A1AA;cursor:pointer;font-size:13px;font-family:inherit;">Agora não</button>
+      <button onclick="salvarNovaSenha()" id="ms-btn" style="flex:2;padding:9px;background:#3ECF8E;border:none;border-radius:6px;color:#000;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;">Salvar senha</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const SUPABASE_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const LOGIN_DOMAIN = 'solucaotecnica.local';
 
 function normalizarUsuario(v) {
@@ -591,33 +609,59 @@ function loginParaEmail(login) {
   return valor.includes('@') ? valor : `${normalizarUsuario(valor)}@${LOGIN_DOMAIN}`;
 }
 
-async function oferecerTrocaSenhaInicial(senhaDigitada) {
-  if (senhaDigitada !== '123456') return;
+// userId pendente: guardado quando o modal de troca é exibido
+let _pendingUserId = null;
 
-  const querTrocar = confirm('Você entrou com a senha padrão 123456. Deseja trocar sua senha agora?');
-  if (!querTrocar) return;
+function oferecerTrocaSenhaInicial(senhaDigitada, userId) {
+  if (senhaDigitada !== '123456') return false;
+  _pendingUserId = userId;
+  const modal = document.getElementById('modal-senha');
+  if (modal) {
+    modal.style.display = 'flex';
+    setTimeout(() => { const el = document.getElementById('ms-nova'); if (el) el.focus(); }, 100);
+  }
+  return true;
+}
 
-  const novaSenha = prompt('Digite a nova senha. Ela precisa ter pelo menos 6 caracteres.');
-  if (!novaSenha) return;
+async function fecharModalSenha() {
+  const modal = document.getElementById('modal-senha');
+  if (modal) modal.style.display = 'none';
+  // "Agora não" — redireciona após fechar
+  if (_pendingUserId) {
+    const uid = _pendingUserId;
+    _pendingUserId = null;
+    await redirecionarPorRole(uid);
+  }
+}
+
+async function salvarNovaSenha() {
+  const novaSenha    = (document.getElementById('ms-nova')?.value    || '').trim();
+  const confirma     = (document.getElementById('ms-confirma')?.value || '').trim();
+  const btn          = document.getElementById('ms-btn');
 
   if (novaSenha.length < 6) {
-    alert('A senha precisa ter pelo menos 6 caracteres.');
+    showToast('A senha precisa ter pelo menos 6 caracteres.', 'warning');
+    return;
+  }
+  if (novaSenha !== confirma) {
+    showToast('As senhas não conferem.', 'warning');
     return;
   }
 
-  const confirmarSenha = prompt('Digite a nova senha mais uma vez para confirmar.');
-  if (novaSenha !== confirmarSenha) {
-    alert('As senhas não conferem. Você poderá tentar novamente no próximo login.');
-    return;
-  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
 
   const { error } = await db.auth.updateUser({ password: novaSenha });
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Salvar senha'; }
+
   if (error) {
-    alert('Não consegui alterar a senha agora: ' + error.message);
+    showToast('Não foi possível alterar a senha: ' + error.message, 'error');
     return;
   }
 
-  alert('Senha alterada com sucesso.');
+  showToast('Senha alterada com sucesso! Redirecionando…', 'success');
+  // fecharModalSenha cuida do redirecionamento
+  await fecharModalSenha();
 }
 
 // Se já estiver logado, redirecionar
@@ -688,10 +732,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     return;
   }
 
-  await oferecerTrocaSenhaInicial(senha);
-
-  // Login ok — redireciona usando o user retornado diretamente
-  await redirecionarPorRole(data.user.id);
+  // Se senha padrão → mostra modal; o redirecionamento fica a cargo do modal
+  const mostrou = oferecerTrocaSenhaInicial(senha, data.user.id);
+  if (!mostrou) {
+    // Login normal — redireciona imediatamente
+    await redirecionarPorRole(data.user.id);
+  }
 });
 </script>
 
@@ -716,5 +762,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 </script>
 
 <button id="tema-btn" class="tema-float" onclick="ciclarTema()" title="Alternar tema">🖥️</button>
+<script>applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>
 </html>

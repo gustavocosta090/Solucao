@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27j -->
+<!-- build: 2026-05-30m -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script>document.documentElement.dataset.theme = localStorage.getItem('tema') || 'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
@@ -135,6 +136,13 @@
   }
   .period-btn.active { background:var(--primary); color:#fff; box-shadow:0 2px 10px rgba(62,207,142,0.3); }
   .period-btn:not(.active):hover { color:var(--text-1); }
+
+  .tema-btn {
+    background:transparent; border:1px solid var(--border-strong); border-radius:6px;
+    color:var(--text-2); font-size:15px; width:32px; height:32px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .tema-btn:hover { background:rgba(128,128,128,.1); }
 
   .print-btn {
     padding:6px 14px; border-radius:7px; border:1px solid var(--border-strong);
@@ -321,6 +329,7 @@
 <header class="topbar">
   <span class="topbar-logo">Solução Técnica</span>
   <span id="topbar-greeting" class="topbar-greeting"></span>
+  <button id="tema-btn" class="tema-btn" onclick="ciclarTema()" title="Alternar tema" aria-label="Alternar tema">🖥️</button>
   <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
@@ -503,11 +512,6 @@
 
 <script>
 // ── Supabase ───────────────────────────────────────────────────
-const { createClient } = supabase;
-const db = createClient(
-  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
-);
 
 // ── Perfis com acesso ao painel ────────────────────────────────
 const ROLES_PERMITIDOS = [
@@ -527,7 +531,7 @@ const ROLES_PERMITIDOS = [
     .single();
 
   if (!eu || !ROLES_PERMITIDOS.includes(eu.role)) {
-    alert('Acesso não autorizado. Este painel é exclusivo para gestão.');
+    showToast('Acesso não autorizado. Este painel é exclusivo para gestão.', 'error');
     window.location.href = eu?.role === 'tecnico' || eu?.role === 'auxiliar'
       ? 'tecnico_dashboard.html'
       : 'login.html';
@@ -535,48 +539,13 @@ const ROLES_PERMITIDOS = [
   }
 
   renderTopbar(eu.nome, eu.role, 'dashboard');
+  applyTheme(localStorage.getItem('tema') || 'auto');
   document.getElementById('footer-data').textContent =
     new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'});
   renderAll(MOCK['2026']);
 })();
 
 // ── Topbar ─────────────────────────────────────────────────────
-function renderTopbar(nome, role, paginaAtiva) {
-  const h = new Date().getHours();
-  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const primeiro = (nome || '').split(' ')[0];
-  const greetEl  = document.getElementById('topbar-greeting');
-  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
-
-  const links = [
-    { href:'obras.html',                label:'Obras',                id:'obras',               roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'agenda.html',               label:'Agenda Técnica',       id:'agenda',              roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'agenda_vistorias.html',     label:'Agenda de Vistorias',  id:'agenda-vistorias',    roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'vistoria.html',             label:'Minhas Vistorias',     id:'vistoria',            roles:['vistoriador'] },
-    { href:'vistoria.html',             label:'Relatórios de Vistoria',id:'relatorios-vistoria',roles:['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
-    { href:'os.html',                   label:'Fazer OS',             id:'os',                  roles:['tecnico','auxiliar'] },
-    { href:'supervisor.html',           label:'Supervisor',           id:'supervisor',          roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href:'pendencias.html',           label:'Pendências',           id:'pendencias',          roles:['supervisor','coordenador','agendamento'] },
-    { href:'admin.html',                label:'Admin',                id:'admin',               roles:['coordenador'] },
-    { href:'tecnico_dashboard.html',    label:'Minhas OSs',           id:'minhas-os',           roles:['tecnico','auxiliar'] },
-    { href:'gerente_comercial.html',    label:'Comercial',            id:'comercial',           roles:['gerente_comercial'] },
-    { href:'projetista.html',           label:'Meu Painel',           id:'projetista',          roles:['projetista'] },
-    { href:'coordenador_projetos.html', label:'Projetos',             id:'coordenador-projetos',roles:['coordenador_projetos'] },
-    { href:'dashboard.html',            label:'Painel Executivo',     id:'dashboard',           roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
-  ];
-
-  const nav = document.getElementById('topbar-nav');
-  if (!nav) return;
-  nav.innerHTML = links.filter(l => l.roles.includes(role))
-    .map(l => `<a href="${l.href}"${l.id === paginaAtiva ? ' class="active"' : ''}>${l.label}</a>`)
-    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
-}
-
-async function logout() {
-  await db.auth.signOut();
-  window.location.href = 'login.html';
-}
-
 // ═══════════════════════════════════════════════════════════════
 //  DADOS SIMULADOS — substituir por queries Supabase reais
 // ═══════════════════════════════════════════════════════════════

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-27j -->
+<!-- build: 2026-05-30o -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -8,8 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';function applyTheme(t){localStorage.setItem('tema',t);document.documentElement.dataset.theme=t;var i={dark:'🌙',light:'☀️',auto:'🖥️'};var b=document.getElementById('tema-btn');if(b){b.textContent=i[t];b.title={dark:'Modo escuro',light:'Modo claro',auto:'Automático'}[t];}}function ciclarTema(){applyTheme({auto:'dark',dark:'light',light:'auto'}[localStorage.getItem('tema')||'auto']);}window.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('tema')||'auto');});</script>
+  <script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
@@ -820,23 +821,23 @@
 </div>
 
 <!-- Modal programação semanal técnico -->
-<div class="overlay" id="overlay-semana" onclick="fecharModalSemana(event)" style="display:none">
+<div class="overlay" id="overlay-semana" onclick="fecharModalSemana(event)" style="display:none" role="dialog" aria-modal="true" aria-label="Programação semanal do técnico">
   <div class="modal" style="max-width:460px">
     <div class="modal-header">
       <div class="modal-header-icon" style="background:rgba(139,92,246,0.12);border-color:rgba(139,92,246,0.25);color:#A78BFA">
-        <i data-lucide="calendar-range"></i>
+        <i data-lucide="calendar-range" aria-hidden="true"></i>
       </div>
-      <div class="modal-title">Programação semanal do técnico</div>
+      <div class="modal-title" id="modal-semana-titulo">Programação semanal do técnico</div>
     </div>
-    <div id="modal-semana-erro" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:14px;"></div>
+    <div id="modal-semana-erro" role="alert" aria-live="assertive" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:14px;"></div>
     <div class="form-group">
-      <label>Técnico</label>
+      <label for="semana-tec-id">Técnico</label>
       <select id="semana-tec-id" style="width:100%;padding:9px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:0.85rem;outline:none;">
         <option value="">Selecione o técnico...</option>
       </select>
     </div>
     <div class="form-group">
-      <label>Semana referência</label>
+      <label for="semana-data-ref">Semana referência</label>
       <input type="date" id="semana-data-ref" style="width:100%;padding:9px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:0.85rem;outline:none;">
       <small style="color:var(--text-3);font-size:11px;margin-top:5px;display:block">Qualquer dia da semana desejada</small>
     </div>
@@ -851,22 +852,22 @@
 </div>
 
 <!-- Modal -->
-<div class="overlay" id="overlay" onclick="fecharModalFora(event)">
+<div class="overlay" id="overlay" onclick="fecharModalFora(event)" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
   <div class="modal">
     <div class="modal-header">
       <div class="modal-header-icon">
-        <i data-lucide="calendar"></i>
+        <i data-lucide="calendar" aria-hidden="true"></i>
       </div>
       <div class="modal-title" id="modal-titulo">Novo Agendamento</div>
     </div>
 
-    <div id="modal-erro" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:16px;"></div>
+    <div id="modal-erro" role="alert" aria-live="assertive" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:16px;"></div>
 
     <!-- OBRA / CLIENTE -->
     <div class="form-section-label">Obra / Cliente</div>
 
     <div class="form-group">
-      <label>Obra</label>
+      <label for="f-obra">Obra</label>
       <select id="f-obra" onchange="onObraChange()">
         <option value="">Selecione a obra...</option>
         <option value="outro">— Outro (assistência / avulso) —</option>
@@ -876,13 +877,13 @@
     <!-- Campos para "Outro" -->
     <div id="outro-fields" style="display:none">
       <div class="form-group">
-        <label>Nome do cliente</label>
+        <label for="f-nome-outro">Nome do cliente</label>
         <input type="text" id="f-nome-outro" placeholder="Nome do cliente para assistência..."/>
       </div>
     </div>
 
     <div class="form-group">
-      <label>Endereço <span class="label-hint">(preenchido da obra, editável)</span></label>
+      <label for="f-endereco">Endereço <span class="label-hint">(preenchido da obra, editável)</span></label>
       <input type="text" id="f-endereco" placeholder="Endereço do serviço..."/>
     </div>
 
@@ -890,15 +891,15 @@
     <div class="form-section-label">Equipe</div>
 
     <div class="form-group">
-      <label>Quem vai <span class="label-hint">(selecione todos)</span></label>
-      <div class="equipe-select" id="equipe-select">
+      <label id="equipe-label">Quem vai <span class="label-hint">(selecione todos)</span></label>
+      <div class="equipe-select" id="equipe-select" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="equipe-label">
         <div class="equipe-trigger" id="equipe-trigger" onclick="toggleEquipeDropdown()">
           <div class="equipe-chips-wrap" id="equipe-chips-wrap">
             <span id="equipe-placeholder" class="equipe-placeholder">Selecione a equipe...</span>
           </div>
-          <svg id="equipe-arrow" class="equipe-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <svg id="equipe-arrow" class="equipe-arrow" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
-        <div class="equipe-dropdown" id="equipe-dropdown">
+        <div class="equipe-dropdown" id="equipe-dropdown" role="listbox" aria-multiselectable="true">
           <div id="equipe-lista"></div>
         </div>
       </div>
@@ -909,11 +910,11 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label>Data</label>
+        <label for="f-data">Data</label>
         <input type="date" id="f-data"/>
       </div>
       <div class="form-group">
-        <label>Status</label>
+        <label for="f-status">Status</label>
         <select id="f-status">
           <option value="confirmado">Confirmado</option>
           <option value="nao_confirmado">Não confirmado</option>
@@ -924,30 +925,30 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label>Hora início</label>
+        <label for="f-inicio">Hora início</label>
         <input type="time" id="f-inicio"/>
       </div>
     </div>
     <input type="hidden" id="f-fim"/>
 
     <div class="form-group">
-      <label>Veículo (placa)</label>
+      <label for="f-veiculo">Veículo (placa)</label>
       <input type="text" id="f-veiculo" placeholder="Ex: STRADA-TYR7C97"/>
     </div>
 
     <div class="form-group">
-      <label>Serviço a realizar</label>
+      <label for="f-servico">Serviço a realizar</label>
       <textarea id="f-servico" rows="3" placeholder="Descreva o serviço..."></textarea>
     </div>
 
     <div class="modal-footer">
       <button class="btn-excluir" id="btn-excluir" onclick="excluirAgendamento()" style="display:none">
-        <i data-lucide="trash-2"></i>
+        <i data-lucide="trash-2" aria-hidden="true"></i>
         Excluir
       </button>
       <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
       <button class="btn-salvar" id="btn-salvar" onclick="salvarAgendamento()">
-        <i data-lucide="save"></i>
+        <i data-lucide="save" aria-hidden="true"></i>
         Salvar
       </button>
     </div>
@@ -955,11 +956,6 @@
 </div>
 
 <script>
-const { createClient } = window.supabase;
-const db = createClient(
-  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
-);
 
 // ── Estado ──────────────────────────────────────────────────
 let semanaOffset      = 0;
@@ -974,13 +970,6 @@ let equipeDropdownAberto = false;
 let modoVisualizacao  = false;
 let roleAtual         = null;
 let osNumeroMap       = {}; // agendamento_id → numero_os
-
-function escHtml(v) {
-  return String(v ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
-
 const DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -1030,42 +1019,6 @@ async function init() {
   preencherSelects();
   await carregarAgenda();
 }
-
-function renderTopbar(nome, role, paginaAtiva) {
-  const h = new Date().getHours();
-  const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const primeiro = (nome || '').split(' ')[0];
-  const greetEl = document.getElementById('topbar-greeting');
-  if (greetEl && primeiro) greetEl.textContent = `${s}, ${primeiro}`;
-
-  const links = [
-    { href:'obras.html',                label:'Obras',               id:'obras',              roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'agenda.html',               label:'Agenda Técnica',      id:'agenda',             roles:['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href:'agenda_vistorias.html',     label:'Agenda de Vistorias', id:'agenda-vistorias',   roles:['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href:'vistoria.html',             label:'Minhas Vistorias',    id:'vistoria',           roles:['vistoriador'] },
-    { href:'vistoria.html',             label:'Relatórios de Vistoria', id:'relatorios-vistoria', roles:['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
-    { href:'os.html',                   label:'Fazer OS',            id:'os',                 roles:['tecnico','auxiliar'] },
-    { href:'supervisor.html',           label:'Supervisor',          id:'supervisor',         roles:['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href:'pendencias.html',           label:'Pendências',          id:'pendencias',         roles:['supervisor','coordenador','agendamento'] },
-    { href:'admin.html',                label:'Admin',               id:'admin',              roles:['coordenador'] },
-    { href:'tecnico_dashboard.html',    label:'Minhas OSs',          id:'minhas-os',          roles:['tecnico','auxiliar'] },
-    { href:'gerente_comercial.html',    label:'Comercial',           id:'comercial',          roles:['gerente_comercial'] },
-    { href:'projetista.html',           label:'Meu Painel',          id:'projetista',         roles:['projetista'] },
-    { href:'coordenador_projetos.html', label:'Projetos',            id:'coordenador-projetos', roles:['coordenador_projetos'] },
-    { href:'dashboard.html',            label:'Painel Executivo',     id:'dashboard',           roles:['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
-  ];
-  const nav = document.getElementById('topbar-nav');
-  if (!nav) return;
-  nav.innerHTML = links.filter(l => l.roles.includes(role))
-    .map(l => `<a href="${l.href}" ${l.id === paginaAtiva ? 'class="active"' : ''}>${l.label}</a>`)
-    .join('') + `<a href="#" class="nav-sair" onclick="logout()">Sair</a>`;
-}
-
-async function logout() {
-  await db.auth.signOut();
-  window.location.href = 'login.html';
-}
-
 // ── Datas ────────────────────────────────────────────────────
 function getSegunda(offset = 0) {
   const hoje = new Date();
@@ -1095,19 +1048,29 @@ function isHoje(d) {
 
 // ── Carregar dados ───────────────────────────────────────────
 async function carregarObras() {
-  const { data } = await db.from('obras').select('id, nome_cliente, endereco').order('nome_cliente');
-  obras = data || [];
+  obras = await cachedQuery('agenda-obras', 300, async () => {
+    const { data } = await db.from('obras').select('id, nome_cliente, endereco').order('nome_cliente');
+    return data || [];
+  });
 }
 
 async function carregarTecnicos() {
-  let { data: t, error: e1 } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
-  if (e1 || !t) {
-    const { data: t2 } = await db.from('tecnicos').select('id, nome').order('nome');
-    t = (t2 || []).map(x => ({ ...x, funcao: '' }));
-  }
-  const { data: te } = await db.from('tecnico_equipes').select('tecnico_id, equipe_id');
-  tecnicos       = t  || [];
-  tecnicoEquipes = te || [];
+  const [t, te] = await Promise.all([
+    cachedQuery('agenda-tecnicos', 600, async () => {
+      let { data: d, error: e1 } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
+      if (e1 || !d) {
+        const { data: d2 } = await db.from('tecnicos').select('id, nome').order('nome');
+        d = (d2 || []).map(x => ({ ...x, funcao: '' }));
+      }
+      return d || [];
+    }),
+    cachedQuery('agenda-tecnico-equipes', 600, async () => {
+      const { data } = await db.from('tecnico_equipes').select('tecnico_id, equipe_id');
+      return data || [];
+    }),
+  ]);
+  tecnicos       = t;
+  tecnicoEquipes = te;
 }
 
 async function carregarAgenda() {
@@ -1119,7 +1082,7 @@ async function carregarAgenda() {
     `${DIAS[0]}, ${fmtBR(dias[0])} — ${DIAS[4]}, ${fmtBR(dias[4])}`;
 
   const [agResult, osResult] = await Promise.all([
-    db.from('agendamentos').select('*, obras(nome_cliente, endereco)').gte('data', ini).lte('data', fim).order('hora_inicio'),
+    db.from('agendamentos').select('*, obras(nome_cliente, endereco, arquiteto_responsavel, consultores(nome))').gte('data', ini).lte('data', fim).order('hora_inicio'),
     db.from('ordens_de_servico').select('agendamento_id, numero_os').gte('data_servico', ini).lte('data_servico', fim).not('numero_os', 'is', null)
   ]);
 
@@ -1212,6 +1175,8 @@ function cardHTML(ag) {
       <div class="ag-cliente">${escHtml(cliente)}</div>
       ${end ? `<div class="ag-detalhe"><i data-lucide="map-pin"></i>${escHtml(end)}</div>` : ''}
       ${ag.servico ? `<div class="ag-detalhe"><i data-lucide="wrench"></i>${escHtml(ag.servico)}</div>` : ''}
+      ${ag.obras?.arquiteto_responsavel ? `<div class="ag-detalhe"><i data-lucide="hard-hat"></i>Arq: ${escHtml(ag.obras.arquiteto_responsavel)}</div>` : ''}
+      ${ag.obras?.consultores?.nome ? `<div class="ag-detalhe"><i data-lucide="user-check"></i>Consultor: ${escHtml(ag.obras.consultores.nome)}</div>` : ''}
       ${ag.veiculo ? `<div class="ag-detalhe"><i data-lucide="car"></i>${escHtml(ag.veiculo)}</div>` : ''}
       <span class="ag-badge badge-${escHtml(status)}">${escHtml(STATUS_LABEL[status] || status)}</span>
       ${osNumeroMap[ag.id] ? `<div style="margin-top:5px;font-size:0.66rem;font-weight:700;color:var(--primary);letter-spacing:0.04em;opacity:0.9;">OS ${escHtml(osNumeroMap[ag.id])}</div>` : ''}
@@ -1577,7 +1542,7 @@ async function salvarAgendamento() {
 // ── Excluir agendamento ──────────────────────────────────────
 async function excluirAgendamento() {
   if (!agEditandoId) return;
-  if (!confirm('Tem certeza que quer excluir este agendamento?')) return;
+  confirmModal('Excluir este agendamento? As OSs pendentes vinculadas também serão removidas.', async () => {
 
   // Apagar OSs pendentes vinculadas (não apaga OSs já concluídas)
   const ag = agendamentos.find(a => a.id === agEditandoId);
@@ -1601,9 +1566,10 @@ async function excluirAgendamento() {
   }
 
   const { error } = await db.from('agendamentos').delete().eq('id', agEditandoId);
-  if (error) { alert('Erro ao excluir: ' + error.message); return; }
+  if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
   fecharModal();
   await carregarAgenda();
+  }); // confirmModal
 }
 
 // ── Filtros de equipe ────────────────────────────────────────
@@ -2000,6 +1966,6 @@ async function gerarProgramacaoSemanal() {
 // ── Iniciar ──────────────────────────────────────────────────
 init();
 </script>
-<script>lucide.createIcons();</script>
+<script>lucide.createIcons(); applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>
 </html>
