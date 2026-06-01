@@ -1,4 +1,5 @@
 // api/foto.js — proxy de imagens/arquivos do SharePoint
+// build: 2026-06-01b
 // GET /api/foto?path=Ordens%20de%20Servi%C3%A7o%2Fcliente%2Farquivo.jpg
 // Busca o arquivo server-side (sem autenticação do usuário) e entrega pro browser.
 

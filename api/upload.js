@@ -1,4 +1,5 @@
 // api/upload.js — cria sessão de upload no SharePoint
+// build: 2026-06-01b
 // POST { path, filename, contentType } → { uploadUrl, filePath }
 // O browser faz o PUT direto para uploadUrl (pré-autenticada, sem auth header)
 

@@ -1,14 +1,28 @@
 // api/_sharepoint.js — autenticação compartilhada SharePoint/Graph API
+// build: 2026-06-01b
 // Arquivo privado (prefixo _), não exposto como rota pelo Vercel.
 
 let _cachedSiteId   = null;
 let _cachedToken    = null;
 let _tokenExpiresAt = 0;
 
+async function fetchComTimeout(url, options = {}, ms = 15000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error(`Timeout ao chamar ${url}`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function getToken() {
   if (_cachedToken && Date.now() < _tokenExpiresAt - 60_000) return _cachedToken;
 
-  const res = await fetch(
+  const res = await fetchComTimeout(
     `https://login.microsoftonline.com/${process.env.MS_TENANT_ID}/oauth2/v2.0/token`,
     {
       method:  'POST',
@@ -47,7 +61,7 @@ export async function getSiteId(token) {
   if (!sitePath.startsWith('/')) sitePath = '/' + sitePath;
 
   // Tentativa 1: URL direta
-  const r1 = await fetch(
+  const r1 = await fetchComTimeout(
     `https://graph.microsoft.com/v1.0/sites/${host}:${sitePath}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
@@ -56,7 +70,7 @@ export async function getSiteId(token) {
 
   // Tentativa 2: busca por nome
   const siteName = sitePath.split('/').filter(Boolean).pop();
-  const r2 = await fetch(
+  const r2 = await fetchComTimeout(
     `https://graph.microsoft.com/v1.0/sites?search=${encodeURIComponent(siteName)}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
