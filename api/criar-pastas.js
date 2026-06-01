@@ -1,6 +1,6 @@
 // api/criar-pastas.js — cria estrutura de pastas SharePoint para todos os clientes
 // Endpoint de uso administrativo, protegido por token em variável de ambiente.
-// Chamada: POST /api/criar-pastas com header Authorization: Bearer <CRIAR_PASTAS_TOKEN>
+// Chamada: POST /api/criar-pastas com header Authorization: Bearer <CRIAR_PASTAS_TOKEN> builds - 
 
 import { getToken, getSiteId } from './_sharepoint.js';
 
