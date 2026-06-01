@@ -1,5 +1,5 @@
 // api/foto.js — proxy de imagens/arquivos do SharePoint
-// build: 2026-06-01f
+// build: 2026-06-01g
 // GET /api/foto?path=Ordens%20de%20Servi%C3%A7o%2Fcliente%2Farquivo.jpg
 // Busca o arquivo server-side (sem autenticação do usuário) e entrega pro browser.
 
@@ -7,25 +7,31 @@ import { getToken, getSiteId } from './_sharepoint.js';
 
 function caminhoFotoSeguro(filePath) {
   const path = String(filePath || '').trim();
-  if (!path.startsWith('Obras e Clientes ')) return false;
   if (path.includes('..')) return false;
   if (/[\\:*?"<>|#%~]/.test(path)) return false;
 
   const partes = path.split('/').filter(Boolean);
-  if (partes.length < 4) return false; // mínimo: ano / pasta1 / pasta2 / arquivo
-
   const nomeArquivo = partes[partes.length - 1] || '';
   const ext = nomeArquivo.split('.').pop()?.toLowerCase();
 
-  // Agenda Técnica: Obras e Clientes AAAA/Agenda Tecnica/[Mês]/[arquivo].pdf
-  if (partes[1] === 'Agenda Tecnica') {
+  // Agenda Técnica (raiz própria): Agenda Tecnica/AAAA/Mês/[arquivo].pdf
+  if (path.startsWith('Agenda Tecnica/')) {
+    if (partes.length < 4) return false;
     return ext === 'pdf';
   }
 
+  // Todos os outros caminhos devem estar em Obras e Clientes AAAA/
+  if (!path.startsWith('Obras e Clientes ')) return false;
+  if (partes.length < 4) return false;
+
+  const nomeArquivoExts = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'pdf', 'mp4', 'mov', 'avi', 'webm'];
+  const backupExts      = ['zip', 'json', 'xml', 'cfg', 'conf', 'txt', 'xlsx', 'csv', 'tar', 'gz', 'bak', '7z'];
+
   // Caminhos de cliente: Obras e Clientes AAAA/[Cliente]/[area]/...
   const area = partes[2];
-  if (!['Fotos', 'Ordens de Serviço', 'Relatórios de Vistoria'].includes(area)) return false;
-  return ['jpg', 'jpeg', 'png', 'webp', 'heic', 'pdf', 'mp4', 'mov', 'avi', 'webm'].includes(ext);
+  if (!['Fotos', 'Ordens de Serviço', 'Relatórios de Vistoria', 'Arquivos de Backups'].includes(area)) return false;
+  if (area === 'Arquivos de Backups') return [...nomeArquivoExts, ...backupExts].includes(ext);
+  return nomeArquivoExts.includes(ext);
 }
 
 export default async function handler(req, res) {

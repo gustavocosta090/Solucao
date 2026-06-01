@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31h -->
+<!-- build: 2026-06-01g -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -143,6 +143,7 @@
     .upload-texto { font-size:0.82rem; font-weight:500; color:var(--text-2); }
     .upload-sub { font-size:0.72rem; color:var(--text-3); margin-top:3px; }
     #foto-input { display:none; }
+    #backup-input { display:none; }
 
     .fotos-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
     .foto-thumb { position:relative; aspect-ratio:1; border-radius:var(--radius-input); overflow:hidden; background:var(--surface-2); }
@@ -151,6 +152,16 @@
     .foto-thumb .remover:hover { background:rgba(239,68,68,0.3); }
     .foto-uploading { position:absolute; inset:0; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; font-size:0.7rem; color:var(--text-1); font-weight:700; }
     .video-badge { position:absolute; bottom:4px; left:4px; background:rgba(0,0,0,0.72); color:#fff; font-size:9px; font-weight:700; padding:2px 7px; border-radius:4px; pointer-events:none; letter-spacing:0.3px; }
+
+    /* Arquivos de backup/config */
+    .backup-lista { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+    .backup-item { display:flex; align-items:center; gap:8px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:8px 10px; font-size:0.8rem; }
+    .backup-item-icon { color:var(--text-3); flex-shrink:0; width:16px; height:16px; }
+    .backup-item-nome { flex:1; color:var(--text-1); word-break:break-all; }
+    .backup-item-tam { color:var(--text-3); white-space:nowrap; font-size:0.72rem; }
+    .backup-item-remover { background:none; border:none; color:var(--text-3); cursor:pointer; padding:0 2px; line-height:1; font-size:14px; flex-shrink:0; }
+    .backup-item-remover:hover { color:#EF4444; }
+    .backup-status { font-size:0.72rem; color:var(--text-3); white-space:nowrap; }
 
     /* Botão enviar */
     .btn-enviar { width:100%; height:44px; background:var(--primary); border:none; border-radius:var(--radius-input); color:#0A0A0A; font-size:0.9rem; font-weight:600; font-family:inherit; cursor:pointer; margin-top:8px; display:flex; align-items:center; justify-content:center; gap:8px; transition:opacity 0.15s; }
@@ -426,6 +437,18 @@
     <div class="fotos-grid" id="fotos-grid"></div>
   </div>
 
+  <!-- Arquivos de Configuração / Backup -->
+  <div class="secao">
+    <div class="secao-titulo">Arquivos de Configuração <span style="font-weight:400;font-size:0.78rem;opacity:0.45">(opcional)</span></div>
+    <div class="upload-area" id="backup-area" onclick="document.getElementById('backup-input').click()">
+      <i data-lucide="hard-drive-upload"></i>
+      <div class="upload-texto">Backups e configurações</div>
+      <div class="upload-sub">ZIP, JSON, XML, CFG, PDF, TXT e outros · máx 200 MB por arquivo</div>
+    </div>
+    <input type="file" id="backup-input" accept=".zip,.json,.xml,.cfg,.conf,.txt,.xlsx,.csv,.pdf,.tar,.gz,.bak,.7z" multiple onchange="adicionarArquivosBackup(this.files)">
+    <div class="backup-lista" id="backup-lista"></div>
+  </div>
+
   <!-- Finalização -->
   <div class="secao">
     <div class="secao-titulo">Finalização</div>
@@ -469,6 +492,7 @@ let agendamentoSelecionado = null;
 let osSelecionadaId        = null;  // ID da OS pendente existente (para UPDATE)
 let tecnicos               = [];
 let fotosSelecionadas      = [];
+let arquivosBackup         = []; // arquivos de configuração/backup
 let equipeFull             = []; // todos os IDs da equipe do agendamento
 let osEhPlantao            = false;
 // ── Init ──────────────────────────────────────────────────────
@@ -901,6 +925,8 @@ function resetarForm() {
   equipeFull = [];
   fotosSelecionadas = [];
   document.getElementById('fotos-grid').innerHTML = '';
+  arquivosBackup = [];
+  document.getElementById('backup-lista').innerHTML = '';
   document.getElementById('plantao-bloco').style.display = 'none';
   document.getElementById('plantao-detalhes').style.display = 'none';
   document.getElementById('f-plantao-atendeu').value = 'nao';
@@ -1071,6 +1097,103 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
   }
 
   return urls.filter(Boolean);
+}
+
+// ── Upload de arquivos de backup/configuração ────────────────
+function formatarTamanho(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function adicionarArquivosBackup(files) {
+  Array.from(files).forEach(file => {
+    if (file.size > 200 * 1024 * 1024) {
+      showToast(`${file.name} excede 200 MB. Escolha um arquivo menor.`, 'warning');
+      return;
+    }
+    // Evita duplicatas pelo nome
+    if (arquivosBackup.find(a => a.name === file.name)) {
+      showToast(`${file.name} já foi adicionado.`, 'warning');
+      return;
+    }
+    arquivosBackup.push(file);
+  });
+  renderizarListaBackup();
+  document.getElementById('backup-input').value = '';
+}
+
+function renderizarListaBackup() {
+  const lista = document.getElementById('backup-lista');
+  if (!lista) return;
+  lista.innerHTML = arquivosBackup.map((f, i) => `
+    <div class="backup-item" id="backup-item-${i}">
+      <i data-lucide="file" class="backup-item-icon"></i>
+      <span class="backup-item-nome">${f.name}</span>
+      <span class="backup-item-tam">${formatarTamanho(f.size)}</span>
+      <span class="backup-status" id="backup-status-${i}"></span>
+      <button class="backup-item-remover" onclick="removerArquivoBackup(${i})" title="Remover">✕</button>
+    </div>
+  `).join('');
+  lucide.createIcons();
+}
+
+function removerArquivoBackup(idx) {
+  arquivosBackup.splice(idx, 1);
+  renderizarListaBackup();
+}
+
+// Upload de todos os arquivos de backup para SharePoint
+// Pasta: Obras e Clientes {ano}/{Cliente}/Arquivos de Backups/
+async function uploadArquivosBackup(nomeCliente, numeroOS) {
+  if (!arquivosBackup.length) return [];
+  const urls     = [];
+  const nomeBase = nomePastaCliente(nomeCliente);
+  const ano      = (numeroOS || '').split('-')[0] || new Date().getFullYear();
+  const folderPath = `Obras e Clientes ${ano}/${nomeBase}/Arquivos de Backups`;
+
+  for (let i = 0; i < arquivosBackup.length; i++) {
+    const file = arquivosBackup[i];
+    const statusEl = document.getElementById(`backup-status-${i}`);
+    if (statusEl) statusEl.textContent = 'Enviando...';
+
+    try {
+      const hdrs = await headersUploadProtegido();
+      const initRes = await fetch('/api/upload', {
+        method:  'POST',
+        headers: hdrs,
+        body:    JSON.stringify({ path: folderPath, filename: file.name, contentType: file.type || 'application/octet-stream' }),
+      });
+      if (!initRes.ok) throw new Error(await initRes.text());
+      const { uploadUrl, filePath } = await initRes.json();
+
+      const CHUNK = 5 * 1024 * 1024;
+      let start = 0;
+      while (start < file.size) {
+        const end   = Math.min(start + CHUNK, file.size);
+        const chunk = file.slice(start, end);
+        const put   = await fetch(uploadUrl, {
+          method:  'PUT',
+          headers: {
+            'Content-Range':  `bytes ${start}-${end - 1}/${file.size}`,
+            'Content-Length': String(end - start),
+            'Content-Type':   file.type || 'application/octet-stream',
+          },
+          body: chunk,
+        });
+        if (!put.ok && put.status !== 202) throw new Error(`Chunk erro ${put.status}`);
+        start = end;
+      }
+
+      urls.push(`/api/foto?path=${encodeURIComponent(filePath)}`);
+      if (statusEl) statusEl.textContent = '✓';
+    } catch (e) {
+      console.warn(`Backup ${file.name} falhou:`, e.message);
+      if (statusEl) statusEl.textContent = '✗';
+    }
+  }
+
+  return urls;
 }
 
 // ── SharePoint via proxy Vercel / PDF ────────────────────────
@@ -1246,6 +1369,26 @@ async function enviarOS() {
     return;
   }
 
+  // ── Campos obrigatórios adicionais ───────────────────────────
+  const inicioVal = (document.getElementById('f-inicio')?.value || '').trim();
+  if (!inicioVal) {
+    showToast('Informe o horário de início do serviço.', 'warning');
+    document.getElementById('f-inicio')?.focus();
+    return;
+  }
+  const fimVal = (document.getElementById('f-fim')?.value || '').trim();
+  if (!fimVal) {
+    showToast('Informe o horário de fim do serviço.', 'warning');
+    document.getElementById('f-fim')?.focus();
+    return;
+  }
+  const obsVal = (document.getElementById('f-obs')?.value || '').trim();
+  if (!obsVal) {
+    showToast('Preencha as observações finais antes de enviar.', 'warning');
+    document.getElementById('f-obs')?.focus();
+    return;
+  }
+
   const btn = document.getElementById('btn-enviar');
   btn.disabled    = true;
   btn.textContent = 'Enviando...';
@@ -1308,6 +1451,7 @@ async function enviarOS() {
       proximas_atividades: document.getElementById('f-proximas').value  || null,
       observacoes:         document.getElementById('f-obs').value       || null,
       fotos_urls:          null,   // atualizado logo após o upload das fotos
+      arquivos_config_urls: null,  // atualizado após upload dos arquivos de backup
       data_servico:        ag?.data || new Date().toISOString().split('T')[0],
       status_aprovacao:    'concluida',
       criado_em:           new Date().toISOString(),
@@ -1322,6 +1466,7 @@ async function enviarOS() {
       const f = { ...p };
       delete f.agendamento_id; delete f.cliente_outro;
       delete f.auxiliar2_id;   delete f.auxiliar3_id;
+      delete f.arquivos_config_urls;
       return f;
     }
 
@@ -1330,6 +1475,7 @@ async function enviarOS() {
       const msg = e.message || '';
       return msg.includes('auxiliar2_id') || msg.includes('auxiliar3_id') ||
              msg.includes('agendamento_id') || msg.includes('cliente_outro') ||
+             msg.includes('arquivos_config_urls') ||
              msg.includes('schema cache') || msg.includes('column');
     }
 
@@ -1390,6 +1536,22 @@ async function enviarOS() {
         await db.from('ordens_de_servico')
           .update({ fotos_urls: fotoUrls })
           .eq('id', savedOsId);
+      }
+    }
+
+    // ── Upload arquivos de backup/config ─────────────────────────────────
+    if (arquivosBackup.length > 0 && savedOsId) {
+      btn.textContent = `Enviando ${arquivosBackup.length} arquivo(s) de backup...`;
+      const numParaFoto = document.getElementById('os-numero').textContent
+                       || String(savedOsId).padStart(3, '0');
+      const backupUrls = await uploadArquivosBackup(nomeCliente || 'Sem Cliente', numParaFoto);
+      if (backupUrls.length > 0) {
+        // Tenta salvar; se coluna não existir ainda, ignora silenciosamente
+        try {
+          await db.from('ordens_de_servico')
+            .update({ arquivos_config_urls: backupUrls })
+            .eq('id', savedOsId);
+        } catch (e) { console.warn('arquivos_config_urls não salvo:', e.message); }
       }
     }
 

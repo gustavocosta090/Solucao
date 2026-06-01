@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01e -->
+<!-- build: 2026-06-01g -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -538,7 +538,8 @@
 
     /* ── Botão exportar agenda → SharePoint ── */
     .btn-exportar-sp {
-      display: inline-flex; align-items: center; gap: 7px;
+      display: none; /* mostrado via JS apenas para agendamento/coordenador/supervisor */
+      align-items: center; gap: 7px;
       padding: 7px 14px; border-radius: 7px;
       background: rgba(62,207,142,0.10);
       border: 1px solid rgba(62,207,142,0.30);
@@ -810,6 +811,8 @@ async function init() {
     const btnWa = document.getElementById('btn-whatsapp');
     if (btnWa) btnWa.style.display = 'inline-flex';
     if (dpEl) dpEl.style.display = 'inline-block';
+    const btnSp = document.getElementById('btn-exportar-sp');
+    if (btnSp) btnSp.style.display = 'inline-flex';
   } else {
     if (dpEl) dpEl.style.display = 'none';
   }
@@ -1400,7 +1403,7 @@ async function exportarAgendaSharePoint() {
     lucide.createIcons();
 
     const nomeSemana = `${d0.getDate()} a ${d4.getDate()} de ${mesNome} ${ano}`;
-    const pasta      = `Obras e Clientes ${ano}/Agenda Tecnica/${mesNomeCap} ${ano}`;
+    const pasta      = `Agenda Tecnica/${ano}/${mesNomeCap}`;
     const arquivo    = `Vistorias ${nomeSemana}.pdf`;
 
     const initRes = await fetch('/api/upload', {

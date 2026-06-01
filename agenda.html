@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01e -->
+<!-- build: 2026-06-01h -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -262,9 +262,11 @@
     .card-viagem       { background: rgba(34,197,94,0.07);   border-color: #22c55e; }
 
     .ag-tecs    { font-weight: 700; color: var(--text-1); margin-bottom: 3px; }
-    .ag-cliente { font-weight: 600; color: var(--text-2); margin-bottom: 2px; }
-    .ag-detalhe { color: var(--text-3); font-size: 0.72rem; display: flex; align-items: center; gap: 4px; margin-top: 2px; }
-    .ag-detalhe i { width: 11px; height: 11px; flex-shrink: 0; }
+    .ag-hora    { font-weight: 700; color: var(--primary); font-size: 0.82rem; flex-shrink: 0; }
+    .ag-cliente { font-weight: 700; color: var(--text-1); font-size: 0.82rem; line-height: 1.3; }
+    .ag-detalhe { color: var(--text-3); font-size: 0.72rem; display: flex; align-items: baseline; gap: 4px; margin-top: 2px; }
+    .ag-detalhe i { width: 11px; height: 11px; flex-shrink: 0; position: relative; top: 1px; }
+    .ag-label   { color: var(--text-2); font-weight: 600; flex-shrink: 0; }
 
     .ag-badge {
       display: inline-block;
@@ -694,7 +696,8 @@
 
     /* ── Botão exportar agenda → SharePoint ── */
     .btn-exportar-sp {
-      display: inline-flex; align-items: center; gap: 7px;
+      display: none; /* mostrado via JS apenas para agendamento/coordenador/supervisor */
+      align-items: center; gap: 7px;
       padding: 7px 14px; border-radius: 7px;
       background: rgba(62,207,142,0.10);
       border: 1px solid rgba(62,207,142,0.30);
@@ -1051,6 +1054,8 @@ async function init() {
     if (dpWrap) dpWrap.style.display = 'inline-block';
     const btnSem = document.getElementById('btn-semana-tec');
     if (btnSem) btnSem.style.display = 'inline-flex';
+    const btnSp = document.getElementById('btn-exportar-sp');
+    if (btnSp) btnSp.style.display = 'inline-flex';
   } else {
     const dpWrap = document.getElementById('data-dispatch');
     if (dpWrap) dpWrap.style.display = 'none';
@@ -1227,29 +1232,38 @@ function renderGrade(dias) {
 function cardHTML(ag) {
   const status = ag.status || 'confirmado';
 
-  // Monta nomes da equipe a partir do array local de técnicos
+  // Monta nomes da equipe (primeiro nome + sobrenome inicial para caber)
   const ids   = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
   const nomes = ids.map(id => {
     const t = tecnicos.find(t => t.id === id);
-    return t ? t.nome.split(' ')[0] : null; // primeiro nome para caber no card
+    return t ? t.nome.split(' ')[0] : null;
   }).filter(Boolean);
 
-  const tecs    = nomes.join(' · ') || '—';
-  const cliente = ag.obras?.nome_cliente || ag.cliente_outro || '—';
-  const end     = ag.endereco_outro || ag.obras?.endereco || '';
-  const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
+  const tecs      = nomes.join(' · ') || '—';
+  const cliente   = ag.obras?.nome_cliente || ag.cliente_outro || '—';
+  const end       = ag.endereco_outro || ag.obras?.endereco || '';
+  const hora      = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
+  const osNum     = osNumeroMap[ag.id] || null;
+  const consultor = ag.obras?.consultores?.nome || '';
+  const arquiteto = ag.obras?.arquiteto_responsavel || '';
+
+  const det = (icon, label, val) =>
+    val ? `<div class="ag-detalhe"><i data-lucide="${icon}"></i><span class="ag-label">${label}:</span>${escHtml(val)}</div>` : '';
 
   return `
     <div class="card-ag card-${status}" ${modoVisualizacao ? '' : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`} style="${modoVisualizacao ? 'cursor:default' : ''}">
-      <div class="ag-tecs">${escHtml(hora ? hora + ' · ' : '')}${escHtml(tecs)}</div>
-      <div class="ag-cliente">${escHtml(cliente)}</div>
-      ${end ? `<div class="ag-detalhe"><i data-lucide="map-pin"></i>${escHtml(end)}</div>` : ''}
-      ${ag.servico ? `<div class="ag-detalhe"><i data-lucide="wrench"></i>${escHtml(ag.servico)}</div>` : ''}
-      ${ag.obras?.arquiteto_responsavel ? `<div class="ag-detalhe"><i data-lucide="hard-hat"></i>Arq: ${escHtml(ag.obras.arquiteto_responsavel)}</div>` : ''}
-      ${ag.obras?.consultores?.nome ? `<div class="ag-detalhe"><i data-lucide="user-check"></i>Consultor: ${escHtml(ag.obras.consultores.nome)}</div>` : ''}
-      ${ag.veiculo ? `<div class="ag-detalhe"><i data-lucide="car"></i>${escHtml(ag.veiculo)}</div>` : ''}
-      <span class="ag-badge badge-${escHtml(status)}">${escHtml(STATUS_LABEL[status] || status)}</span>
-      ${osNumeroMap[ag.id] ? `<div style="margin-top:5px;font-size:0.66rem;font-weight:700;color:var(--primary);letter-spacing:0.04em;opacity:0.9;">OS ${escHtml(osNumeroMap[ag.id])}</div>` : ''}
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px;">
+        ${hora ? `<span class="ag-hora">${escHtml(hora)}</span>` : ''}
+        <span class="ag-cliente">${escHtml(cliente)}</span>
+      </div>
+      ${det('user',       'Técnico',   tecs)}
+      ${det('map-pin',    'Endereço',  end)}
+      ${det('file-text',  'N.OS',      osNum ? String(osNum) : '')}
+      ${det('user-check', 'Consultor', consultor)}
+      ${det('hard-hat',   'Arquiteto', arquiteto)}
+      ${det('wrench',     'Serviço',   ag.servico || '')}
+      ${det('car',        'Veículo',   ag.veiculo || '')}
+      <span class="ag-badge badge-${escHtml(status)}" style="margin-top:6px;">${escHtml(STATUS_LABEL[status] || status)}</span>
     </div>`;
 }
 
@@ -1782,27 +1796,39 @@ async function dispararAgendaWhatsapp() {
 
   // Monta card de cada agendamento com inline styles
   const cardsHTML = ordenados.map((ag) => {
-    const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
-    const cliente = escHtml(ag.obras?.nome_cliente || ag.cliente_outro || '—');
-    const end     = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
-    const serv    = escHtml(ag.servico || '');
-    const veic    = escHtml(ag.veiculo || '');
+    const hora      = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
+    const cliente   = escHtml(ag.obras?.nome_cliente || ag.cliente_outro || '—');
+    const end       = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
+    const serv      = escHtml(ag.servico || '');
+    const veic      = escHtml(ag.veiculo || '');
+    const consultor = escHtml(ag.obras?.consultores?.nome || '');
+    const arquiteto = escHtml(ag.obras?.arquiteto_responsavel || '');
+    const osNum     = osNumeroMap[ag.id] ? escHtml(String(osNumeroMap[ag.id])) : '';
 
-    const tecIds   = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-    const tecStr   = tecIds.map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · ');
+    const tecIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+    const tecStr = escHtml(tecIds.map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · '));
 
     const eq  = equipeDoAg(ag);
     const cor = eq ? (COR_EQ[Object.keys(EQUIPE_INFO).find(k => EQUIPE_INFO[k].nome === eq.nome)] || eq.cor) : '#334155';
 
-    const detalhe = [serv, end, veic ? `Veículo: ${veic}` : ''].filter(Boolean);
+    const LBL  = `color:${T3};font-weight:600;`;
+    const ROW  = `font-size:11.5px;color:${T2};margin-top:3px;line-height:1.5;`;
+    const lin  = (label, val) => val ? `<div style="${ROW}"><span style="${LBL}">${label} </span>${val}</div>` : '';
 
     return `<div style="background:${SURF};border-radius:7px;padding:13px 15px;margin-bottom:9px;border-left:3px solid ${cor};">
       <div style="display:flex;align-items:baseline;gap:13px;">
         <span style="font-size:14px;font-weight:700;color:${GOLD};flex-shrink:0;min-width:46px;font-variant-numeric:tabular-nums;">${hora}</span>
-        <span style="font-size:14px;font-weight:700;color:${T1};flex:1;line-height:1.3;">${cliente}</span>
+        <span style="font-size:15px;font-weight:700;color:${T1};flex:1;line-height:1.3;">${cliente}</span>
       </div>
-      ${tecStr ? `<div style="font-size:11px;color:${T2};margin-top:5px;padding-left:59px;">${escHtml(tecStr)}</div>` : ''}
-      ${detalhe.length ? `<div style="margin-top:3px;padding-left:59px;">${detalhe.map(d => `<div style="font-size:11px;color:${T2};margin-top:1px;">${d}</div>`).join('')}</div>` : ''}
+      <div style="margin-top:6px;">
+        ${lin('Técnico:',   tecStr)}
+        ${lin('Endereço:',  end)}
+        ${lin('N.OS:',      osNum)}
+        ${lin('Consultor:', consultor)}
+        ${lin('Arquiteto:', arquiteto)}
+        ${lin('Serviço:',   serv)}
+        ${lin('Veículo:',   veic)}
+      </div>
     </div>`;
   }).join('');
 
@@ -2169,7 +2195,7 @@ async function exportarAgendaSharePoint() {
     lucide.createIcons();
 
     const nomeSemana = `${d0.getDate()} a ${d6.getDate()} de ${mesNome} ${ano}`;
-    const pasta      = `Obras e Clientes ${ano}/Agenda Tecnica/${mesNomeCap} ${ano}`;
+    const pasta      = `Agenda Tecnica/${ano}/${mesNomeCap}`;
     const arquivo    = `${nomeSemana}.pdf`;
 
     const initRes = await fetch('/api/upload', {

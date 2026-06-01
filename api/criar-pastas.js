@@ -1,5 +1,5 @@
 // api/criar-pastas.js — cria estrutura de pastas SharePoint para todos os clientes
-// build: 2026-06-01e
+// build: 2026-06-01g
 // Endpoint de uso administrativo, protegido por token em variável de ambiente.
 // Chamada: POST /api/criar-pastas?inicio=0&limite=1
 // Header: Authorization: Bearer <CRIAR_PASTAS_TOKEN>
@@ -132,13 +132,13 @@ export default async function handler(req, res) {
     log.push(`📌 Lote: cliente ${inicioCliente + 1} até ${proximoInicio} de ${clientes.length}`);
     log.push('');
 
-    // 3. Criar pasta raiz Agenda Tecnica (uma vez por execução)
+    // 3. Criar pasta raiz Agenda Tecnica (irmã de Obras e Clientes, com subpasta do ano)
     log.push('📅 Verificando pasta Agenda Tecnica...');
     try {
-      await criarCaminho(token, siteId, `Obras e Clientes ${ANO}/Agenda Tecnica`);
-      log.push('   ✓ Agenda Tecnica');
+      await criarCaminho(token, siteId, `Agenda Tecnica/${ANO}`);
+      log.push(`   ✓ Agenda Tecnica/${ANO}`);
     } catch(e) {
-      log.push(`   ✗ Agenda Tecnica — ${e.message}`);
+      log.push(`   ✗ Agenda Tecnica/${ANO} — ${e.message}`);
     }
     log.push('');
 
@@ -154,6 +154,7 @@ export default async function handler(req, res) {
         `Obras e Clientes ${ANO}/${nomeBase}/Ordens de Serviço`,
         `Obras e Clientes ${ANO}/${nomeBase}/Fotos`,
         `Obras e Clientes ${ANO}/${nomeBase}/Relatórios de Vistoria`,
+        `Obras e Clientes ${ANO}/${nomeBase}/Arquivos de Backups`,
       ];
 
       for (const base of bases) {

@@ -1,5 +1,5 @@
 // api/upload.js — cria sessão de upload no SharePoint
-// build: 2026-06-01b
+// build: 2026-06-01g
 // POST { path, filename, contentType } → { uploadUrl, filePath }
 // O browser faz o PUT direto para uploadUrl (pré-autenticada, sem auth header)
 
@@ -28,10 +28,13 @@ async function validarSessaoSupabase(req) {
 function caminhoSeguro(folderPath, filename) {
   const path = String(folderPath || '');
   const name = String(filename || '');
-  if (!path.startsWith('Obras e Clientes ')) return false;
   if (path.includes('..') || name.includes('..')) return false;
   if (/[\\:*?"<>|#%~]/.test(name)) return false;
-  return true;
+  // Agenda Técnica: Agenda Tecnica/AAAA/Mês/
+  if (path.startsWith('Agenda Tecnica/')) return true;
+  // Caminhos de cliente: Obras e Clientes AAAA/...
+  if (path.startsWith('Obras e Clientes ')) return true;
+  return false;
 }
 
 export default async function handler(req, res) {
