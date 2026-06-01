@@ -1,5 +1,5 @@
 // api/criar-pastas.js — cria estrutura de pastas SharePoint para todos os clientes
-// build: 2026-06-01b
+// build: 2026-06-01d
 // Endpoint de uso administrativo, protegido por token em variável de ambiente.
 // Chamada: POST /api/criar-pastas?inicio=0&limite=1
 // Header: Authorization: Bearer <CRIAR_PASTAS_TOKEN>
@@ -108,7 +108,7 @@ export default async function handler(req, res) {
 
     // 2. Dados Supabase
     log.push('📦 Buscando dados no Supabase...');
-    const obras   = await supabaseFetch('obras', '?select=nome_cliente&order=nome_cliente');
+    const obras   = await supabaseFetch('obras', '?select=nome_cliente&order=nome_cliente&limit=10000');
     const equipes = await supabaseFetch('equipes', '?select=id,nome&order=id');
 
     const clientes = [...new Set(obras.map(o => o.nome_cliente).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -123,7 +123,7 @@ export default async function handler(req, res) {
     }
 
     const inicioCliente = Math.max(0, Number(req.query.inicio || req.query.offset || 0) || 0);
-    const limiteCliente = Math.min(5, Math.max(1, Number(req.query.limite || req.query.limit || 1) || 1));
+    const limiteCliente = Math.min(50, Math.max(1, Number(req.query.limite || req.query.limit || 5) || 5));
     const clientesLote = clientes.slice(inicioCliente, inicioCliente + limiteCliente);
     const proximoInicio = inicioCliente + clientesLote.length;
     const finalizado = proximoInicio >= clientes.length;
