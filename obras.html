@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31h -->
+<!-- build: 2026-06-01l -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -340,15 +340,17 @@
       white-space: nowrap;
     }
 
-    .badge-projeto_iniciado  { background: rgba(99,102,241,0.15); color: #818CF8; border: 1px solid rgba(99,102,241,0.25); }
-    .badge-cabeamento        { background: rgba(245,158,11,0.12); color: #F59E0B; border: 1px solid rgba(245,158,11,0.22); }
-    .badge-eletrica          { background: rgba(251,191,36,0.12); color: #FBBF24; border: 1px solid rgba(251,191,36,0.22); }
-    .badge-audio_video       { background: rgba(167,139,250,0.12); color: #A78BFA; border: 1px solid rgba(167,139,250,0.22); }
-    .badge-automacao         { background: rgba(62,207,142,0.12); color: var(--primary); border: 1px solid rgba(62,207,142,0.22); }
-    .badge-em_finalizacao    { background: rgba(45,212,191,0.12); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.22); }
-    .badge-nao_iniciado      { background: rgba(82,82,91,0.2); color: var(--text-2); border: 1px solid rgba(82,82,91,0.3); }
-    .badge-projeto_concluido { background: rgba(79,70,229,0.15); color: #818CF8; border: 1px solid rgba(79,70,229,0.25); }
-    .badge-entrega_comercial { background: rgba(62,207,142,0.15); color: var(--primary); border: 1px solid rgba(62,207,142,0.25); }
+    .badge-projeto_iniciado    { background: rgba(99,102,241,0.15);  color: #818CF8;       border: 1px solid rgba(99,102,241,0.25); }
+    .badge-cabeamento          { background: rgba(245,158,11,0.12);  color: #F59E0B;       border: 1px solid rgba(245,158,11,0.22); }
+    .badge-eletrica            { background: rgba(251,191,36,0.12);  color: #FBBF24;       border: 1px solid rgba(251,191,36,0.22); }
+    .badge-audio_video         { background: rgba(167,139,250,0.12); color: #A78BFA;       border: 1px solid rgba(167,139,250,0.22); }
+    .badge-automacao           { background: rgba(62,207,142,0.12);  color: var(--primary);border: 1px solid rgba(62,207,142,0.22); }
+    .badge-em_finalizacao      { background: rgba(45,212,191,0.12);  color: #2DD4BF;       border: 1px solid rgba(45,212,191,0.22); }
+    .badge-nao_iniciado        { background: rgba(82,82,91,0.2);     color: var(--text-2); border: 1px solid rgba(82,82,91,0.3); }
+    .badge-projeto_concluido   { background: rgba(79,70,229,0.15);   color: #818CF8;       border: 1px solid rgba(79,70,229,0.25); }
+    .badge-entrega_comercial   { background: rgba(62,207,142,0.15);  color: var(--primary);border: 1px solid rgba(62,207,142,0.25); }
+    .badge-bloqueado_financeiro{ background: rgba(239,68,68,0.12);   color: #f87171;       border: 1px solid rgba(239,68,68,0.25); }
+    .badge-parado_cliente      { background: rgba(251,146,60,0.12);  color: #fb923c;       border: 1px solid rgba(251,146,60,0.25); }
 
     .badge-compra {
       background: rgba(255,255,255,0.04);
@@ -645,6 +647,49 @@
   @media (max-width: 768px) {
     input, select, textarea { font-size: 16px !important; }
   }
+
+  /* ── Input com prefixo de moeda ── */
+  .input-moeda-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .input-moeda-wrap .moeda-prefix {
+    position: absolute;
+    left: 10px;
+    font-size: 0.8rem;
+    color: var(--text-3);
+    font-weight: 600;
+    pointer-events: none;
+    user-select: none;
+  }
+  .input-moeda-wrap input {
+    padding-left: 30px !important;
+  }
+
+  /* ── Botão apagar obra ── */
+  .btn-apagar-obra {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: rgba(239,68,68,0.07);
+    border: 1px solid rgba(239,68,68,0.18);
+    border-radius: 6px;
+    color: #f87171;
+    cursor: pointer;
+    transition: background 150ms, border-color 150ms, transform 150ms;
+    flex-shrink: 0;
+    padding: 0;
+    font-family: inherit;
+  }
+  .btn-apagar-obra:hover {
+    background: rgba(239,68,68,0.18);
+    border-color: rgba(239,68,68,0.38);
+    transform: scale(1.06);
+  }
+  .btn-apagar-obra i { width: 13px; height: 13px; }
 </style>
 <link rel="stylesheet" href="app-shell.css">
 </head>
@@ -759,6 +804,8 @@
           <option value="audio_video">Áudio e Vídeo</option>
           <option value="automacao">Automação</option>
           <option value="em_finalizacao">Em Finalização</option>
+          <option value="bloqueado_financeiro">Bloqueado Financeiro</option>
+          <option value="parado_cliente">Parado Cliente</option>
           <option value="entrega_comercial">Entrega Comercial</option>
         </select>
       </div>
@@ -766,12 +813,29 @@
         <label for="f-status-compra">Status de Compra</label>
         <select id="f-status-compra">
           <option value="">Selecione...</option>
-          <option value="Aguardando orçamento">Aguardando orçamento</option>
           <option value="Material pendente">Material pendente</option>
+          <option value="Sem parte do material em estoque">Sem parte do material em estoque</option>
           <option value="Material entregue">Material entregue</option>
           <option value="Sem pendência">Sem pendência</option>
           <option value="Pausado">Pausado</option>
         </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="f-valor-servico">Valor de Serviço</label>
+        <div class="input-moeda-wrap">
+          <span class="moeda-prefix">R$</span>
+          <input type="number" id="f-valor-servico" step="0.01" min="0" placeholder="0,00">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="f-valor-produto">Valor de Produtos</label>
+        <div class="input-moeda-wrap">
+          <span class="moeda-prefix">R$</span>
+          <input type="number" id="f-valor-produto" step="0.01" min="0" placeholder="0,00">
+        </div>
       </div>
     </div>
 
@@ -793,15 +857,17 @@
 <script>
 
   const FASES = {
-    nao_iniciado:     { label: 'Não Iniciado',     prazo: '—'           },
-    projeto_iniciado: { label: 'Projeto Iniciado', prazo: '> 180 dias'  },
-    projeto_concluido:{ label: 'Projeto Concluído',prazo: '—'           },
-    cabeamento:       { label: 'Cabeamento',        prazo: '~120 dias'  },
-    eletrica:         { label: 'Elétrica',          prazo: 'Imediato'   },
-    audio_video:      { label: 'Áudio e Vídeo',    prazo: 'Imediato'   },
-    automacao:        { label: 'Automação',         prazo: 'Imediato'   },
-    em_finalizacao:   { label: 'Em Finalização',   prazo: '—'          },
-    entrega_comercial:{ label: 'Entrega Comercial', prazo: '—'          },
+    nao_iniciado:          { label: 'Não Iniciado',          prazo: '—'          },
+    projeto_iniciado:      { label: 'Projeto Iniciado',      prazo: '> 180 dias' },
+    projeto_concluido:     { label: 'Projeto Concluído',     prazo: '—'          },
+    cabeamento:            { label: 'Cabeamento',            prazo: '~120 dias'  },
+    eletrica:              { label: 'Elétrica',              prazo: 'Imediato'   },
+    audio_video:           { label: 'Áudio e Vídeo',        prazo: 'Imediato'   },
+    automacao:             { label: 'Automação',             prazo: 'Imediato'   },
+    em_finalizacao:        { label: 'Em Finalização',        prazo: '—'          },
+    bloqueado_financeiro:  { label: 'Bloqueado Financeiro',  prazo: '—'          },
+    parado_cliente:        { label: 'Parado Cliente',        prazo: '—'          },
+    entrega_comercial:     { label: 'Entrega Comercial',     prazo: '—'          },
   };
 
   let todasObras  = [];
@@ -928,6 +994,17 @@
     const fase = FASES[obra.fase_atual] || { label: obra.fase_atual, prazo: '' };
     const consultor = obra.consultores?.nome ?? '—';
     const status = obra.status_compra ?? fase.prazo;
+    const podeApagar = userRole === 'coordenador' || userRole === 'supervisor';
+    const nomeEsc = escHtml(obra.nome_cliente).replace(/'/g, "\\'");
+
+    const btnApagar = podeApagar
+      ? `<button class="btn-apagar-obra"
+           onclick="deletarObra(${obra.id}, '${nomeEsc}', event)"
+           title="Apagar esta obra"
+           aria-label="Apagar obra">
+           <i data-lucide="trash-2"></i>
+         </button>`
+      : '';
 
     return `
       <div class="card" onclick="window.location.href='obra_detail.html?id=${obra.id}'" title="Ver OS e fotos desta obra">
@@ -936,7 +1013,10 @@
             <div class="card-cliente">${escHtml(obra.nome_cliente)}</div>
             <div class="card-id">#${String(obra.id).padStart(3,'0')}</div>
           </div>
-          <span class="badge badge-${escHtml(obra.fase_atual)}">${escHtml(fase.label)}</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <span class="badge badge-${escHtml(obra.fase_atual)}">${escHtml(fase.label)}</span>
+            ${btnApagar}
+          </div>
         </div>
 
         <div class="card-info">
@@ -953,6 +1033,25 @@
           <span class="badge badge-compra">${escHtml(status)}</span>
         </div>
       </div>`;
+  }
+
+  // ── Apagar obra ─────────────────────────────────────────────
+  async function deletarObra(id, nomeCliente, event) {
+    event.stopPropagation();
+
+    const ok = confirm(`Apagar a obra "${nomeCliente}"?\n\nEsta ação não pode ser desfeita.`);
+    if (!ok) return;
+
+    const { error } = await db.from('obras').delete().eq('id', id);
+
+    if (error) {
+      showToast('Erro ao apagar obra: ' + error.message, 'error');
+      return;
+    }
+
+    todasObras = todasObras.filter(o => o.id !== id);
+    renderizar();
+    showToast(`Obra "${nomeCliente}" apagada com sucesso.`, 'success');
   }
 
   // ── Mostrar erro amigável ───────────────────────────────────
@@ -1011,13 +1110,15 @@
   // ── Modal Nova Obra ─────────────────────────────────────────
   function abrirModal() {
     if (userRole === 'tecnico') return; // técnicos não podem criar obras
-    document.getElementById('f-cliente').value      = '';
-    document.getElementById('f-endereco').value     = '';
-    document.getElementById('f-arquiteto').value    = '';
-    document.getElementById('f-consultor').value    = '';
-    document.getElementById('f-fase').value          = 'nao_iniciado';
-    document.getElementById('f-status-compra').value = '';
-    document.getElementById('f-shankya').value      = '';
+    document.getElementById('f-cliente').value        = '';
+    document.getElementById('f-endereco').value       = '';
+    document.getElementById('f-arquiteto').value      = '';
+    document.getElementById('f-consultor').value      = '';
+    document.getElementById('f-fase').value           = 'nao_iniciado';
+    document.getElementById('f-status-compra').value  = '';
+    document.getElementById('f-shankya').value        = '';
+    document.getElementById('f-valor-servico').value  = '';
+    document.getElementById('f-valor-produto').value  = '';
     document.getElementById('alertSucesso').style.display = 'none';
     document.getElementById('alertErro').style.display    = 'none';
     document.getElementById('overlay').classList.add('aberto');
@@ -1041,6 +1142,9 @@
     const btn = document.getElementById('btn-salvar');
     btn.disabled = true; btn.textContent = 'Salvando...';
 
+    const valorServRaw   = parseFloat(document.getElementById('f-valor-servico').value);
+    const valorProdRaw   = parseFloat(document.getElementById('f-valor-produto').value);
+
     const payload = {
       nome_cliente:          cliente,
       endereco:              document.getElementById('f-endereco').value.trim()      || null,
@@ -1049,13 +1153,23 @@
       fase_atual:            document.getElementById('f-fase').value,
       status_compra:         document.getElementById('f-status-compra').value.trim()|| null,
       cod_shankya:           document.getElementById('f-shankya').value.trim()      || null,
+      valor_servico:         isNaN(valorServRaw) ? null : valorServRaw,
+      valor_produto:         isNaN(valorProdRaw) ? null : valorProdRaw,
     };
 
-    const { data, error } = await db
+    let { data, error } = await db
       .from('obras')
       .insert(payload)
       .select('*, consultores(nome)')
       .single();
+
+    // Fallback: se colunas de valor ainda não existem no banco, tenta sem elas
+    if (error && /valor_servico|valor_produto/i.test(error.message)) {
+      const { valor_servico, valor_produto, ...payloadSemValor } = payload;
+      const res2 = await db.from('obras').insert(payloadSemValor).select('*, consultores(nome)').single();
+      data  = res2.data;
+      error = res2.error;
+    }
 
     btn.disabled = false; btn.innerHTML = '<i data-lucide="save"></i> Salvar'; lucide.createIcons();
 
