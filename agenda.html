@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01i -->
+<!-- build: 2026-06-01m -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -264,9 +264,42 @@
     .ag-tecs    { font-weight: 700; color: var(--text-1); margin-bottom: 3px; }
     .ag-hora    { font-weight: 700; color: var(--primary); font-size: 0.84rem; flex-shrink: 0; }
     .ag-cliente { font-weight: 700; color: var(--text-1); font-size: 0.82rem; line-height: 1.3; }
-    .ag-detalhe { font-size: 0.72rem; display: flex; align-items: flex-start; gap: 5px; margin-top: 3px; line-height: 1.45; }
-    .ag-label   { color: var(--text-2); font-weight: 600; flex-shrink: 0; min-width: 62px; }
-    .ag-val     { color: var(--text-3); }
+
+    /* ── Grid de 2 colunas nos detalhes do card ── */
+    .ag-detalhes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 6px;
+      padding-top: 5px;
+      margin-top: 4px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .ag-detalhe-full { grid-column: 1 / -1; }
+
+    .ag-detalhe {
+      font-size: 0.69rem;
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
+      margin-top: 2px;
+      line-height: 1.35;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .ag-label {
+      color: var(--text-2);
+      font-weight: 600;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .ag-val {
+      color: var(--text-3);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+      flex: 1;
+    }
 
     .ag-badge {
       display: inline-block;
@@ -1246,26 +1279,36 @@ function cardHTML(ag) {
   const consultor = ag.obras?.consultores?.nome || '';
   const arquiteto = ag.obras?.arquiteto_responsavel || '';
 
-  // Linha de campo: label fixo + valor — sem ícone para não poluir em colunas estreitas
+  // Helpers para o grid de 2 colunas
+  // Campo largura total (ex: Endereço, Técnico)
+  const detF = (label, val) =>
+    val ? `<div class="ag-detalhe ag-detalhe-full"><span class="ag-label">${label}&nbsp;</span><span class="ag-val" title="${escHtml(val)}">${escHtml(val)}</span></div>` : '';
+
+  // Campo meia-largura (ocupa 1 coluna do grid)
   const det = (label, val) =>
-    val ? `<div class="ag-detalhe"><span class="ag-label">${label}</span><span class="ag-val">${escHtml(val)}</span></div>` : '';
+    `<div class="ag-detalhe"><span class="ag-label">${label}&nbsp;</span><span class="ag-val" title="${escHtml(val)}">${escHtml(val)}</span></div>`;
+
+  // Par de campos lado a lado; se um estiver vazio o outro vira full-width; se ambos vazios, nada
+  const pair = (l1, v1, l2, v2) => {
+    if (!v1 && !v2) return '';
+    if (!v2) return detF(l1, v1);
+    if (!v1) return detF(l2, v2);
+    return det(l1, v1) + det(l2, v2);
+  };
 
   return `
     <div class="card-ag card-${status}" ${modoVisualizacao ? '' : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`} style="${modoVisualizacao ? 'cursor:default' : ''}">
-      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:5px;">
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px;">
         ${hora ? `<span class="ag-hora">${escHtml(hora)}</span>` : ''}
         <span class="ag-cliente">${escHtml(cliente)}</span>
       </div>
-      <div style="border-top:1px solid rgba(255,255,255,0.05);padding-top:5px;">
-        ${det('Técnico',   tecs)}
-        ${det('Endereço',  end)}
-        ${det('N.OS',      osNum ? String(osNum) : '')}
-        ${det('Consultor', consultor)}
-        ${det('Arquiteto', arquiteto)}
-        ${det('Serviço',   ag.servico || '')}
-        ${det('Veículo',   ag.veiculo || '')}
+      <div class="ag-detalhes-grid">
+        ${detF('End.',  end)}
+        ${pair('Téc.', tecs === '—' ? '' : tecs,  'OS',   osNum ? `#${osNum}` : '')}
+        ${pair('Cns.', consultor,                  'Arq.', arquiteto)}
+        ${pair('Srv.', ag.servico || '',            'Vei.', ag.veiculo || '')}
       </div>
-      <span class="ag-badge badge-${escHtml(status)}" style="margin-top:6px;">${escHtml(STATUS_LABEL[status] || status)}</span>
+      <span class="ag-badge badge-${escHtml(status)}" style="margin-top:5px;">${escHtml(STATUS_LABEL[status] || status)}</span>
     </div>`;
 }
 
