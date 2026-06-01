@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01o -->
+<!-- build: 2026-06-01p -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -315,6 +315,90 @@
     .spinner-wrap { grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-3); }
     .spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 14px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Modal de detalhe do agendamento ── */
+    .det-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .det-hora-badge {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+    }
+    .det-cliente {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-1);
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+      flex: 1;
+    }
+    .det-fechar {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-3);
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-family: inherit;
+      transition: color 150ms, border-color 150ms;
+    }
+    .det-fechar:hover { color: var(--text-1); border-color: var(--border-hover); }
+    .det-fechar i { width: 14px; height: 14px; }
+
+    .det-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+    .det-row {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 6px 12px;
+      align-items: start;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .det-row:last-child { border-bottom: none; }
+    .det-lbl {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding-top: 2px;
+    }
+    .det-vlr {
+      font-size: 0.88rem;
+      color: var(--text-1);
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .det-vlr.muted { color: var(--text-2); }
+    .det-status-wrap { margin-top: 16px; }
+    .det-status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    /* card-ag clicável no modo visualização */
+    .card-ag.clicavel { cursor: pointer !important; }
+    .card-ag.clicavel:hover { opacity: 0.85; transform: translateX(2px); }
 
     /* ── Modal ── */
     .overlay {
@@ -1026,6 +1110,29 @@
   </div>
 </div>
 
+<!-- Modal de detalhe do agendamento (leitura) -->
+<div class="overlay" id="overlay-detalhe" onclick="fecharDetalhe(event)" role="dialog" aria-modal="true" aria-labelledby="det-titulo">
+  <div class="modal" style="max-width:460px" onclick="event.stopPropagation()">
+
+    <div class="det-header">
+      <div>
+        <div class="det-hora-badge" id="det-hora"></div>
+        <div class="det-cliente" id="det-titulo"></div>
+      </div>
+      <button class="det-fechar" onclick="fecharDetalhe()" title="Fechar" aria-label="Fechar">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <div id="det-rows"></div>
+
+    <div class="det-status-wrap">
+      <span class="det-status-badge" id="det-status-badge"></span>
+    </div>
+
+  </div>
+</div>
+
 <script>
 
 // ── Estado ──────────────────────────────────────────────────
@@ -1278,8 +1385,13 @@ function cardHTML(ag) {
   const det = (label, val) =>
     val ? `<div class="ag-detalhe"><span class="ag-label">${label}</span><span class="ag-val" title="${escHtml(val)}">${escHtml(val)}</span></div>` : '';
 
+  // Modo visualização (técnico) → abre detalhe; modo edição → abre formulário de edição
+  const clickAttr = modoVisualizacao
+    ? `onclick="verDetalheAgendamento(${ag.id})" title="Ver detalhes"`
+    : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`;
+
   return `
-    <div class="card-ag card-${status}" ${modoVisualizacao ? '' : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`} style="${modoVisualizacao ? 'cursor:default' : ''}">
+    <div class="card-ag card-${status} clicavel" ${clickAttr}>
       <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px;">
         ${hora ? `<span class="ag-hora">${escHtml(hora)}</span>` : ''}
         <span class="ag-cliente">${escHtml(cliente)}</span>
@@ -1512,6 +1624,65 @@ function fecharModal() {
 
 function fecharModalFora(e) {
   if (e.target === document.getElementById('overlay')) fecharModal();
+}
+
+// ── Modal de detalhe (somente leitura) ───────────────────────
+function verDetalheAgendamento(id) {
+  const ag = agendamentos.find(a => a.id === id);
+  if (!ag) return;
+
+  const status   = ag.status || 'confirmado';
+  const hora     = ag.hora_inicio ? ag.hora_inicio.slice(0, 5) : '';
+  const horaFim  = ag.hora_fim    ? ag.hora_fim.slice(0, 5)    : '';
+  const cliente  = ag.obras?.nome_cliente || ag.cliente_outro || '—';
+  const end      = ag.endereco_outro || ag.obras?.endereco || '';
+  const osNum    = osNumeroMap[ag.id] || null;
+  const consultor = ag.obras?.consultores?.nome || '';
+  const arquiteto = ag.obras?.arquiteto_responsavel || '';
+
+  // Nomes completos dos técnicos (sem abreviar)
+  const ids   = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+  const nomes = ids.map(id => {
+    const t = tecnicos.find(t => t.id === id);
+    return t ? t.nome : null;
+  }).filter(Boolean);
+
+  // Cabeçalho
+  document.getElementById('det-hora').textContent   = hora ? (horaFim ? `${hora} – ${horaFim}` : hora) : '';
+  document.getElementById('det-titulo').textContent = cliente;
+
+  // Status badge
+  const badge = document.getElementById('det-status-badge');
+  badge.textContent = STATUS_LABEL[status] || status;
+  badge.className   = `det-status-badge ag-badge badge-${status}`;
+
+  // Linhas de detalhe
+  const row = (label, val) => val
+    ? `<div class="det-row">
+         <span class="det-lbl">${label}</span>
+         <span class="det-vlr">${escHtml(val)}</span>
+       </div>`
+    : '';
+
+  document.getElementById('det-rows').innerHTML = [
+    row('Data',      ag.data ? new Date(ag.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) : ''),
+    row('Técnico',   nomes.length ? nomes.join(' · ') : '—'),
+    row('Endereço',  end),
+    row('N.OS',      osNum ? `#${osNum}` : ''),
+    row('Consultor', consultor),
+    row('Arquiteto', arquiteto),
+    row('Serviço',   ag.servico || ''),
+    row('Veículo',   ag.veiculo || ''),
+    row('Obs.',      ag.observacao || ''),
+  ].join('');
+
+  document.getElementById('overlay-detalhe').classList.add('aberto');
+  lucide.createIcons();
+}
+
+function fecharDetalhe(e) {
+  if (e && e.target !== document.getElementById('overlay-detalhe')) return;
+  document.getElementById('overlay-detalhe').classList.remove('aberto');
 }
 
 // ── Salvar agendamento ───────────────────────────────────────
@@ -2286,6 +2457,16 @@ async function exportarAgendaSharePoint() {
 
 // ── Iniciar ──────────────────────────────────────────────────
 init();
+
+// Fechar modal de detalhe com Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const ov = document.getElementById('overlay-detalhe');
+    if (ov && ov.classList.contains('aberto')) {
+      ov.classList.remove('aberto');
+    }
+  }
+});
 </script>
 <script>lucide.createIcons(); applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>
