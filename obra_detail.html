@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31h -->
+<!-- build: 2026-06-01f -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -454,6 +454,12 @@
 const params = new URLSearchParams(location.search);
 const obraId = parseInt(params.get('id'));
 
+// Detecta se uma URL aponta para um vídeo (SharePoint proxy ou Supabase)
+function isVideoUrl(url) {
+  const decoded = decodeURIComponent((url || '').split('path=').pop() || url);
+  return /\.(mp4|mov|avi|webm)(\?|$)/i.test(decoded);
+}
+
 let todasFotos  = [];
 let fotosLightbox = [];
 let todasVistorias = [];
@@ -613,7 +619,7 @@ async function carregarObra() {
   todasFotos = [];
   todasOS.forEach(os => {
     (os.fotos_urls || []).forEach(url => {
-      todasFotos.push({ url, tipo: 'image', tecnico: os.tecnicos?.nome || '—', data: os.criado_em?.slice(0,10) || '', origem: 'OS' });
+      todasFotos.push({ url, tipo: isVideoUrl(url) ? 'video' : 'image', tecnico: os.tecnicos?.nome || '—', data: os.criado_em?.slice(0,10) || '', origem: 'OS' });
     });
   });
   todasVistorias.forEach(v => {
@@ -847,7 +853,9 @@ function renderTabelaOS(lista) {
     const nF    = (os.fotos_urls || []).length;
 
     const minisFotos = (os.fotos_urls || []).slice(0,3).map((url, fi) =>
-      `<img class="foto-mini" src="${url}" alt="foto" onclick="event.stopPropagation();abrirLightboxOS(${os.id},${fi})">`
+      isVideoUrl(url)
+        ? `<span title="Vídeo" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:4px;background:var(--surface-3);border:1px solid var(--border);font-size:14px;cursor:default;">▶</span>`
+        : `<img class="foto-mini" src="${url}" alt="foto" onclick="event.stopPropagation();abrirLightboxOS(${os.id},${fi})">`
     ).join('');
     const maisTag = nF > 3 ? `<span style="font-size:0.72rem;color:var(--text-3);margin-left:2px">+${nF-3}</span>` : '';
     const descricao = os.descricao_servicos || os.observacoes || os.atividades_realizadas || '—';
@@ -971,9 +979,13 @@ function buildOSDetalheHTML(os, onFotoClick) {
 
   if (os.fotos_urls && os.fotos_urls.length > 0) {
     const fotosHtml = os.fotos_urls.map((url, i) =>
-      `<img src="${url}" alt="foto ${i+1}" loading="lazy"
-        style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);"
-        onclick="${onFotoClick(i, os.fotos_urls)}">`
+      isVideoUrl(url)
+        ? `<video src="${url}" controls playsinline
+            style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;border:1px solid var(--border);"
+            onclick="event.stopPropagation()"></video>`
+        : `<img src="${url}" alt="foto ${i+1}" loading="lazy"
+            style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);"
+            onclick="${onFotoClick(i, os.fotos_urls)}">`
     ).join('');
     html += `<div style="margin-top:20px;">
       <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Fotos (${os.fotos_urls.length})</div>

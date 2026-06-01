@@ -1,5 +1,5 @@
 // api/foto.js — proxy de imagens/arquivos do SharePoint
-// build: 2026-06-01b
+// build: 2026-06-01f
 // GET /api/foto?path=Ordens%20de%20Servi%C3%A7o%2Fcliente%2Farquivo.jpg
 // Busca o arquivo server-side (sem autenticação do usuário) e entrega pro browser.
 
@@ -12,14 +12,20 @@ function caminhoFotoSeguro(filePath) {
   if (/[\\:*?"<>|#%~]/.test(path)) return false;
 
   const partes = path.split('/').filter(Boolean);
-  if (partes.length < 5) return false;
+  if (partes.length < 4) return false; // mínimo: ano / pasta1 / pasta2 / arquivo
 
-  const area = partes[2];
   const nomeArquivo = partes[partes.length - 1] || '';
   const ext = nomeArquivo.split('.').pop()?.toLowerCase();
 
-  if (!['Fotos', 'Ordens de Serviço'].includes(area)) return false;
-  return ['jpg', 'jpeg', 'png', 'webp', 'heic', 'pdf'].includes(ext);
+  // Agenda Técnica: Obras e Clientes AAAA/Agenda Tecnica/[Mês]/[arquivo].pdf
+  if (partes[1] === 'Agenda Tecnica') {
+    return ext === 'pdf';
+  }
+
+  // Caminhos de cliente: Obras e Clientes AAAA/[Cliente]/[area]/...
+  const area = partes[2];
+  if (!['Fotos', 'Ordens de Serviço', 'Relatórios de Vistoria'].includes(area)) return false;
+  return ['jpg', 'jpeg', 'png', 'webp', 'heic', 'pdf', 'mp4', 'mov', 'avi', 'webm'].includes(ext);
 }
 
 export default async function handler(req, res) {
@@ -35,6 +41,26 @@ export default async function handler(req, res) {
 
     const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
 
+    // Vídeos: redirect para URL de download do SharePoint CDN (evita buffering de arquivos grandes)
+    const nomeArquivo = filePath.split('/').pop() || '';
+    const ext = nomeArquivo.split('.').pop()?.toLowerCase();
+    const isVideo = ['mp4', 'mov', 'avi', 'webm'].includes(ext);
+
+    if (isVideo) {
+      const metaRes = await fetch(
+        `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!metaRes.ok) return res.status(metaRes.status).send('Arquivo não encontrado');
+      const meta = await metaRes.json();
+      const downloadUrl = meta['@microsoft.graph.downloadUrl'];
+      if (!downloadUrl) return res.status(404).send('URL de download não disponível');
+      // Redirect direto para o CDN do SharePoint (URL pré-autenticada, expira em ~1h)
+      res.setHeader('Cache-Control', 'no-store');
+      return res.redirect(302, downloadUrl);
+    }
+
+    // Imagens e PDFs: proxy normal (arquivos pequenos)
     const fileRes = await fetch(
       `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}:/content`,
       {

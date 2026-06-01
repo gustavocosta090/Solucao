@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-05-31h -->
+<!-- build: 2026-06-01f -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -718,7 +718,8 @@
   <button class="lb-close" onclick="fecharLightbox()">
     <i data-lucide="x"></i>
   </button>
-  <img id="lbImg" src="" alt="">
+  <img id="lbImg" src="" alt="" style="display:none">
+  <video id="lbVideo" src="" controls playsinline style="display:none;max-width:90vw;max-height:80vh;border-radius:8px;"></video>
 </div>
 
 <script>
@@ -942,7 +943,10 @@ function verDetalhe(id) {
     <div class="detail-row">
       <div class="detail-label">Fotos (${os.fotos_urls.length})</div>
       <div class="fotos-grid">
-        ${os.fotos_urls.map(url => `<div class="foto-item" onclick="event.stopPropagation();abrirLightbox('${escHtml(url)}')"><img src="${escHtml(url)}" loading="lazy" alt="foto"></div>`).join('')}
+        ${os.fotos_urls.map(url => isVideoUrl(url)
+            ? `<div class="foto-item"><video src="${escHtml(url)}" controls playsinline style="width:100%;height:100%;object-fit:cover;" onclick="event.stopPropagation()"></video></div>`
+            : `<div class="foto-item" onclick="event.stopPropagation();abrirLightbox('${escHtml(url)}')"><img src="${escHtml(url)}" loading="lazy" alt="foto"></div>`
+          ).join('')}
       </div>
     </div>`;
   }
@@ -959,12 +963,30 @@ function fecharModal(e) {
   }
 }
 
+// Detecta se uma URL aponta para vídeo (SharePoint proxy ou Supabase)
+function isVideoUrl(url) {
+  const decoded = decodeURIComponent((url || '').split('path=').pop() || url);
+  return /\.(mp4|mov|avi|webm)(\?|$)/i.test(decoded);
+}
+
 function abrirLightbox(url) {
-  document.getElementById('lbImg').src = url;
+  const img   = document.getElementById('lbImg');
+  const video = document.getElementById('lbVideo');
+  if (isVideoUrl(url)) {
+    img.style.display   = 'none';   img.src = '';
+    video.style.display = 'block';  video.src = url;
+  } else {
+    video.style.display = 'none';   video.src = ''; video.pause?.();
+    img.style.display   = 'block';  img.src = url;
+  }
   document.getElementById('lightbox').classList.add('aberto');
 }
 function fecharLightbox() {
   document.getElementById('lightbox').classList.remove('aberto');
+  const video = document.getElementById('lbVideo');
+  if (video) { video.pause(); video.src = ''; video.style.display = 'none'; }
+  const img = document.getElementById('lbImg');
+  if (img)  { img.src = ''; img.style.display = 'none'; }
 }
 
 document.addEventListener('keydown', e => {
