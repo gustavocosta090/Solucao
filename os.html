@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01j -->
+<!-- build: 2026-06-01q -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -182,7 +182,39 @@
     .btn-sucesso-primary:hover { opacity:0.88; }
 
     @keyframes spin { to { transform:rotate(360deg); } }
-  
+
+    /* Campos obrigatórios e bloqueados */
+    .obrigatorio { color:#f87171; margin-left:2px; font-style:normal; font-size:0.85em; }
+    .da-agenda-tag {
+      display:inline-flex; align-items:center; gap:3px;
+      font-size:9px; font-weight:600; color:var(--text-3);
+      background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px; padding:1px 5px; margin-left:5px;
+      letter-spacing:0.02em; text-transform:none; vertical-align:middle;
+    }
+    .form-group.campo-bloqueado select,
+    .form-group.campo-bloqueado textarea {
+      background:var(--surface-3) !important;
+      color:var(--text-2) !important;
+      cursor:not-allowed !important;
+      border-color:rgba(255,255,255,0.04) !important;
+      opacity:0.75;
+    }
+    .form-group.campo-bloqueado select:focus,
+    .form-group.campo-bloqueado textarea:focus {
+      border-color:rgba(255,255,255,0.04) !important;
+      outline:none;
+    }
+    /* Aviso de campo obrigatório faltando */
+    .campo-erro select, .campo-erro textarea, .campo-erro input {
+      border-color:rgba(248,113,113,0.5) !important;
+    }
+    /* Upload area quando requerido e vazio */
+    .upload-area.upload-erro {
+      border-color:rgba(248,113,113,0.4);
+      background:rgba(248,113,113,0.03);
+    }
+
   /* ── TEMA CLARO ── */
   :root[data-theme="light"] { --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1; --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA; --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16); --primary-muted:rgba(62,207,142,0.15); }
   @media (prefers-color-scheme: light) { :root[data-theme="auto"] { --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1; --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA; --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16); --primary-muted:rgba(62,207,142,0.15); } }
@@ -357,11 +389,11 @@
     <div class="secao-titulo">Horários</div>
     <div class="form-row">
       <div class="form-group">
-        <label>Horário início</label>
+        <label>Horário início<em class="obrigatorio">*</em></label>
         <input type="time" id="f-inicio"/>
       </div>
       <div class="form-group">
-        <label>Horário fim</label>
+        <label>Horário fim<em class="obrigatorio">*</em></label>
         <input type="time" id="f-fim"/>
       </div>
     </div>
@@ -370,20 +402,20 @@
   <!-- Tipo de atendimento + Serviços -->
   <div class="secao">
     <div class="secao-titulo">Serviços</div>
-    <div class="form-group">
-      <label>Tipo de atendimento</label>
+    <div class="form-group" id="grupo-tipo-servico">
+      <label>Tipo de atendimento<span class="da-agenda-tag">🔒 da agenda</span></label>
       <select id="f-tipo-servico">
         <option value="execucao">Execução</option>
         <option value="assistencia">Assistência</option>
         <option value="plantao">Plantão</option>
       </select>
     </div>
-    <div class="form-group">
-      <label>O que foi planejado</label>
-      <textarea id="f-planejado" rows="2" placeholder="Serviço planejado para esta visita..."></textarea>
+    <div class="form-group" id="grupo-planejado">
+      <label>O que foi planejado<span class="da-agenda-tag">🔒 da agenda</span></label>
+      <textarea id="f-planejado" rows="2" placeholder="Preenchido automaticamente pela agenda..."></textarea>
     </div>
     <div class="form-group">
-      <label>O que foi realizado</label>
+      <label>O que foi realizado<em class="obrigatorio">*</em></label>
       <textarea id="f-realizado" rows="3" placeholder="Descreva o que foi feito..."></textarea>
     </div>
     <div id="plantao-bloco" style="display:none;margin-top:12px;border:1px solid var(--border);border-radius:10px;padding:14px;background:rgba(62,207,142,0.05);">
@@ -484,8 +516,8 @@
   <!-- Automação -->
   <div class="secao">
     <div class="secao-titulo">Sistema de Automação</div>
-    <div class="form-group">
-      <label>Sistema utilizado</label>
+    <div class="form-group" id="grupo-automacao">
+      <label>Sistema utilizado<em class="obrigatorio">*</em></label>
       <select id="f-automacao">
         <option value="">Selecione...</option>
         <option>Absolute / Savant</option>
@@ -502,8 +534,8 @@
   </div>
 
   <!-- Fotos -->
-  <div class="secao">
-    <div class="secao-titulo">Fotos</div>
+  <div class="secao" id="secao-fotos">
+    <div class="secao-titulo">Fotos e Vídeos<em class="obrigatorio">*</em></div>
     <div class="upload-area" id="upload-area" onclick="document.getElementById('foto-input').click()">
       <i data-lucide="image-plus"></i>
       <div class="upload-texto">Fotos e vídeos</div>
@@ -528,12 +560,12 @@
   <!-- Finalização -->
   <div class="secao">
     <div class="secao-titulo">Finalização</div>
-    <div class="form-group">
-      <label>Próximas atividades</label>
+    <div class="form-group" id="grupo-proximas">
+      <label>Próximas atividades<em class="obrigatorio">*</em></label>
       <textarea id="f-proximas" rows="2" placeholder="O que precisa ser feito na próxima visita..."></textarea>
     </div>
     <div class="form-group">
-      <label>Observações finais</label>
+      <label>Observações finais <span style="font-weight:400;font-size:0.78rem;opacity:0.45">(opcional)</span></label>
       <textarea id="f-obs" rows="3" placeholder="Observações gerais..."></textarea>
     </div>
   </div>
@@ -908,7 +940,8 @@ async function abrirFormulario(agId, osId = null) {
 
       // Horários da OS são preenchidos pelo técnico, independentemente da agenda.
 
-      // Pré-preenche serviço planejado
+      // Pré-preenche campos bloqueados (vêm da agenda, não editáveis)
+      if (ag.tipo_servico) document.getElementById('f-tipo-servico').value = ag.tipo_servico;
       if (ag.servico) document.getElementById('f-planejado').value = ag.servico;
       if (osEhPlantao) {
         document.getElementById('f-tipo-servico').value = 'plantao';
@@ -916,6 +949,8 @@ async function abrirFormulario(agId, osId = null) {
         document.getElementById('plantao-bloco').style.display = 'block';
         document.getElementById('f-realizado').placeholder = 'Resumo do atendimento de plantão...';
       }
+      // Bloqueia tipo e planejado — não editáveis após carregados da agenda
+      bloquearCamposDaAgenda();
     }
   }
 
@@ -983,6 +1018,19 @@ function toggle(campo, valor) {
 }
 
 function resetarForm() {
+  // Desbloqueia campos da agenda (para o próximo agendamento)
+  const _tipoEl = document.getElementById('f-tipo-servico');
+  const _planEl = document.getElementById('f-planejado');
+  if (_tipoEl) { _tipoEl.disabled = false; }
+  if (_planEl) { _planEl.readOnly = false; }
+  document.getElementById('grupo-tipo-servico')?.classList.remove('campo-bloqueado');
+  document.getElementById('grupo-planejado')?.classList.remove('campo-bloqueado');
+  // Remove marcações de erro
+  ['grupo-automacao','grupo-proximas','secao-fotos'].forEach(id => {
+    document.getElementById(id)?.classList.remove('campo-erro');
+  });
+  document.getElementById('upload-area')?.classList.remove('upload-erro');
+
   osEhPlantao = false;
   ['prob','mat','ret','eqp'].forEach(c => toggle(c,'nao'));
   ['f-planejado','f-realizado','f-problema','f-material','f-retorno','f-equipamentos','f-proximas','f-obs','f-plantao-cliente']
@@ -1010,6 +1058,20 @@ function resetarForm() {
   document.getElementById('f-plantao-resolvido').value = 'sim';
   document.getElementById('f-plantao-agenda-tecnica').value = 'nao';
   document.getElementById('f-plantao-troca-equipamento').value = 'nao';
+}
+
+// ── Bloquear campos que vêm da agenda (não editáveis pelo técnico) ────────
+function bloquearCamposDaAgenda() {
+  const tipoEl = document.getElementById('f-tipo-servico');
+  const planEl = document.getElementById('f-planejado');
+  if (tipoEl) {
+    tipoEl.disabled = true;
+    document.getElementById('grupo-tipo-servico')?.classList.add('campo-bloqueado');
+  }
+  if (planEl) {
+    planEl.readOnly = true;
+    document.getElementById('grupo-planejado')?.classList.add('campo-bloqueado');
+  }
 }
 
 function atualizarPlantaoCampos() {
@@ -1458,12 +1520,35 @@ async function enviarOS() {
     document.getElementById('f-fim')?.focus();
     return;
   }
-  const obsVal = (document.getElementById('f-obs')?.value || '').trim();
-  if (!obsVal) {
-    showToast('Preencha as observações finais antes de enviar.', 'warning');
-    document.getElementById('f-obs')?.focus();
+
+  // Sistema de automação — obrigatório
+  const automacaoVal = (document.getElementById('f-automacao')?.value || '').trim();
+  if (!automacaoVal) {
+    showToast('Selecione o sistema de automação utilizado.', 'warning');
+    document.getElementById('grupo-automacao')?.classList.add('campo-erro');
+    document.getElementById('f-automacao')?.focus();
     return;
   }
+  document.getElementById('grupo-automacao')?.classList.remove('campo-erro');
+
+  // Fotos e vídeos — obrigatório
+  if (fotosSelecionadas.length === 0) {
+    showToast('Adicione pelo menos uma foto ou vídeo antes de enviar.', 'warning');
+    document.getElementById('upload-area')?.classList.add('upload-erro');
+    document.getElementById('upload-area')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  document.getElementById('upload-area')?.classList.remove('upload-erro');
+
+  // Próximas atividades — obrigatório
+  const proximasVal = (document.getElementById('f-proximas')?.value || '').trim();
+  if (!proximasVal) {
+    showToast('Informe as próximas atividades antes de enviar.', 'warning');
+    document.getElementById('grupo-proximas')?.classList.add('campo-erro');
+    document.getElementById('f-proximas')?.focus();
+    return;
+  }
+  document.getElementById('grupo-proximas')?.classList.remove('campo-erro');
 
   const btn = document.getElementById('btn-enviar');
   btn.disabled    = true;

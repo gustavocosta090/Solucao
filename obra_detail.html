@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01f -->
+<!-- build: 2026-06-01s -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -364,7 +364,8 @@
     .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.94); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; gap: 16px; backdrop-filter: blur(8px); }
     .lightbox.aberto { display: flex; }
     .lightbox img { max-width: 90vw; max-height: 78vh; border-radius: 8px; object-fit: contain; border: 1px solid var(--border); }
-    .lightbox-close { position: absolute; top: 20px; right: 24px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; color: var(--text-2); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 150ms, color 150ms; }
+    .lightbox video { max-width: 90vw; max-height: 78vh; border-radius: 8px; background: #000; cursor: auto; }
+    .lightbox-close { position: absolute; top: 20px; right: 24px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; color: var(--text-2); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 150ms, color 150ms; z-index: 2; }
     .lightbox-close:hover { border-color: var(--border-hover); color: var(--text-1); }
     .lightbox-close i { width: 16px; height: 16px; }
     .lightbox-nav { display: flex; gap: 10px; }
@@ -372,6 +373,11 @@
     .lightbox-nav button:hover { border-color: var(--border-hover); color: var(--text-1); }
     .lightbox-nav button i { width: 14px; height: 14px; }
     .lightbox-caption { color: var(--text-3); font-size: 0.78rem; }
+    /* Badge ▶ nas miniaturas de vídeo */
+    .video-badge-lb { position:absolute; bottom:5px; left:5px; background:rgba(0,0,0,0.72); color:#fff; font-size:9px; font-weight:700; padding:2px 7px; border-radius:4px; pointer-events:none; letter-spacing:0.3px; line-height:1.6; }
+    /* Estilo galeria para vídeo */
+    .galeria-item { cursor: pointer; }
+    .galeria-item video { width:100%; height:100%; object-fit:cover; pointer-events:none; }
   
   /* ── TEMA CLARO ── */
   :root[data-theme="light"] { --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1; --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA; --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16); --primary-muted:rgba(62,207,142,0.15); }
@@ -436,12 +442,16 @@
   </div>
 </main>
 
-<!-- Lightbox -->
+<!-- Lightbox fotos + vídeos -->
 <div class="lightbox" id="lightbox">
   <button class="lightbox-close" onclick="fecharLightbox()">
     <i data-lucide="x"></i>
   </button>
   <img id="lb-img" src="" alt="">
+  <video id="lb-video" src="" controls playsinline
+         style="display:none;"
+         title="Duplo clique para tela cheia"
+         ondblclick="this.requestFullscreen?.() ?? this.webkitRequestFullscreen?.()"></video>
   <div class="lightbox-nav">
     <button onclick="navLightbox(-1)"><i data-lucide="arrow-left"></i> Anterior</button>
     <button onclick="navLightbox(1)">Próxima <i data-lucide="arrow-right"></i></button>
@@ -854,7 +864,8 @@ function renderTabelaOS(lista) {
 
     const minisFotos = (os.fotos_urls || []).slice(0,3).map((url, fi) =>
       isVideoUrl(url)
-        ? `<span title="Vídeo" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:4px;background:var(--surface-3);border:1px solid var(--border);font-size:14px;cursor:default;">▶</span>`
+        ? `<span title="Clique para ver o vídeo" onclick="event.stopPropagation();abrirLightboxOS(${os.id},${fi})"
+              style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:4px;background:var(--surface-3);border:1px solid var(--border);font-size:14px;cursor:pointer;">▶</span>`
         : `<img class="foto-mini" src="${url}" alt="foto" onclick="event.stopPropagation();abrirLightboxOS(${os.id},${fi})">`
     ).join('');
     const maisTag = nF > 3 ? `<span style="font-size:0.72rem;color:var(--text-3);margin-left:2px">+${nF-3}</span>` : '';
@@ -888,8 +899,11 @@ function renderGaleria(fotos) {
     </div>`;
 
   return fotos.map((f, i) => `
-    <div class="galeria-item" ${f.tipo === 'video' ? '' : `onclick="abrirLightbox(${i})"`}>
-      ${f.tipo === 'video' ? `<video src="${escHtml(f.url)}" controls></video>` : `<img src="${escHtml(f.url)}" alt="foto" loading="lazy">`}
+    <div class="galeria-item" onclick="abrirLightbox(${i})" style="position:relative;">
+      ${f.tipo === 'video'
+        ? `<video src="${escHtml(f.url)}" muted preload="metadata"></video>
+           <span class="video-badge-lb">▶ VÍD</span>`
+        : `<img src="${escHtml(f.url)}" alt="foto" loading="lazy">`}
       <div class="galeria-info">${escHtml(f.origem || 'Mídia')} · ${escHtml(f.tecnico)} · ${escHtml(f.data)}</div>
     </div>`).join('');
 }
@@ -978,17 +992,20 @@ function buildOSDetalheHTML(os, onFotoClick) {
   </div>`;
 
   if (os.fotos_urls && os.fotos_urls.length > 0) {
-    const fotosHtml = os.fotos_urls.map((url, i) =>
-      isVideoUrl(url)
-        ? `<video src="${url}" controls playsinline
-            style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;border:1px solid var(--border);"
-            onclick="event.stopPropagation()"></video>`
-        : `<img src="${url}" alt="foto ${i+1}" loading="lazy"
-            style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);"
-            onclick="${onFotoClick(i, os.fotos_urls)}">`
-    ).join('');
+    const fotosHtml = os.fotos_urls.map((url, i) => {
+      const isVid = isVideoUrl(url);
+      return `<div style="position:relative;aspect-ratio:1;cursor:pointer;border-radius:6px;overflow:hidden;border:1px solid var(--border);"
+                   onclick="${onFotoClick(i, os.fotos_urls)}">
+        ${isVid
+          ? `<video src="${escHtml(url)}" muted preload="metadata"
+                style="width:100%;height:100%;object-fit:cover;pointer-events:none;"></video>
+             <span class="video-badge-lb">▶ VÍD</span>`
+          : `<img src="${escHtml(url)}" alt="foto ${i+1}" loading="lazy"
+                style="width:100%;height:100%;object-fit:cover;">`}
+      </div>`;
+    }).join('');
     html += `<div style="margin-top:20px;">
-      <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Fotos (${os.fotos_urls.length})</div>
+      <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Fotos e vídeos (${os.fotos_urls.length})</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;">${fotosHtml}</div>
     </div>`;
   }
@@ -1078,26 +1095,40 @@ function verDetalheVistoria(id) {
   lucide.createIcons();
 }
 
+function _lbMostrar(f, lista) {
+  // f = { url, tipo?, tecnico?, data? }
+  const isVid = f.tipo === 'video' || isVideoUrl(f.url);
+  const imgEl = document.getElementById('lb-img');
+  const vidEl = document.getElementById('lb-video');
+  if (isVid) {
+    if (imgEl) imgEl.style.display = 'none';
+    if (vidEl) { vidEl.src = f.url; vidEl.style.display = ''; }
+  } else {
+    if (vidEl) { try { vidEl.pause(); } catch(e){} vidEl.src = ''; vidEl.style.display = 'none'; }
+    if (imgEl) { imgEl.src = f.url; imgEl.style.display = ''; }
+  }
+  const total = lista ? lista.length : (fotosLightbox.length || 1);
+  document.getElementById('lb-caption').textContent =
+    `${f.tecnico ? f.tecnico + ' · ' : ''}${f.data ? f.data + ' · ' : ''}${lbIndex + 1}/${total}`;
+}
+
 function abrirLightboxFromModal(fotos, idx) {
-  fotosLightbox = fotos.map(url => ({ url, tecnico: '', data: '' }));
+  fotosLightbox = fotos.map(url => ({ url, tipo: isVideoUrl(url) ? 'video' : 'image', tecnico: '', data: '' }));
   lbIndex = idx;
-  document.getElementById('lb-img').src = fotos[idx];
-  document.getElementById('lb-caption').textContent = `${idx + 1}/${fotos.length}`;
+  _lbMostrar(fotosLightbox[idx], fotosLightbox);
   document.getElementById('lightbox').classList.add('aberto');
 }
 
 function abrirLightbox(idx) {
   const item = todasFotos[idx];
-  if (!item || item.tipo === 'video') return;
-  fotosLightbox = todasFotos.filter(f => f.tipo !== 'video');
-  lbIndex = fotosLightbox.findIndex(f => f.url === item.url);
-  if (lbIndex < 0) lbIndex = 0;
+  if (!item) return;
+  fotosLightbox = todasFotos; // inclui vídeos na navegação
+  lbIndex = idx;
   mostrarFotoLb();
   document.getElementById('lightbox').classList.add('aberto');
 }
 
 function abrirLightboxOS(osId, fotoIdx) {
-  // Localiza a OS pelo ID (funciona mesmo quando tabela está filtrada)
   const osIdx = todasOS.findIndex(o => o.id == osId);
   if (osIdx < 0) return;
   let globalIdx = 0;
@@ -1106,10 +1137,14 @@ function abrirLightboxOS(osId, fotoIdx) {
   abrirLightbox(globalIdx);
 }
 
-function fecharLightbox() { document.getElementById('lightbox').classList.remove('aberto'); }
+function fecharLightbox() {
+  const vid = document.getElementById('lb-video');
+  if (vid) { try { vid.pause(); } catch(e){} vid.src = ''; }
+  document.getElementById('lightbox').classList.remove('aberto');
+}
 
 function navLightbox(delta) {
-  const lista = fotosLightbox.length ? fotosLightbox : todasFotos.filter(f => f.tipo !== 'video');
+  const lista = fotosLightbox.length ? fotosLightbox : todasFotos;
   if (!lista.length) return;
   fotosLightbox = lista;
   lbIndex = (lbIndex + delta + lista.length) % lista.length;
@@ -1117,18 +1152,34 @@ function navLightbox(delta) {
 }
 
 function mostrarFotoLb() {
-  const lista = fotosLightbox.length ? fotosLightbox : todasFotos.filter(f => f.tipo !== 'video');
+  const lista = fotosLightbox.length ? fotosLightbox : todasFotos;
   const f = lista[lbIndex];
   if (!f) return;
-  document.getElementById('lb-img').src = f.url;
-  document.getElementById('lb-caption').textContent = `${f.tecnico ? f.tecnico + ' · ' : ''}${f.data ? f.data + ' · ' : ''}${lbIndex+1}/${lista.length}`;
+  _lbMostrar(f, lista);
 }
 
-// ── Helper: escapar HTML ──
+// Fechar ao clicar no fundo escuro
+document.getElementById('lightbox').addEventListener('click', e => {
+  if (e.target === document.getElementById('lightbox')) fecharLightbox();
+});
+
+// Swipe para navegar no mobile
+let _lbTX = null;
+document.getElementById('lightbox').addEventListener('touchstart', e => { _lbTX = e.touches[0].clientX; }, { passive: true });
+document.getElementById('lightbox').addEventListener('touchend', e => {
+  if (_lbTX === null) return;
+  const dx = e.changedTouches[0].clientX - _lbTX;
+  _lbTX = null;
+  if (Math.abs(dx) < 50) return;
+  navLightbox(dx < 0 ? 1 : -1);
+});
+
+// Teclado: setas + Esc
 document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox')?.classList.contains('aberto')) return;
   if (e.key === 'Escape') fecharLightbox();
-  if (e.key === 'ArrowLeft') navLightbox(-1);
-  if (e.key === 'ArrowRight') navLightbox(1);
+  else if (e.key === 'ArrowLeft')  { e.preventDefault(); navLightbox(-1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); navLightbox(1); }
 });
 
 init();
