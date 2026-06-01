@@ -1,4 +1,4 @@
-// utils.js — Solução Técnica, build 2026-05-31e
+// utils.js — Solução Técnica, build 2026-06-01j
 // Utilitários compartilhados. Carregado após @supabase/supabase-js via <script src="utils.js">.
 
 // ─── Supabase client ────────────────────────────────────────────
@@ -243,6 +243,71 @@ function setLoading(btn, loading, textoSalvo) {
   }
 }
 
+// ─── Mobile nav — hambúrguer + drawer ───────────────────────────
+function _injetarCSSMob() {
+  if (document.getElementById('saos-mob-css')) return;
+  var s = document.createElement('style');
+  s.id = 'saos-mob-css';
+  s.textContent =
+    /* Botão hambúrguer — fica à direita na topbar, só aparece no mobile */
+    '#nav-ham{display:none;background:none;border:none;color:var(--text-1,#fff);cursor:pointer;' +
+    'padding:9px;border-radius:8px;flex-shrink:0;margin-left:auto;transition:background .15s;line-height:0}' +
+    '#nav-ham:hover{background:rgba(255,255,255,.09)}' +
+
+    /* Overlay escuro atrás do drawer */
+    '.mob-ov{display:none;position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.72);' +
+    'backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}' +
+    '.mob-ov.open{display:flex;justify-content:flex-end}' +
+
+    /* Drawer lateral deslizante da direita */
+    '.mob-drawer{width:min(300px,86vw);height:100%;background:#111;' +
+    'border-left:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;' +
+    'overflow-y:auto;overscroll-behavior:contain;animation:_sdIn .22s ease}' +
+    '@keyframes _sdIn{from{transform:translateX(100%)}to{transform:translateX(0)}}' +
+
+    /* Cabeçalho do drawer */
+    '.mob-dhead{display:flex;align-items:center;justify-content:space-between;' +
+    'padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}' +
+    '.mob-dhead span{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.2px}' +
+    '.mob-dclose{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;' +
+    'padding:6px;border-radius:6px;font-size:22px;line-height:1;transition:background .15s,color .15s}' +
+    '.mob-dclose:hover{color:#fff;background:rgba(255,255,255,.08)}' +
+
+    /* Links de navegação dentro do drawer */
+    '.mob-dnav{display:flex;flex-direction:column;padding:10px 0 32px;flex:1}' +
+    '.mob-dnav a{display:block;padding:14px 24px;color:rgba(255,255,255,.65);text-decoration:none;' +
+    'font-size:15px;font-weight:500;border-left:3px solid transparent;' +
+    'transition:background .12s,color .12s,border-color .12s}' +
+    '.mob-dnav a:hover{background:rgba(255,255,255,.05);color:#fff}' +
+    '.mob-dnav a.active{color:#3ECF8E;border-left-color:#3ECF8E;background:rgba(62,207,142,.07);font-weight:600}' +
+    '.mob-dnav a.nav-sair{color:rgba(239,68,68,.8);border-top:1px solid rgba(255,255,255,.06);' +
+    'margin-top:10px;padding-top:16px}' +
+    '.mob-dnav a.nav-sair:hover{color:#F87171;background:rgba(239,68,68,.07)}' +
+
+    /* Ativa hambúrguer e esconde a nav no breakpoint do app-shell (860px) */
+    '@media(max-width:860px){' +
+    '#nav-ham{display:inline-flex!important;align-items:center;justify-content:center}' +
+    '.topbar-links{display:none!important}' +
+    '}';
+  document.head.appendChild(s);
+}
+
+function _abrirMobNav() {
+  var ov = document.getElementById('mob-nav-ov');
+  if (!ov) return;
+  ov.classList.add('open');
+  document.getElementById('nav-ham') && document.getElementById('nav-ham').setAttribute('aria-expanded','true');
+  document.body.style.overflow = 'hidden';
+}
+
+function _fecharMobNav() {
+  var ov = document.getElementById('mob-nav-ov');
+  if (!ov) return;
+  ov.classList.remove('open');
+  document.getElementById('nav-ham') && document.getElementById('nav-ham').setAttribute('aria-expanded','false');
+  document.body.style.overflow = '';
+}
+
 // ─── Topbar universal ───────────────────────────────────────────
 function renderTopbar(nome, role, paginaAtiva) {
   var h = new Date().getHours();
@@ -253,35 +318,89 @@ function renderTopbar(nome, role, paginaAtiva) {
 
   var links = [
     { href: 'obras.html',                label: 'Obras',                  id: 'obras',                roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href: 'agenda.html',               label: 'Agenda Técnica',    id: 'agenda',               roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
-    { href: 'agenda_plantao.html',       label: 'Agenda de Plantão',  id: 'agenda-plantao',       roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href: 'agenda.html',               label: 'Agenda Técnica',         id: 'agenda',               roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
+    { href: 'agenda_plantao.html',       label: 'Agenda de Plantão',      id: 'agenda-plantao',       roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
     { href: 'agenda_vistorias.html',     label: 'Agenda de Vistorias',    id: 'agenda-vistorias',     roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
     { href: 'assistencia.html',          label: 'Assistências',           id: 'assistencia',          roles: ['agendamento','coordenador','supervisor'] },
     { href: 'vistoria.html',             label: 'Minhas Vistorias',       id: 'vistoria',             roles: ['vistoriador'] },
-    { href: 'vistoria.html',             label: 'Relatórios de Vistoria', id: 'relatorios-vistoria', roles: ['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
+    { href: 'vistoria.html',             label: 'Relatórios de Vistoria', id: 'relatorios-vistoria',  roles: ['supervisor','coordenador','agendamento','coordenador_projetos','gerente_comercial'] },
     { href: 'os.html',                   label: 'Fazer OS',               id: 'os',                   roles: ['tecnico','auxiliar'] },
     { href: 'supervisor.html',           label: 'Supervisor',             id: 'supervisor',           roles: ['supervisor','coordenador','agendamento','coordenador_projetos'] },
-    { href: 'pendencias.html',           label: 'Pendências',        id: 'pendencias',           roles: ['supervisor','coordenador','agendamento'] },
+    { href: 'pendencias.html',           label: 'Pendências',             id: 'pendencias',           roles: ['supervisor','coordenador','agendamento'] },
     { href: 'admin.html',                label: 'Admin',                  id: 'admin',                roles: ['coordenador'] },
-    { href: 'tecnico_dashboard.html',    label: 'Minhas OSs',        id: 'minhas-os',            roles: ['tecnico','auxiliar'] },
+    { href: 'tecnico_dashboard.html',    label: 'Minhas OSs',             id: 'minhas-os',            roles: ['tecnico','auxiliar'] },
     { href: 'gerente_comercial.html',    label: 'Comercial',              id: 'comercial',            roles: ['gerente_comercial'] },
     { href: 'projetista.html',           label: 'Meu Painel',             id: 'projetista',           roles: ['projetista'] },
     { href: 'coordenador_projetos.html', label: 'Projetos',               id: 'coordenador-projetos', roles: ['coordenador_projetos'] },
     { href: 'dashboard.html',            label: 'Painel Executivo',       id: 'dashboard',            roles: ['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador'] },
   ];
 
+  // ── Desktop nav ──
   var nav = document.getElementById('topbar-nav');
   if (!nav) return;
   nav.setAttribute('aria-label', 'Navegação principal');
-  nav.innerHTML = links
-    .filter(function(l) { return l.roles.indexOf(role) !== -1; })
-    .map(function(l) {
-      var ativo = l.id === paginaAtiva;
-      return '<a href="' + l.href + '"'
-        + (ativo ? ' class="active" aria-current="page"' : '')
-        + '>' + l.label + '</a>';
-    })
-    .join('') + '<a href="#" class="nav-sair" onclick="logout()" aria-label="Sair da conta">Sair</a>';
+
+  var linksVisiveis = links.filter(function(l) { return l.roles.indexOf(role) !== -1; });
+  var linksHtml = linksVisiveis.map(function(l) {
+    var ativo = l.id === paginaAtiva;
+    return '<a href="' + l.href + '"'
+      + (ativo ? ' class="active" aria-current="page"' : '')
+      + '>' + l.label + '</a>';
+  }).join('') + '<a href="#" class="nav-sair" onclick="logout()" aria-label="Sair da conta">Sair</a>';
+
+  nav.innerHTML = linksHtml;
+
+  // ── Mobile: injetar CSS + botão hambúrguer + drawer ──
+  _injetarCSSMob();
+
+  // Botão hambúrguer — adiciona uma vez na topbar
+  if (!document.getElementById('nav-ham')) {
+    var ham = document.createElement('button');
+    ham.id = 'nav-ham';
+    ham.setAttribute('aria-label', 'Abrir menu');
+    ham.setAttribute('aria-expanded', 'false');
+    ham.setAttribute('aria-haspopup', 'dialog');
+    ham.innerHTML =
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<line x1="3" y1="6" x2="21" y2="6"/>' +
+      '<line x1="3" y1="12" x2="21" y2="12"/>' +
+      '<line x1="3" y1="18" x2="21" y2="18"/>' +
+      '</svg>';
+    ham.addEventListener('click', _abrirMobNav);
+    var tb = document.querySelector('.topbar');
+    if (tb) tb.appendChild(ham);
+  }
+
+  // Drawer — recria sempre para atualizar os links após login
+  var existOv = document.getElementById('mob-nav-ov');
+  if (existOv) existOv.parentNode.removeChild(existOv);
+
+  var ov = document.createElement('div');
+  ov.id = 'mob-nav-ov';
+  ov.className = 'mob-ov';
+  ov.setAttribute('role', 'dialog');
+  ov.setAttribute('aria-modal', 'true');
+  ov.setAttribute('aria-label', 'Menu de navegação');
+
+  ov.innerHTML =
+    '<div class="mob-drawer">' +
+    '<div class="mob-dhead">' +
+    '<span>Solução Técnica</span>' +
+    '<button class="mob-dclose" onclick="_fecharMobNav()" aria-label="Fechar menu">✕</button>' +
+    '</div>' +
+    '<nav class="mob-dnav" aria-label="Menu principal">' +
+    linksHtml.replace(/class="nav-sair"/g, 'class="nav-sair"') +
+    '</nav>' +
+    '</div>';
+
+  // Fecha ao clicar no backdrop
+  ov.addEventListener('click', function(e) { if (e.target === ov) _fecharMobNav(); });
+
+  document.body.appendChild(ov);
+
+  // Fecha com Escape
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') _fecharMobNav(); });
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }

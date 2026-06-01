@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01g -->
+<!-- build: 2026-06-01j -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -221,6 +221,82 @@
   /* ── Mobile: evita auto-zoom iOS (inputs precisam de 16px) ── */
   @media (max-width: 768px) {
     input, select, textarea { font-size: 16px !important; }
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     MOBILE — melhorias específicas do formulário OS
+     (técnicos preenchem no celular)
+  ═══════════════════════════════════════════════════════ */
+  @media (max-width: 640px) {
+
+    /* Padding lateral menor */
+    .tela { padding: 16px 12px 100px; }
+
+    /* Cabeçalho da OS */
+    .os-header { padding: 14px 16px; }
+    .os-cliente { font-size: 1.05rem; }
+
+    /* Seções — padding reduzido */
+    .secao { padding: 16px 14px; margin-bottom: 10px; }
+    .secao-titulo { font-size: 10px; margin-bottom: 14px; }
+
+    /* Horários em coluna única no mobile */
+    .form-row { grid-template-columns: 1fr !important; gap: 8px; }
+
+    /* Inputs mais altos para toque */
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 13px 14px;
+      font-size: 16px !important;
+      min-height: 48px;
+    }
+    .form-group input[type="time"] { min-height: 48px; font-size: 16px !important; }
+    .form-group textarea { min-height: 80px; }
+
+    /* Toggles maiores */
+    .toggle-btn { padding: 12px 10px; font-size: 0.85rem; min-height: 46px; }
+
+    /* Grid de fotos: 3 colunas no mobile médio */
+    .fotos-grid { grid-template-columns: repeat(3, 1fr); gap: 7px; }
+
+    /* Upload area mais compacta */
+    .upload-area { padding: 22px 16px; }
+    .upload-area i { width: 22px; height: 22px; }
+
+    /* Checkboxes da equipe maiores */
+    .equipe-check-item { padding: 12px 12px; }
+    .equipe-check-item input[type="checkbox"] { width: 18px; height: 18px; }
+    .equipe-check-nome { font-size: 0.88rem; }
+
+    /* Cartões da lista de OS */
+    .card-agenda { padding: 14px 14px; }
+    .ca-cliente { font-size: 0.95rem; }
+
+    /* Botão Enviar OS — sticky no fundo da tela */
+    #btn-enviar {
+      position: sticky;
+      bottom: 16px;
+      z-index: 50;
+      box-shadow: 0 8px 32px rgba(62,207,142,0.25), 0 2px 12px rgba(0,0,0,0.5);
+      height: 52px;
+      font-size: 1rem;
+      border-radius: 14px !important;
+      margin-top: 16px;
+    }
+
+    /* Badge de status nos cards */
+    .badge-status { font-size: 0.72rem; padding: 4px 10px; }
+
+    /* Backup file list */
+    .backup-item { padding: 10px 12px; }
+    .backup-item-nome { font-size: 0.82rem; }
+  }
+
+  /* Telas pequenas: fotos 2 colunas */
+  @media (max-width: 380px) {
+    .fotos-grid { grid-template-columns: repeat(2, 1fr); }
+    .tela { padding: 12px 10px 110px; }
   }
 </style>
 <link rel="stylesheet" href="app-shell.css">
