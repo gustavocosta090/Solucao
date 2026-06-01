@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01m -->
+<!-- build: 2026-06-01o -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -265,32 +265,27 @@
     .ag-hora    { font-weight: 700; color: var(--primary); font-size: 0.84rem; flex-shrink: 0; }
     .ag-cliente { font-weight: 700; color: var(--text-1); font-size: 0.82rem; line-height: 1.3; }
 
-    /* ── Grid de 2 colunas nos detalhes do card ── */
-    .ag-detalhes-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      column-gap: 6px;
-      padding-top: 5px;
-      margin-top: 4px;
+    /* ── Detalhes do card (coluna única compacta) ── */
+    .ag-detalhes {
       border-top: 1px solid rgba(255,255,255,0.05);
+      padding-top: 4px;
+      margin-top: 4px;
     }
-    .ag-detalhe-full { grid-column: 1 / -1; }
-
     .ag-detalhe {
-      font-size: 0.69rem;
+      font-size: 0.7rem;
       display: flex;
       align-items: baseline;
-      gap: 3px;
+      gap: 4px;
       margin-top: 2px;
-      line-height: 1.35;
+      line-height: 1.3;
       min-width: 0;
-      overflow: hidden;
     }
     .ag-label {
       color: var(--text-2);
       font-weight: 600;
       flex-shrink: 0;
       white-space: nowrap;
+      min-width: 50px;
     }
     .ag-val {
       color: var(--text-3);
@@ -1279,22 +1274,9 @@ function cardHTML(ag) {
   const consultor = ag.obras?.consultores?.nome || '';
   const arquiteto = ag.obras?.arquiteto_responsavel || '';
 
-  // Helpers para o grid de 2 colunas
-  // Campo largura total (ex: Endereço, Técnico)
-  const detF = (label, val) =>
-    val ? `<div class="ag-detalhe ag-detalhe-full"><span class="ag-label">${label}&nbsp;</span><span class="ag-val" title="${escHtml(val)}">${escHtml(val)}</span></div>` : '';
-
-  // Campo meia-largura (ocupa 1 coluna do grid)
+  // Linha de campo — label fixo + valor truncado em 1 linha (title = tooltip com valor completo)
   const det = (label, val) =>
-    `<div class="ag-detalhe"><span class="ag-label">${label}&nbsp;</span><span class="ag-val" title="${escHtml(val)}">${escHtml(val)}</span></div>`;
-
-  // Par de campos lado a lado; se um estiver vazio o outro vira full-width; se ambos vazios, nada
-  const pair = (l1, v1, l2, v2) => {
-    if (!v1 && !v2) return '';
-    if (!v2) return detF(l1, v1);
-    if (!v1) return detF(l2, v2);
-    return det(l1, v1) + det(l2, v2);
-  };
+    val ? `<div class="ag-detalhe"><span class="ag-label">${label}</span><span class="ag-val" title="${escHtml(val)}">${escHtml(val)}</span></div>` : '';
 
   return `
     <div class="card-ag card-${status}" ${modoVisualizacao ? '' : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`} style="${modoVisualizacao ? 'cursor:default' : ''}">
@@ -1302,11 +1284,14 @@ function cardHTML(ag) {
         ${hora ? `<span class="ag-hora">${escHtml(hora)}</span>` : ''}
         <span class="ag-cliente">${escHtml(cliente)}</span>
       </div>
-      <div class="ag-detalhes-grid">
-        ${detF('End.',  end)}
-        ${pair('Téc.', tecs === '—' ? '' : tecs,  'OS',   osNum ? `#${osNum}` : '')}
-        ${pair('Cns.', consultor,                  'Arq.', arquiteto)}
-        ${pair('Srv.', ag.servico || '',            'Vei.', ag.veiculo || '')}
+      <div class="ag-detalhes">
+        ${det('Técnico',   tecs)}
+        ${det('Endereço',  end)}
+        ${det('OS',        osNum ? `#${osNum}` : '')}
+        ${det('Consultor', consultor)}
+        ${det('Arquiteto', arquiteto)}
+        ${det('Serviço',   ag.servico || '')}
+        ${det('Veículo',   ag.veiculo || '')}
       </div>
       <span class="ag-badge badge-${escHtml(status)}" style="margin-top:5px;">${escHtml(STATUS_LABEL[status] || status)}</span>
     </div>`;
