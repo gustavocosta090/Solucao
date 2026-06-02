@@ -195,6 +195,15 @@
     }
 
     .dia-data.hoje { color: var(--primary); }
+    .coluna.bloqueada { border-color: rgba(239,68,68,.4); }
+    .coluna.bloqueada .coluna-header { background: rgba(239,68,68,.1); border-bottom-color: rgba(239,68,68,.25); }
+    .coluna.bloqueada .dia-nome { color: #f87171; }
+    .coluna.bloqueada .dia-data { color: #f87171; }
+    .bloqueio-tag { font-size:10px; font-weight:700; color:#f87171; background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.25); border-radius:4px; padding:2px 6px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
+    .btn-lock { display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text-3);transition:color .15s,border-color .15s,background .15s; }
+    .btn-lock:hover { color:#f87171;border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08); }
+    .btn-lock.ativo { color:#f87171;border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.1); }
+    .btn-lock i { width:12px;height:12px; }
 
     /* ── Botão disparar dia (dentro do header de cada coluna) ── */
     .btn-dispatch-dia {
@@ -815,6 +824,20 @@
     }
     .btn-semana-tec:hover { background: rgba(139,92,246,0.18); border-color: rgba(139,92,246,0.50); transform: translateY(-1px); }
     .btn-semana-tec i { width: 15px; height: 15px; }
+    .btn-bloqueio {
+      display: flex; align-items: center; gap: 6px; padding: 0 14px; height: 36px;
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 8px; color: #f87171; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: background .15s, border-color .15s, transform .15s;
+    }
+    .btn-bloqueio:hover { background: rgba(239,68,68,0.16); border-color: rgba(239,68,68,0.5); transform: translateY(-1px); }
+    .btn-bloqueio i { width: 15px; height: 15px; }
+    .bloqueio-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--surface-2); border-radius:7px; margin-bottom:6px; }
+    .bloqueio-nome { font-size:13px; font-weight:600; color:var(--text-1); flex:1; min-width:0; }
+    .bloqueio-info { font-size:11px; color:var(--text-3); }
+    .bloqueio-motivo { font-size:11px; color:#f87171; font-weight:600; }
+    .bloqueio-del { background:none; border:none; cursor:pointer; color:var(--text-3); padding:4px; border-radius:4px; display:flex; }
+    .bloqueio-del:hover { color:#f87171; background:rgba(239,68,68,.1); }
 
     /* ── Botão exportar agenda → SharePoint ── */
     .btn-exportar-sp {
@@ -944,10 +967,52 @@
       <span>Disparar dia</span>
     </button>
 
+    <button class="btn-bloqueio" id="btn-bloqueio" onclick="abrirModalBloqueio()" title="Gerenciar bloqueios de técnicos">
+      <i data-lucide="user-x"></i>
+      Bloqueios
+    </button>
+
     <button class="btn-novo" id="btn-novo" onclick="abrirModal()">
       <i data-lucide="plus"></i>
       Novo agendamento
     </button>
+  </div>
+</div>
+
+<!-- Modal Bloqueio de Técnico -->
+<div class="overlay" id="overlay-bloqueio" style="display:none" onclick="if(event.target===this)fecharModalBloqueio()" role="presentation">
+  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
+    <h2 style="margin-bottom:16px;display:flex;align-items:center;gap:8px"><i data-lucide="user-x"></i> Bloqueios de Técnicos</h2>
+
+    <!-- Lista de bloqueios ativos -->
+    <div id="bloqueios-lista" style="margin-bottom:20px"></div>
+
+    <!-- Formulário novo bloqueio -->
+    <div style="border-top:1px solid var(--border);padding-top:16px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:12px">Novo bloqueio</div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Técnico</label>
+        <select id="bl-tecnico"><option value="">Selecione...</option></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="form-group" style="margin:0">
+          <label>Data início</label>
+          <input type="date" id="bl-inicio">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Data fim</label>
+          <input type="date" id="bl-fim">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Motivo</label>
+        <input type="text" id="bl-motivo" placeholder="Ex.: Férias, Dispensa, Atestado...">
+      </div>
+      <div id="bl-erro" style="color:#f87171;font-size:12px;margin-bottom:8px;display:none"></div>
+      <button onclick="salvarBloqueio()" style="width:100%;height:40px;background:var(--primary);border:none;border-radius:6px;color:#0A0A0A;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+        <i data-lucide="plus" style="display:inline-block;width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Adicionar bloqueio
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1080,7 +1145,7 @@
     <div class="form-row">
       <div class="form-group">
         <label for="f-data">Data</label>
-        <input type="date" id="f-data"/>
+        <input type="date" id="f-data" oninput="atualizarPreviewRep()"/>
       </div>
       <div class="form-group">
         <label for="f-status">Status</label>
@@ -1089,6 +1154,31 @@
           <option value="nao_confirmado">Não confirmado</option>
           <option value="viagem">Viagem</option>
         </select>
+      </div>
+      <div class="form-group" id="replicar-toggle-wrap" style="display:flex;align-items:flex-end;padding-bottom:1px">
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;white-space:nowrap">
+          <input type="checkbox" id="f-replicar" onchange="toggleReplicar(this.checked)" style="accent-color:var(--primary);width:15px;height:15px">
+          Replicar dias
+        </label>
+      </div>
+    </div>
+
+    <!-- REPLICAR DIAS -->
+    <div id="replicar-wrap" style="display:none">
+      <div style="border:1px solid rgba(62,207,142,.2);border-radius:8px;padding:12px 14px;background:rgba(62,207,142,.04);margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div class="form-group" style="margin:0;flex:1">
+            <label for="f-data-fim-rep">Até a data</label>
+            <input type="date" id="f-data-fim-rep" oninput="atualizarPreviewRep()">
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);cursor:pointer;margin-top:18px;white-space:nowrap">
+            <input type="checkbox" id="f-pular-fds" checked onchange="atualizarPreviewRep()"> Pular fins de semana
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);cursor:pointer;margin-top:18px;white-space:nowrap">
+            <input type="checkbox" id="f-pular-bloq" checked onchange="atualizarPreviewRep()"> Pular dias bloqueados
+          </label>
+        </div>
+        <div id="rep-preview" style="font-size:11px;color:var(--text-3);line-height:1.8"></div>
       </div>
     </div>
 
@@ -1150,9 +1240,11 @@
 <script>
 
 // ── Estado ──────────────────────────────────────────────────
-let semanaOffset      = 0;
-let filtroEquipe      = 'todas';
-let agendamentos      = [];
+let semanaOffset          = 0;
+let filtroEquipe          = 'todas';
+let agendamentos          = [];
+let diasBloqueados        = {}; // { 'YYYY-MM-DD': { id, motivo } }
+let agendarEmDiaBloqueado = false;
 let jwtToken          = null;
 let obras             = [];
 let tecnicos          = [];
@@ -1215,7 +1307,7 @@ async function init() {
     if (btnSem) btnSem.style.display = 'none';
   }
 
-  await Promise.all([carregarObras(), carregarTecnicos()]);
+  await Promise.all([carregarObras(), carregarTecnicos(), carregarBloqueios(), carregarDiasBloqueados()]);
   preencherSelects();
   await carregarAgenda();
 }
@@ -1351,22 +1443,30 @@ function renderGrade(dias) {
   const grade    = document.getElementById('grade');
 
   grade.innerHTML = dias.map((dia, i) => {
-    const dataStr = fmtISO(dia);
-    const ags     = visiveis.filter(ag => ag.data === dataStr);
+    const dataStr  = fmtISO(dia);
+    const ags      = visiveis.filter(ag => ag.data === dataStr);
+    const bloqueio = diasBloqueados[dataStr] || null;
 
     const cards = ags.length
       ? ags.map(cardHTML).join('')
       : `<div class="coluna-vazia">Sem agendamentos</div>`;
 
+    const podeEditar = ['agendamento','coordenador','supervisor'].includes(roleAtual);
+    const lockBtn = podeEditar
+      ? `<button class="btn-lock ${bloqueio ? 'ativo' : ''}" onclick="toggleBloqueioDia('${dataStr}')" title="${bloqueio ? 'Desbloquear dia' : 'Bloquear dia'}"><i data-lucide="${bloqueio ? 'lock' : 'lock-open'}"></i></button>`
+      : '';
+
     return `
-      <div class="coluna">
+      <div class="coluna ${bloqueio ? 'bloqueada' : ''}">
         <div class="coluna-header">
-          <div>
+          <div style="min-width:0;flex:1">
             <div class="dia-nome">${DIAS[i]}</div>
             <div class="dia-data ${isHoje(dia) ? 'hoje' : ''}">${fmtBR(dia)}</div>
+            ${bloqueio ? `<div class="bloqueio-tag" title="${escHtml(bloqueio.motivo)}">🔒 ${escHtml(bloqueio.motivo)}</div>` : ''}
           </div>
-          <div style="display:flex;align-items:center;gap:4px;">
-            ${['agendamento','coordenador','supervisor'].includes(roleAtual) ? `<button class="btn-dispatch-dia" onclick="dispararDia('${dataStr}')" title="Disparar agenda deste dia no WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>` : ''}
+          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+            ${podeEditar ? `<button class="btn-dispatch-dia" onclick="dispararDia('${dataStr}')" title="Disparar agenda deste dia no WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>` : ''}
+            ${lockBtn}
             ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento"><i data-lucide="plus"></i></button>`}
           </div>
         </div>
@@ -1457,6 +1557,15 @@ function toggleTecnicoEquipe(idStr, evt) {
   if (idStr === A_DEFINIR_ID) {
     equipesSelecionadas = equipesSelecionadas.includes(A_DEFINIR_ID) ? [] : [A_DEFINIR_ID];
   } else {
+    // Verifica bloqueio na data selecionada
+    const dataAgendamento = document.getElementById('f-data')?.value;
+    if (dataAgendamento && !equipesSelecionadas.includes(idStr)) {
+      const bloqueio = tecnicoBloqueadoNaData(idStr, dataAgendamento);
+      if (bloqueio) {
+        alert(`O técnico não pode ser selecionado pois está bloqueado.\nMotivo: ${bloqueio.motivo}`);
+        return;
+      }
+    }
     equipesSelecionadas = equipesSelecionadas.filter(x => x !== A_DEFINIR_ID);
     const idx = equipesSelecionadas.indexOf(idStr);
     if (idx === -1) equipesSelecionadas.push(idStr);
@@ -1589,8 +1698,28 @@ async function abrirModal(data = '') {
   document.getElementById('f-fim').value                = '';
   document.getElementById('f-veiculo').value            = '';
   document.getElementById('f-servico').value            = '';
-  document.getElementById('f-data').value               = data || fmtISO(new Date());
+  const dataAgenda = data || fmtISO(new Date());
+  document.getElementById('f-data').value               = dataAgenda;
   document.getElementById('btn-excluir').style.display  = 'none';
+  const repCb = document.getElementById('f-replicar');
+  if (repCb) { repCb.checked = false; toggleReplicar(false); }
+
+  // Verifica se o dia está bloqueado
+  const bloqDia = diasBloqueados[dataAgenda];
+  if (bloqDia) {
+    const prosseguir = await new Promise(resolve => {
+      confirmModal(
+        `Dia bloqueado. Motivo: ${bloqDia.motivo}\n\nDeseja agendar mesmo assim? Será contabilizado como diária (pendente aprovação no supervisor).`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!prosseguir) return;
+    agendarEmDiaBloqueado = true;
+  } else {
+    agendarEmDiaBloqueado = false;
+  }
+
   document.getElementById('overlay').classList.add('aberto');
   lucide.createIcons();
 }
@@ -1738,7 +1867,8 @@ async function salvarAgendamento() {
   const fim        = '';
   const veiculo    = document.getElementById('f-veiculo').value;
   const servico    = document.getElementById('f-servico').value;
-  const tipoServico = document.querySelector('input[name="tipo-servico"]:checked')?.value || 'execucao';
+  const tipoServico = agendarEmDiaBloqueado ? 'diaria'
+    : (document.querySelector('input[name="tipo-servico"]:checked')?.value || 'execucao');
 
   // Validações
   if (!obraVal) {
@@ -1795,21 +1925,29 @@ async function salvarAgendamento() {
   // Mapeia equipe → colunas DB (max 4)
   const [id0, id1, id2, id3] = isADefinir ? [null, null, null, null] : equipesSelecionadas;
 
-  // Gera número de OS antes de salvar (somente para novo agendamento)
-  let numeroOSGerado = null;
-  if (!agEditandoId && status !== 'viagem') {
+  // Lista de datas a salvar (replicar ou só a data principal)
+  const replicar   = !agEditandoId && document.getElementById('f-replicar')?.checked;
+  const diasSalvar = replicar ? diasParaReplicar() : [data];
+  if (!diasSalvar.includes(data) && !replicar) diasSalvar.unshift(data);
+
+  // Helper: gera número de OS para uma data
+  async function gerarNumeroOS(dataStr) {
+    if (status === 'viagem') return null;
     const { data: seqData, error: seqErr } = await db.rpc('proximo_numero_os');
-    if (!seqErr && seqData != null) {
-      const [y, m] = data.split('-');
-      const teId   = id0 ? parseInt(id0) : null;
-      const teRec  = teId ? tecnicoEquipes.find(e => e.tecnico_id === teId) : null;
+    if (seqErr || seqData == null) return null;
+    const [y, m, d] = dataStr.split('-');
+    if (tipoServico === 'assistencia' || tipoServico === 'diaria') {
+      return `${y}-${m}-${d}-${String(seqData).padStart(4, '0')}`;
+    } else {
+      const teId  = id0 ? parseInt(id0) : null;
+      const teRec = teId ? tecnicoEquipes.find(e => e.tecnico_id === teId) : null;
       const EQ_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
       const eqCod  = (teRec && EQ_COD[teRec.equipe_id]) || '00';
-      numeroOSGerado = `${y}-${m}-${eqCod}-${String(seqData).padStart(4, '0')}`;
+      return `${y}-${m}-${eqCod}-${String(seqData).padStart(4, '0')}`;
     }
   }
 
-  const payload = {
+  const basePayload = {
     obra_id:        obraVal !== 'outro' ? parseInt(obraVal) : null,
     cliente_outro:  obraVal === 'outro' ? nomeOutro          : null,
     endereco_outro: endereco || null,
@@ -1817,62 +1955,66 @@ async function salvarAgendamento() {
     auxiliar_id:    id1 ? parseInt(id1) : null,
     auxiliar2_id:   id2 ? parseInt(id2) : null,
     auxiliar3_id:   id3 ? parseInt(id3) : null,
-    data, status,
-    hora_inicio:  inicio           || null,
+    status,
+    hora_inicio:  inicio || null,
     hora_fim:     null,
-    veiculo:      veiculo          || null,
-    servico:      servico          || null,
-    numero_os:    numeroOSGerado,
+    veiculo:      veiculo || null,
+    servico:      servico || null,
   };
 
-  // Retorna { error, id } — id é o agendamento inserido/editado
-  const tentarSalvar = async (p) => {
-    if (agEditandoId) {
-      const res = await db.from('agendamentos').update(p).eq('id', agEditandoId);
-      return { error: res.error, id: agEditandoId };
+  // Salva cada dia (se replicando, salva em paralelo sequencial para OS numbers únicos)
+  let error     = null;
+  let savedAgId = null;
+
+  for (const diaStr of diasSalvar) {
+    const numeroOSGerado = await gerarNumeroOS(diaStr);
+    const payload = { ...basePayload, data: diaStr, numero_os: numeroOSGerado };
+
+    let result;
+    if (agEditandoId && diaStr === data) {
+      result = await (async () => {
+        const res = await db.from('agendamentos').update(payload).eq('id', agEditandoId);
+        return { error: res.error, id: agEditandoId };
+      })();
     } else {
-      const res = await db.from('agendamentos').insert(p).select('id').single();
-      return { error: res.error, id: res.data?.id };
+      result = await (async () => {
+        const res = await db.from('agendamentos').insert(payload).select('id').single();
+        return { error: res.error, id: res.data?.id };
+      })();
     }
-  };
 
-  let result    = await tentarSalvar(payload);
-  let error     = result.error;
-  let savedAgId = result.id;
+    if (result.error) { error = result.error; break; }
+    if (!savedAgId) savedAgId = result.id;
+
+    // Cria OS pendentes para este dia
+    if (!agEditandoId && result.id && status !== 'viagem') {
+      const equipeOS = [payload.tecnico_id, payload.auxiliar_id, payload.auxiliar2_id, payload.auxiliar3_id]
+        .filter(Boolean).filter((id, idx, arr) => arr.indexOf(id) === idx);
+      if (equipeOS.length) {
+        const agora = new Date().toISOString();
+        const osPayloads = equipeOS.map(tecId => ({
+          agendamento_id:    result.id,
+          obra_id:           payload.obra_id,
+          endereco_servico:  endereco || null,
+          tecnico_id:        tecId,
+          data_servico:      diaStr,
+          servico_planejado: servico || null,
+          status_aprovacao:  'pendente',
+          tipo_servico:      tipoServico,
+          numero_os:         numeroOSGerado,
+          criado_em:         agora,
+        }));
+        await db.from('ordens_de_servico').insert(osPayloads);
+      }
+    }
+  }
 
   if (error) {
     erroEl.textContent   = 'Erro ao salvar: ' + error.message;
     erroEl.style.display = 'block';
   } else {
-    // ── Cria uma OS pendente por técnico da equipe — batch insert (atômico) ───
-    // A unificação acontece depois, no os.html, quando o técnico marca quem participou.
-    if (!agEditandoId && savedAgId && status !== 'viagem') {
-      const equipeOS = [payload.tecnico_id, payload.auxiliar_id, payload.auxiliar2_id, payload.auxiliar3_id]
-        .filter(Boolean)
-        .filter((id, idx, arr) => arr.indexOf(id) === idx);
-
-      const agora = new Date().toISOString();
-      const osPayloads = equipeOS.map(tecnicoId => ({
-        agendamento_id:    savedAgId,
-        obra_id:           payload.obra_id,
-        endereco_servico:  endereco                || null,
-        tecnico_id:        tecnicoId,
-        data_servico:      data,
-        servico_planejado: servico                 || null,
-        status_aprovacao:  'pendente',
-        tipo_servico:      tipoServico,
-        numero_os:         numeroOSGerado,
-        criado_em:         agora,
-      }));
-
-      const { error: osErr } = await db.from('ordens_de_servico').insert(osPayloads);
-      if (osErr) console.warn('[SAOS] OS pendentes não criadas:', osErr.message);
-    }
-
-    // Invalida cache de obras e técnicos para que outras abas/páginas vejam dados frescos
     invalidateCache('agenda-obras');
     invalidateCache('agenda-tecnicos');
-
     fecharModal();
     if (!agEditandoId && tipoServico === 'assistencia') {
       window.location.href = 'assistencia.html';
@@ -2499,6 +2641,211 @@ document.addEventListener('keydown', function(e) {
     }
   }
 });
+
+// ── REPLICAR AGENDAMENTO ──────────────────────────────────────
+function toggleReplicar(ativo) {
+  document.getElementById('replicar-wrap').style.display = ativo ? 'block' : 'none';
+  if (ativo) atualizarPreviewRep();
+}
+
+function diasParaReplicar() {
+  const inicio   = document.getElementById('f-data').value;
+  const fim      = document.getElementById('f-data-fim-rep').value;
+  const pularFds = document.getElementById('f-pular-fds')?.checked ?? true;
+  const pularBloq = document.getElementById('f-pular-bloq')?.checked ?? true;
+  if (!inicio || !fim || fim < inicio) return [];
+
+  const dias = [];
+  const cur  = new Date(inicio + 'T12:00');
+  const end  = new Date(fim    + 'T12:00');
+  while (cur <= end) {
+    const iso = cur.toISOString().slice(0,10);
+    const dow = cur.getDay(); // 0=dom, 6=sab
+    if (pularFds && (dow === 0 || dow === 6)) { cur.setDate(cur.getDate()+1); continue; }
+    if (pularBloq && diasBloqueados[iso])      { cur.setDate(cur.getDate()+1); continue; }
+    dias.push(iso);
+    cur.setDate(cur.getDate()+1);
+  }
+  return dias;
+}
+
+function atualizarPreviewRep() {
+  if (!document.getElementById('f-replicar')?.checked) return;
+  const dias = diasParaReplicar();
+  const el   = document.getElementById('rep-preview');
+  if (!el) return;
+  if (!dias.length) { el.textContent = 'Nenhum dia selecionado.'; return; }
+  const fmt = iso => new Date(iso+'T12:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+  el.innerHTML = `<span style="color:var(--primary);font-weight:700">${dias.length} dias:</span> ` + dias.map(fmt).join(' · ');
+}
+
+// ── DIAS BLOQUEADOS (feriados + manual) ──────────────────────
+function calcularPascoa(ano) {
+  const a = ano % 19, b = Math.floor(ano/100), c = ano % 100;
+  const d = Math.floor(b/4), e = b % 4, f = Math.floor((b+8)/25);
+  const g = Math.floor((b-f+1)/3), h = (19*a+b-d-g+15) % 30;
+  const i = Math.floor(c/4), k = c % 4;
+  const l = (32+2*e+2*i-h-k) % 7;
+  const m = Math.floor((a+11*h+22*l)/451);
+  const mes = Math.floor((h+l-7*m+114)/31);
+  const dia = ((h+l-7*m+114) % 31) + 1;
+  return new Date(ano, mes-1, dia);
+}
+
+function feriadosNacionais(ano) {
+  const f = [];
+  const add = (d, motivo) => f.push({ data: d, motivo });
+  const iso = (d) => d.toISOString().slice(0,10);
+  const fixed = (m, dia, motivo) => add(`${ano}-${String(m).padStart(2,'0')}-${String(dia).padStart(2,'0')}`, motivo);
+
+  fixed(1,  1,  'Feriado Nacional: Confraternização Universal');
+  fixed(4,  21, 'Feriado Nacional: Tiradentes');
+  fixed(5,  1,  'Feriado Nacional: Dia do Trabalho');
+  fixed(9,  7,  'Feriado Nacional: Independência do Brasil');
+  fixed(10, 12, 'Feriado Nacional: Nossa Senhora Aparecida');
+  fixed(11, 2,  'Feriado Nacional: Finados');
+  fixed(11, 15, 'Feriado Nacional: Proclamação da República');
+  fixed(11, 20, 'Feriado Nacional: Consciência Negra');
+  fixed(12, 25, 'Feriado Nacional: Natal');
+
+  const pascoa = calcularPascoa(ano);
+  add(iso(new Date(pascoa.getTime() - 47*864e5)), 'Feriado Nacional: Carnaval (Segunda)');
+  add(iso(new Date(pascoa.getTime() - 46*864e5)), 'Feriado Nacional: Carnaval (Terça)');
+  add(iso(new Date(pascoa.getTime() -  2*864e5)), 'Feriado Nacional: Sexta-feira Santa');
+  add(iso(pascoa), 'Feriado Nacional: Páscoa');
+  add(iso(new Date(pascoa.getTime() + 60*864e5)), 'Feriado Nacional: Corpus Christi');
+
+  return f;
+}
+
+async function carregarDiasBloqueados() {
+  const ano = new Date().getFullYear();
+  const { data } = await db.from('dias_bloqueados').select('*');
+  diasBloqueados = {};
+  (data || []).forEach(d => { diasBloqueados[d.data] = d; });
+
+  // Auto-insere feriados dos próximos 2 anos se ainda não existirem
+  for (const y of [ano, ano+1]) {
+    for (const f of feriadosNacionais(y)) {
+      if (!diasBloqueados[f.data]) {
+        const { data: ins } = await db.from('dias_bloqueados')
+          .insert({ data: f.data, motivo: f.motivo })
+          .select().single();
+        if (ins) diasBloqueados[ins.data] = ins;
+      }
+    }
+  }
+}
+
+async function toggleBloqueioDia(dataStr) {
+  if (diasBloqueados[dataStr]) {
+    // Desbloquear
+    const id = diasBloqueados[dataStr].id;
+    const { error } = await db.from('dias_bloqueados').delete().eq('id', id);
+    if (!error) { delete diasBloqueados[dataStr]; renderGrade(diasDaSemana(semanaOffset)); }
+  } else {
+    // Bloquear manualmente
+    const motivo = prompt('Motivo do bloqueio (ex.: Feriado municipal, Recesso...):');
+    if (!motivo || !motivo.trim()) return;
+    const { data, error } = await db.from('dias_bloqueados')
+      .insert({ data: dataStr, motivo: motivo.trim() })
+      .select().single();
+    if (!error && data) { diasBloqueados[dataStr] = data; renderGrade(diasDaSemana(semanaOffset)); }
+  }
+}
+
+// ── BLOQUEIOS DE TÉCNICOS ─────────────────────────────────────
+let bloqueios = []; // { id, tecnico_id, data_inicio, data_fim, motivo }
+
+async function carregarBloqueios() {
+  const { data } = await db.from('tecnico_bloqueios').select('*').order('data_inicio');
+  bloqueios = data || [];
+}
+
+function tecnicoBloqueadoNaData(tecnicoId, dataStr) {
+  if (!dataStr) return null;
+  return bloqueios.find(b =>
+    String(b.tecnico_id) === String(tecnicoId) &&
+    dataStr >= b.data_inicio &&
+    dataStr <= b.data_fim
+  ) || null;
+}
+
+function abrirModalBloqueio() {
+  // Popula select de técnicos
+  const sel = document.getElementById('bl-tecnico');
+  sel.innerHTML = '<option value="">Selecione...</option>' +
+    tecnicos.map(t => `<option value="${t.id}">${escHtml(t.nome)}</option>`).join('');
+
+  renderBloqueiosLista();
+  document.getElementById('overlay-bloqueio').style.display = 'flex';
+  lucide.createIcons();
+}
+
+function fecharModalBloqueio() {
+  document.getElementById('overlay-bloqueio').style.display = 'none';
+}
+
+function renderBloqueiosLista() {
+  const el = document.getElementById('bloqueios-lista');
+  if (!bloqueios.length) {
+    el.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:8px 0">Nenhum bloqueio cadastrado.</div>';
+    return;
+  }
+  const fmt = d => new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  el.innerHTML = bloqueios.map(b => {
+    const tec = tecnicos.find(t => t.id === b.tecnico_id);
+    return `<div class="bloqueio-item">
+      <div style="flex:1;min-width:0">
+        <div class="bloqueio-nome">${escHtml(tec?.nome || '—')}</div>
+        <div class="bloqueio-info">${fmt(b.data_inicio)} → ${fmt(b.data_fim)}</div>
+        <div class="bloqueio-motivo">${escHtml(b.motivo)}</div>
+      </div>
+      <button class="bloqueio-del" onclick="excluirBloqueio(${b.id})" title="Remover bloqueio">
+        <i data-lucide="trash-2" style="width:14px;height:14px"></i>
+      </button>
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+
+async function salvarBloqueio() {
+  const tecId  = document.getElementById('bl-tecnico').value;
+  const inicio = document.getElementById('bl-inicio').value;
+  const fim    = document.getElementById('bl-fim').value;
+  const motivo = document.getElementById('bl-motivo').value.trim();
+  const erroEl = document.getElementById('bl-erro');
+
+  if (!tecId || !inicio || !fim || !motivo) {
+    erroEl.textContent = 'Preencha todos os campos.';
+    erroEl.style.display = 'block'; return;
+  }
+  if (fim < inicio) {
+    erroEl.textContent = 'Data fim deve ser igual ou posterior à data início.';
+    erroEl.style.display = 'block'; return;
+  }
+  erroEl.style.display = 'none';
+
+  const { data, error } = await db.from('tecnico_bloqueios').insert({
+    tecnico_id: parseInt(tecId), data_inicio: inicio, data_fim: fim, motivo
+  }).select().single();
+
+  if (error) { erroEl.textContent = 'Erro: ' + error.message; erroEl.style.display = 'block'; return; }
+
+  bloqueios.push(data);
+  document.getElementById('bl-tecnico').value = '';
+  document.getElementById('bl-inicio').value  = '';
+  document.getElementById('bl-fim').value     = '';
+  document.getElementById('bl-motivo').value  = '';
+  renderBloqueiosLista();
+}
+
+async function excluirBloqueio(id) {
+  const { error } = await db.from('tecnico_bloqueios').delete().eq('id', id);
+  if (error) return;
+  bloqueios = bloqueios.filter(b => b.id !== id);
+  renderBloqueiosLista();
+}
 </script>
 <script>lucide.createIcons(); applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>

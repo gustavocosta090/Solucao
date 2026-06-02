@@ -84,11 +84,13 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .busca-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none}
 
 /* ── Cards de pendência ── */
-.lista-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
-.pend-card{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;transition:border-color 150ms}
+.lista-grid{display:flex;flex-direction:column;gap:6px}
+.pend-card{background:var(--surface-1);border:1px solid var(--border);border-radius:8px;padding:13px 16px;display:flex;flex-direction:column;gap:8px;transition:border-color 150ms}
 .pend-card:hover{border-color:var(--border-hover)}
 .pend-card.urgente{border-left:3px solid var(--red)}
 .pend-card.resolvida{opacity:.5}
+.pend-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.pend-data-marcada{font-size:11px;font-weight:600;color:var(--primary);background:rgba(62,207,142,.08);border:1px solid rgba(62,207,142,.2);border-radius:4px;padding:2px 7px;white-space:nowrap}
 
 /* Badges de status */
 .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
@@ -297,6 +299,11 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
       <textarea id="f-descricao" rows="4" placeholder="Descreva as pendências, solicitações do cliente, pontos a resolver..."></textarea>
     </div>
 
+    <div class="form-group">
+      <label for="f-data-marcada">Data marcada com cliente</label>
+      <input type="date" id="f-data-marcada">
+    </div>
+
     <label class="toggle-urgente">
       <input type="checkbox" id="f-urgente">
       <span><strong>Urgente</strong> — precisa de atenção imediata</span>
@@ -399,20 +406,26 @@ function renderLista(){
     const obra   = p.obras?.nome_cliente || p.obra_outro || '—';
     const dataFmt = new Date(p.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
     const equipesBadges = equipesDe(p).map(eq=>`<span class="badge badge-equipe eq-${eq}">${escHtml(EQUIPE_LABEL[eq]||eq)}</span>`).join('');
+    const dataMarcadaFmt = p.data_marcada
+      ? new Date(p.data_marcada+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})
+      : null;
 
     return `<div class="pend-card ${p.urgente?'urgente':''} ${p.status==='resolvida'?'resolvida':''}" id="pcard-${p.id}">
-      <div class="card-top">
+      <div class="pend-row" style="justify-content:space-between;align-items:flex-start;">
         <div style="flex:1;min-width:0">
-          <div class="card-equipe-row">
+          <div class="card-equipe-row" style="margin-bottom:4px">
             ${equipesBadges}
             ${p.urgente?`<span class="badge badge-urgente"><i data-lucide="alert-triangle" style="display:inline-block;width:10px;height:10px;vertical-align:middle"></i> Urgente</span>`:''}
           </div>
-          <div class="card-obra">${escHtml(obra)}</div>
-          <div class="card-meta">${dataFmt}</div>
+          <div class="pend-row" style="align-items:center;gap:10px">
+            <span class="card-obra" style="margin:0">${escHtml(obra)}</span>
+            ${dataMarcadaFmt?`<span class="pend-data-marcada"><i data-lucide="calendar-clock" style="display:inline-block;width:10px;height:10px;vertical-align:middle;margin-right:3px"></i>Data: ${dataMarcadaFmt}</span>`:''}
+          </div>
+          <div class="card-meta" style="margin-top:2px">Cadastrada em ${dataFmt}</div>
         </div>
-        <span class="badge ${st.cls}">${st.label}</span>
+        <span class="badge ${st.cls}" style="flex-shrink:0">${st.label}</span>
       </div>
-      <div class="card-descricao">${escHtml(p.descricao)}</div>
+      <div class="card-descricao" style="margin:0">${escHtml(p.descricao)}</div>
       <div class="card-acoes">
         <button class="btn-st ${p.status==='resolvida'?'active-resolvida':''}" onclick="mudarStatus(${p.id},'resolvida')">
           <i data-lucide="check-circle-2"></i> Resolvida
@@ -462,6 +475,7 @@ function editarPendencia(id){
   document.getElementById('modal-titulo').textContent = 'Editar Pendência';
   setEquipesModal(equipesDe(p));
   document.getElementById('f-descricao').value = p.descricao;
+  document.getElementById('f-data-marcada').value = p.data_marcada || '';
   document.getElementById('f-urgente').checked = !!p.urgente;
   if(p.obra_id){
     document.getElementById('f-obra').value = p.obra_id;
@@ -483,6 +497,7 @@ function abrirModal(){
   document.getElementById('f-obra').value     = '';
   document.getElementById('f-obra-outro').value = '';
   document.getElementById('f-descricao').value = '';
+  document.getElementById('f-data-marcada').value = '';
   document.getElementById('f-urgente').checked = false;
   document.getElementById('outro-wrap').style.display='none';
   document.getElementById('erro-form').style.display='none';
@@ -530,11 +545,13 @@ async function salvarPendencia(){
   const btn = document.getElementById('btn-salvar');
   btn.disabled=true; btn.textContent='Salvando...';
 
+  const dataMarcada = document.getElementById('f-data-marcada').value || null;
   const payload = {
     equipe,
-    obra_id:    obraVal && obraVal !== 'outro' ? Number(obraVal) : null,
-    obra_outro: obraVal === 'outro' ? obraOutro : null,
+    obra_id:       obraVal && obraVal !== 'outro' ? Number(obraVal) : null,
+    obra_outro:    obraVal === 'outro' ? obraOutro : null,
     descricao,
+    data_marcada:  dataMarcada,
     urgente,
     atualizado_em: new Date().toISOString(),
   };
