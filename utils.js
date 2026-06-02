@@ -55,27 +55,15 @@ function debounce(fn, delay) {
   };
 }
 
-// ─── Tema ───────────────────────────────────────────────────────
-function applyTheme(tema) {
-  localStorage.setItem('tema', tema);
-  document.documentElement.dataset.theme = tema;
-  var icons  = { dark: '🌙', light: '☀️', auto: '🖥️' };
-  var labels = { dark: 'Modo escuro', light: 'Modo claro', auto: 'Automático' };
-  var btn = document.getElementById('tema-btn');
-  if (btn) {
-    btn.textContent = icons[tema];
-    btn.title = labels[tema];
-    btn.setAttribute('aria-label', labels[tema]);
-  }
+// ─── Tema — sempre noturno ───────────────────────────────────────
+function applyTheme() {
+  document.documentElement.dataset.theme = 'dark';
 }
 
-function ciclarTema() {
-  applyTheme({ auto: 'dark', dark: 'light', light: 'auto' }[localStorage.getItem('tema') || 'auto']);
-}
+function ciclarTema() { /* tema fixo: noturno */ }
 
-// Inicializar ícone do tema quando DOM estiver pronto
 window.addEventListener('DOMContentLoaded', function() {
-  applyTheme(localStorage.getItem('tema') || 'auto');
+  applyTheme();
   initAppShell();
 });
 

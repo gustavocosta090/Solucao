@@ -1,5 +1,8 @@
 /* SAOS-AUDIT: build 2026-06-01 pós-auditoria */
 /* Solução shell — redesign global 2026-05-30 */
+
+/* Tema fixo: noturno — botão de troca de tema removido */
+.tema-btn { display: none !important; }
 :root {
   --bg: #0A0A0A !important;
   --surface-1: rgba(17, 17, 17, 0.88) !important;
