@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01y -->
+<!-- build: 2026-06-01z -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -690,10 +690,13 @@ function _atualizarCamposFinanceiros() {
   const fmt = v => v != null && !isNaN(v)
     ? 'R$ ' + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
     : '—';
-  const vMO   = obraAtual?.valor_servico != null ? parseFloat(obraAtual.valor_servico) : null;
-  const vProd = obraAtual?.valor_produto  != null ? parseFloat(obraAtual.valor_produto) : null;
-  const vTot  = (vMO != null || vProd != null) ? (vMO || 0) + (vProd || 0) : null;
-  const pct   = (vMO != null && vTot > 0) ? (vMO / vTot * 100).toFixed(1) + '%' : '—';
+  const _n = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+  const o    = obraAtual || {};
+  const vMO   = _n(o.valor_servico  ?? o.valor_servicos);
+  const vProd = _n(o.valor_produto   ?? o.valor_produtos);
+  const vTot  = _n(o.valor_total) ?? ((vMO != null || vProd != null) ? (vMO || 0) + (vProd || 0) : null);
+  const pctN  = _n(o.pct_servico)  ?? (vMO != null && vTot > 0 ? vMO / vTot * 100 : null);
+  const pct   = pctN != null ? parseFloat(pctN).toFixed(1) + '%' : '—';
   const totEl = document.getElementById('fin-total');
   const pctEl = document.getElementById('fin-pct');
   if (totEl) totEl.textContent = fmt(vTot);
@@ -878,17 +881,22 @@ function renderPagina(obra) {
           const fmt = v => v != null && !isNaN(v)
             ? 'R$ ' + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
             : '—';
-          const vMO   = obra.valor_servico != null ? parseFloat(obra.valor_servico) : null;
-          const vProd = obra.valor_produto  != null ? parseFloat(obra.valor_produto) : null;
-          const vTot  = (vMO != null || vProd != null) ? (vMO || 0) + (vProd || 0) : null;
-          const pct   = (vMO != null && vTot > 0) ? (vMO / vTot * 100).toFixed(1) + '%' : '—';
+          // Fallback: obras antigas usam valor_servicos/valor_produtos (com 's')
+          //           obras novas usam valor_servico/valor_produto (sem 's')
+          const _n = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+          const vMO   = _n(obra.valor_servico  ?? obra.valor_servicos);
+          const vProd = _n(obra.valor_produto   ?? obra.valor_produtos);
+          // valor_total e pct_servico do banco como fallback extra
+          const vTot  = _n(obra.valor_total) ?? ((vMO != null || vProd != null) ? (vMO || 0) + (vProd || 0) : null);
+          const pctN  = _n(obra.pct_servico)  ?? (vMO != null && vTot > 0 ? vMO / vTot * 100 : null);
+          const pct   = pctN != null ? parseFloat(pctN).toFixed(1) + '%' : '—';
           const moField = podeEditar
             ? `<div class="obra-info-value edit-field">
                 <i data-lucide="wrench"></i>
                 <input class="inline-input" type="number" min="0" step="0.01"
                   value="${vMO != null ? vMO : ''}" placeholder="0.00"
                   onblur="salvarValorFinanceiro('valor_servico', this.value)">
-                <span id="save-indicator-valor_servico" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓</span>
+                <span id="save-indicator-valor_servico" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">&#10003;</span>
                </div>`
             : `<div class="obra-info-value"><i data-lucide="wrench"></i>${fmt(vMO)}</div>`;
           const prodField = podeEditar
@@ -897,7 +905,7 @@ function renderPagina(obra) {
                 <input class="inline-input" type="number" min="0" step="0.01"
                   value="${vProd != null ? vProd : ''}" placeholder="0.00"
                   onblur="salvarValorFinanceiro('valor_produto', this.value)">
-                <span id="save-indicator-valor_produto" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓</span>
+                <span id="save-indicator-valor_produto" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">&#10003;</span>
                </div>`
             : `<div class="obra-info-value"><i data-lucide="package"></i>${fmt(vProd)}</div>`;
           return `
