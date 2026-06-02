@@ -221,7 +221,7 @@
   .pipe-card {
     background:var(--surface-2); border:1px solid var(--border);
     border-radius:12px; padding:14px 10px 12px;
-    text-align:center; position:relative; overflow:hidden;
+    text-align:center; position:relative;
     transition:border-color .2s, transform .2s; cursor:default;
   }
   .pipe-card:hover { border-color:var(--border-strong); transform:translateY(-2px); }
@@ -824,17 +824,19 @@ const ROLES_PERMITIDOS = [
 
 // ── Fases ──────────────────────────────────────────────────────
 const FASE_INFO = {
-  nao_iniciado:          { label:'Não\nIniciado',         cor:'#52525B', cat:'andamento'  },
-  projeto_iniciado:      { label:'Projeto\nIniciado',      cor:'#818CF8', cat:'andamento'  },
-  projeto_concluido:     { label:'Projeto\nConcluído',     cor:'#6366F1', cat:'andamento'  },
-  cabeamento:            { label:'Cabeamento',              cor:'#F59E0B', cat:'andamento'  },
-  eletrica:              { label:'Elétrica',                cor:'#FBBF24', cat:'andamento'  },
-  audio_video:           { label:'Áudio &\nVídeo',          cor:'#A78BFA', cat:'andamento'  },
-  automacao:             { label:'Automação',               cor:'#3ECF8E', cat:'andamento'  },
-  em_finalizacao:        { label:'Em\nFinalização',         cor:'#2DD4BF', cat:'finalizacao'},
-  bloqueado_financeiro:  { label:'Bloqueado\nFinanceiro',  cor:'#EF4444', cat:'andamento'  },
-  parado_cliente:        { label:'Parado\nCliente',         cor:'#F97316', cat:'andamento'  },
-  entrega_comercial:     { label:'Entregue',                cor:'#22C55E', cat:'entregues' },
+  nao_iniciado:          { label:'Não\nIniciado',        cor:'#52525B', cat:'andamento'  },
+  projeto:               { label:'Projeto',               cor:'#818CF8', cat:'andamento'  },
+  cabeamento:            { label:'Cabeamento',             cor:'#F59E0B', cat:'andamento'  },
+  eletrica:              { label:'Elétrica',               cor:'#FBBF24', cat:'andamento'  },
+  audio_video:           { label:'Áudio &\nVídeo',         cor:'#A78BFA', cat:'andamento'  },
+  automacao:             { label:'Automação',              cor:'#3ECF8E', cat:'andamento'  },
+  em_finalizacao:        { label:'Em\nFinalização',        cor:'#2DD4BF', cat:'finalizacao'},
+  bloqueado_financeiro:  { label:'Bloqueado\nFinanceiro', cor:'#EF4444', cat:'andamento'  },
+  parado_cliente:        { label:'Parado\nCliente',        cor:'#F97316', cat:'andamento'  },
+  entrega_comercial:     { label:'Finalizado',             cor:'#22C55E', cat:'entregues' },
+  // backward-compat legado
+  projeto_iniciado:      { label:'Projeto',               cor:'#818CF8', cat:'andamento'  },
+  projeto_concluido:     { label:'Projeto',               cor:'#6366F1', cat:'andamento'  },
 };
 
 // ── Init ───────────────────────────────────────────────────────
@@ -873,7 +875,7 @@ async function carregarEExibir(ano = null) {
 
   // Obras com dados financeiros
   let obraQ = db.from('obras').select(
-    'id, nome_cliente, fase_atual, regional, valor_servicos, valor_produtos, valor_total, pct_servico, criado_em, consultores(nome), arquiteto_responsavel'
+    'id, nome_cliente, fase_atual, situacao, regional, valor_servicos, valor_produtos, valor_total, pct_servico, criado_em, consultores(nome), arquiteto_responsavel'
   );
   if (ano) {
     obraQ = obraQ
@@ -951,15 +953,28 @@ function buildData(obras, relAssist) {
   });
   const consultores = Object.values(consMap).sort((a, b) => b.valor - a.valor).slice(0, 5);
 
-  // Pipeline (fases)
+  // Pipeline (fases) — situacao tem prioridade sobre fase_atual para bloqueado/parado
   const faseCount = {};
   const faseValor = {};
   obras.forEach(o => {
-    const f = o.fase_atual || 'nao_iniciado';
-    faseCount[f] = (faseCount[f] || 0) + 1;
-    faseValor[f] = (faseValor[f] || 0) + num(o.valor_total);
+    const valor = num(o.valor_total) || num(o.valor_servicos) + num(o.valor_produtos);
+    const sit   = o.situacao;
+    let key;
+    if (sit === 'bloqueado_financeiro' || sit === 'parado_cliente') {
+      key = sit;
+    } else if (sit === 'entregue' || o.fase_atual === 'entrega_comercial') {
+      key = 'entrega_comercial';
+    } else {
+      // Normaliza legado: projeto_iniciado/concluido → projeto
+      const f = o.fase_atual || 'nao_iniciado';
+      key = (f === 'projeto_iniciado' || f === 'projeto_concluido') ? 'projeto' : f;
+    }
+    faseCount[key] = (faseCount[key] || 0) + 1;
+    faseValor[key] = (faseValor[key] || 0) + valor;
   });
-  const fases = Object.keys(FASE_INFO)
+  // Ordem definida pelo FASE_INFO (exclui legado)
+  const PIPELINE_ORDER = ['nao_iniciado','projeto','cabeamento','eletrica','audio_video','automacao','em_finalizacao','bloqueado_financeiro','parado_cliente','entrega_comercial'];
+  const fases = PIPELINE_ORDER
     .filter(k => faseCount[k])
     .map(k => ({ key: k, label: FASE_INFO[k].label, cor: FASE_INFO[k].cor, obras: faseCount[k], valor: faseValor[k] || 0 }));
 
@@ -976,7 +991,7 @@ function buildData(obras, relAssist) {
     if (o.arquiteto_responsavel) {
       if (!arqMap[o.arquiteto_responsavel]) arqMap[o.arquiteto_responsavel] = { obras: 0, valor: 0 };
       arqMap[o.arquiteto_responsavel].obras++;
-      arqMap[o.arquiteto_responsavel].valor += num(o.valor_total);
+      arqMap[o.arquiteto_responsavel].valor += num(o.valor_total) || (num(o.valor_servicos) + num(o.valor_produtos));
     }
   });
   const arquitetos = Object.entries(arqMap)

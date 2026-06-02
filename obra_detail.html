@@ -519,17 +519,21 @@ let obraAtual   = null;  // cache da obra carregada — usado para re-render de 
 
 // ── Valores exatos do check constraint "obras_fase_atual_check" ──
 const FASES_OBRA = {
-  'nao_iniciado':          'Não Iniciado',
-  'projeto_iniciado':      'Projeto Iniciado',
-  'projeto_concluido':     'Projeto Concluído',
-  'cabeamento':            'Cabeamento',
-  'eletrica':              'Elétrica',
-  'audio_video':           'Áudio e Vídeo',
-  'automacao':             'Automação',
-  'em_finalizacao':        'Em Finalização',
-  'bloqueado_financeiro':  'Bloqueado Financeiro',
-  'parado_cliente':        'Parado Cliente',
-  'entrega_comercial':     'Entrega Comercial',
+  'nao_iniciado':   'Não Iniciado',
+  'projeto':        'Projeto',
+  'cabeamento':     'Cabeamento',
+  'eletrica':       'Elétrica',
+  'audio_video':    'Áudio e Vídeo',
+  'automacao':      'Automação',
+  'em_finalizacao': 'Em Finalização',
+  'entrega_comercial': 'Finalizado',
+};
+
+const SITUACAO_INFO = {
+  liberado:             { label: 'Liberado',             cor: '#3ECF8E' },
+  bloqueado_financeiro: { label: 'Bloqueado Financeiro', cor: '#EF4444' },
+  parado_cliente:       { label: 'Parado Cliente',       cor: '#F97316' },
+  entregue:             { label: 'Entregue',             cor: '#22C55E' },
 };
 
 const STATUS_LABELS = {
@@ -667,6 +671,33 @@ async function salvarCampo(campo, valor) {
     try { sessionStorage.setItem('obraFaseFilter', valor); } catch(e) {}
   }
   return true;
+}
+
+// ── Mudar etapa + regra Finalizado → situacao = entregue ──────
+async function mudarEtapa(valor) {
+  const ok = await salvarCampo('fase_atual', valor);
+  if (!ok) return;
+  if (valor === 'entrega_comercial') {
+    await mudarSituacao('entregue');
+  }
+}
+
+// ── Mudar situação ────────────────────────────────────────────
+async function mudarSituacao(valor) {
+  const ok = await salvarCampo('situacao', valor);
+  if (!ok) return;
+  if (obraAtual) obraAtual.situacao = valor;
+  // Atualizar visual dos botões sem re-render completo
+  Object.keys(SITUACAO_INFO).forEach(v => {
+    const btn = document.getElementById(`sit-btn-${v}`);
+    if (!btn) return;
+    const info = SITUACAO_INFO[v];
+    const ativo = v === valor;
+    const corRgb = v==='liberado'?'62,207,142':v==='bloqueado_financeiro'?'239,68,68':v==='parado_cliente'?'249,115,22':'34,197,94';
+    btn.style.background     = ativo ? `rgba(${corRgb},.15)` : 'transparent';
+    btn.style.color          = ativo ? info.cor : 'var(--text-3)';
+    btn.style.borderColor    = ativo ? info.cor : 'var(--border)';
+  });
 }
 
 // ── Salvar campo de texto (disparado ao sair do input) ──
@@ -840,16 +871,31 @@ function renderPagina(obra) {
     : `<div class="obra-info-value"><i data-lucide="map"></i>${obra.regional || '—'}</div>`;
 
   // ── Edit row (privilegiados) ──
+  const situacaoAtual = obra.situacao || 'liberado';
   const editRow = podeEditar ? `
     <div class="edit-row">
       <div class="edit-row-group">
         <span class="edit-row-label">Etapa da Obra</span>
-        <select class="inline-select" onchange="salvarCampo('fase_atual', this.value)">
+        <select class="inline-select" onchange="mudarEtapa(this.value)">
           ${Object.entries(FASES_OBRA).map(([v, l]) =>
             `<option value="${v}" ${obra.fase_atual === v ? 'selected' : ''}>${l}</option>`
           ).join('')}
         </select>
         <span id="save-indicator-fase_atual" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓ Salvo</span>
+      </div>
+      <div class="edit-row-group">
+        <span class="edit-row-label">Situação</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${Object.entries(SITUACAO_INFO).map(([v, info]) => `
+            <button onclick="mudarSituacao('${v}')" id="sit-btn-${v}"
+              style="padding:5px 12px;border-radius:999px;border:1px solid;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;
+                     background:${situacaoAtual===v?`rgba(${v==='liberado'?'62,207,142':v==='bloqueado_financeiro'?'239,68,68':v==='parado_cliente'?'249,115,22':'34,197,94'},.15)`:'transparent'};
+                     color:${situacaoAtual===v?info.cor:'var(--text-3)'};
+                     border-color:${situacaoAtual===v?info.cor:'var(--border)'};">
+              ${info.label}
+            </button>`).join('')}
+        </div>
+        <span id="save-indicator-situacao" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓ Salvo</span>
       </div>
       <div class="edit-row-group">
         <span class="edit-row-label">Status Compra</span>

@@ -743,7 +743,7 @@
         <button class="filtro-btn filtro-situacao" data-situacao="liberado" aria-pressed="false">Liberado</button>
         <button class="filtro-btn filtro-situacao" data-situacao="bloqueado_financeiro" aria-pressed="false">Bloqueado Financeiro</button>
         <button class="filtro-btn filtro-situacao" data-situacao="parado_cliente" aria-pressed="false">Parado Cliente</button>
-        <button class="filtro-btn filtro-situacao" data-situacao="entrega_comercial" aria-pressed="false">Entregues</button>
+        <button class="filtro-btn filtro-situacao" data-situacao="entregue" aria-pressed="false">Entregue</button>
       </div>
     </div>
     <!-- Linha 2: Etapa da Obra -->
@@ -751,13 +751,13 @@
       <span class="filtros-row-label">Etapa</span>
       <div class="filtros" role="group" aria-label="Filtrar por etapa">
         <button class="filtro-btn filtro-fase ativo" data-fase="todas" aria-pressed="true">Todas</button>
-        <button class="filtro-btn filtro-fase" data-fase="projeto_iniciado" aria-pressed="false">Projeto Iniciado</button>
-        <button class="filtro-btn filtro-fase" data-fase="projeto_concluido" aria-pressed="false">Projeto Concluído</button>
+        <button class="filtro-btn filtro-fase" data-fase="projeto" aria-pressed="false">Projeto</button>
         <button class="filtro-btn filtro-fase" data-fase="cabeamento" aria-pressed="false">Cabeamento</button>
         <button class="filtro-btn filtro-fase" data-fase="eletrica" aria-pressed="false">Elétrica</button>
         <button class="filtro-btn filtro-fase" data-fase="audio_video" aria-pressed="false">Áudio e Vídeo</button>
         <button class="filtro-btn filtro-fase" data-fase="automacao" aria-pressed="false">Automação</button>
         <button class="filtro-btn filtro-fase" data-fase="em_finalizacao" aria-pressed="false">Em Finalização</button>
+        <button class="filtro-btn filtro-fase" data-fase="entrega_comercial" aria-pressed="false">Finalizado</button>
       </div>
     </div>
     <!-- Linha 2: Regional (preenchida dinamicamente) -->
@@ -856,16 +856,13 @@
         <label for="f-fase">Fase Atual</label>
         <select id="f-fase">
           <option value="nao_iniciado">Não Iniciado</option>
-          <option value="projeto_iniciado">Projeto Iniciado</option>
-          <option value="projeto_concluido">Projeto Concluído</option>
+          <option value="projeto">Projeto</option>
           <option value="cabeamento">Cabeamento</option>
           <option value="eletrica">Elétrica</option>
           <option value="audio_video">Áudio e Vídeo</option>
           <option value="automacao">Automação</option>
           <option value="em_finalizacao">Em Finalização</option>
-          <option value="bloqueado_financeiro">Bloqueado Financeiro</option>
-          <option value="parado_cliente">Parado Cliente</option>
-          <option value="entrega_comercial">Entrega Comercial</option>
+          <option value="entrega_comercial">Finalizado</option>
         </select>
       </div>
       <div class="form-group">
@@ -916,17 +913,26 @@
 <script>
 
   const FASES = {
-    nao_iniciado:          { label: 'Não Iniciado',          prazo: '—'          },
-    projeto_iniciado:      { label: 'Projeto Iniciado',      prazo: '> 180 dias' },
-    projeto_concluido:     { label: 'Projeto Concluído',     prazo: '—'          },
-    cabeamento:            { label: 'Cabeamento',            prazo: '~120 dias'  },
-    eletrica:              { label: 'Elétrica',              prazo: 'Imediato'   },
-    audio_video:           { label: 'Áudio e Vídeo',        prazo: 'Imediato'   },
-    automacao:             { label: 'Automação',             prazo: 'Imediato'   },
-    em_finalizacao:        { label: 'Em Finalização',        prazo: '—'          },
-    bloqueado_financeiro:  { label: 'Bloqueado Financeiro',  prazo: '—'          },
-    parado_cliente:        { label: 'Parado Cliente',        prazo: '—'          },
-    entrega_comercial:     { label: 'Entrega Comercial',     prazo: '—'          },
+    nao_iniciado:      { label: 'Não Iniciado',   prazo: '—'          },
+    projeto:           { label: 'Projeto',         prazo: '> 180 dias' },
+    cabeamento:        { label: 'Cabeamento',      prazo: '~120 dias'  },
+    eletrica:          { label: 'Elétrica',        prazo: 'Imediato'   },
+    audio_video:       { label: 'Áudio e Vídeo',  prazo: 'Imediato'   },
+    automacao:         { label: 'Automação',       prazo: 'Imediato'   },
+    em_finalizacao:    { label: 'Em Finalização',  prazo: '—'          },
+    entrega_comercial: { label: 'Finalizado',      prazo: '—'          },
+    // backward-compat (obras não migradas)
+    projeto_iniciado:     { label: 'Projeto',              prazo: '> 180 dias' },
+    projeto_concluido:    { label: 'Projeto',              prazo: '—'          },
+    bloqueado_financeiro: { label: 'Bloqueado Financeiro', prazo: '—'          },
+    parado_cliente:       { label: 'Parado Cliente',       prazo: '—'          },
+  };
+
+  const SITUACAO_LABELS = {
+    liberado:             'Liberado',
+    bloqueado_financeiro: 'Bloqueado Financeiro',
+    parado_cliente:       'Parado Cliente',
+    entregue:             'Entregue',
   };
 
   let todasObras      = [];
@@ -1056,19 +1062,25 @@
 
   // ── Renderizar cards ────────────────────────────────────────
   function renderizar() {
-    // Situação: "liberado" = fases normais; especiais = bloqueado/parado/entregues
+    // Situação — lê coluna `situacao` (nova) com fallback para fase_atual legado
+    const getSituacao = o => o.situacao ||
+      (FASES_SITUACAO_ESPECIAL.has(o.fase_atual) ? o.fase_atual :
+       o.fase_atual === 'entrega_comercial' ? 'entregue' : 'liberado');
+
     let obras;
     if (situacaoFiltro === 'todas') {
       obras = todasObras;
-    } else if (situacaoFiltro === 'liberado') {
-      obras = todasObras.filter(o => !FASES_SITUACAO_ESPECIAL.has(o.fase_atual));
     } else {
-      obras = todasObras.filter(o => o.fase_atual === situacaoFiltro);
+      obras = todasObras.filter(o => getSituacao(o) === situacaoFiltro);
     }
 
-    // Etapa (só fases não-especiais fazem sentido filtrar)
+    // Etapa — "projeto" cobre projeto_iniciado e projeto_concluido (legado)
     if (faseFiltro !== 'todas') {
-      obras = obras.filter(o => o.fase_atual === faseFiltro);
+      if (faseFiltro === 'projeto') {
+        obras = obras.filter(o => ['projeto','projeto_iniciado','projeto_concluido'].includes(o.fase_atual));
+      } else {
+        obras = obras.filter(o => o.fase_atual === faseFiltro);
+      }
     }
 
     if (regionalFiltro !== 'todas') {
