@@ -735,20 +735,29 @@
   <!-- Filtros + Busca -->
   <div class="filtros-bar">
     <!-- Linha 1: Etapa da Obra -->
+    <!-- Linha 1: Situação -->
+    <div class="filtros-row">
+      <span class="filtros-row-label">Situação</span>
+      <div class="filtros" role="group" aria-label="Filtrar por situação">
+        <button class="filtro-btn filtro-situacao ativo" data-situacao="todas" aria-pressed="true">Todas</button>
+        <button class="filtro-btn filtro-situacao" data-situacao="liberado" aria-pressed="false">Liberado</button>
+        <button class="filtro-btn filtro-situacao" data-situacao="bloqueado_financeiro" aria-pressed="false">Bloqueado Financeiro</button>
+        <button class="filtro-btn filtro-situacao" data-situacao="parado_cliente" aria-pressed="false">Parado Cliente</button>
+        <button class="filtro-btn filtro-situacao" data-situacao="entrega_comercial" aria-pressed="false">Entregues</button>
+      </div>
+    </div>
+    <!-- Linha 2: Etapa da Obra -->
     <div class="filtros-row">
       <span class="filtros-row-label">Etapa</span>
       <div class="filtros" role="group" aria-label="Filtrar por etapa">
-        <button class="filtro-btn ativo" data-fase="todas" aria-pressed="true">Todas</button>
-        <button class="filtro-btn" data-fase="projeto_iniciado" aria-pressed="false">Projeto Iniciado</button>
-        <button class="filtro-btn" data-fase="projeto_concluido" aria-pressed="false">Projeto Concluído</button>
-        <button class="filtro-btn" data-fase="cabeamento" aria-pressed="false">Cabeamento</button>
-        <button class="filtro-btn" data-fase="eletrica" aria-pressed="false">Elétrica</button>
-        <button class="filtro-btn" data-fase="audio_video" aria-pressed="false">Áudio e Vídeo</button>
-        <button class="filtro-btn" data-fase="automacao" aria-pressed="false">Automação</button>
-        <button class="filtro-btn" data-fase="em_finalizacao" aria-pressed="false">Em Finalização</button>
-        <button class="filtro-btn" data-fase="bloqueado_financeiro" aria-pressed="false">Bloqueado Financeiro</button>
-        <button class="filtro-btn" data-fase="parado_cliente" aria-pressed="false">Parado Cliente</button>
-        <button class="filtro-btn" data-fase="entrega_comercial" aria-pressed="false">Entregues</button>
+        <button class="filtro-btn filtro-fase ativo" data-fase="todas" aria-pressed="true">Todas</button>
+        <button class="filtro-btn filtro-fase" data-fase="projeto_iniciado" aria-pressed="false">Projeto Iniciado</button>
+        <button class="filtro-btn filtro-fase" data-fase="projeto_concluido" aria-pressed="false">Projeto Concluído</button>
+        <button class="filtro-btn filtro-fase" data-fase="cabeamento" aria-pressed="false">Cabeamento</button>
+        <button class="filtro-btn filtro-fase" data-fase="eletrica" aria-pressed="false">Elétrica</button>
+        <button class="filtro-btn filtro-fase" data-fase="audio_video" aria-pressed="false">Áudio e Vídeo</button>
+        <button class="filtro-btn filtro-fase" data-fase="automacao" aria-pressed="false">Automação</button>
+        <button class="filtro-btn filtro-fase" data-fase="em_finalizacao" aria-pressed="false">Em Finalização</button>
       </div>
     </div>
     <!-- Linha 2: Regional (preenchida dinamicamente) -->
@@ -922,9 +931,12 @@
 
   let todasObras      = [];
   let faseFiltro      = 'todas';
+  let situacaoFiltro  = 'todas';
   let regionalFiltro  = 'todas';
   let consultorFiltro = 'todos';
   let termoBusca      = '';
+
+  const FASES_SITUACAO_ESPECIAL = new Set(['bloqueado_financeiro', 'parado_cliente', 'entrega_comercial']);
   // ── Auth check ──────────────────────────────────────────────
   let userRole    = 'tecnico';
   let _authUserId = null;
@@ -1044,9 +1056,20 @@
 
   // ── Renderizar cards ────────────────────────────────────────
   function renderizar() {
-    let obras = faseFiltro === 'todas'
-      ? todasObras.filter(o => o.fase_atual !== 'entrega_comercial')
-      : todasObras.filter(o => o.fase_atual === faseFiltro);
+    // Situação: "liberado" = fases normais; especiais = bloqueado/parado/entregues
+    let obras;
+    if (situacaoFiltro === 'todas') {
+      obras = todasObras;
+    } else if (situacaoFiltro === 'liberado') {
+      obras = todasObras.filter(o => !FASES_SITUACAO_ESPECIAL.has(o.fase_atual));
+    } else {
+      obras = todasObras.filter(o => o.fase_atual === situacaoFiltro);
+    }
+
+    // Etapa (só fases não-especiais fazem sentido filtrar)
+    if (faseFiltro !== 'todas') {
+      obras = obras.filter(o => o.fase_atual === faseFiltro);
+    }
 
     if (regionalFiltro !== 'todas') {
       obras = obras.filter(o => (o.regional || '') === regionalFiltro);
@@ -1207,10 +1230,22 @@
 
   // ── Handlers de filtros ──────────────────────────────────────
   function registrarHandlersFiltros() {
-    // Fase
-    document.querySelectorAll('.filtro-btn[data-fase]').forEach(btn => {
+    // Situação
+    document.querySelectorAll('.filtro-situacao').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.filtro-btn[data-fase]').forEach(b => {
+        document.querySelectorAll('.filtro-situacao').forEach(b => {
+          b.classList.remove('ativo'); b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('ativo'); btn.setAttribute('aria-pressed', 'true');
+        situacaoFiltro = btn.dataset.situacao;
+        renderizar();
+      });
+    });
+
+    // Fase
+    document.querySelectorAll('.filtro-fase').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filtro-fase').forEach(b => {
           b.classList.remove('ativo'); b.setAttribute('aria-pressed', 'false');
         });
         btn.classList.add('ativo'); btn.setAttribute('aria-pressed', 'true');
