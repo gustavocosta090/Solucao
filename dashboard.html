@@ -200,7 +200,7 @@
   .row-2col-equal { display:grid; gap:14px; grid-template-columns:1fr 1fr; }
 
   /* ── STATUS MINI-CARDS ──────────────────────────────────── */
-  .status-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .status-row { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
   .status-card {
     background:var(--surface-1); border:1px solid var(--border);
     border-radius:14px; padding:18px 20px;
@@ -230,24 +230,28 @@
   .pipe-num { font-size:30px; font-weight:900; letter-spacing:-1px; color:var(--text-1); line-height:1; margin-bottom:6px; }
   .pipe-lbl { font-size:10px; color:var(--text-2); font-weight:500; line-height:1.4; }
 
-  /* ── EQUIPES EM CAMPO ───────────────────────────────────── */
-  .equipe-lista { display:flex; flex-direction:column; }
-  .equipe-row {
-    display:grid; grid-template-columns:1fr auto;
-    align-items:center; gap:16px;
-    padding:13px 0; border-bottom:1px solid var(--border);
+  /* ── CARTEIRA EM DESTAQUE ───────────────────────────────── */
+  .carteira-hero { text-align:center; padding:18px 0 22px; }
+  .carteira-label { font-size:11px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--text-3); margin-bottom:8px; }
+  .carteira-valor { font-size:44px; font-weight:900; letter-spacing:-2px; color:var(--text-1); line-height:1; }
+  .carteira-sub   { font-size:12px; color:var(--text-3); margin-top:6px; }
+  .carteira-funil { margin:20px 0 8px; }
+  .funil-track {
+    height:14px; border-radius:99px; overflow:hidden;
+    display:flex; background:var(--surface-3);
   }
-  .equipe-row:last-child { border-bottom:none; }
-  .equipe-left  { display:flex; flex-direction:column; gap:6px; }
-  .equipe-nome  { font-size:13px; font-weight:600; }
-  .equipe-tags  { display:flex; gap:5px; flex-wrap:wrap; }
-  .eq-tag {
-    font-size:10px; font-weight:600; padding:2px 8px; border-radius:5px;
-    background:var(--surface-3); color:var(--text-2); border:1px solid var(--border);
+  .funil-seg {
+    height:100%; transition:width 1.1s cubic-bezier(.4,0,.2,1);
+    position:relative;
   }
-  .equipe-right  { text-align:right; }
-  .equipe-num    { font-size:28px; font-weight:900; letter-spacing:-0.8px; color:var(--text-1); line-height:1; }
-  .equipe-sub    { font-size:10px; color:var(--text-3); margin-top:2px; }
+  .funil-legenda { display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; }
+  .funil-leg-item { display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-2); }
+  .funil-leg-dot  { width:9px; height:9px; border-radius:3px; flex-shrink:0; }
+  .funil-leg-num  { font-weight:700; color:var(--text-1); margin-left:2px; }
+  .carteira-kpis  { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:20px; border-top:1px solid var(--border); padding-top:18px; }
+  .ck { text-align:center; }
+  .ck-val { font-size:18px; font-weight:900; letter-spacing:-0.6px; color:var(--text-1); }
+  .ck-lbl { font-size:10.5px; color:var(--text-3); margin-top:3px; }
 
   /* ── DONUT ──────────────────────────────────────────────── */
   .donut-layout { display:grid; grid-template-columns:160px 1fr; gap:24px; align-items:center; }
@@ -666,12 +670,6 @@
         <div class="sc-lbl">Entregues ao cliente</div>
         <div class="sc-bar" id="sb-entregues" style="width:0%"></div>
       </div>
-      <div class="status-card" style="--sc:#6366f1;--sc-dim:rgba(99,102,241,0.12)">
-        <div class="sc-top"><div class="sc-icon"><i data-lucide="badge-check"></i></div><span class="sc-pct" id="sp-concluidas-pct">—%</span></div>
-        <div class="sc-num" id="sp-concluidas">—</div>
-        <div class="sc-lbl">Projetos concluídos</div>
-        <div class="sc-bar" id="sb-concluidas" style="width:0%"></div>
-      </div>
     </div>
   </div>
 
@@ -686,10 +684,27 @@
     </div>
     <div class="card">
       <div class="card-header">
-        <div><div class="card-title">Equipes em Campo</div><div class="card-sub">Obras ativas e fases em execução por equipe</div></div>
-        <span class="tag tag-green" id="tag-equipes-total">— equipes</span>
+        <div><div class="card-title">Carteira em Destaque</div><div class="card-sub">Volume financeiro e distribuição das obras ativas</div></div>
+        <span class="tag tag-green" id="tag-carteira-obras">— obras</span>
       </div>
-      <div class="equipe-lista" id="equipeLista"></div>
+      <div class="carteira-hero">
+        <div class="carteira-label">Total em carteira</div>
+        <div class="carteira-valor" id="carteira-total">—</div>
+        <div class="carteira-sub">contratos ativos monitorados</div>
+      </div>
+      <div class="carteira-funil">
+        <div class="funil-track" id="funilTrack">
+          <div class="funil-seg" id="fs-andamento"  style="width:0%;background:#f59e0b"></div>
+          <div class="funil-seg" id="fs-finalizacao" style="width:0%;background:#2dd4bf"></div>
+          <div class="funil-seg" id="fs-entregues"  style="width:0%;background:#22c55e"></div>
+        </div>
+        <div class="funil-legenda" id="funilLegenda"></div>
+      </div>
+      <div class="carteira-kpis">
+        <div class="ck"><div class="ck-val" id="ck-ticket">—</div><div class="ck-lbl">Ticket médio</div></div>
+        <div class="ck"><div class="ck-val" id="ck-mo">—</div><div class="ck-lbl">% de serviços</div></div>
+        <div class="ck"><div class="ck-val" id="ck-obras">—</div><div class="ck-lbl">Obras ativas</div></div>
+      </div>
     </div>
   </div>
 
@@ -721,7 +736,7 @@
         <div><div class="card-title">Arquitetos Parceiros</div><div class="card-sub">Quem mais indica projetos para a Solução Técnica</div></div>
         <span class="tag tag-green" id="tag-arq">— parceiros</span>
       </div>
-      <div class="rank-list" id="rankArquitetos"></div>
+      <div style="max-height:530px;overflow-y:auto;padding-right:4px;"><div class="rank-list" id="rankArquitetos"></div></div>
     </div>
     <div class="card">
       <div class="card-header">
@@ -1013,7 +1028,7 @@ function renderKPIs(d) {
 // ── RENDER: Status ─────────────────────────────────────────────
 function renderStatus(d) {
   const s = d.status, t = d.kpis.total_obras || 1;
-  [['andamento',s.andamento],['finalizacao',s.finalizacao],['entregues',s.entregues],['concluidas',s.concluidas]]
+  [['andamento',s.andamento],['finalizacao',s.finalizacao],['entregues',s.entregues]]
     .forEach(([key, val]) => {
       const p = Math.round(val / t * 100);
       counter(document.getElementById(`sp-${key}`), val, fmt.int, 700);
@@ -1034,27 +1049,38 @@ function renderPipeline(d) {
     </div>`).join('');
 }
 
-// ── RENDER: Equipes ────────────────────────────────────────────
-function renderEquipes(d) {
-  if (!d.equipes || d.equipes.length === 0) {
-    document.getElementById('tag-equipes-total').textContent = '—';
-    document.getElementById('equipeLista').innerHTML =
-      `<div style="color:var(--text-3);font-size:0.82rem;padding:16px 0;text-align:center;">
-        Ver agendamentos por equipe na <a href="agenda.html" style="color:var(--primary)">Agenda</a>
-      </div>`;
-    return;
-  }
-  document.getElementById('tag-equipes-total').textContent = d.equipes.length + ' equipes';
-  document.getElementById('equipeLista').innerHTML = d.equipes.map(e => `
-    <div class="equipe-row">
-      <div class="equipe-left">
-        <span class="equipe-nome" style="color:${e.cor}">${e.nome}</span>
-        <div class="equipe-tags">${e.fases.map(f => `<span class="eq-tag">${f}</span>`).join('')}</div>
-      </div>
-      <div class="equipe-right">
-        <div class="equipe-num">${e.obras}</div>
-        <div class="equipe-sub">obra${e.obras > 1 ? 's' : ''}</div>
-      </div>
+// ── RENDER: Carteira em Destaque ───────────────────────────────
+function renderCarteira(d) {
+  const s = d.status;
+  const total = (s.andamento || 0) + (s.finalizacao || 0) + (s.entregues || 0) + (s.concluidas || 0) || 1;
+  const ativas = (s.andamento || 0) + (s.finalizacao || 0) + (s.entregues || 0);
+
+  document.getElementById('tag-carteira-obras').textContent = ativas + (ativas === 1 ? ' obra' : ' obras');
+  counter(document.getElementById('carteira-total'), d.kpis.volume, fmt.brl, 1200);
+  counter(document.getElementById('ck-ticket'), d.kpis.ticket, fmt.brl, 1000);
+  document.getElementById('ck-mo').textContent = d.kpis.mo + '%';
+  document.getElementById('ck-obras').textContent = d.kpis.obras;
+
+  const segs = [
+    { id:'fs-andamento',   n: s.andamento  || 0, cor:'#f59e0b', label:'Em andamento' },
+    { id:'fs-finalizacao', n: s.finalizacao || 0, cor:'#2dd4bf', label:'Em finalização' },
+    { id:'fs-entregues',   n: s.entregues  || 0, cor:'#22c55e', label:'Entregues' },
+  ];
+
+  segs.forEach(seg => {
+    const pct = Math.round(seg.n / total * 100);
+    const el = document.getElementById(seg.id);
+    // força reflow para a transição disparar
+    el.style.width = '0%';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.width = pct + '%';
+    }));
+  });
+
+  document.getElementById('funilLegenda').innerHTML = segs.map(seg => `
+    <div class="funil-leg-item">
+      <span class="funil-leg-dot" style="background:${seg.cor}"></span>
+      ${seg.label} <span class="funil-leg-num">${seg.n}</span>
     </div>`).join('');
 }
 
@@ -1216,7 +1242,7 @@ function renderAll(d) {
   renderKPIs(d);
   renderStatus(d);
   renderPipeline(d);
-  renderEquipes(d);
+  renderCarteira(d);
   renderRegional(d);
   renderConsultores(d);
   renderArquitetos(d);

@@ -695,8 +695,9 @@ function _atualizarCamposFinanceiros() {
   const o    = obraAtual || {};
   const vMO   = _n(o.valor_servico  ?? o.valor_servicos);
   const vProd = _n(o.valor_produto   ?? o.valor_produtos);
-  const vTot  = _n(o.valor_total) ?? ((vMO != null || vProd != null) ? (vMO || 0) + (vProd || 0) : null);
-  const pctN  = _n(o.pct_servico)  ?? (vMO != null && vTot > 0 ? vMO / vTot * 100 : null);
+  // Sempre recalcula a partir dos valores editáveis — não confia no pct_servico do banco (stored as ratio 0-1, stale)
+  const vTot  = (vMO != null || vProd != null) ? (vMO || 0) + (vProd || 0) : _n(o.valor_total);
+  const pctN  = (vMO != null && vTot > 0) ? vMO / vTot * 100 : (_n(o.pct_servico) != null ? _n(o.pct_servico) * 100 : null);
   const pct   = pctN != null ? parseFloat(pctN).toFixed(1) + '%' : '—';
   const totEl = document.getElementById('fin-total');
   const pctEl = document.getElementById('fin-pct');
@@ -824,6 +825,18 @@ function renderPagina(obra) {
        </div>`
     : `<div class="obra-info-value"><i data-lucide="user"></i>${consultorAtualNome}</div>`;
 
+  const REGIONAIS_OPCOES = ['Capital','Interior SP','Litoral','Rio de Janeiro','Sul','Norte/Nordeste','Centro-Oeste','Exterior'];
+  const campoRegional = podeEditar
+    ? `<div class="obra-info-value edit-field">
+        <i data-lucide="map"></i>
+        <select class="inline-select" onchange="salvarCampo('regional', this.value || null)">
+          <option value="">— Sem regional —</option>
+          ${REGIONAIS_OPCOES.map(r => `<option value="${r}" ${obra.regional === r ? 'selected' : ''}>${r}</option>`).join('')}
+        </select>
+        <span id="save-indicator-regional" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓</span>
+       </div>`
+    : `<div class="obra-info-value"><i data-lucide="map"></i>${obra.regional || '—'}</div>`;
+
   // ── Edit row (privilegiados) ──
   const editRow = podeEditar ? `
     <div class="edit-row">
@@ -870,6 +883,10 @@ function renderPagina(obra) {
           <div class="obra-info-label">Consultor</div>
           ${campoConsultor}
         </div>
+        <div class="obra-info-item">
+          <div class="obra-info-label">Regional</div>
+          ${campoRegional}
+        </div>
         ${!podeEditar ? `<div class="obra-info-item">
           <div class="obra-info-label">Status Compra</div>
           <div class="obra-info-value"><i data-lucide="shopping-cart"></i>${obra.status_compra || '—'}</div>
@@ -887,9 +904,9 @@ function renderPagina(obra) {
           const _n = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
           const vMO   = _n(obra.valor_servico  ?? obra.valor_servicos);
           const vProd = _n(obra.valor_produto   ?? obra.valor_produtos);
-          // valor_total e pct_servico do banco como fallback extra
-          const vTot  = _n(obra.valor_total) ?? ((vMO != null || vProd != null) ? (vMO || 0) + (vProd || 0) : null);
-          const pctN  = _n(obra.pct_servico)  ?? (vMO != null && vTot > 0 ? vMO / vTot * 100 : null);
+          // Sempre recalcula — pct_servico do banco é ratio 0-1 e pode estar desatualizado
+          const vTot  = (vMO != null || vProd != null) ? (vMO || 0) + (vProd || 0) : _n(obra.valor_total);
+          const pctN  = (vMO != null && vTot > 0) ? vMO / vTot * 100 : (_n(obra.pct_servico) != null ? _n(obra.pct_servico) * 100 : null);
           const pct   = pctN != null ? parseFloat(pctN).toFixed(1) + '%' : '—';
           const moField = podeEditar
             ? `<div class="obra-info-value edit-field">

@@ -148,10 +148,26 @@
     /* ── Barra de filtros ── */
     .filtros-bar {
       display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .filtros-row {
+      display: flex;
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
-      margin-bottom: 24px;
+    }
+
+    .filtros-row-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--text-3);
+      white-space: nowrap;
+      min-width: 56px;
     }
 
     .filtros {
@@ -718,33 +734,54 @@
 
   <!-- Filtros + Busca -->
   <div class="filtros-bar">
-    <div class="filtros" role="group" aria-label="Filtrar por fase">
-      <button class="filtro-btn ativo" data-fase="todas" aria-pressed="true">Todas</button>
-      <button class="filtro-btn" data-fase="projeto_iniciado" aria-pressed="false">Projeto Iniciado</button>
-      <button class="filtro-btn" data-fase="projeto_concluido" aria-pressed="false">Projeto Concluído</button>
-      <button class="filtro-btn" data-fase="cabeamento" aria-pressed="false">Cabeamento</button>
-      <button class="filtro-btn" data-fase="eletrica" aria-pressed="false">Elétrica</button>
-      <button class="filtro-btn" data-fase="audio_video" aria-pressed="false">Áudio e Vídeo</button>
-      <button class="filtro-btn" data-fase="automacao" aria-pressed="false">Automação</button>
-      <button class="filtro-btn" data-fase="em_finalizacao" aria-pressed="false">Em Finalização</button>
-      <button class="filtro-btn" data-fase="bloqueado_financeiro" aria-pressed="false">Bloqueado Financeiro</button>
-      <button class="filtro-btn" data-fase="parado_cliente" aria-pressed="false">Parado Cliente</button>
-      <button class="filtro-btn" data-fase="entrega_comercial" aria-pressed="false">Entregues</button>
+    <!-- Linha 1: Etapa da Obra -->
+    <div class="filtros-row">
+      <span class="filtros-row-label">Etapa</span>
+      <div class="filtros" role="group" aria-label="Filtrar por etapa">
+        <button class="filtro-btn ativo" data-fase="todas" aria-pressed="true">Todas</button>
+        <button class="filtro-btn" data-fase="projeto_iniciado" aria-pressed="false">Projeto Iniciado</button>
+        <button class="filtro-btn" data-fase="projeto_concluido" aria-pressed="false">Projeto Concluído</button>
+        <button class="filtro-btn" data-fase="cabeamento" aria-pressed="false">Cabeamento</button>
+        <button class="filtro-btn" data-fase="eletrica" aria-pressed="false">Elétrica</button>
+        <button class="filtro-btn" data-fase="audio_video" aria-pressed="false">Áudio e Vídeo</button>
+        <button class="filtro-btn" data-fase="automacao" aria-pressed="false">Automação</button>
+        <button class="filtro-btn" data-fase="em_finalizacao" aria-pressed="false">Em Finalização</button>
+        <button class="filtro-btn" data-fase="bloqueado_financeiro" aria-pressed="false">Bloqueado Financeiro</button>
+        <button class="filtro-btn" data-fase="parado_cliente" aria-pressed="false">Parado Cliente</button>
+        <button class="filtro-btn" data-fase="entrega_comercial" aria-pressed="false">Entregues</button>
+      </div>
     </div>
-    <div class="busca-wrap">
-      <i data-lucide="search" class="busca-icon" aria-hidden="true"></i>
-      <input
-        type="text"
-        id="campo-busca"
-        class="campo-busca"
-        placeholder="Buscar cliente, endereço, código..."
-        aria-label="Buscar obras"
-        oninput="if(!this._dFn)this._dFn=debounce(v=>buscar(v));this._dFn(this.value)"
-        autocomplete="off"
-      >
-      <button class="busca-limpar" id="busca-limpar" onclick="limparBusca()" title="Limpar busca" aria-label="Limpar busca">
-        <i data-lucide="x" aria-hidden="true"></i>
-      </button>
+    <!-- Linha 2: Regional (preenchida dinamicamente) -->
+    <div class="filtros-row">
+      <span class="filtros-row-label">Regional</span>
+      <div class="filtros" id="filtros-regional" role="group" aria-label="Filtrar por regional">
+        <button class="filtro-btn filtro-regional ativo" data-regional="todas" aria-pressed="true">Todas</button>
+      </div>
+    </div>
+    <!-- Linha 3: Consultor (preenchida dinamicamente) -->
+    <div class="filtros-row">
+      <span class="filtros-row-label">Consultor</span>
+      <div class="filtros" id="filtros-consultor" role="group" aria-label="Filtrar por consultor">
+        <button class="filtro-btn filtro-consultor ativo" data-consultor="todos" aria-pressed="true">Todos</button>
+      </div>
+    </div>
+    <!-- Linha 4: Busca -->
+    <div class="filtros-row">
+      <div class="busca-wrap" style="flex:1;min-width:0">
+        <i data-lucide="search" class="busca-icon" aria-hidden="true"></i>
+        <input
+          type="text"
+          id="campo-busca"
+          class="campo-busca"
+          placeholder="Buscar cliente, endereço, código..."
+          aria-label="Buscar obras"
+          oninput="if(!this._dFn)this._dFn=debounce(v=>buscar(v));this._dFn(this.value)"
+          autocomplete="off"
+        >
+        <button class="busca-limpar" id="busca-limpar" onclick="limparBusca()" title="Limpar busca" aria-label="Limpar busca">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -792,6 +829,23 @@
         <label for="f-consultor">Consultor</label>
         <select id="f-consultor">
           <option value="">Selecione...</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="f-regional">Regional</label>
+        <select id="f-regional">
+          <option value="">Selecione...</option>
+          <option value="Capital">Capital</option>
+          <option value="Interior SP">Interior SP</option>
+          <option value="Litoral">Litoral</option>
+          <option value="Rio de Janeiro">Rio de Janeiro</option>
+          <option value="Sul">Sul</option>
+          <option value="Norte/Nordeste">Norte/Nordeste</option>
+          <option value="Centro-Oeste">Centro-Oeste</option>
+          <option value="Exterior">Exterior</option>
         </select>
       </div>
     </div>
@@ -874,9 +928,11 @@
     entrega_comercial:     { label: 'Entrega Comercial',     prazo: '—'          },
   };
 
-  let todasObras  = [];
-  let faseFiltro  = 'todas';
-  let termoBusca  = '';
+  let todasObras      = [];
+  let faseFiltro      = 'todas';
+  let regionalFiltro  = 'todas';
+  let consultorFiltro = 'todos';
+  let termoBusca      = '';
   // ── Auth check ──────────────────────────────────────────────
   let userRole    = 'tecnico';
   let _authUserId = null;
@@ -925,7 +981,8 @@
 
     if (error) { mostrarErro(error); return; }
     todasObras = data;
-    aplicarFiltroSalvo(); // pré-selecionar filtro se veio de obra_detail
+    popularFiltrosDinamicos();
+    aplicarFiltroSalvo();
     renderizar();
   }
 
@@ -947,11 +1004,55 @@
     if (campo) campo.focus();
   }
 
+  // ── Popular filtros dinâmicos de Regional e Consultor ───────
+  function popularFiltrosDinamicos() {
+    // Regional
+    const regionais = [...new Set(todasObras.map(o => o.regional).filter(Boolean))].sort();
+    const fRegional = document.getElementById('filtros-regional');
+    fRegional.innerHTML = `<button class="filtro-btn filtro-regional ativo" data-regional="todas" aria-pressed="true">Todas</button>`;
+    regionais.forEach(r => {
+      const btn = document.createElement('button');
+      btn.className = 'filtro-btn filtro-regional';
+      btn.dataset.regional = r;
+      btn.setAttribute('aria-pressed', 'false');
+      btn.textContent = r;
+      fRegional.appendChild(btn);
+    });
+
+    // Consultor
+    const consultoresSet = new Map();
+    todasObras.forEach(o => {
+      if (o.consultores?.nome) consultoresSet.set(o.consultores.nome, o.consultores.nome);
+    });
+    const consultores = [...consultoresSet.keys()].sort();
+    const fConsultor = document.getElementById('filtros-consultor');
+    fConsultor.innerHTML = `<button class="filtro-btn filtro-consultor ativo" data-consultor="todos" aria-pressed="true">Todos</button>`;
+    consultores.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'filtro-btn filtro-consultor';
+      btn.dataset.consultor = c;
+      btn.setAttribute('aria-pressed', 'false');
+      btn.textContent = c;
+      fConsultor.appendChild(btn);
+    });
+
+    // Re-registrar handlers nos novos botões
+    registrarHandlersFiltros();
+  }
+
   // ── Renderizar cards ────────────────────────────────────────
   function renderizar() {
     let obras = faseFiltro === 'todas'
       ? todasObras.filter(o => o.fase_atual !== 'entrega_comercial')
       : todasObras.filter(o => o.fase_atual === faseFiltro);
+
+    if (regionalFiltro !== 'todas') {
+      obras = obras.filter(o => (o.regional || '') === regionalFiltro);
+    }
+
+    if (consultorFiltro !== 'todos') {
+      obras = obras.filter(o => (o.consultores?.nome || '') === consultorFiltro);
+    }
 
     if (termoBusca) {
       obras = obras.filter(o =>
@@ -1102,19 +1203,46 @@
     lucide.createIcons();
   }
 
-  // ── Filtros de fase ──────────────────────────────────────────
-  document.querySelectorAll('.filtro-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.filtro-btn').forEach(b => {
-        b.classList.remove('ativo');
-        b.setAttribute('aria-pressed', 'false');
+  // ── Handlers de filtros ──────────────────────────────────────
+  function registrarHandlersFiltros() {
+    // Fase
+    document.querySelectorAll('.filtro-btn[data-fase]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filtro-btn[data-fase]').forEach(b => {
+          b.classList.remove('ativo'); b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('ativo'); btn.setAttribute('aria-pressed', 'true');
+        faseFiltro = btn.dataset.fase;
+        renderizar();
       });
-      btn.classList.add('ativo');
-      btn.setAttribute('aria-pressed', 'true');
-      faseFiltro = btn.dataset.fase;
-      renderizar();
     });
-  });
+
+    // Regional
+    document.querySelectorAll('.filtro-regional').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filtro-regional').forEach(b => {
+          b.classList.remove('ativo'); b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('ativo'); btn.setAttribute('aria-pressed', 'true');
+        regionalFiltro = btn.dataset.regional;
+        renderizar();
+      });
+    });
+
+    // Consultor
+    document.querySelectorAll('.filtro-consultor').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filtro-consultor').forEach(b => {
+          b.classList.remove('ativo'); b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('ativo'); btn.setAttribute('aria-pressed', 'true');
+        consultorFiltro = btn.dataset.consultor;
+        renderizar();
+      });
+    });
+  }
+
+  registrarHandlersFiltros();
 
   // ── Pré-selecionar filtro ao voltar de obra_detail ──────────
   function aplicarFiltroSalvo() {
@@ -1146,6 +1274,7 @@
     document.getElementById('f-endereco').value       = '';
     document.getElementById('f-arquiteto').value      = '';
     document.getElementById('f-consultor').value      = '';
+    document.getElementById('f-regional').value       = '';
     document.getElementById('f-fase').value           = 'nao_iniciado';
     document.getElementById('f-status-compra').value  = '';
     document.getElementById('f-shankya').value        = '';
@@ -1182,6 +1311,7 @@
       endereco:              document.getElementById('f-endereco').value.trim()      || null,
       arquiteto_responsavel: document.getElementById('f-arquiteto').value.trim()    || null,
       consultor_id:          document.getElementById('f-consultor').value            || null,
+      regional:              document.getElementById('f-regional').value             || null,
       fase_atual:            document.getElementById('f-fase').value,
       status_compra:         document.getElementById('f-status-compra').value.trim()|| null,
       cod_shankya:           document.getElementById('f-shankya').value.trim()      || null,
