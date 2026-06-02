@@ -200,7 +200,7 @@
   .row-2col-equal { display:grid; gap:14px; grid-template-columns:1fr 1fr; }
 
   /* ── STATUS MINI-CARDS ──────────────────────────────────── */
-  .status-row { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .status-row { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
   .status-card {
     background:var(--surface-1); border:1px solid var(--border);
     border-radius:14px; padding:18px 20px;
@@ -667,13 +667,8 @@
         <div class="sc-top"><div class="sc-icon"><i data-lucide="construction"></i></div><span class="sc-pct" id="sp-andamento-pct">—%</span></div>
         <div class="sc-num" id="sp-andamento">—</div>
         <div class="sc-lbl">Obras em andamento</div>
+        <div class="sc-sub" id="sp-andamento-sub" style="font-size:11px;color:#2DD4BF;margin-top:4px;font-weight:600;min-height:14px"></div>
         <div class="sc-bar" id="sb-andamento" style="width:0%"></div>
-      </div>
-      <div class="status-card" style="--sc:#2dd4bf;--sc-dim:rgba(45,212,191,0.12)">
-        <div class="sc-top"><div class="sc-icon"><i data-lucide="timer"></i></div><span class="sc-pct" id="sp-finalizacao-pct">—%</span></div>
-        <div class="sc-num" id="sp-finalizacao">—</div>
-        <div class="sc-lbl">Em finalização</div>
-        <div class="sc-bar" id="sb-finalizacao" style="width:0%"></div>
       </div>
       <div class="status-card" style="--sc:#22c55e;--sc-dim:rgba(34,197,94,0.12)">
         <div class="sc-top"><div class="sc-icon"><i data-lucide="package-check"></i></div><span class="sc-pct" id="sp-entregues-pct">—%</span></div>
@@ -979,10 +974,14 @@ function buildData(obras, relAssist) {
     .map(k => ({ key: k, label: FASE_INFO[k].label, cor: FASE_INFO[k].cor, obras: faseCount[k], valor: faseValor[k] || 0 }));
 
   // Status
-  const status = { andamento: 0, finalizacao: 0, entregues: 0, concluidas: 0 };
+  const status = { andamento: 0, finalizacao: 0, entregues: 0 };
   obras.forEach(o => {
-    const cat = FASE_INFO[o.fase_atual]?.cat || 'andamento';
-    status[cat] = (status[cat] || 0) + 1;
+    if (o.situacao === 'entregue' || o.fase_atual === 'entrega_comercial') {
+      status.entregues++;
+    } else {
+      status.andamento++;
+      if (o.fase_atual === 'em_finalizacao') status.finalizacao++;
+    }
   });
 
   // Arquitetos
@@ -1074,13 +1073,16 @@ function renderKPIs(d) {
 // ── RENDER: Status ─────────────────────────────────────────────
 function renderStatus(d) {
   const s = d.status, t = d.kpis.total_obras || 1;
-  [['andamento',s.andamento],['finalizacao',s.finalizacao],['entregues',s.entregues]]
-    .forEach(([key, val]) => {
-      const p = Math.round(val / t * 100);
-      counter(document.getElementById(`sp-${key}`), val, fmt.int, 700);
-      document.getElementById(`sp-${key}-pct`).textContent = p + '%';
-      document.getElementById(`sb-${key}`).style.width = p + '%';
-    });
+  [['andamento', s.andamento], ['entregues', s.entregues]].forEach(([key, val]) => {
+    const p = Math.round(val / t * 100);
+    counter(document.getElementById(`sp-${key}`), val, fmt.int, 700);
+    document.getElementById(`sp-${key}-pct`).textContent = p + '%';
+    document.getElementById(`sb-${key}`).style.width = p + '%';
+  });
+  const sub = document.getElementById('sp-andamento-sub');
+  if (sub && s.finalizacao > 0) {
+    sub.textContent = `Dessas, ${s.finalizacao} em finalização`;
+  }
 }
 
 // ── RENDER: Pipeline ───────────────────────────────────────────
