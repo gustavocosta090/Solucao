@@ -195,7 +195,6 @@
     }
 
     .dia-data.hoje { color: var(--primary); }
-
     /* ── Botão disparar dia (dentro do header de cada coluna) ── */
     .btn-dispatch-dia {
       display: inline-flex; align-items: center; justify-content: center;
@@ -804,6 +803,11 @@
       <span>Exportar → SharePoint</span>
     </button>
 
+    <button class="btn-exportar-sp" id="btn-relatorio-mes" onclick="abrirModalRelatorioMes()" title="Exportar relatório mensal de plantão com valores por técnico" style="background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.3);color:#A5B4FC">
+      <i data-lucide="file-text"></i>
+      <span>Relatório do Mês</span>
+    </button>
+
     <button class="btn-semana-tec" id="btn-semana-tec" onclick="abrirModalSemana()" title="Gerar e disparar programação semanal de plantão">
       <i data-lucide="calendar-range"></i>
       <span>Plantão semanal</span>
@@ -847,6 +851,36 @@
 </div>
 
 <!-- Modal programação semanal técnico -->
+<!-- Modal Relatório do Mês -->
+<div class="overlay" id="overlay-relatorio-mes" style="display:none" onclick="if(event.target===this)fecharModalRelatorioMes()" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:380px" onclick="event.stopPropagation()">
+    <h2 style="margin-bottom:16px;display:flex;align-items:center;gap:8px"><i data-lucide="file-text"></i> Relatório Mensal de Plantão</h2>
+    <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;line-height:1.5">Selecione o mês e ano para gerar o relatório com os valores de plantão de cada técnico.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div class="form-group" style="margin:0">
+        <label>Mês</label>
+        <select id="rel-mes">
+          <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+          <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+          <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Ano</label>
+        <input type="number" id="rel-ano" value="${new Date().getFullYear()}" min="2024" max="2030">
+      </div>
+    </div>
+    <div id="rel-erro" style="color:#f87171;font-size:12px;margin-bottom:8px;display:none"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="fecharModalRelatorioMes()" style="flex:1;height:40px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
+      <button id="btn-gerar-rel" onclick="gerarRelatorioMes()" style="flex:2;height:40px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:6px;color:#A5B4FC;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+        <i data-lucide="download" style="display:inline-block;width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Gerar e Enviar
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay-semana" onclick="fecharModalSemana(event)" style="display:none" role="dialog" aria-modal="true" aria-label="Programação semanal de plantão">
   <div class="modal" style="max-width:460px">
     <div class="modal-header">
@@ -906,6 +940,11 @@
           <svg id="equipe-arrow" class="equipe-arrow" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="equipe-dropdown" id="equipe-dropdown" role="listbox" aria-multiselectable="true">
+          <div style="padding:8px 10px;border-bottom:1px solid var(--border)">
+            <input type="text" id="equipe-busca" placeholder="Buscar técnico..."
+                   oninput="renderEquipeDropdownItems()" onclick="event.stopPropagation()"
+                   style="width:100%;box-sizing:border-box;background:var(--surface-3,#111);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-size:0.82rem;padding:6px 10px;outline:none;font-family:inherit;">
+          </div>
           <div id="equipe-lista"></div>
         </div>
       </div>
@@ -974,6 +1013,8 @@ let tecnicoEquipes    = [];
 let agEditandoId      = null;
 let equipesSelecionadas = []; // array de IDs (string)
 let equipeDropdownAberto = false;
+let diasBloqueados    = {}; // { 'YYYY-MM-DD': { id, motivo } }
+let bloqueios         = []; // bloqueios de técnicos
 let modoVisualizacao  = false;
 let roleAtual         = null;
 // numero_os agora vem direto do agendamento (campo ag.numero_os)
@@ -1028,7 +1069,7 @@ async function init() {
     if (btnSem) btnSem.style.display = 'none';
   }
 
-  await Promise.all([carregarObras(), carregarTecnicos()]);
+  await Promise.all([carregarObras(), carregarTecnicos(), carregarBloqueios(), carregarDiasBloqueados()]);
   preencherSelects();
   await carregarAgenda();
 }
@@ -1131,8 +1172,9 @@ function renderGrade(dias) {
   const grade    = document.getElementById('grade');
 
   grade.innerHTML = dias.map((dia, i) => {
-    const dataStr = fmtISO(dia);
-    const ags     = visiveis.filter(ag => ag.data === dataStr);
+    const dataStr  = fmtISO(dia);
+    const ags      = visiveis.filter(ag => ag.data === dataStr);
+    const podeEditar = ['agendamento','coordenador','supervisor'].includes(roleAtual);
 
     const cards = ags.length
       ? ags.map(cardHTML).join('')
@@ -1146,7 +1188,7 @@ function renderGrade(dias) {
             <div class="dia-data ${isHoje(dia) ? 'hoje' : ''}">${fmtBR(dia)}</div>
           </div>
           <div style="display:flex;align-items:center;gap:4px;">
-            ${['agendamento','coordenador','supervisor'].includes(roleAtual) ? `<button class="btn-dispatch-dia" onclick="dispararDia('${dataStr}')" title="Disparar plantão deste dia no WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>` : ''}
+            ${podeEditar ? `<button class="btn-dispatch-dia" onclick="dispararDia('${dataStr}')" title="Disparar plantão deste dia no WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>` : ''}
             ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo plantão"><i data-lucide="plus"></i></button>`}
           </div>
         </div>
@@ -1203,6 +1245,9 @@ function toggleEquipeDropdown() {
   dropdown.classList.toggle('aberto', equipeDropdownAberto);
   trigger.classList.toggle('aberto', equipeDropdownAberto);
   if (arrow) arrow.classList.toggle('rotated', equipeDropdownAberto);
+  if (equipeDropdownAberto) {
+    setTimeout(() => { const b = document.getElementById('equipe-busca'); if(b) b.focus(); }, 30);
+  }
 }
 
 function fecharEquipeDropdown() {
@@ -1215,8 +1260,17 @@ function fecharEquipeDropdown() {
   if (arrow)    arrow.classList.remove('rotated');
 }
 
-function toggleTecnicoEquipe(idStr, evt) {
+async function toggleTecnicoEquipe(idStr, evt) {
   if (evt) evt.stopPropagation();
+  // Verifica bloqueio de técnico na data selecionada
+  const dataAg = document.getElementById('f-data')?.value;
+  if (dataAg && !equipesSelecionadas.includes(idStr)) {
+    const bloq = tecnicoBloqueadoNaData(idStr, dataAg);
+    if (bloq) {
+      await alertModal('Técnico bloqueado', `O técnico não pode ser selecionado pois está bloqueado.\nMotivo: ${bloq.motivo}`, 'aviso');
+      return;
+    }
+  }
   equipesSelecionadas = equipesSelecionadas.includes(idStr) ? [] : [idStr];
   renderEquipeChips();
   renderEquipeDropdownItems();
@@ -1265,8 +1319,9 @@ function renderEquipeChips() {
 function renderEquipeDropdownItems() {
   const lista = document.getElementById('equipe-lista');
   if (!lista) return;
-
-  lista.innerHTML = tecnicos.map(t => {
+  const busca = (document.getElementById('equipe-busca')?.value || '').toLowerCase();
+  const filtrados = tecnicos.filter(t => !busca || t.nome.toLowerCase().includes(busca));
+  lista.innerHTML = filtrados.map(t => {
     const idStr      = String(t.id);
     const selecionado = equipesSelecionadas.includes(idStr);
     return `
@@ -2092,6 +2147,205 @@ async function exportarAgendaSharePoint() {
 
 // ── Iniciar ──────────────────────────────────────────────────
 init();
+
+// ── RELATÓRIO MENSAL DE PLANTÃO ──────────────────────────────
+const MESES_PT_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function abrirModalRelatorioMes() {
+  const now = new Date();
+  document.getElementById('rel-mes').value = now.getMonth() + 1;
+  document.getElementById('rel-ano').value = now.getFullYear();
+  document.getElementById('rel-erro').style.display = 'none';
+  document.getElementById('overlay-relatorio-mes').style.display = 'flex';
+  lucide.createIcons();
+}
+function fecharModalRelatorioMes() {
+  document.getElementById('overlay-relatorio-mes').style.display = 'none';
+}
+
+function valorPlantao(dataStr) {
+  // Feriado → R$100, Sáb ou Dom → R$75
+  if (diasBloqueados[dataStr]) return 100;
+  const dow = new Date(dataStr + 'T12:00').getDay();
+  return (dow === 0 || dow === 6) ? 75 : 75; // seg-sex não deveria aparecer no plantão
+}
+
+async function gerarRelatorioMes() {
+  const mes  = parseInt(document.getElementById('rel-mes').value);
+  const ano  = parseInt(document.getElementById('rel-ano').value);
+  const btn  = document.getElementById('btn-gerar-rel');
+  const erro = document.getElementById('rel-erro');
+  erro.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Gerando...';
+
+  try {
+    // 1. Busca agendamentos do mês
+    const ini = `${ano}-${String(mes).padStart(2,'0')}-01`;
+    const fim = new Date(ano, mes, 0).toISOString().slice(0,10);
+    const { data: ags, error: agErr } = await db.from('agendamentos')
+      .select('data, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, obras(nome_cliente), cliente_outro')
+      .gte('data', ini).lte('data', fim).neq('status','cancelado');
+    if (agErr) throw new Error(agErr.message);
+    if (!ags?.length) { erro.textContent = 'Sem plantões neste mês.'; erro.style.display = 'block'; btn.disabled = false; btn.textContent = 'Gerar e Enviar'; return; }
+
+    // 2. Garante que diasBloqueados está carregado
+    if (!Object.keys(diasBloqueados).length) await carregarDiasBloqueados();
+
+    // 3. Agrupa por técnico
+    const tecMap = {}; // tecId → { nome, dias: [{data, tipo, valor}] }
+    const addTec = (id, data) => {
+      if (!id) return;
+      const tec = tecnicos.find(t => t.id === id);
+      if (!tec) return;
+      if (!tecMap[id]) tecMap[id] = { nome: tec.nome, total: 0, dias: [] };
+      const valor = valorPlantao(data);
+      const dow   = new Date(data + 'T12:00').getDay();
+      const tipo  = diasBloqueados[data] ? `Feriado (${diasBloqueados[data].motivo.replace('Feriado Nacional: ','')})` : dow === 0 ? 'Domingo' : 'Sábado';
+      // evita duplicata do mesmo técnico no mesmo dia
+      if (!tecMap[id].dias.find(d => d.data === data)) {
+        tecMap[id].dias.push({ data, tipo, valor });
+        tecMap[id].total += valor;
+      }
+    };
+    ags.forEach(ag => {
+      [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].forEach(id => addTec(id, ag.data));
+    });
+
+    const tecs = Object.values(tecMap).sort((a,b) => a.nome.localeCompare(b.nome));
+    if (!tecs.length) { erro.textContent = 'Nenhum técnico encontrado.'; erro.style.display = 'block'; btn.disabled = false; btn.textContent = 'Gerar e Enviar'; return; }
+
+    // 4. Gera PDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const mesNome = MESES_PT_FULL[mes - 1];
+    const fmtData = iso => new Date(iso+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const brl = v => `R$ ${v.toFixed(2).replace('.',',')}`;
+
+    // Cabeçalho
+    doc.setFillColor(22, 22, 22);
+    doc.rect(0, 0, 210, 30, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(16); doc.setFont('helvetica','bold');
+    doc.text('Solução Técnica', 14, 12);
+    doc.setFontSize(11); doc.setFont('helvetica','normal');
+    doc.setTextColor(161,161,170);
+    doc.text(`Relatório de Plantão — ${mesNome} ${ano}`, 14, 20);
+    doc.setTextColor(62,207,142);
+    doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 27);
+
+    let y = 38;
+
+    tecs.forEach((tec, idx) => {
+      if (y > 250) { doc.addPage(); y = 20; }
+
+      // Nome técnico
+      doc.setFillColor(30, 30, 30);
+      doc.roundedRect(10, y, 190, 8, 2, 2, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(11); doc.setFont('helvetica','bold');
+      doc.text(tec.nome, 14, y + 5.5);
+      doc.setTextColor(62,207,142);
+      doc.text(brl(tec.total), 196, y + 5.5, { align: 'right' });
+      y += 11;
+
+      // Tabela de dias
+      const rows = tec.dias.sort((a,b) => a.data.localeCompare(b.data)).map(d => [
+        fmtData(d.data),
+        d.tipo,
+        brl(d.valor),
+      ]);
+
+      doc.autoTable({
+        startY: y,
+        head: [['Data', 'Tipo', 'Valor']],
+        body: rows,
+        margin: { left: 14, right: 14 },
+        styles: { fontSize: 9, cellPadding: 2.5, textColor: [220,220,220], fillColor: [20,20,20], lineColor: [50,50,50], lineWidth: 0.1 },
+        headStyles: { fillColor: [35,35,35], textColor: [150,150,150], fontStyle: 'bold', fontSize: 8 },
+        alternateRowStyles: { fillColor: [25,25,25] },
+        columnStyles: { 2: { halign: 'right', textColor: [62,207,142] } },
+      });
+      y = doc.lastAutoTable.finalY + 8;
+
+      if (idx < tecs.length - 1 && y > 240) { doc.addPage(); y = 20; }
+    });
+
+    // Resumo total geral
+    const totalGeral = tecs.reduce((s, t) => s + t.total, 0);
+    if (y > 260) { doc.addPage(); y = 20; }
+    doc.setFillColor(15, 40, 25);
+    doc.rect(10, y, 190, 10, 'F');
+    doc.setTextColor(62,207,142);
+    doc.setFontSize(12); doc.setFont('helvetica','bold');
+    doc.text('TOTAL GERAL', 14, y + 7);
+    doc.text(brl(totalGeral), 196, y + 7, { align: 'right' });
+
+    const pdfBlob = doc.output('blob');
+
+    // 5. Upload para SharePoint
+    btn.textContent = 'Enviando...';
+    const pasta   = `Agenda Tecnica/${ano}/Plantão`;
+    const arquivo = `Relatorio Plantao ${mesNome} ${ano}.pdf`;
+
+    const initRes = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
+      body: JSON.stringify({ path: pasta, filename: arquivo, contentType: 'application/pdf' }),
+    });
+    if (!initRes.ok) throw new Error((await initRes.json().catch(()=>({}))).error || `Erro ${initRes.status}`);
+    const { uploadUrl } = await initRes.json();
+    const putRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/pdf', 'Content-Range': `bytes 0-${pdfBlob.size-1}/${pdfBlob.size}` },
+      body: pdfBlob,
+    });
+    if (!putRes.ok && putRes.status !== 201 && putRes.status !== 200) throw new Error(`Upload falhou: ${putRes.status}`);
+
+    fecharModalRelatorioMes();
+    mostrarToast(`✅ Relatório "${arquivo}" enviado ao SharePoint!`, 'ok');
+
+  } catch(e) {
+    console.error('[relatorioMes]', e);
+    erro.textContent = 'Erro: ' + e.message;
+    erro.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Gerar e Enviar';
+  }
+}
+
+// ── BLOQUEIOS DE TÉCNICOS ────────────────────────────────────
+async function carregarBloqueios() {
+  const { data } = await db.from('tecnico_bloqueios').select('*').order('data_inicio');
+  bloqueios = data || [];
+}
+function tecnicoBloqueadoNaData(tecnicoId, dataStr) {
+  if (!dataStr) return null;
+  return bloqueios.find(b =>
+    String(b.tecnico_id) === String(tecnicoId) &&
+    dataStr >= b.data_inicio && dataStr <= b.data_fim
+  ) || null;
+}
+
+// ── DIAS BLOQUEADOS ──────────────────────────────────────────
+function calcularPascoa(ano) {
+  const a=ano%19,b=Math.floor(ano/100),c=ano%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;
+  return new Date(ano,mes-1,dia);
+}
+function feriadosNacionais(ano) {
+  const f=[], iso=d=>d.toISOString().slice(0,10), add=(d,m)=>f.push({data:d,motivo:m}), fx=(m,d,n)=>add(`${ano}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`,n);
+  fx(1,1,'Feriado Nacional: Confraternização Universal');fx(4,21,'Feriado Nacional: Tiradentes');fx(5,1,'Feriado Nacional: Dia do Trabalho');fx(9,7,'Feriado Nacional: Independência do Brasil');fx(10,12,'Feriado Nacional: Nossa Senhora Aparecida');fx(11,2,'Feriado Nacional: Finados');fx(11,15,'Feriado Nacional: Proclamação da República');fx(11,20,'Feriado Nacional: Consciência Negra');fx(12,25,'Feriado Nacional: Natal');
+  const p=calcularPascoa(ano);
+  add(iso(new Date(p-47*864e5)),'Feriado Nacional: Carnaval (Segunda)');add(iso(new Date(p-46*864e5)),'Feriado Nacional: Carnaval (Terça)');add(iso(new Date(p-2*864e5)),'Feriado Nacional: Sexta-feira Santa');add(iso(p),'Feriado Nacional: Páscoa');add(iso(new Date(p.getTime()+60*864e5)),'Feriado Nacional: Corpus Christi');
+  return f;
+}
+async function carregarDiasBloqueados() {
+  // Apenas lê — a inserção de feriados é feita pela Agenda Técnica
+  const { data } = await db.from('dias_bloqueados').select('*');
+  diasBloqueados = {};
+  (data||[]).forEach(d=>{ diasBloqueados[d.data]=d; });
+}
 </script>
 <script>lucide.createIcons(); applyTheme(localStorage.getItem('tema') || 'auto');</script>
 </body>
