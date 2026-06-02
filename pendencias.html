@@ -83,17 +83,25 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .busca-wrap input::placeholder{color:var(--text-3)}
 .busca-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none}
 
-/* ── Cards de pendência ── */
-.lista-grid{display:flex;flex-direction:column;gap:6px}
-.pend-card{background:var(--surface-1);border:1px solid var(--border);border-radius:8px;padding:13px 16px;display:flex;flex-direction:column;gap:8px;transition:border-color 150ms}
-.pend-card:hover{border-color:var(--border-hover)}
-.pend-card.urgente{border-left:3px solid var(--red)}
-.pend-card.resolvida{opacity:.5}
-.pend-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.pend-data-marcada{font-size:11px;font-weight:600;color:var(--primary);background:rgba(62,207,142,.08);border:1px solid rgba(62,207,142,.2);border-radius:4px;padding:2px 7px;white-space:nowrap}
+/* ── Tabela de pendências ── */
+.lista-grid{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.pend-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.pend-table thead{background:var(--bg)}
+.pend-table th{padding:7px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
+.pend-table td{padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;line-height:1.3}
+.pend-table tr:last-child td{border-bottom:none}
+.pend-table tbody tr:hover td{background:rgba(255,255,255,.02)}
+.pend-table tbody tr.urgente td:first-child{border-left:3px solid var(--red)}
+.pend-table tbody tr.resolvida{opacity:.45}
+.td-obra{font-weight:600;color:var(--text-1);max-width:200px;font-size:12.5px}
+.td-desc{color:var(--text-2);font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td-meta{color:var(--text-3);font-size:11px;white-space:nowrap}
+.pend-data-marcada{font-size:10px;font-weight:600;color:var(--primary);background:rgba(62,207,142,.08);border:1px solid rgba(62,207,142,.2);border-radius:4px;padding:1px 6px;white-space:nowrap;display:inline-block;margin-top:2px}
+.card-equipe-row{display:flex;flex-wrap:wrap;gap:3px}
+.card-meta{font-size:11px;color:var(--text-3)}
 
 /* Badges de status */
-.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;white-space:nowrap}
 .badge-aberta{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:var(--amber-text)}
 .badge-pendencia_cliente{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red-text)}
 .badge-pendencia_solucao{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);color:#A5B4FC}
@@ -101,31 +109,22 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .badge-urgente{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);color:var(--red-text);font-size:10px}
 .badge-equipe{font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px}
 
-/* Card: topo */
-.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
-.card-obra{font-size:15px;font-weight:600;color:var(--text-1);margin-bottom:3px;line-height:1.3}
-.card-equipe-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px}
-.card-meta{font-size:12px;color:var(--text-3)}
-
-/* Descrição */
-.card-descricao{font-size:13px;color:var(--text-2);line-height:1.55;white-space:pre-line}
-
-/* Ações */
-.card-acoes{display:flex;gap:7px;flex-wrap:wrap;padding-top:4px;border-top:1px solid var(--border)}
-.btn-st{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-2);font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 150ms}
+/* Ações inline */
+.td-acoes{white-space:nowrap;text-align:right}
+.btn-st{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text-2);font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 150ms}
 .btn-st:hover{border-color:var(--border-hover);color:var(--text-1)}
 .btn-st.active-resolvida{background:rgba(62,207,142,.1);border-color:rgba(62,207,142,.3);color:var(--primary)}
 .btn-st.active-pendencia_cliente{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:var(--red-text)}
 .btn-st.active-pendencia_solucao{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.3);color:#A5B4FC}
-.btn-st i{width:12px;height:12px}
-.btn-excluir{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-3);font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 150ms;margin-left:auto}
+.btn-st i{width:11px;height:11px}
+.btn-excluir{display:inline-flex;align-items:center;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text-3);font-size:11px;font-family:inherit;cursor:pointer;transition:all 150ms}
 .btn-excluir:hover{color:var(--red-text);border-color:rgba(239,68,68,.3)}
-.btn-excluir i{width:12px;height:12px}
+.btn-excluir i{width:11px;height:11px}
 
 /* ── Empty / loading ── */
-.empty-state{text-align:center;padding:64px 24px;color:var(--text-3);grid-column:1/-1}
+.empty-state{text-align:center;padding:64px 24px;color:var(--text-3)}
 .empty-state i{width:38px;height:38px;margin:0 auto 14px;display:block;opacity:.4}
-.spinner-wrap{text-align:center;padding:48px;grid-column:1/-1}
+.spinner-wrap{text-align:center;padding:48px}
 .spinner{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -401,50 +400,52 @@ function renderLista(){
     return new Date(b.criado_em) - new Date(a.criado_em);
   });
 
-  lista.innerHTML = ord.map(p=>{
+  const rows = ord.map(p=>{
     const st     = STATUS_INFO[p.status] || STATUS_INFO.aberta;
     const obra   = p.obras?.nome_cliente || p.obra_outro || '—';
-    const dataFmt = new Date(p.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const dataFmt = new Date(p.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'});
     const equipesBadges = equipesDe(p).map(eq=>`<span class="badge badge-equipe eq-${eq}">${escHtml(EQUIPE_LABEL[eq]||eq)}</span>`).join('');
     const dataMarcadaFmt = p.data_marcada
       ? new Date(p.data_marcada+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})
       : null;
 
-    return `<div class="pend-card ${p.urgente?'urgente':''} ${p.status==='resolvida'?'resolvida':''}" id="pcard-${p.id}">
-      <div class="pend-row" style="justify-content:space-between;align-items:flex-start;">
-        <div style="flex:1;min-width:0">
-          <div class="card-equipe-row" style="margin-bottom:4px">
-            ${equipesBadges}
-            ${p.urgente?`<span class="badge badge-urgente"><i data-lucide="alert-triangle" style="display:inline-block;width:10px;height:10px;vertical-align:middle"></i> Urgente</span>`:''}
-          </div>
-          <div class="pend-row" style="align-items:center;gap:10px">
-            <span class="card-obra" style="margin:0">${escHtml(obra)}</span>
-            ${dataMarcadaFmt?`<span class="pend-data-marcada"><i data-lucide="calendar-clock" style="display:inline-block;width:10px;height:10px;vertical-align:middle;margin-right:3px"></i>Data: ${dataMarcadaFmt}</span>`:''}
-          </div>
-          <div class="card-meta" style="margin-top:2px">Cadastrada em ${dataFmt}</div>
+    return `<tr class="${p.urgente?'urgente':''} ${p.status==='resolvida'?'resolvida':''}" id="pcard-${p.id}">
+      <td>
+        <div class="card-equipe-row">
+          ${equipesBadges}
+          ${p.urgente?`<span class="badge badge-urgente">Urgente</span>`:''}
         </div>
-        <span class="badge ${st.cls}" style="flex-shrink:0">${st.label}</span>
-      </div>
-      <div class="card-descricao" style="margin:0">${escHtml(p.descricao)}</div>
-      <div class="card-acoes">
-        <button class="btn-st ${p.status==='resolvida'?'active-resolvida':''}" onclick="mudarStatus(${p.id},'resolvida')">
-          <i data-lucide="check-circle-2"></i> Resolvida
-        </button>
-        <button class="btn-st ${p.status==='pendencia_cliente'?'active-pendencia_cliente':''}" onclick="mudarStatus(${p.id},'pendencia_cliente')">
-          <i data-lucide="user"></i> Pend. cliente
-        </button>
-        <button class="btn-st ${p.status==='pendencia_solucao'?'active-pendencia_solucao':''}" onclick="mudarStatus(${p.id},'pendencia_solucao')">
-          <i data-lucide="building-2"></i> Pend. Solução
-        </button>
-        <button class="btn-st" onclick="editarPendencia(${p.id})" style="margin-left:auto">
-          <i data-lucide="pencil"></i> Editar
-        </button>
-        <button class="btn-excluir" onclick="excluirPendencia(${p.id})">
-          <i data-lucide="trash-2"></i>
-        </button>
-      </div>
-    </div>`;
+      </td>
+      <td>
+        <div class="td-obra">${escHtml(obra)}</div>
+        ${dataMarcadaFmt?`<div class="pend-data-marcada">📅 Data marcada: ${dataMarcadaFmt}</div>`:''}
+      </td>
+      <td><div class="td-desc" title="${escHtml(p.descricao)}">${escHtml(p.descricao)}</div></td>
+      <td class="td-meta">${dataFmt}</td>
+      <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td class="td-acoes">
+        <div style="display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
+          <button class="btn-st ${p.status==='resolvida'?'active-resolvida':''}" onclick="mudarStatus(${p.id},'resolvida')" title="Resolvida"><i data-lucide="check-circle-2"></i></button>
+          <button class="btn-st ${p.status==='pendencia_cliente'?'active-pendencia_cliente':''}" onclick="mudarStatus(${p.id},'pendencia_cliente')" title="Pend. cliente"><i data-lucide="user"></i></button>
+          <button class="btn-st ${p.status==='pendencia_solucao'?'active-pendencia_solucao':''}" onclick="mudarStatus(${p.id},'pendencia_solucao')" title="Pend. Solução"><i data-lucide="building-2"></i></button>
+          <button class="btn-st" onclick="editarPendencia(${p.id})" title="Editar"><i data-lucide="pencil"></i></button>
+          <button class="btn-excluir" onclick="excluirPendencia(${p.id})" title="Excluir"><i data-lucide="trash-2"></i></button>
+        </div>
+      </td>
+    </tr>`;
   }).join('');
+
+  lista.innerHTML = `<table class="pend-table">
+    <thead><tr>
+      <th>Equipe</th>
+      <th>Obra / Cliente</th>
+      <th>Descrição</th>
+      <th>Cadastrada</th>
+      <th>Status</th>
+      <th style="text-align:right">Ações</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
 
   lucide.createIcons();
 }

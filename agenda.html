@@ -1538,6 +1538,13 @@ function toggleEquipeDropdown() {
   dropdown.classList.toggle('aberto', equipeDropdownAberto);
   trigger.classList.toggle('aberto', equipeDropdownAberto);
   if (arrow) arrow.classList.toggle('rotated', equipeDropdownAberto);
+  if (equipeDropdownAberto) {
+    // Foca o campo de busca para que digitar letras já filtre direto
+    setTimeout(() => {
+      const busca = document.getElementById('equipe-busca');
+      if (busca) busca.focus();
+    }, 30);
+  }
 }
 
 function fecharEquipeDropdown() {
