@@ -665,9 +665,11 @@
     <div class="status-row">
       <div class="status-card" style="--sc:#3ecf8e;--sc-dim:rgba(62,207,142,0.12)">
         <div class="sc-top"><div class="sc-icon"><i data-lucide="construction"></i></div><span class="sc-pct" id="sp-andamento-pct">—%</span></div>
-        <div class="sc-num" id="sp-andamento">—</div>
+        <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+          <div class="sc-num" id="sp-andamento">—</div>
+          <div id="sp-andamento-sub" style="font-size:15px;color:#2DD4BF;font-weight:700;white-space:nowrap"></div>
+        </div>
         <div class="sc-lbl">Obras em andamento</div>
-        <div class="sc-sub" id="sp-andamento-sub" style="font-size:11px;color:#2DD4BF;margin-top:4px;font-weight:600;min-height:14px"></div>
         <div class="sc-bar" id="sb-andamento" style="width:0%"></div>
       </div>
       <div class="status-card" style="--sc:#22c55e;--sc-dim:rgba(34,197,94,0.12)">
