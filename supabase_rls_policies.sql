@@ -1,3 +1,4 @@
+-- SAOS-AUDIT: build 2026-06-01 pós-auditoria
 -- Supabase RLS baseline - Solução Técnica
 -- Rode no SQL Editor do Supabase depois de conferir nomes de colunas/tabelas.
 -- Objetivo: usuários logados leem o que precisam; escrita fica limitada por perfil.

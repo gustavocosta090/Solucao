@@ -1,3 +1,4 @@
+// SAOS-AUDIT: build 2026-06-01 pós-auditoria
 // utils.js — Solução Técnica, build 2026-06-01j
 // Utilitários compartilhados. Carregado após @supabase/supabase-js via <script src="utils.js">.
 
@@ -16,9 +17,23 @@ db.auth.onAuthStateChange(function(event, session) {
   }
 });
 
-// Captura promises rejeitadas sem .catch() para não engolir erros silenciosamente
+// Captura erros JS e promises não tratadas — loga estruturado e exibe toast amigável
+function _logClientError(tipo, msg, detail) {
+  var entry = { ts: new Date().toISOString(), tipo: tipo, msg: msg, detail: detail,
+                page: location.pathname.split('/').pop() };
+  console.error('[SAOS]', JSON.stringify(entry));
+}
+
 window.addEventListener('unhandledrejection', function(e) {
-  console.error('[SAOS] Promise não tratada:', e.reason);
+  var msg = (e.reason && e.reason.message) ? e.reason.message : String(e.reason || 'Erro desconhecido');
+  _logClientError('unhandledrejection', msg, e.reason?.stack || null);
+  // Não exibe toast para erros de rede comuns (evita spam durante reconexão)
+  if (msg.includes('NetworkError') || msg.includes('Failed to fetch')) return;
+  if (typeof showToast === 'function') showToast('Erro inesperado: ' + msg, 'error');
+});
+
+window.addEventListener('error', function(e) {
+  _logClientError('uncaught', e.message, e.filename + ':' + e.lineno);
 });
 
 // ─── Escape HTML ────────────────────────────────────────────────

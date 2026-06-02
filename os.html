@@ -1,3 +1,4 @@
+<!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
 <!-- build: 2026-06-01q -->
 <html lang="pt-BR">
@@ -685,60 +686,15 @@ async function _carregarAgendamentosHoje() {
     .order('data', { ascending: true })
     .order('hora_inicio', { ascending: true });
 
-  // Supabase: OR nos 4 campos
-  // Agendamentos — fallback em cascata (auxiliar2/3 podem não existir na tabela)
-  let agsRaw = null;
   const agR1 = await agQuery.or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`);
-  if (!agR1.error) {
-    agsRaw = agR1.data;
-  } else {
-    const agR2 = await db.from('agendamentos')
-      .select('*, obras(id, nome_cliente, endereco)')
-      .gte('data', dataInicio)
-      .lte('data', hoje)
-      .order('data', { ascending: true })
-      .order('hora_inicio', { ascending: true })
-      .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id}`);
-    if (!agR2.error) {
-      agsRaw = agR2.data;
-    } else {
-      const agR3 = await db.from('agendamentos')
-        .select('*, obras(id, nome_cliente, endereco)')
-        .gte('data', dataInicio)
-        .lte('data', hoje)
-        .order('data', { ascending: true })
-        .eq('tecnico_id', id);
-      agsRaw = agR3.data || [];
-    }
-  }
+  const agsRaw = agR1.data || [];
 
-  // OSs: filtra pelo mesmo janela de 60 dias dos agendamentos para evitar crescimento ilimitado
-  let osRaw = null;
-
+  // OSs: janela de 60 dias dos agendamentos para evitar crescimento ilimitado
   const osR1 = await db.from('ordens_de_servico')
     .select('id, agendamento_id, obra_id, status_aprovacao, data_servico, criado_em, tecnico_id')
     .gte('data_servico', dataInicio)
     .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`);
-
-  if (!osR1.error) {
-    osRaw = osR1.data;
-  } else {
-    // Fallback 2: sem auxiliar2/3
-    const osR2 = await db.from('ordens_de_servico')
-      .select('id, obra_id, status_aprovacao, data_servico, criado_em, tecnico_id')
-      .gte('data_servico', dataInicio)
-      .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id}`);
-    if (!osR2.error) {
-      osRaw = osR2.data;
-    } else {
-      // Fallback 3: mínimo — só tecnico_id
-      const osR3 = await db.from('ordens_de_servico')
-        .select('id, obra_id, status_aprovacao, data_servico, criado_em, tecnico_id')
-        .gte('data_servico', dataInicio)
-        .eq('tecnico_id', id);
-      osRaw = osR3.data || [];
-    }
-  }
+  const osRaw = osR1.data || [];
 
   const lista = document.getElementById('lista-agendamentos');
 
@@ -1622,68 +1578,49 @@ async function enviarOS() {
     let error;
     let savedOsId = null;
 
-    // Helper: remove colunas que podem não existir ainda no schema
-    function payloadSemColunasNovas(p) {
-      const f = { ...p };
-      delete f.agendamento_id; delete f.cliente_outro;
-      delete f.auxiliar2_id;   delete f.auxiliar3_id;
-      delete f.arquivos_config_urls;
-      return f;
-    }
-
-    function erroColuna(e) {
-      if (!e) return false;
-      const msg = e.message || '';
-      return msg.includes('auxiliar2_id') || msg.includes('auxiliar3_id') ||
-             msg.includes('agendamento_id') || msg.includes('cliente_outro') ||
-             msg.includes('arquivos_config_urls') ||
-             msg.includes('schema cache') || msg.includes('column');
-    }
-
     if (osSelecionadaId) {
       // UPDATE da OS pendente existente (criada automaticamente pela agenda)
       const res = await db.from('ordens_de_servico').update(payload).eq('id', osSelecionadaId);
       error = res.error;
-      // Fallback: tenta sem colunas novas caso não existam ainda
-      if (erroColuna(error)) {
-        const r2 = await db.from('ordens_de_servico').update(payloadSemColunasNovas(payload)).eq('id', osSelecionadaId);
-        error = r2.error;
-      }
       if (!error) savedOsId = osSelecionadaId;
     } else {
       // INSERT novo — recupera o id gerado para montar o número da OS
       const res = await db.from('ordens_de_servico').insert(payload).select('id').single();
       error = res.error;
       if (!error) savedOsId = res.data?.id;
-      // Fallback: sem colunas novas
-      if (erroColuna(error)) {
-        const r2 = await db.from('ordens_de_servico').insert(payloadSemColunasNovas(payload)).select('id').single();
-        error = r2.error;
-        if (!error) savedOsId = r2.data?.id;
-      }
     }
 
     if (error) { showToast('Erro ao enviar OS: ' + error.message, 'error'); return; }
 
-    // ── Gerar, salvar e exibir o número da OS (formato YYYY-MM-EE-NNN) ──
-    let equipeNome = '';   // nome da equipe para subpastas SharePoint ("Elétrica", etc.)
+    // ── Número da OS: vem do agendamento (pre-atribuído). Gera fallback apenas para OSs legadas. ──
+    let equipeNome = '';
     if (savedOsId) {
       try {
-        const EQUIPE_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
         const tecId = payload.tecnico_id || tecnicoLogado?.id;
         const { data: teRow } = await db.from('tecnico_equipes')
           .select('equipe_id, equipes(nome)')
           .eq('tecnico_id', tecId).maybeSingle();
-        const equipeId = teRow?.equipe_id || 0;
-        equipeNome     = teRow?.equipes?.nome || '';   // ex: "Elétrica", "Cabeamento"
-        const dt = payload.data_servico || new Date().toISOString().slice(0,10);
-        const [y, m] = dt.split('-');
-        const cod = osEhPlantao ? '09' : (EQUIPE_COD[equipeId] || '00');
+        equipeNome = teRow?.equipes?.nome || '';
         if (osEhPlantao) equipeNome = 'Plantão';
-        const numeroOS = `${y}-${m}-${cod}-${String(savedOsId).padStart(3,'0')}`;
-        await db.from('ordens_de_servico').update({ numero_os: numeroOS }).eq('id', savedOsId);
+
+        // Lê numero_os já gravado (vindo do agendamento via batch insert)
+        const { data: osRow } = await db.from('ordens_de_servico')
+          .select('numero_os').eq('id', savedOsId).maybeSingle();
+        let numeroOS = osRow?.numero_os;
+
+        if (!numeroOS) {
+          // Fallback para OSs sem número pré-atribuído (registros antigos)
+          const EQUIPE_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
+          const equipeId = teRow?.equipe_id || 0;
+          const dt = payload.data_servico || new Date().toISOString().slice(0,10);
+          const [y, m] = dt.split('-');
+          const cod = osEhPlantao ? '09' : (EQUIPE_COD[equipeId] || '00');
+          numeroOS = `${y}-${m}-${cod}-${String(savedOsId).padStart(4,'0')}`;
+          await db.from('ordens_de_servico').update({ numero_os: numeroOS }).eq('id', savedOsId);
+        }
+
         document.getElementById('os-numero').textContent = numeroOS;
-      } catch(e) { console.warn('Não foi possível salvar número da OS:', e); }
+      } catch(e) { console.warn('Não foi possível obter número da OS:', e); }
     }
 
     // ── Upload fotos com nome definitivo (numeroOS já conhecido) ────────

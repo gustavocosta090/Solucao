@@ -1,9 +1,40 @@
+// SAOS-AUDIT: build 2026-06-01 pós-auditoria
 // api/foto.js — proxy de imagens/arquivos do SharePoint
-// build: 2026-06-01g
+// build: 2026-06-01i
 // GET /api/foto?path=Ordens%20de%20Servi%C3%A7o%2Fcliente%2Farquivo.jpg
-// Busca o arquivo server-side (sem autenticação do usuário) e entrega pro browser.
+// Busca o arquivo server-side e entrega pro browser. Requer sessão Supabase válida.
 
-import { getToken, getSiteId } from './_sharepoint.js';
+import { getToken, getSiteId, fetchComRetry } from './_sharepoint.js';
+
+// ── Rate limiter in-memory (best-effort em serverless) ────────────────────────
+// 100 requisições por minuto por usuário — protege contra scraping de fotos
+const _fotoRate   = new Map();
+const FOTO_MAX    = 100;
+const FOTO_WINDOW = 60_000;
+
+function checkFotoRateLimit(userId) {
+  const now  = Date.now();
+  const slot = _fotoRate.get(userId) || { count: 0, windowStart: now };
+  if (now - slot.windowStart > FOTO_WINDOW) { slot.count = 1; slot.windowStart = now; }
+  else slot.count++;
+  _fotoRate.set(userId, slot);
+  return slot.count <= FOTO_MAX;
+}
+
+const SUPABASE_URL      = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
+
+async function validarSessaoSupabase(req) {
+  const auth     = req.headers.authorization || '';
+  const tokenJwt = auth.replace(/^Bearer\s+/i, '').trim();
+  if (!tokenJwt) return null;
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${tokenJwt}` },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
 
 function caminhoFotoSeguro(filePath) {
   const path = String(filePath || '').trim();
@@ -41,6 +72,13 @@ export default async function handler(req, res) {
   if (!filePath) return res.status(400).send('path obrigatório');
   if (!caminhoFotoSeguro(filePath)) return res.status(400).send('path inválido');
 
+  const user = await validarSessaoSupabase(req);
+  if (!user?.id) return res.status(401).send('Sessão inválida ou expirada');
+
+  if (!checkFotoRateLimit(user.id)) {
+    return res.status(429).send('Limite de requisições atingido. Aguarde 1 minuto.');
+  }
+
   try {
     const token  = await getToken();
     const siteId = await getSiteId(token);
@@ -53,7 +91,7 @@ export default async function handler(req, res) {
     const isVideo = ['mp4', 'mov', 'avi', 'webm'].includes(ext);
 
     if (isVideo) {
-      const metaRes = await fetch(
+      const metaRes = await fetchComRetry(
         `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -66,8 +104,8 @@ export default async function handler(req, res) {
       return res.redirect(302, downloadUrl);
     }
 
-    // Imagens e PDFs: proxy normal (arquivos pequenos)
-    const fileRes = await fetch(
+    // Imagens e PDFs: stream direto — não carrega o arquivo inteiro em RAM
+    const fileRes = await fetchComRetry(
       `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}:/content`,
       {
         headers:  { Authorization: `Bearer ${token}` },
@@ -80,13 +118,15 @@ export default async function handler(req, res) {
       return res.status(fileRes.status).send('Arquivo não encontrado');
     }
 
-    const contentType = fileRes.headers.get('content-type') || 'image/jpeg';
-    const buffer      = Buffer.from(await fileRes.arrayBuffer());
+    const contentType   = fileRes.headers.get('content-type')   || 'image/jpeg';
+    const contentLength = fileRes.headers.get('content-length');
 
-    res.setHeader('Content-Type',   contentType);
-    res.setHeader('Cache-Control',  'public, max-age=86400, immutable'); // cache 24h no browser
-    res.setHeader('Content-Length', buffer.length);
-    return res.send(buffer);
+    res.setHeader('Content-Type',  contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+
+    const { Readable } = await import('node:stream');
+    Readable.fromWeb(fileRes.body).pipe(res);
 
   } catch (e) {
     console.error('[api/foto]', e.message);

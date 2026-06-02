@@ -1,10 +1,11 @@
+// SAOS-AUDIT: build 2026-06-01 pós-auditoria
 // api/criar-pastas.js — cria estrutura de pastas SharePoint para todos os clientes
 // build: 2026-06-01g
 // Endpoint de uso administrativo, protegido por token em variável de ambiente.
 // Chamada: POST /api/criar-pastas?inicio=0&limite=1
 // Header: Authorization: Bearer <CRIAR_PASTAS_TOKEN>
 
-import { getToken, getSiteId } from './_sharepoint.js';
+import { getToken, getSiteId, fetchComRetry } from './_sharepoint.js';
 
 const TOKEN_ACESSO  = process.env.CRIAR_PASTAS_TOKEN;
 const SUPABASE_URL  = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
@@ -15,18 +16,6 @@ const ANO           = '2026';
 const EQUIPE_COD    = { 1: '01', 2: '02', 3: '03', 4: '04', 5: '05' };
 const caminhosCriadosNaExecucao = new Set();
 
-async function fetchComTimeout(url, options = {}, ms = 15000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } catch (e) {
-    if (e.name === 'AbortError') throw new Error(`Timeout ao chamar ${url}`);
-    throw e;
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 function nomePastaCliente(nome) {
   return (nome || 'Sem Cliente')
@@ -52,11 +41,11 @@ async function criarCaminho(token, siteId, caminhoCompleto) {
       ? `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${parentEncoded}:/children`
       : `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root/children`;
 
-    const res = await fetchComTimeout(url, {
+    const res = await fetchComRetry(url, {
       method:  'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body:    JSON.stringify({ name: nomePasta, folder: {}, '@microsoft.graph.conflictBehavior': 'fail' }),
-    }, 12000);
+    }, { timeout: 12000 });
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -72,9 +61,9 @@ async function criarCaminho(token, siteId, caminhoCompleto) {
 }
 
 async function supabaseFetch(tabela, params = '') {
-  const res = await fetchComTimeout(`${SUPABASE_URL}/rest/v1/${tabela}${params}`, {
+  const res = await fetchComRetry(`${SUPABASE_URL}/rest/v1/${tabela}${params}`, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  }, 12000);
+  }, { timeout: 12000 });
   if (!res.ok) throw new Error(`Supabase ${tabela} (${res.status}): ${await res.text()}`);
   return res.json();
 }

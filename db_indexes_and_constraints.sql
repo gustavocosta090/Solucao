@@ -1,3 +1,4 @@
+-- SAOS-AUDIT: build 2026-06-01 pós-auditoria
 -- ─────────────────────────────────────────────────────────────
 -- SAOS — Índices de performance e constraints de unicidade
 -- Execute no Supabase SQL Editor

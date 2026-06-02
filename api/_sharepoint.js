@@ -1,5 +1,6 @@
+// SAOS-AUDIT: build 2026-06-01 pós-auditoria
 // api/_sharepoint.js — autenticação compartilhada SharePoint/Graph API
-// build: 2026-06-01b
+// build: 2026-06-01c
 // Arquivo privado (prefixo _), não exposto como rota pelo Vercel.
 
 let _cachedSiteId   = null;
@@ -17,6 +18,43 @@ async function fetchComTimeout(url, options = {}, ms = 15000) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Retry com backoff exponencial para erros transientes do Graph API (429, 502, 503)
+// maxRetries = número de tentativas extras após a primeira
+export async function fetchComRetry(url, options = {}, { timeout = 15000, maxRetries = 3, baseDelay = 500 } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetchComTimeout(url, options, timeout);
+
+      // Sucesso ou erro definitivo (4xx exceto 429) — não retenta
+      if (res.ok || (res.status < 500 && res.status !== 429)) return res;
+
+      // 429: respeita Retry-After se presente
+      if (res.status === 429) {
+        const retryAfter = parseInt(res.headers.get('Retry-After') || '0', 10);
+        const delay = (retryAfter > 0 ? retryAfter * 1000 : baseDelay * 2 ** attempt);
+        if (attempt < maxRetries) await new Promise(r => setTimeout(r, delay));
+        lastErr = new Error(`Graph API 429 — throttled`);
+        continue;
+      }
+
+      // 502/503: backoff exponencial
+      if (attempt < maxRetries) await new Promise(r => setTimeout(r, baseDelay * 2 ** attempt));
+      lastErr = new Error(`Graph API ${res.status}`);
+
+    } catch (e) {
+      lastErr = e;
+      if (attempt < maxRetries) await new Promise(r => setTimeout(r, baseDelay * 2 ** attempt));
+    }
+  }
+  logErr('fetchComRetry', `Esgotadas ${maxRetries + 1} tentativas`, { url: url.split('?')[0], message: lastErr?.message });
+  throw lastErr;
+}
+
+function logErr(fn, msg, extra = {}) {
+  console.error(JSON.stringify({ ts: new Date().toISOString(), fn, msg, ...extra }));
 }
 
 export async function getToken() {
@@ -37,7 +75,10 @@ export async function getToken() {
   );
 
   const data = await res.json();
-  if (!data.access_token) throw new Error('Token error: ' + JSON.stringify(data));
+  if (!data.access_token) {
+    logErr('getToken', 'Falha ao obter token MS', { error: data.error, desc: data.error_description });
+    throw new Error('Falha de autenticação com Microsoft Graph');
+  }
 
   _cachedToken    = data.access_token;
   _tokenExpiresAt = Date.now() + data.expires_in * 1000;
@@ -80,10 +121,10 @@ export async function getSiteId(token) {
   );
   if (found?.id) { _cachedSiteId = found.id; return _cachedSiteId; }
 
-  throw new Error(
-    `Site SharePoint não encontrado. ` +
-    `Host: "${host}", Path: "${sitePath}". ` +
-    `T1: ${d1.error?.code}. ` +
-    `T2: ${d2.error?.code || d2.value?.length + ' sites'}`
-  );
+  logErr('getSiteId', 'Site SharePoint não encontrado', {
+    host, sitePath,
+    t1: d1.error?.code,
+    t2: d2.error?.code || `${d2.value?.length ?? 0} sites encontrados`,
+  });
+  throw new Error(`Site SharePoint não encontrado. Host: "${host}", Path: "${sitePath}"`);
 }

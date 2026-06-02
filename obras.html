@@ -1,3 +1,4 @@
+<!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
 <!-- build: 2026-06-01n -->
 <html lang="pt-BR">
@@ -877,11 +878,13 @@
   let faseFiltro  = 'todas';
   let termoBusca  = '';
   // ── Auth check ──────────────────────────────────────────────
-  let userRole = 'tecnico';
+  let userRole    = 'tecnico';
+  let _authUserId = null;
 
   async function init() {
     const { data: { session } } = await db.auth.getSession();
     if (!session) { window.location.href = 'login.html'; return; }
+    _authUserId = session.user.id;
 
     // Buscar role e nome do usuário
     const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
@@ -917,6 +920,7 @@
     const { data, error } = await db
       .from('obras')
       .select('*, consultores(nome)')
+      .is('excluida_em', null)
       .order('criado_em', { ascending: false });
 
     if (error) { mostrarErro(error); return; }
@@ -1038,23 +1042,48 @@
       </div>`;
   }
 
-  // ── Apagar obra ─────────────────────────────────────────────
+  // ── Apagar obra (soft delete) ────────────────────────────────
   async function deletarObra(id, nomeCliente, event) {
     event.stopPropagation();
 
-    const ok = confirm(`Apagar a obra "${nomeCliente}"?\n\nEsta ação não pode ser desfeita.`);
-    if (!ok) return;
+    // Verificar se há OSs concluídas vinculadas
+    const { data: osVinculadas } = await db
+      .from('ordens_de_servico')
+      .select('id')
+      .eq('obra_id', id)
+      .in('status_aprovacao', ['concluida', 'aprovada'])
+      .limit(1);
 
-    const { error } = await db.from('obras').delete().eq('id', id);
-
-    if (error) {
-      showToast('Erro ao apagar obra: ' + error.message, 'error');
+    if (osVinculadas && osVinculadas.length > 0) {
+      showToast(`"${nomeCliente}" possui Ordens de Serviço concluídas e não pode ser excluída.`, 'error');
       return;
     }
 
+    const ok = confirm(`Arquivar a obra "${nomeCliente}"?\n\nEla ficará oculta mas pode ser restaurada pelo coordenador.`);
+    if (!ok) return;
+
+    const agora = new Date().toISOString();
+    const { error } = await db.from('obras').update({ excluida_em: agora }).eq('id', id);
+
+    if (error) {
+      showToast('Erro ao arquivar obra: ' + error.message, 'error');
+      return;
+    }
+
+    // Audit log (fire-and-forget)
+    db.from('audit_log').insert({
+      user_id:      _authUserId,
+      tabela:       'obras',
+      operacao:     'DELETE',
+      registro_id:  String(id),
+      dados_antes:  { nome_cliente: nomeCliente },
+      dados_depois: { excluida_em: agora },
+      criado_em:    agora,
+    });
+
     todasObras = todasObras.filter(o => o.id !== id);
     renderizar();
-    showToast(`Obra "${nomeCliente}" apagada com sucesso.`, 'success');
+    showToast(`Obra "${nomeCliente}" arquivada com sucesso.`, 'success');
   }
 
   // ── Mostrar erro amigável ───────────────────────────────────

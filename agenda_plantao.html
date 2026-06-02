@@ -1,3 +1,4 @@
+<!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
 <!-- build: 2026-06-01g -->
 <html lang="pt-BR">
@@ -975,7 +976,7 @@ let equipesSelecionadas = []; // array de IDs (string)
 let equipeDropdownAberto = false;
 let modoVisualizacao  = false;
 let roleAtual         = null;
-let osNumeroMap       = {}; // agendamento_id → numero_os
+// numero_os agora vem direto do agendamento (campo ag.numero_os)
 const DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -986,10 +987,13 @@ const STATUS_LABEL = {
 };
 
 // ── Init ─────────────────────────────────────────────────────
+let _authUserId = null;
+
 async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
-  jwtToken = session.access_token;
+  jwtToken    = session.access_token;
+  _authUserId = session.user.id;
 
   const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
   renderTopbar(eu?.nome, eu?.role, 'agenda-plantao');
@@ -1090,10 +1094,9 @@ async function carregarAgenda() {
   document.getElementById('periodo-label').textContent =
     `${DIAS[0]}, ${fmtBR(dias[0])} — ${DIAS[6]}, ${fmtBR(dias[6])}`;
 
-  const [agResult, osResult] = await Promise.all([
-    db.from('agendamentos').select('*, obras(nome_cliente, endereco, arquiteto_responsavel, consultores(nome))').gte('data', ini).lte('data', fim).order('hora_inicio'),
-    db.from('ordens_de_servico').select('agendamento_id, numero_os').gte('data_servico', ini).lte('data_servico', fim).not('numero_os', 'is', null)
-  ]);
+  const agResult = await db.from('agendamentos')
+    .select('*, numero_os, obras(nome_cliente, endereco, arquiteto_responsavel, consultores(nome))')
+    .gte('data', ini).lte('data', fim).order('hora_inicio');
 
   if (agResult.error) {
     document.getElementById('grade').innerHTML =
@@ -1102,14 +1105,6 @@ async function carregarAgenda() {
   }
 
   agendamentos = (agResult.data || []).filter(ag => ag.cliente_outro === 'Plantão de automação e rede');
-
-  // Monta mapa de número de OS por agendamento (usa o primeiro encontrado)
-  osNumeroMap = {};
-  (osResult.data || []).forEach(os => {
-    if (os.agendamento_id && os.numero_os && !osNumeroMap[os.agendamento_id]) {
-      osNumeroMap[os.agendamento_id] = os.numero_os;
-    }
-  });
 
   renderGrade(dias);
 }
@@ -1189,7 +1184,7 @@ function cardHTML(ag) {
       ${ag.obras?.consultores?.nome ? `<div class="ag-detalhe"><i data-lucide="user-check"></i>Consultor: ${escHtml(ag.obras.consultores.nome)}</div>` : ''}
       ${ag.veiculo ? `<div class="ag-detalhe"><i data-lucide="car"></i>${escHtml(ag.veiculo)}</div>` : ''}
       <span class="ag-badge badge-${escHtml(status)}">${escHtml(STATUS_LABEL[status] || status)}</span>
-      ${osNumeroMap[ag.id] ? `<div style="margin-top:5px;font-size:0.66rem;font-weight:700;color:var(--primary);letter-spacing:0.04em;opacity:0.9;">OS ${escHtml(osNumeroMap[ag.id])}</div>` : ''}
+      ${ag.numero_os ? `<div style="margin-top:5px;font-size:0.66rem;font-weight:700;color:var(--primary);letter-spacing:0.04em;opacity:0.9;">OS ${escHtml(ag.numero_os)}</div>` : ''}
     </div>`;
 }
 
@@ -1438,6 +1433,16 @@ async function salvarAgendamento() {
   // Mapeia equipe → colunas DB (max 4)
   const [id0, id1, id2, id3] = equipesSelecionadas;
 
+  // Gera número de OS antes de salvar (somente para novo agendamento)
+  let numeroOSGerado = null;
+  if (!agEditandoId && status !== 'viagem') {
+    const { data: seqData, error: seqErr } = await db.rpc('proximo_numero_os');
+    if (!seqErr && seqData != null) {
+      const [y, m] = data.split('-');
+      numeroOSGerado = `${y}-${m}-09-${String(seqData).padStart(4, '0')}`;
+    }
+  }
+
   const payload = {
     obra_id:        obraVal !== 'outro' ? parseInt(obraVal) : null,
     cliente_outro:  obraVal === 'outro' ? nomeOutro          : null,
@@ -1447,10 +1452,11 @@ async function salvarAgendamento() {
     auxiliar2_id:   id2 ? parseInt(id2) : null,
     auxiliar3_id:   id3 ? parseInt(id3) : null,
     data, status,
-    hora_inicio: inicio  || null,
-    hora_fim:    null,
-    veiculo:     veiculo || null,
-    servico:     servico || 'Plantão de automação e rede',
+    hora_inicio:  inicio           || null,
+    hora_fim:     null,
+    veiculo:      veiculo          || null,
+    servico:      servico          || 'Plantão de automação e rede',
+    numero_os:    numeroOSGerado,
   };
 
   // Retorna { error, id } — id é o agendamento inserido/editado
@@ -1464,32 +1470,9 @@ async function salvarAgendamento() {
     }
   };
 
-  let result = await tentarSalvar(payload);
-  let error  = result.error;
+  let result    = await tentarSalvar(payload);
+  let error     = result.error;
   let savedAgId = result.id;
-
-  // Fallback gracioso se colunas novas ainda não existem no banco
-  if (error && (
-    error.message.includes('auxiliar2_id') ||
-    error.message.includes('auxiliar3_id') ||
-    error.message.includes('cliente_outro') ||
-    error.message.includes('endereco_outro')
-  )) {
-    const fallback = {
-      obra_id:     payload.obra_id,
-      tecnico_id:  payload.tecnico_id,
-      auxiliar_id: payload.auxiliar_id,
-      data:        payload.data,
-      status:      payload.status,
-      hora_inicio: payload.hora_inicio,
-      hora_fim:    payload.hora_fim,
-      veiculo:     payload.veiculo,
-      servico:     payload.servico,
-    };
-    result    = await tentarSalvar(fallback);
-    error     = result.error;
-    savedAgId = result.id;
-  }
 
   if (error) {
     erroEl.textContent   = 'Erro ao salvar: ' + error.message;
@@ -1502,39 +1485,21 @@ async function salvarAgendamento() {
         .filter(Boolean)
         .filter((id, idx, arr) => arr.indexOf(id) === idx);
 
-      for (const tecnicoId of equipeOS) {
-        const osPayload = {
-          agendamento_id:   savedAgId,
-          obra_id:          payload.obra_id,
-          cliente_outro:    payload.cliente_outro   || null,
-          endereco_servico: endereco                || null,
-          tecnico_id:       tecnicoId,
-          data_servico:     data,
-          tipo_servico:      'plantao',
-          servico_planejado: 'Plantão de automação e rede',
-          status_aprovacao: 'pendente',
-          criado_em:        new Date().toISOString(),
-        };
+      const agora = new Date().toISOString();
+      const osPayloads = equipeOS.map(tecnicoId => ({
+        agendamento_id:    savedAgId,
+        obra_id:           payload.obra_id,
+        tecnico_id:        tecnicoId,
+        data_servico:      data,
+        tipo_servico:      'plantao',
+        servico_planejado: 'Plantão de automação e rede',
+        status_aprovacao:  'pendente',
+        numero_os:         numeroOSGerado,
+        criado_em:         agora,
+      }));
 
-        let { error: osErr } = await db.from('ordens_de_servico').insert(osPayload);
-
-        if (osErr) {
-          const { agendamento_id: _a, endereco_servico: _e, cliente_outro: _c, ...l2 } = osPayload;
-          const r2 = await db.from('ordens_de_servico').insert(l2);
-
-          if (r2.error) {
-            const r3 = await db.from('ordens_de_servico').insert({
-              obra_id:          payload.obra_id,
-              tecnico_id:       tecnicoId,
-              data_servico:     data,
-              servico_planejado: servico || null,
-              status_aprovacao: 'pendente',
-              criado_em:        new Date().toISOString(),
-            });
-            if (r3.error) console.warn('OS pendente não criada:', r3.error.message);
-          }
-        }
-      }
+      const { error: osErr } = await db.from('ordens_de_servico').insert(osPayloads);
+      if (osErr) console.warn('[SAOS] OS plantão não criadas:', osErr.message);
     }
 
     fecharModal();
@@ -1549,31 +1514,47 @@ async function salvarAgendamento() {
 // ── Excluir agendamento ──────────────────────────────────────
 async function excluirAgendamento() {
   if (!agEditandoId) return;
-  confirmModal('Excluir este agendamento? As OSs pendentes vinculadas também serão removidas.', async () => {
+  confirmModal('Excluir este agendamento? As OSs pendentes vinculadas serão canceladas.', async () => {
 
-  // Apagar OSs pendentes vinculadas (não apaga OSs já concluídas)
+  // Cancela OSs pendentes vinculadas (preserva número para histórico)
   const ag = agendamentos.find(a => a.id === agEditandoId);
   if (ag) {
-    // Tenta por agendamento_id primeiro (se coluna existir)
     const porAgendamento = await db
       .from('ordens_de_servico')
-      .delete()
+      .update({ status_aprovacao: 'cancelada' })
       .eq('agendamento_id', agEditandoId)
       .eq('status_aprovacao', 'pendente');
 
     if (porAgendamento.error && ag.obra_id && ag.data) {
-      // Fallback: busca por obra_id + data_servico
       await db
         .from('ordens_de_servico')
-        .delete()
+        .update({ status_aprovacao: 'cancelada' })
         .eq('obra_id', ag.obra_id)
         .eq('data_servico', ag.data)
         .eq('status_aprovacao', 'pendente');
     }
   }
 
+  const agParaDeletar = agendamentos.find(a => a.id === agEditandoId);
   const { error } = await db.from('agendamentos').delete().eq('id', agEditandoId);
   if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
+
+  // Audit log (fire-and-forget)
+  db.from('audit_log').insert({
+    user_id:      _authUserId,
+    tabela:       'agendamentos',
+    operacao:     'DELETE',
+    registro_id:  String(agEditandoId),
+    dados_antes:  agParaDeletar ? {
+      obra_id:    agParaDeletar.obra_id,
+      data:       agParaDeletar.data,
+      numero_os:  agParaDeletar.numero_os,
+      tecnico_id: agParaDeletar.tecnico_id,
+    } : null,
+    dados_depois: null,
+    criado_em:    new Date().toISOString(),
+  });
+
   fecharModal();
   await carregarAgenda();
   }); // confirmModal

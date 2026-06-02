@@ -1,3 +1,4 @@
+<!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
 <!-- build: 2026-06-01r -->
 <html lang="pt-BR">
@@ -1257,6 +1258,9 @@
 </div>
 
 <div class="container" id="osContainer">
+  <div id="aviso-periodo" style="margin-bottom:10px;padding:8px 14px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-size:12px;color:#FCD34D;display:none;">
+    ⚠ Exibindo OSs dos últimos 90 dias. Use os filtros de data abaixo para ampliar o período.
+  </div>
   <div class="table-wrap">
     <div id="loadingEl" class="loading">
       <span class="spinner"></span>
@@ -1450,6 +1454,8 @@ let currentPage = 1;
 const PER_PAGE = 25;
 let sortField = 'data_servico';
 let sortDir = 'desc';
+// Data de corte atual dos dados em memória — usada para saber se precisa re-buscar
+let _osDataCorte = null;
 let lbFotos = [];
 let lbIdx = 0;
 let osSendoVisualizada = null;
@@ -1492,18 +1498,28 @@ async function carregarTecnicos() {
 const EQUIPE_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
 
 function formatarNumeroOS(os) {
+  if (os.numero_os) return os.numero_os;
+  // Fallback para OSs antigas sem número pré-atribuído
   const dt   = os.data_servico || (os.criado_em ? os.criado_em.slice(0,10) : null);
   const [y, m] = dt ? dt.split('-') : ['0000', '00'];
   const cod  = EQUIPE_COD[os.equipeId] || '00';
-  const num  = String(os.id).padStart(3, '0');
+  const num  = String(os.id).padStart(4, '0');
   return `${y}-${m}-${cod}-${num}`;
 }
 
 async function carregarOSs() {
-  // Busca OSs, técnicos e equipes do técnico para montar o número da OS
+  // Busca OSs dos últimos 90 dias por padrão — evita carregar todo o histórico de uma vez.
+  // O usuário pode ampliar o período usando os filtros de data (re-fetch automático).
+  const dataCorte = new Date();
+  dataCorte.setDate(dataCorte.getDate() - 90);
+  const dataCorteISO = dataCorte.toISOString().split('T')[0];
+  _osDataCorte = dataCorteISO;
+
   const [{ data: osData, error: osError }, { data: tecList }, { data: teData }] = await Promise.all([
     db.from('ordens_de_servico')
-      .select('*, obras(nome_cliente, endereco)')
+      .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_realizado, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
+      .gte('data_servico', dataCorteISO)
+      .neq('status_aprovacao', 'cancelada')
       .order('criado_em', { ascending: false }),
     db.from('tecnicos').select('id, nome'),
     db.from('tecnico_equipes').select('tecnico_id, equipe_id'),
@@ -1543,9 +1559,9 @@ async function carregarOSs() {
 
   todasOSs = finalData;
 
-
   document.getElementById('loadingEl').style.display = 'none';
   document.getElementById('tabelaEl').style.display = 'block';
+  document.getElementById('aviso-periodo').style.display = 'block';
 
   filtrar();
 }
@@ -1710,13 +1726,47 @@ function resumoAgendaNoturna(lista) {
   };
 }
 
-function filtrar() {
+async function filtrar() {
   const fTec   = document.getElementById('fTecnico').value;
   const fSt    = document.getElementById('fStatus').value;
   const fTipo  = document.getElementById('fTipo').value;
   const fDi    = document.getElementById('fDataInicio').value;
   const fDf    = document.getElementById('fDataFim').value;
   const fBusca = document.getElementById('fBusca').value.toLowerCase();
+
+  // Se o usuário selecionou uma data de início anterior ao corte atual,
+  // re-busca do banco com a nova janela de tempo.
+  if (fDi && _osDataCorte && fDi < _osDataCorte) {
+    const aviso = document.getElementById('aviso-periodo');
+    if (aviso) aviso.style.display = 'none';
+    document.getElementById('loadingEl').style.display = 'block';
+    document.getElementById('tabelaEl').style.display = 'none';
+
+    const [{ data: osData }, { data: tecList }, { data: teData }] = await Promise.all([
+      db.from('ordens_de_servico')
+        .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_realizado, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
+        .gte('data_servico', fDi)
+        .neq('status_aprovacao', 'cancelada')
+        .order('criado_em', { ascending: false }),
+      db.from('tecnicos').select('id, nome'),
+      db.from('tecnico_equipes').select('tecnico_id, equipe_id'),
+    ]);
+
+    const tecMap = {}, tecEquipeMap = {};
+    (tecList || []).forEach(t => { tecMap[t.id] = t; });
+    (teData  || []).forEach(te => { tecEquipeMap[te.tecnico_id] = te.equipe_id; });
+
+    todasOSs = (osData || []).map(o => {
+      const equipe = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id]
+        .filter(Boolean).map(tid => tecMap[tid]?.nome).filter(Boolean);
+      return { ...o, tecnicos: o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null,
+               equipeNomes: equipe, equipeId: tecEquipeMap[o.tecnico_id] || null };
+    });
+
+    _osDataCorte = fDi;
+    document.getElementById('loadingEl').style.display = 'none';
+    document.getElementById('tabelaEl').style.display = 'block';
+  }
 
   filtradas = todasOSs.filter(o => {
     const matchTec   = !fTec  || String(o.tecnico_id) === fTec || String(o.auxiliar_id) === fTec || String(o.auxiliar2_id) === fTec || String(o.auxiliar3_id) === fTec;
@@ -2031,25 +2081,48 @@ async function mudarStatusOS(id, status, obs) {
   const osAtual = todasOSs.find(o => o.id === id);
   const statusAnterior = osAtual?.status_aprovacao || 'pendente';
 
-  const { error } = await db
+  // Locking otimista: o UPDATE só afeta a linha se o status ainda for o que carregamos.
+  // Se outro usuário já alterou, data virá vazio e exibimos aviso em vez de sobrescrever.
+  const { data: updated, error } = await db
     .from('ordens_de_servico')
     .update({
-      status_aprovacao: status,
-      observacao_supervisor: obs || null,
-      aprovado_em: new Date().toISOString()
+      status_aprovacao:       status,
+      observacao_supervisor:  obs || null,
+      aprovado_em:            new Date().toISOString()
     })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('status_aprovacao', statusAnterior)
+    .select('id');
 
   if (error) { showToast('Erro: ' + error.message, 'error'); return; }
 
-  // Gravar no histórico (fire-and-forget — não bloqueia a UI)
+  if (!updated || updated.length === 0) {
+    showToast('Esta OS foi modificada por outro usuário. Recarregando lista...', 'error');
+    await carregarOSs();
+    return;
+  }
+
+  const agora = new Date().toISOString();
+
+  // Histórico de OS (fire-and-forget)
   db.from('os_historico').insert({
     os_id:           id,
     user_id:         _authUserId,
     status_anterior: statusAnterior,
     status_novo:     status,
     observacao:      obs || null,
-    criado_em:       new Date().toISOString(),
+    criado_em:       agora,
+  });
+
+  // Audit log geral (fire-and-forget)
+  db.from('audit_log').insert({
+    user_id:      _authUserId,
+    tabela:       'ordens_de_servico',
+    operacao:     'UPDATE',
+    registro_id:  String(id),
+    dados_antes:  { status_aprovacao: statusAnterior },
+    dados_depois: { status_aprovacao: status, observacao_supervisor: obs || null },
+    criado_em:    agora,
   });
 
   // Atualizar local

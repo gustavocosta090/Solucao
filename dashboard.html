@@ -1,3 +1,4 @@
+<!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
 <!-- build: 2026-05-31h -->
 <html lang="pt-BR">
@@ -845,6 +846,11 @@ async function carregarEExibir(ano = null) {
     relAssistQ = relAssistQ
       .gte('criado_em', `${ano}-01-01T00:00:00`)
       .lt('criado_em',  `${ano+1}-01-01T00:00:00`);
+  } else {
+    // Sem filtro de ano: limita a 2 anos para não carregar todo o histórico
+    const doisAnosAtras = new Date();
+    doisAnosAtras.setFullYear(doisAnosAtras.getFullYear() - 2);
+    relAssistQ = relAssistQ.gte('criado_em', doisAnosAtras.toISOString());
   }
 
   const [{ data: obras, error: oErr }, { data: relAssist }] = await Promise.all([

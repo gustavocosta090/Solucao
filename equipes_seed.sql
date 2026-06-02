@@ -1,3 +1,4 @@
+-- SAOS-AUDIT: build 2026-06-01 pós-auditoria
 -- Seed de equipes — rode UMA VEZ no SQL Editor do Supabase
 
 INSERT INTO public.equipes (nome)
