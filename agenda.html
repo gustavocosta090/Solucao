@@ -520,6 +520,15 @@
 
     /* ── Equipe multi-select ── */
     .equipe-select { position: relative; }
+    .equipe-search { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .equipe-search input {
+      width: 100%; box-sizing: border-box;
+      background: var(--surface-3, #111); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-1); font-size: 0.82rem;
+      padding: 6px 10px; outline: none; font-family: inherit;
+    }
+    .equipe-search input:focus { border-color: var(--primary); }
+    .equipe-item-definir { border-bottom: 1px solid var(--border); }
 
     .equipe-trigger {
       width: 100%;
@@ -1056,6 +1065,10 @@
           <svg id="equipe-arrow" class="equipe-arrow" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="equipe-dropdown" id="equipe-dropdown" role="listbox" aria-multiselectable="true">
+          <div class="equipe-search">
+            <input type="text" id="equipe-busca" placeholder="Buscar técnico..."
+                   oninput="renderEquipeDropdownItems()" onclick="event.stopPropagation()">
+          </div>
           <div id="equipe-lista"></div>
         </div>
       </div>
@@ -1437,13 +1450,17 @@ function fecharEquipeDropdown() {
   if (arrow)    arrow.classList.remove('rotated');
 }
 
+const A_DEFINIR_ID = 'a_definir';
+
 function toggleTecnicoEquipe(idStr, evt) {
   if (evt) evt.stopPropagation();
-  const idx = equipesSelecionadas.indexOf(idStr);
-  if (idx === -1) {
-    equipesSelecionadas.push(idStr);
+  if (idStr === A_DEFINIR_ID) {
+    equipesSelecionadas = equipesSelecionadas.includes(A_DEFINIR_ID) ? [] : [A_DEFINIR_ID];
   } else {
-    equipesSelecionadas.splice(idx, 1);
+    equipesSelecionadas = equipesSelecionadas.filter(x => x !== A_DEFINIR_ID);
+    const idx = equipesSelecionadas.indexOf(idStr);
+    if (idx === -1) equipesSelecionadas.push(idStr);
+    else equipesSelecionadas.splice(idx, 1);
   }
   renderEquipeChips();
   renderEquipeDropdownItems();
@@ -1470,11 +1487,16 @@ function renderEquipeChips() {
   if (placeholder) placeholder.style.display = 'none';
 
   equipesSelecionadas.forEach(idStr => {
-    const t = tecnicos.find(t => String(t.id) === idStr);
-    if (!t) return;
     const chip = document.createElement('span');
     chip.className = 'equipe-chip';
-    chip.innerHTML = `${t.nome.split(' ')[0]} <button type="button" class="equipe-chip-del" onclick="event.stopPropagation();removerDaEquipe('${idStr}')">×</button>`;
+    if (idStr === A_DEFINIR_ID) {
+      chip.style.cssText = 'font-style:italic;color:var(--text-3)';
+      chip.innerHTML = `A definir <button type="button" class="equipe-chip-del" onclick="event.stopPropagation();removerDaEquipe('${A_DEFINIR_ID}')">×</button>`;
+    } else {
+      const t = tecnicos.find(t => String(t.id) === idStr);
+      if (!t) return;
+      chip.innerHTML = `${t.nome.split(' ')[0]} <button type="button" class="equipe-chip-del" onclick="event.stopPropagation();removerDaEquipe('${idStr}')">×</button>`;
+    }
     wrap.appendChild(chip);
   });
 }
@@ -1483,7 +1505,20 @@ function renderEquipeDropdownItems() {
   const lista = document.getElementById('equipe-lista');
   if (!lista) return;
 
-  lista.innerHTML = tecnicos.map(t => {
+  const busca = (document.getElementById('equipe-busca')?.value || '').toLowerCase();
+  const aDefSel = equipesSelecionadas.includes(A_DEFINIR_ID);
+
+  const aDefHtml = (!busca || 'a definir'.includes(busca)) ? `
+    <div class="equipe-item equipe-item-definir ${aDefSel ? 'selecionado' : ''}"
+         onclick="toggleTecnicoEquipe('${A_DEFINIR_ID}', event)">
+      <input type="checkbox" ${aDefSel ? 'checked' : ''}
+             onclick="event.stopPropagation();toggleTecnicoEquipe('${A_DEFINIR_ID}', event)"/>
+      <span class="equipe-item-nome" style="font-style:italic;color:var(--text-3)">A definir equipe</span>
+    </div>` : '';
+
+  const filtrados = tecnicos.filter(t => !busca || t.nome.toLowerCase().includes(busca));
+
+  lista.innerHTML = aDefHtml + filtrados.map(t => {
     const idStr      = String(t.id);
     const selecionado = equipesSelecionadas.includes(idStr);
     return `
@@ -1713,7 +1748,7 @@ async function salvarAgendamento() {
     mostrarErroModal('Informe o nome do cliente.'); return;
   }
   if (equipesSelecionadas.length === 0) {
-    mostrarErroModal('Selecione pelo menos uma pessoa para a equipe.'); return;
+    mostrarErroModal('Selecione pelo menos uma pessoa ou "A definir equipe".'); return;
   }
   if (!data) {
     mostrarErroModal('Selecione a data.'); return;
@@ -1728,7 +1763,8 @@ async function salvarAgendamento() {
   }
 
   // Verificar conflito de agendamento: técnico já alocado neste dia?
-  const techIds = equipesSelecionadas.map(Number).filter(Boolean);
+  const isADefinir = equipesSelecionadas[0] === A_DEFINIR_ID;
+  const techIds = isADefinir ? [] : equipesSelecionadas.map(Number).filter(Boolean);
   const { data: mesmaData } = await db.from('agendamentos')
     .select('id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, obras(nome_cliente), cliente_outro')
     .eq('data', data);
@@ -1757,7 +1793,7 @@ async function salvarAgendamento() {
   }
 
   // Mapeia equipe → colunas DB (max 4)
-  const [id0, id1, id2, id3] = equipesSelecionadas;
+  const [id0, id1, id2, id3] = isADefinir ? [null, null, null, null] : equipesSelecionadas;
 
   // Gera número de OS antes de salvar (somente para novo agendamento)
   let numeroOSGerado = null;

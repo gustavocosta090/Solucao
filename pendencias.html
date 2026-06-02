@@ -155,6 +155,12 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .btn-cancelar:hover{border-color:var(--border-hover);color:var(--text-1)}
 .erro-form{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:6px;padding:9px 13px;font-size:12px;color:var(--red-text);margin-bottom:14px;display:none}
 
+/* ── Checkbox equipe no modal ── */
+.equipe-check-label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text-2);cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;transition:border-color 120ms,background 120ms}
+.equipe-check-label:hover{border-color:var(--border-hover);color:var(--text-1)}
+.equipe-check-label input[type=checkbox]{accent-color:var(--primary);width:14px;height:14px;cursor:pointer;flex-shrink:0}
+.equipe-check-label:has(input:checked){border-color:var(--primary);background:rgba(62,207,142,.08);color:var(--text-1)}
+
 /* ── Cores de equipe nos badges ── */
 .eq-cabeamento{background:rgba(29,78,216,.12);border:1px solid rgba(29,78,216,.25);color:#93C5FD}
 .eq-eletrica{background:rgba(180,83,9,.12);border:1px solid rgba(180,83,9,.25);color:#FCD34D}
@@ -261,15 +267,14 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
     <div class="erro-form" id="erro-form"></div>
 
     <div class="form-group">
-      <label for="f-equipe">Equipe</label>
-      <select id="f-equipe">
-        <option value="">Selecione a equipe...</option>
-        <option value="cabeamento">Cabeamento</option>
-        <option value="eletrica">Elétrica</option>
-        <option value="audio_video">Áudio e Vídeo</option>
-        <option value="automacao">Automação</option>
-        <option value="regional_norte">Regional Norte</option>
-      </select>
+      <label>Equipe(s) <span style="font-size:11px;color:var(--text-3);font-weight:400">(selecione uma ou mais)</span></label>
+      <div id="f-equipes-wrap" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+        <label class="equipe-check-label"><input type="checkbox" value="cabeamento"> Cabeamento</label>
+        <label class="equipe-check-label"><input type="checkbox" value="eletrica"> Elétrica</label>
+        <label class="equipe-check-label"><input type="checkbox" value="audio_video"> Áudio e Vídeo</label>
+        <label class="equipe-check-label"><input type="checkbox" value="automacao"> Automação</label>
+        <label class="equipe-check-label"><input type="checkbox" value="regional_norte"> Regional Norte</label>
+      </div>
     </div>
 
     <div class="form-group">
@@ -349,7 +354,7 @@ function renderLista(){
   const busca = (document.getElementById('busca')?.value||'').toLowerCase().trim();
 
   const filtradas = pendencias.filter(p=>{
-    if(equipeAtiva !== 'todas' && p.equipe !== equipeAtiva) return false;
+    if(equipeAtiva !== 'todas' && !equipesDe(p).includes(equipeAtiva)) return false;
     if(statusAtivo !== 'todos' && p.status !== statusAtivo) return false;
     if(busca){
       const txt = [p.obras?.nome_cliente||'', p.obra_outro||'', p.descricao||''].join(' ').toLowerCase();
@@ -368,7 +373,7 @@ function renderLista(){
     if(!el) return;
     const c = eq==='todas'
       ? pendencias.filter(p=>p.status!=='resolvida').length
-      : pendencias.filter(p=>p.equipe===eq && p.status!=='resolvida').length;
+      : pendencias.filter(p=>equipesDe(p).includes(eq) && p.status!=='resolvida').length;
     el.textContent = c;
   });
 
@@ -392,14 +397,14 @@ function renderLista(){
   lista.innerHTML = ord.map(p=>{
     const st     = STATUS_INFO[p.status] || STATUS_INFO.aberta;
     const obra   = p.obras?.nome_cliente || p.obra_outro || '—';
-    const eqCls  = `eq-${p.equipe}`;
     const dataFmt = new Date(p.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const equipesBadges = equipesDe(p).map(eq=>`<span class="badge badge-equipe eq-${eq}">${escHtml(EQUIPE_LABEL[eq]||eq)}</span>`).join('');
 
     return `<div class="pend-card ${p.urgente?'urgente':''} ${p.status==='resolvida'?'resolvida':''}" id="pcard-${p.id}">
       <div class="card-top">
         <div style="flex:1;min-width:0">
           <div class="card-equipe-row">
-            <span class="badge badge-equipe ${eqCls}">${escHtml(EQUIPE_LABEL[p.equipe]||p.equipe)}</span>
+            ${equipesBadges}
             ${p.urgente?`<span class="badge badge-urgente"><i data-lucide="alert-triangle" style="display:inline-block;width:10px;height:10px;vertical-align:middle"></i> Urgente</span>`:''}
           </div>
           <div class="card-obra">${escHtml(obra)}</div>
@@ -455,7 +460,7 @@ function editarPendencia(id){
   if(!p) return;
   editandoId = id;
   document.getElementById('modal-titulo').textContent = 'Editar Pendência';
-  document.getElementById('f-equipe').value   = p.equipe;
+  setEquipesModal(equipesDe(p));
   document.getElementById('f-descricao').value = p.descricao;
   document.getElementById('f-urgente').checked = !!p.urgente;
   if(p.obra_id){
@@ -474,7 +479,7 @@ function editarPendencia(id){
 function abrirModal(){
   editandoId = null;
   document.getElementById('modal-titulo').textContent = 'Cadastrar Pendência';
-  document.getElementById('f-equipe').value   = equipeAtiva !== 'todas' ? equipeAtiva : '';
+  setEquipesModal(equipeAtiva !== 'todas' ? [equipeAtiva] : []);
   document.getElementById('f-obra').value     = '';
   document.getElementById('f-obra-outro').value = '';
   document.getElementById('f-descricao').value = '';
@@ -494,15 +499,30 @@ function fecharModalFora(e){
   if(e.target === document.getElementById('overlay-modal')) fecharModal();
 }
 
+// ── Helpers equipe multi-valor ───────────────────────────────────
+function equipesDe(p) {
+  if (!p.equipe) return [];
+  return p.equipe.split(',').map(s=>s.trim()).filter(Boolean);
+}
+function getEquipesModal() {
+  return [...document.querySelectorAll('#f-equipes-wrap input[type=checkbox]:checked')].map(c=>c.value);
+}
+function setEquipesModal(vals=[]) {
+  document.querySelectorAll('#f-equipes-wrap input[type=checkbox]').forEach(c=>{
+    c.checked = vals.includes(c.value);
+  });
+}
+
 async function salvarPendencia(){
-  const equipe    = document.getElementById('f-equipe').value;
+  const equipesArr = getEquipesModal();
+  const equipe    = equipesArr.join(',');
   const obraVal   = document.getElementById('f-obra').value;
   const obraOutro = document.getElementById('f-obra-outro').value.trim();
   const descricao = document.getElementById('f-descricao').value.trim();
   const urgente   = document.getElementById('f-urgente').checked;
   const erroEl    = document.getElementById('erro-form');
 
-  if(!equipe){erroEl.textContent='Selecione a equipe.';erroEl.style.display='block';return;}
+  if(!equipe){erroEl.textContent='Selecione pelo menos uma equipe.';erroEl.style.display='block';return;}
   if(!descricao){erroEl.textContent='Descreva a pendência.';erroEl.style.display='block';return;}
   if(obraVal==='outro' && !obraOutro){erroEl.textContent='Informe o cliente/obra.';erroEl.style.display='block';return;}
   erroEl.style.display='none';
