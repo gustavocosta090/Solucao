@@ -1517,7 +1517,7 @@ async function carregarOSs() {
 
   const [{ data: osData, error: osError }, { data: tecList }, { data: teData }] = await Promise.all([
     db.from('ordens_de_servico')
-      .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_realizado, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
+      .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
       .gte('data_servico', dataCorteISO)
       .neq('status_aprovacao', 'cancelada')
       .order('criado_em', { ascending: false }),
@@ -1744,7 +1744,7 @@ async function filtrar() {
 
     const [{ data: osData }, { data: tecList }, { data: teData }] = await Promise.all([
       db.from('ordens_de_servico')
-        .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_realizado, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
+        .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
         .gte('data_servico', fDi)
         .neq('status_aprovacao', 'cancelada')
         .order('criado_em', { ascending: false }),
