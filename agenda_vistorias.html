@@ -561,6 +561,15 @@
     .btn-exportar-sp:hover { background: rgba(62,207,142,0.18); border-color: rgba(62,207,142,0.55); transform: translateY(-1px); }
     .btn-exportar-sp:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     .btn-exportar-sp i { width: 15px; height: 15px; }
+    .btn-bloqueio { display:flex;align-items:center;gap:6px;padding:0 14px;height:36px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;color:#f87171;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s,transform .15s; }
+    .btn-bloqueio:hover { background:rgba(239,68,68,0.16);border-color:rgba(239,68,68,0.5);transform:translateY(-1px); }
+    .btn-bloqueio i { width:15px;height:15px; }
+    .bloqueio-item { display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-2);border-radius:7px;margin-bottom:6px; }
+    .bloqueio-nome { font-size:13px;font-weight:600;color:var(--text-1);flex:1;min-width:0; }
+    .bloqueio-info { font-size:11px;color:var(--text-3); }
+    .bloqueio-motivo { font-size:11px;color:#f87171;font-weight:600; }
+    .bloqueio-del { background:none;border:none;cursor:pointer;color:var(--text-3);padding:4px;border-radius:4px;display:flex; }
+    .bloqueio-del:hover { color:#f87171;background:rgba(239,68,68,.1); }
 
   /* ── TEMA CLARO ── */
   :root[data-theme="light"] { --bg:#F4F4F5; --surface-1:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F0F0F1; --text-1:#09090B; --text-2:#71717A; --text-3:#A1A1AA; --border:rgba(0,0,0,0.08); --border-strong:rgba(0,0,0,0.14); --border-hover:rgba(0,0,0,0.16); --primary-muted:rgba(62,207,142,0.15); }
@@ -643,10 +652,34 @@
       <span>Disparar dia</span>
     </button>
 
+    <button class="btn-bloqueio" onclick="abrirModalBloqueio()" title="Gerenciar bloqueios de vistoriadores">
+      <i data-lucide="user-x"></i>
+      Bloqueios
+    </button>
+
     <button class="btn-novo" id="btn-novo" onclick="abrirModal()">
       <i data-lucide="plus"></i>
       Nova vistoria
     </button>
+  </div>
+</div>
+
+<!-- Modal Bloqueio de Vistoriador -->
+<div class="overlay" id="overlay-bloqueio-tec" style="display:none" onclick="if(event.target===this)fecharModalBloqueio()" role="presentation">
+  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
+    <h2 style="margin-bottom:16px;display:flex;align-items:center;gap:8px"><i data-lucide="user-x"></i> Bloqueios de Vistoriadores</h2>
+    <div id="bloqueios-lista"></div>
+    <div style="border-top:1px solid var(--border);padding-top:16px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:12px">Novo bloqueio</div>
+      <div class="form-group" style="margin-bottom:10px"><label>Vistoriador</label><select id="bl-tecnico"><option value="">Selecione...</option></select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="form-group" style="margin:0"><label>Data início</label><input type="date" id="bl-inicio"></div>
+        <div class="form-group" style="margin:0"><label>Data fim</label><input type="date" id="bl-fim"></div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px"><label>Motivo</label><input type="text" id="bl-motivo" placeholder="Ex.: Férias, Dispensa, Atestado..."></div>
+      <div id="bl-erro" style="color:#f87171;font-size:12px;margin-bottom:8px;display:none"></div>
+      <button onclick="salvarBloqueio()" style="width:100%;height:40px;background:var(--primary);border:none;border-radius:6px;color:#0A0A0A;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Adicionar bloqueio</button>
+    </div>
   </div>
 </div>
 
@@ -1462,7 +1495,7 @@ async function exportarAgendaSharePoint() {
 // ── Iniciar ────────────────────────────────────────────────────────
 init();
 
-// ── BLOQUEIOS DE TÉCNICOS/VISTORIADORES ─────────────────────────
+// ── BLOQUEIOS DE VISTORIADORES ───────────────────────────────────
 async function carregarBloqueios() {
   const { data } = await db.from('tecnico_bloqueios').select('*').order('data_inicio');
   bloqueios = data || [];
@@ -1473,6 +1506,47 @@ function tecnicoBloqueadoNaData(tecnicoId, dataStr) {
     String(b.tecnico_id) === String(tecnicoId) &&
     dataStr >= b.data_inicio && dataStr <= b.data_fim
   ) || null;
+}
+function abrirModalBloqueio() {
+  const sel = document.getElementById('bl-tecnico');
+  sel.innerHTML = '<option value="">Selecione...</option>' +
+    vistoriadores.map(t => `<option value="${t.id}">${escHtml(t.nome)}</option>`).join('');
+  renderBloqueiosLista();
+  document.getElementById('overlay-bloqueio-tec').style.display = 'flex';
+  lucide.createIcons();
+}
+function fecharModalBloqueio() { document.getElementById('overlay-bloqueio-tec').style.display = 'none'; }
+function renderBloqueiosLista() {
+  const el = document.getElementById('bloqueios-lista');
+  if (!bloqueios.length) { el.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:8px 0 16px">Nenhum bloqueio cadastrado.</div>'; return; }
+  const fmt = d => new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  el.innerHTML = bloqueios.map(b => {
+    const tec = vistoriadores.find(t => t.id === b.tecnico_id);
+    return `<div class="bloqueio-item">
+      <div style="flex:1;min-width:0">
+        <div class="bloqueio-nome">${escHtml(tec?.nome||'—')}</div>
+        <div class="bloqueio-info">${fmt(b.data_inicio)} → ${fmt(b.data_fim)}</div>
+        <div class="bloqueio-motivo">${escHtml(b.motivo)}</div>
+      </div>
+      <button class="bloqueio-del" onclick="excluirBloqueio(${b.id})"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+async function salvarBloqueio() {
+  const tecId=document.getElementById('bl-tecnico').value, inicio=document.getElementById('bl-inicio').value, fim=document.getElementById('bl-fim').value, motivo=document.getElementById('bl-motivo').value.trim(), erroEl=document.getElementById('bl-erro');
+  if(!tecId||!inicio||!fim||!motivo){erroEl.textContent='Preencha todos os campos.';erroEl.style.display='block';return;}
+  if(fim<inicio){erroEl.textContent='Data fim deve ser igual ou posterior à data início.';erroEl.style.display='block';return;}
+  erroEl.style.display='none';
+  const{data,error}=await db.from('tecnico_bloqueios').insert({tecnico_id:parseInt(tecId),data_inicio:inicio,data_fim:fim,motivo}).select().single();
+  if(error){erroEl.textContent='Erro: '+error.message;erroEl.style.display='block';return;}
+  bloqueios.push(data);
+  document.getElementById('bl-tecnico').value='';document.getElementById('bl-inicio').value='';document.getElementById('bl-fim').value='';document.getElementById('bl-motivo').value='';
+  renderBloqueiosLista();
+}
+async function excluirBloqueio(id) {
+  const{error}=await db.from('tecnico_bloqueios').delete().eq('id',id);
+  if(!error){bloqueios=bloqueios.filter(b=>b.id!==id);renderBloqueiosLista();}
 }
 async function verificarBloqueioVistoriador(idStr) {
   const dataAg = document.getElementById('f-data')?.value;
