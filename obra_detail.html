@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01t -->
+<!-- build: 2026-06-01w -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -286,6 +286,33 @@
     .badge-bloqueado_financeiro   { background: rgba(239,68,68,0.12);   color: #f87171;        border: 1px solid rgba(239,68,68,0.25); }
     .badge-parado_cliente         { background: rgba(251,146,60,0.12);  color: #fb923c;        border: 1px solid rgba(251,146,60,0.25); }
 
+    /* ── Documentos da Obra ── */
+    .docs-section { background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:18px 20px; margin-bottom:16px; }
+    .docs-header { display:flex; align-items:center; gap:7px; font-size:11px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:14px; }
+    .docs-header i { width:13px; height:13px; }
+    .docs-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    @media (max-width:600px) { .docs-grid { grid-template-columns:1fr; } }
+    .doc-card { background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; transition:border-color .15s; }
+    .doc-card.doc-tem-arquivo { border-color:rgba(62,207,142,0.22); }
+    .doc-card-corpo { display:flex; align-items:center; gap:10px; min-width:0; }
+    .doc-icon { width:36px; height:36px; background:var(--surface-3); border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--text-3); }
+    .doc-icon i { width:16px; height:16px; }
+    .doc-tem-arquivo .doc-icon { background:rgba(62,207,142,0.08); border-color:rgba(62,207,142,0.2); color:var(--primary); }
+    .doc-info { flex:1; min-width:0; }
+    .doc-label { font-size:10px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:0.4px; }
+    .doc-nome { font-size:0.78rem; color:var(--text-1); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .doc-vazio { font-size:0.75rem; color:var(--text-3); margin-top:3px; }
+    .doc-abrir { display:inline-flex; align-items:center; gap:4px; padding:5px 11px; background:var(--primary); color:#0A0A0A; border-radius:6px; font-size:0.75rem; font-weight:700; text-decoration:none; white-space:nowrap; flex-shrink:0; transition:opacity .15s; }
+    .doc-abrir:hover { opacity:0.85; }
+    .doc-abrir i { width:12px; height:12px; }
+    .doc-edit-row { display:flex; align-items:center; gap:6px; }
+    .doc-input { flex:1; min-width:0; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text-1); font-size:0.78rem; font-family:inherit; outline:none; transition:border-color .15s; }
+    .doc-input:focus { border-color:rgba(62,207,142,0.5); }
+    .doc-input::placeholder { color:var(--text-3); }
+    .doc-btn-remover { background:none; border:1px solid var(--border); color:var(--text-3); width:28px; height:28px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:color .15s,border-color .15s; }
+    .doc-btn-remover:hover { color:#f87171; border-color:rgba(239,68,68,0.3); }
+    .doc-btn-remover i { width:12px; height:12px; }
+
     /* ── Fotos mini ── */
     .fotos-mini { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
     .foto-mini { width: 34px; height: 34px; border-radius: 4px; object-fit: cover; cursor: pointer; border: 1px solid var(--border); transition: border-color 200ms; }
@@ -482,6 +509,7 @@ let roleAtual   = 'tecnico';
 let tecMap      = {};  // id → { nome } — preenchido no carregamento
 let consultoresLista = [];
 let tabAtiva    = 'os';
+let obraAtual   = null;  // cache da obra carregada — usado para re-render de docs
 
 // ── Valores exatos do check constraint "obras_fase_atual_check" ──
 const FASES_OBRA = {
@@ -538,6 +566,79 @@ async function init() {
 
   await carregarObra();
 }
+// ── Documentos da Obra (Contrato / Escopo) ───────────────────
+function _nomeArquivoUrl(url) {
+  try {
+    const u = new URL(url);
+    const partes = decodeURIComponent(u.pathname).split('/').filter(Boolean);
+    const last = partes[partes.length - 1];
+    // Ignora identificadores SharePoint curtos como ":b:", ":w:", etc.
+    return (last && last.length > 4 && !last.startsWith(':')) ? last : null;
+  } catch(e) { return null; }
+}
+
+function renderDocCard(campo, label, url, podeEditar) {
+  const nome = url ? _nomeArquivoUrl(url) : null;
+  const ext  = nome ? nome.split('.').pop().toLowerCase() : '';
+  const iconMap = { pdf:'file-text', doc:'file-text', docx:'file-text',
+                    xls:'file-spreadsheet', xlsx:'file-spreadsheet' };
+  const icon = iconMap[ext] || (url ? 'file' : 'file-plus');
+
+  return `
+    <div class="doc-card ${url ? 'doc-tem-arquivo' : ''}">
+      <div class="doc-card-corpo">
+        <div class="doc-icon"><i data-lucide="${icon}"></i></div>
+        <div class="doc-info">
+          <div class="doc-label">${label}</div>
+          ${url
+            ? `<div class="doc-nome" title="${escHtml(url)}">${nome ? escHtml(nome) : 'Link vinculado'}</div>`
+            : `<div class="doc-vazio">Nenhum documento vinculado</div>`}
+        </div>
+        ${url ? `<a href="${escHtml(url)}" target="_blank" rel="noopener" class="doc-abrir">
+          <i data-lucide="external-link"></i><span>Abrir</span>
+        </a>` : ''}
+      </div>
+      ${podeEditar ? `
+      <div class="doc-edit-row">
+        <input type="url" class="doc-input" id="input-${campo}"
+          placeholder="Cole o link do SharePoint..."
+          value="${escHtml(url || '')}"
+          onblur="salvarDocUrl('${campo}', this.value)">
+        ${url ? `<button class="doc-btn-remover" onclick="salvarDocUrl('${campo}','')" title="Remover documento">
+          <i data-lucide="x"></i>
+        </button>` : ''}
+      </div>` : ''}
+    </div>`;
+}
+
+function renderDocsSecao(obra, podeEditar) {
+  return ''; // desativado temporariamente
+  if (!podeEditar && !obra.contrato_url && !obra.escopo_url) return '';
+  return `
+    <div class="docs-section">
+      <div class="docs-header"><i data-lucide="folder-open"></i><span>Documentos da Obra</span></div>
+      <div class="docs-grid">
+        ${renderDocCard('contrato_url', 'Contrato',         obra.contrato_url, podeEditar)}
+        ${renderDocCard('escopo_url',   'Escopo do Projeto', obra.escopo_url,   podeEditar)}
+      </div>
+    </div>`;
+}
+
+async function salvarDocUrl(campo, valor) {
+  const val = valor.trim() || null;
+  if (!obraId) return;
+  const { error } = await db.from('obras').update({ [campo]: val }).eq('id', obraId);
+  if (error) { showToast('Erro ao salvar: ' + error.message, 'error'); return; }
+  if (obraAtual) obraAtual[campo] = val;
+  // Re-renderiza só a seção de documentos
+  const el = document.getElementById('docs-section');
+  if (el && obraAtual) {
+    el.outerHTML = `<div id="docs-section">${renderDocsSecao(obraAtual, PODE_EDITAR.includes(roleAtual))}</div>`;
+    lucide.createIcons();
+  }
+  showToast(val ? 'Documento vinculado.' : 'Documento removido.', 'success');
+}
+
 // ── Salvar campo genérico da obra ──
 async function salvarCampo(campo, valor) {
   if (!obraId) return;
@@ -646,6 +747,7 @@ async function carregarObra() {
 }
 
 function renderPagina(obra) {
+  obraAtual = obra;
   const podeEditar = PODE_EDITAR.includes(roleAtual);
   const faseLabel  = FASES_OBRA[obra.fase_atual] || obra.fase_atual || '—';
   const faseClass  = obra.fase_atual || 'em_andamento';
@@ -744,9 +846,9 @@ function renderPagina(obra) {
           <div class="obra-info-label">Valor total</div>
           <div class="obra-info-value"><i data-lucide="wallet-cards"></i>${obra.valor_total != null ? 'R$ ' + parseFloat(obra.valor_total).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'}</div>
         </div>` : ''}
-        ${(obra.valor_servicos != null || obra.valor_produtos != null) ? `<div class="obra-info-item">
+        ${(obra.valor_servico != null || obra.valor_produto != null) ? `<div class="obra-info-item">
           <div class="obra-info-label">Mão de obra / Produtos</div>
-          <div class="obra-info-value"><i data-lucide="settings-2"></i>${obra.valor_servicos != null ? 'R$ ' + parseFloat(obra.valor_servicos).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'} / ${obra.valor_produtos != null ? 'R$ ' + parseFloat(obra.valor_produtos).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'}</div>
+          <div class="obra-info-value"><i data-lucide="settings-2"></i>${obra.valor_servico != null ? 'R$ ' + parseFloat(obra.valor_servico).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'} / ${obra.valor_produto != null ? 'R$ ' + parseFloat(obra.valor_produto).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'}</div>
         </div>` : ''}
         ${obra.pct_servico != null ? `<div class="obra-info-item">
           <div class="obra-info-label">% Mão de obra</div>
@@ -756,6 +858,8 @@ function renderPagina(obra) {
 
       ${editRow}
     </div>
+
+    <div id="docs-section">${renderDocsSecao(obra, podeEditar)}</div>
 
     <div class="stats">
       <div class="stat-card">
