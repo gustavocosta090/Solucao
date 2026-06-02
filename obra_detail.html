@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01x -->
+<!-- build: 2026-06-01y -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -142,6 +142,10 @@
     }
     .inline-input:focus { border-color: var(--border-focus); }
     .inline-input::placeholder { color: var(--text-3); }
+    /* Remove spinners dos inputs numéricos */
+    .inline-input[type="number"] { -moz-appearance: textfield; }
+    .inline-input[type="number"]::-webkit-outer-spin-button,
+    .inline-input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
     .edit-field { gap: 8px; }
 
@@ -668,6 +672,34 @@ function salvarTexto(campo, valor) {
   salvarCampo(campo, valor.trim());
 }
 
+// ── Salvar valor financeiro (número) ──
+async function salvarValorFinanceiro(campo, rawValue) {
+  const raw = String(rawValue).trim().replace(',', '.');
+  const val = raw === '' ? null : parseFloat(raw);
+  if (raw !== '' && (isNaN(val) || val < 0)) {
+    showToast('Valor inválido', 'error'); return;
+  }
+  const { error } = await db.from('obras').update({ [campo]: val }).eq('id', obraId);
+  if (error) { showToast('Erro ao salvar: ' + error.message, 'error'); return; }
+  if (obraAtual) obraAtual[campo] = val;
+  mostrarSalvo('save-indicator-' + campo);
+  _atualizarCamposFinanceiros();
+}
+
+function _atualizarCamposFinanceiros() {
+  const fmt = v => v != null && !isNaN(v)
+    ? 'R$ ' + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
+    : '—';
+  const vMO   = obraAtual?.valor_servico != null ? parseFloat(obraAtual.valor_servico) : null;
+  const vProd = obraAtual?.valor_produto  != null ? parseFloat(obraAtual.valor_produto) : null;
+  const vTot  = (vMO != null || vProd != null) ? (vMO || 0) + (vProd || 0) : null;
+  const pct   = (vMO != null && vTot > 0) ? (vMO / vTot * 100).toFixed(1) + '%' : '—';
+  const totEl = document.getElementById('fin-total');
+  const pctEl = document.getElementById('fin-pct');
+  if (totEl) totEl.textContent = fmt(vTot);
+  if (pctEl) pctEl.textContent = pct;
+}
+
 function mostrarSalvo(elId) {
   const el = document.getElementById(elId);
   if (!el) return;
@@ -844,28 +876,46 @@ function renderPagina(obra) {
         </div>` : ''}
         ${(() => {
           const fmt = v => v != null && !isNaN(v)
-            ? 'R$ ' + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
+            ? 'R$ ' + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
             : '—';
           const vMO   = obra.valor_servico != null ? parseFloat(obra.valor_servico) : null;
-          const vProd = obra.valor_produto  != null ? parseFloat(obra.valor_produto)  : null;
+          const vProd = obra.valor_produto  != null ? parseFloat(obra.valor_produto) : null;
           const vTot  = (vMO != null || vProd != null) ? (vMO || 0) + (vProd || 0) : null;
           const pct   = (vMO != null && vTot > 0) ? (vMO / vTot * 100).toFixed(1) + '%' : '—';
+          const moField = podeEditar
+            ? `<div class="obra-info-value edit-field">
+                <i data-lucide="wrench"></i>
+                <input class="inline-input" type="number" min="0" step="0.01"
+                  value="${vMO != null ? vMO : ''}" placeholder="0.00"
+                  onblur="salvarValorFinanceiro('valor_servico', this.value)">
+                <span id="save-indicator-valor_servico" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓</span>
+               </div>`
+            : `<div class="obra-info-value"><i data-lucide="wrench"></i>${fmt(vMO)}</div>`;
+          const prodField = podeEditar
+            ? `<div class="obra-info-value edit-field">
+                <i data-lucide="package"></i>
+                <input class="inline-input" type="number" min="0" step="0.01"
+                  value="${vProd != null ? vProd : ''}" placeholder="0.00"
+                  onblur="salvarValorFinanceiro('valor_produto', this.value)">
+                <span id="save-indicator-valor_produto" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓</span>
+               </div>`
+            : `<div class="obra-info-value"><i data-lucide="package"></i>${fmt(vProd)}</div>`;
           return `
           <div class="obra-info-item">
             <div class="obra-info-label">Mão de Obra</div>
-            <div class="obra-info-value"><i data-lucide="wrench"></i>${fmt(vMO)}</div>
+            ${moField}
           </div>
           <div class="obra-info-item">
             <div class="obra-info-label">Produtos</div>
-            <div class="obra-info-value"><i data-lucide="package"></i>${fmt(vProd)}</div>
+            ${prodField}
           </div>
           <div class="obra-info-item">
             <div class="obra-info-label">Valor Total</div>
-            <div class="obra-info-value"><i data-lucide="wallet-cards"></i>${fmt(vTot)}</div>
+            <div class="obra-info-value"><i data-lucide="wallet-cards"></i><span id="fin-total">${fmt(vTot)}</span></div>
           </div>
           <div class="obra-info-item">
             <div class="obra-info-label">% MO / Total</div>
-            <div class="obra-info-value"><i data-lucide="percent"></i>${pct}</div>
+            <div class="obra-info-value"><i data-lucide="percent"></i><span id="fin-pct">${pct}</span></div>
           </div>`;
         })()}
       </div>
