@@ -356,63 +356,108 @@ function renderMidias() {
   lucide.createIcons();
 }
 
-async function uploadMidias() {
-  const enviadas = [];
-  for (let i = 0; i < arquivosSelecionados.length; i++) {
-    const item = arquivosSelecionados[i];
-    const ext = item.file.name.split('.').pop()?.toLowerCase() || (item.tipo === 'video' ? 'mp4' : 'jpg');
-    const path = `vistorias/obra_${selecionado.obra_id || 'sem_obra'}/rel_${selecionado.id}_${Date.now()}_${i}.${ext}`;
-    const { error } = await db.storage.from('fotos-os').upload(path, item.file, { contentType: item.file.type });
-    if (error) throw error;
-    const { data } = db.storage.from('fotos-os').getPublicUrl(path);
-    enviadas.push({ url: data.publicUrl, tipo: item.tipo, nome: item.file.name });
-  }
-  return enviadas;
+function nomePastaCliente(nome) {
+  return (nome || 'Sem Cliente')
+    .replace(/[\/\\:*?"<>|#%~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 60)
+    || 'Sem Cliente';
 }
 
-async function salvar(concluir) {
-  if (!selecionado) return;
-  const checklist = {};
-  document.querySelectorAll('[data-check]').forEach(el => { checklist[el.dataset.check] = el.checked; });
-
-  let midiasNovas = [];
-  try {
-    midiasNovas = await uploadMidias();
-  } catch (error) {
-    showToast('Erro ao enviar mídia: ' + error.message, 'error');
-    return;
-  }
-
-  const payload = {
-    objetivo_vistoria: document.getElementById('objetivo_vistoria').value.trim() || null,
-    situacao_atual_obra: document.getElementById('situacao_atual_obra').value.trim() || null,
-    pontos_positivos: document.getElementById('pontos_positivos').value.trim() || null,
-    pontos_atencao: document.getElementById('pontos_atencao').value.trim() || null,
-    inconformidade: document.getElementById('inconformidade').checked,
-    descricao_inconformidade: document.getElementById('descricao_inconformidade').value.trim() || null,
-    checklist,
-    midias_urls: [...midiasExistentes, ...midiasNovas],
-    observacoes: document.getElementById('observacoes').value.trim() || null,
-    atualizado_em: new Date().toISOString(),
+async function headersUploadProtegido() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session?.access_token) throw new Error('Sessão expirada. Faça login novamente.');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${session.access_token}`,
   };
-  if (concluir) {
-    payload.status = 'concluido';
-    payload.concluido_em = new Date().toISOString();
-  }
-
-  const { error } = await db.from('relatorios_vistoria').update(payload).eq('id', selecionado.id);
-  if (error) { showToast('Erro ao salvar: ' + error.message, 'error'); return; }
-  showToast(concluir ? 'Relatório concluído.' : 'Relatório salvo.', 'success');
-  await carregarRelatorios();
-  selecionado = relatorios.find(r => r.id === selecionado.id) || selecionado;
-  renderFormulario();
 }
-// ===== TEMA =====
-// ===== PDF INDIVIDUAL =====
-function exportarPDFUnico() {
-  if (!selecionado) { showToast('Selecione uma vistoria para exportar.', 'warning'); return; }
+
+async function uploadMidias() {
+  if (!arquivosSelecionados.length) return [];
+  const nomeCliente = selecionado.obras?.nome_cliente || 'Sem Cliente';
+  const nomeBase    = nomePastaCliente(nomeCliente);
+  const ano         = new Date().getFullYear();
+  const folderPath  = `Obras e Clientes ${ano}/${nomeBase}/Fotos`;
+  const urls        = new Array(arquivosSelecionados.length).fill(null);
+  const LOTE        = 3;
+
+  const uploadUm = async (item, i) => {
+    const ext      = item.file.name.split('.').pop()?.toLowerCase() || (item.tipo === 'video' ? 'mp4' : 'jpg');
+    const filename = `${nomeBase} vistoria ${selecionado.data_vistoria || new Date().toISOString().slice(0,10)} - ${String(i + 1).padStart(2, '0')}.${ext}`;
+    try {
+      const hdrs = await headersUploadProtegido();
+      const initRes = await fetch('/api/upload', {
+        method:  'POST',
+        headers: hdrs,
+        body:    JSON.stringify({ path: folderPath, filename, contentType: item.file.type }),
+      });
+      if (!initRes.ok) throw new Error(await initRes.text());
+      const { uploadUrl, filePath } = await initRes.json();
+
+      const CHUNK = 5 * 1024 * 1024;
+      let start = 0;
+      while (start < item.file.size) {
+        const end   = Math.min(start + CHUNK, item.file.size);
+        const chunk = item.file.slice(start, end);
+        const put   = await fetch(uploadUrl, {
+          method:  'PUT',
+          headers: {
+            'Content-Range':  `bytes ${start}-${end - 1}/${item.file.size}`,
+            'Content-Length': String(end - start),
+            'Content-Type':   item.file.type || 'image/jpeg',
+          },
+          body: chunk,
+        });
+        if (!put.ok && put.status !== 202) throw new Error(`Chunk erro ${put.status}`);
+        start = end;
+      }
+      urls[i] = { url: `/api/foto?path=${encodeURIComponent(filePath)}`, tipo: item.tipo, nome: item.file.name };
+    } catch (e) {
+      console.warn(`Mídia ${i + 1} falhou:`, e.message);
+    }
+  };
+
+  for (let i = 0; i < arquivosSelecionados.length; i += LOTE) {
+    const lote = arquivosSelecionados.slice(i, i + LOTE);
+    await Promise.all(lote.map((item, j) => uploadUm(item, i + j)));
+  }
+  return urls.filter(Boolean);
+}
+
+async function uploadPDFRelatorio(pdfBlob) {
+  const nomeCliente = selecionado.obras?.nome_cliente || 'Sem Cliente';
+  const nomeBase    = nomePastaCliente(nomeCliente);
+  const ano         = new Date().getFullYear();
+  const folderPath  = `Obras e Clientes ${ano}/${nomeBase}/Relatórios de Vistoria`;
+  const filename    = `${nomeBase} vistoria ${selecionado.data_vistoria || new Date().toISOString().slice(0,10)}.pdf`;
+
+  const hdrs = await headersUploadProtegido();
+  const initRes = await fetch('/api/upload', {
+    method:  'POST',
+    headers: hdrs,
+    body:    JSON.stringify({ path: folderPath, filename, contentType: 'application/pdf' }),
+  });
+  if (!initRes.ok) throw new Error(await initRes.text());
+  const { uploadUrl, filePath } = await initRes.json();
+
+  const put = await fetch(uploadUrl, {
+    method:  'PUT',
+    headers: {
+      'Content-Range':  `bytes 0-${pdfBlob.size - 1}/${pdfBlob.size}`,
+      'Content-Length': String(pdfBlob.size),
+      'Content-Type':   'application/pdf',
+    },
+    body: pdfBlob,
+  });
+  if (!put.ok && put.status !== 201) throw new Error(`Erro ao enviar PDF: ${put.status}`);
+  return filePath;
+}
+
+function gerarPDFBlob() {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const doc    = new jsPDF({ unit:'mm', format:'a4' });
   const margin = 14;
   let y = 20;
 
@@ -457,8 +502,80 @@ function exportarPDFUnico() {
     });
   }
 
+  return doc.output('blob');
+}
+
+async function salvar(concluir) {
+  if (!selecionado) return;
+  const checklist = {};
+  document.querySelectorAll('[data-check]').forEach(el => { checklist[el.dataset.check] = el.checked; });
+
+  // Atualiza selecionado com valores do formulário antes de gerar PDF
+  selecionado = {
+    ...selecionado,
+    objetivo_vistoria:       document.getElementById('objetivo_vistoria').value.trim() || null,
+    situacao_atual_obra:     document.getElementById('situacao_atual_obra').value.trim() || null,
+    pontos_positivos:        document.getElementById('pontos_positivos').value.trim() || null,
+    pontos_atencao:          document.getElementById('pontos_atencao').value.trim() || null,
+    inconformidade:          document.getElementById('inconformidade').checked,
+    descricao_inconformidade:document.getElementById('descricao_inconformidade').value.trim() || null,
+    observacoes:             document.getElementById('observacoes').value.trim() || null,
+    checklist,
+  };
+
+  let midiasNovas = [];
+  try {
+    midiasNovas = await uploadMidias();
+  } catch (error) {
+    showToast('Erro ao enviar mídia: ' + error.message, 'error');
+    return;
+  }
+
+  const payload = {
+    objetivo_vistoria:        selecionado.objetivo_vistoria,
+    situacao_atual_obra:      selecionado.situacao_atual_obra,
+    pontos_positivos:         selecionado.pontos_positivos,
+    pontos_atencao:           selecionado.pontos_atencao,
+    inconformidade:           selecionado.inconformidade,
+    descricao_inconformidade: selecionado.descricao_inconformidade,
+    checklist,
+    midias_urls: [...midiasExistentes, ...midiasNovas],
+    observacoes: selecionado.observacoes,
+    atualizado_em: new Date().toISOString(),
+  };
+
+  if (concluir) {
+    payload.status = 'concluido';
+    payload.concluido_em = new Date().toISOString();
+
+    // Gera e envia PDF para SharePoint
+    try {
+      const pdfBlob = gerarPDFBlob();
+      const filePath = await uploadPDFRelatorio(pdfBlob);
+      payload.pdf_sharepoint_path = filePath;
+    } catch (e) {
+      console.warn('[vistoria] PDF SharePoint falhou:', e.message);
+      showToast('Relatório salvo, mas PDF não foi enviado ao SharePoint: ' + e.message, 'warning');
+    }
+  }
+
+  const { error } = await db.from('relatorios_vistoria').update(payload).eq('id', selecionado.id);
+  if (error) { showToast('Erro ao salvar: ' + error.message, 'error'); return; }
+  showToast(concluir ? 'Relatório concluído e PDF enviado ao SharePoint.' : 'Relatório salvo.', 'success');
+  await carregarRelatorios();
+  selecionado = relatorios.find(r => r.id === selecionado.id) || selecionado;
+  renderFormulario();
+}
+// ===== PDF INDIVIDUAL =====
+function exportarPDFUnico() {
+  if (!selecionado) { showToast('Selecione uma vistoria para exportar.', 'warning'); return; }
+  const blob = gerarPDFBlob();
   const nome = (selecionado.obras?.nome_cliente || 'vistoria').replace(/\s+/g,'-').toLowerCase();
-  doc.save(`vistoria-${nome}-${selecionado.data_vistoria || 'sem-data'}.pdf`);
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `vistoria-${nome}-${selecionado.data_vistoria || 'sem-data'}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ===== PDF GERAL =====
