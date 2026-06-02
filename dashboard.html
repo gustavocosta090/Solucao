@@ -860,7 +860,7 @@ const FASE_INFO = {
   document.getElementById('footer-data').textContent =
     new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'});
 
-  await carregarEExibir();
+  await carregarEExibir(new Date().getFullYear());
 })();
 
 // ═══════════════════════════════════════════════════════════════
