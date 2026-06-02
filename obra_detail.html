@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01s -->
+<!-- build: 2026-06-01t -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -282,7 +282,9 @@
     .badge-cabeamento        { background: rgba(245,158,11,0.12);  color: #F59E0B; border: 1px solid rgba(245,158,11,0.22); }
     .badge-eletrica          { background: rgba(251,191,36,0.12);  color: #FBBF24; border: 1px solid rgba(251,191,36,0.22); }
     .badge-audio_video       { background: rgba(167,139,250,0.12); color: #A78BFA; border: 1px solid rgba(167,139,250,0.22); }
-    .badge-automacao         { background: rgba(62,207,142,0.12);  color: var(--primary); border: 1px solid rgba(62,207,142,0.22); }
+    .badge-automacao              { background: rgba(62,207,142,0.12);  color: var(--primary); border: 1px solid rgba(62,207,142,0.22); }
+    .badge-bloqueado_financeiro   { background: rgba(239,68,68,0.12);   color: #f87171;        border: 1px solid rgba(239,68,68,0.25); }
+    .badge-parado_cliente         { background: rgba(251,146,60,0.12);  color: #fb923c;        border: 1px solid rgba(251,146,60,0.25); }
 
     /* ── Fotos mini ── */
     .fotos-mini { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
@@ -483,15 +485,17 @@ let tabAtiva    = 'os';
 
 // ── Valores exatos do check constraint "obras_fase_atual_check" ──
 const FASES_OBRA = {
-  'nao_iniciado':     'Não Iniciado',
-  'projeto_iniciado': 'Projeto Iniciado',
-  'projeto_concluido':'Projeto Concluído',
-  'cabeamento':       'Cabeamento',
-  'eletrica':         'Elétrica',
-  'audio_video':      'Áudio e Vídeo',
-  'automacao':        'Automação',
-  'em_finalizacao':   'Em Finalização',
-  'entrega_comercial':'Entrega Comercial',
+  'nao_iniciado':          'Não Iniciado',
+  'projeto_iniciado':      'Projeto Iniciado',
+  'projeto_concluido':     'Projeto Concluído',
+  'cabeamento':            'Cabeamento',
+  'eletrica':              'Elétrica',
+  'audio_video':           'Áudio e Vídeo',
+  'automacao':             'Automação',
+  'em_finalizacao':        'Em Finalização',
+  'bloqueado_financeiro':  'Bloqueado Financeiro',
+  'parado_cliente':        'Parado Cliente',
+  'entrega_comercial':     'Entrega Comercial',
 };
 
 const STATUS_LABELS = {
@@ -698,11 +702,10 @@ function renderPagina(obra) {
         <span class="edit-row-label">Status Compra</span>
         <select class="inline-select" onchange="salvarCampo('status_compra', this.value)">
           <option value="">— Selecione —</option>
-          <option value="Aguardando orçamento" ${obra.status_compra==='Aguardando orçamento'?'selected':''}>Aguardando orçamento</option>
-          <option value="Orçamento aprovado"   ${obra.status_compra==='Orçamento aprovado'  ?'selected':''}>Orçamento aprovado</option>
-          <option value="Compra realizada"      ${obra.status_compra==='Compra realizada'    ?'selected':''}>Compra realizada</option>
-          <option value="Material entregue"     ${obra.status_compra==='Material entregue'   ?'selected':''}>Material entregue</option>
-          <option value="Sem pendência"          ${obra.status_compra==='Sem pendência'        ?'selected':''}>Sem pendência</option>
+          <option value="Material pendente"              ${obra.status_compra==='Material pendente'             ?'selected':''}>Material pendente</option>
+          <option value="Sem parte do material em estoque" ${obra.status_compra==='Sem parte do material em estoque'?'selected':''}>Sem parte do material em estoque</option>
+          <option value="Material entregue"              ${obra.status_compra==='Material entregue'            ?'selected':''}>Material entregue</option>
+          <option value="Sem pendência"                  ${obra.status_compra==='Sem pendência'                ?'selected':''}>Sem pendência</option>
         </select>
         <span id="save-indicator-status_compra" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓ Salvo</span>
       </div>
