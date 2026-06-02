@@ -838,14 +838,6 @@
         <label for="f-regional">Regional</label>
         <select id="f-regional">
           <option value="">Selecione...</option>
-          <option value="Capital">Capital</option>
-          <option value="Interior SP">Interior SP</option>
-          <option value="Litoral">Litoral</option>
-          <option value="Rio de Janeiro">Rio de Janeiro</option>
-          <option value="Sul">Sul</option>
-          <option value="Norte/Nordeste">Norte/Nordeste</option>
-          <option value="Centro-Oeste">Centro-Oeste</option>
-          <option value="Exterior">Exterior</option>
         </select>
       </div>
     </div>
@@ -1008,6 +1000,16 @@
   function popularFiltrosDinamicos() {
     // Regional
     const regionais = [...new Set(todasObras.map(o => o.regional).filter(Boolean))].sort();
+
+    // Popular select do modal com os mesmos valores
+    const selRegional = document.getElementById('f-regional');
+    selRegional.innerHTML = '<option value="">Selecione...</option>';
+    regionais.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r; opt.textContent = r;
+      selRegional.appendChild(opt);
+    });
+
     const fRegional = document.getElementById('filtros-regional');
     fRegional.innerHTML = `<button class="filtro-btn filtro-regional ativo" data-regional="todas" aria-pressed="true">Todas</button>`;
     regionais.forEach(r => {

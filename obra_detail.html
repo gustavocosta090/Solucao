@@ -513,6 +513,7 @@ let todasOS     = [];
 let roleAtual   = 'tecnico';
 let tecMap      = {};  // id → { nome } — preenchido no carregamento
 let consultoresLista = [];
+let regionaisLista   = [];
 let tabAtiva    = 'os';
 let obraAtual   = null;  // cache da obra carregada — usado para re-render de docs
 
@@ -733,12 +734,14 @@ async function salvarObservacoes() {
 
 async function carregarObra() {
   // Carregar obra + consultores em paralelo
-  const [{ data: obra, error }, { data: consList }] = await Promise.all([
+  const [{ data: obra, error }, { data: consList }, { data: regList }] = await Promise.all([
     db.from('obras').select('*, consultores(id, nome)').eq('id', obraId).single(),
     db.from('consultores').select('id, nome').order('nome'),
+    db.from('obras').select('regional').not('regional', 'is', null).is('excluida_em', null),
   ]);
 
   consultoresLista = consList || [];
+  regionaisLista   = [...new Set((regList || []).map(o => o.regional).filter(Boolean))].sort();
 
   if (error || !obra) {
     document.getElementById('conteudo').innerHTML = '<div class="empty"><p>Obra não encontrada.</p></div>';
@@ -825,13 +828,12 @@ function renderPagina(obra) {
        </div>`
     : `<div class="obra-info-value"><i data-lucide="user"></i>${consultorAtualNome}</div>`;
 
-  const REGIONAIS_OPCOES = ['Capital','Interior SP','Litoral','Rio de Janeiro','Sul','Norte/Nordeste','Centro-Oeste','Exterior'];
   const campoRegional = podeEditar
     ? `<div class="obra-info-value edit-field">
         <i data-lucide="map"></i>
         <select class="inline-select" onchange="salvarCampo('regional', this.value || null)">
           <option value="">— Sem regional —</option>
-          ${REGIONAIS_OPCOES.map(r => `<option value="${r}" ${obra.regional === r ? 'selected' : ''}>${r}</option>`).join('')}
+          ${regionaisLista.map(r => `<option value="${r}" ${obra.regional === r ? 'selected' : ''}>${r}</option>`).join('')}
         </select>
         <span id="save-indicator-regional" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓</span>
        </div>`
