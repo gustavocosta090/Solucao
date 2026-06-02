@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-01w -->
+<!-- build: 2026-06-01x -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -842,18 +842,32 @@ function renderPagina(obra) {
           <div class="obra-info-label">Cód. Shankya</div>
           <div class="obra-info-value"><i data-lucide="hash"></i>${obra.cod_shankya}</div>
         </div>` : ''}
-        ${obra.valor_total != null ? `<div class="obra-info-item">
-          <div class="obra-info-label">Valor total</div>
-          <div class="obra-info-value"><i data-lucide="wallet-cards"></i>${obra.valor_total != null ? 'R$ ' + parseFloat(obra.valor_total).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'}</div>
-        </div>` : ''}
-        ${(obra.valor_servico != null || obra.valor_produto != null) ? `<div class="obra-info-item">
-          <div class="obra-info-label">Mão de obra / Produtos</div>
-          <div class="obra-info-value"><i data-lucide="settings-2"></i>${obra.valor_servico != null ? 'R$ ' + parseFloat(obra.valor_servico).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'} / ${obra.valor_produto != null ? 'R$ ' + parseFloat(obra.valor_produto).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'}</div>
-        </div>` : ''}
-        ${obra.pct_servico != null ? `<div class="obra-info-item">
-          <div class="obra-info-label">% Mão de obra</div>
-          <div class="obra-info-value"><i data-lucide="percent"></i>${Math.round(parseFloat(obra.pct_servico) * 100)}%</div>
-        </div>` : ''}
+        ${(() => {
+          const fmt = v => v != null && !isNaN(v)
+            ? 'R$ ' + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
+            : '—';
+          const vMO   = obra.valor_servico != null ? parseFloat(obra.valor_servico) : null;
+          const vProd = obra.valor_produto  != null ? parseFloat(obra.valor_produto)  : null;
+          const vTot  = (vMO != null || vProd != null) ? (vMO || 0) + (vProd || 0) : null;
+          const pct   = (vMO != null && vTot > 0) ? (vMO / vTot * 100).toFixed(1) + '%' : '—';
+          return `
+          <div class="obra-info-item">
+            <div class="obra-info-label">Mão de Obra</div>
+            <div class="obra-info-value"><i data-lucide="wrench"></i>${fmt(vMO)}</div>
+          </div>
+          <div class="obra-info-item">
+            <div class="obra-info-label">Produtos</div>
+            <div class="obra-info-value"><i data-lucide="package"></i>${fmt(vProd)}</div>
+          </div>
+          <div class="obra-info-item">
+            <div class="obra-info-label">Valor Total</div>
+            <div class="obra-info-value"><i data-lucide="wallet-cards"></i>${fmt(vTot)}</div>
+          </div>
+          <div class="obra-info-item">
+            <div class="obra-info-label">% MO / Total</div>
+            <div class="obra-info-value"><i data-lucide="percent"></i>${pct}</div>
+          </div>`;
+        })()}
       </div>
 
       ${editRow}
