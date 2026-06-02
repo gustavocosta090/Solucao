@@ -1341,7 +1341,7 @@ function isHoje(d) {
 // ── Carregar dados ───────────────────────────────────────────
 async function carregarObras() {
   obras = await cachedQuery('agenda-obras', 300, async () => {
-    const { data } = await db.from('obras').select('id, nome_cliente, endereco').order('nome_cliente');
+    const { data } = await db.from('obras').select('id, nome_cliente, endereco, situacao').order('nome_cliente');
     return data || [];
   });
 }
@@ -1552,7 +1552,7 @@ function fecharEquipeDropdown() {
 
 const A_DEFINIR_ID = 'a_definir';
 
-function toggleTecnicoEquipe(idStr, evt) {
+async function toggleTecnicoEquipe(idStr, evt) {
   if (evt) evt.stopPropagation();
   if (idStr === A_DEFINIR_ID) {
     equipesSelecionadas = equipesSelecionadas.includes(A_DEFINIR_ID) ? [] : [A_DEFINIR_ID];
@@ -1562,7 +1562,7 @@ function toggleTecnicoEquipe(idStr, evt) {
     if (dataAgendamento && !equipesSelecionadas.includes(idStr)) {
       const bloqueio = tecnicoBloqueadoNaData(idStr, dataAgendamento);
       if (bloqueio) {
-        alert(`O técnico não pode ser selecionado pois está bloqueado.\nMotivo: ${bloqueio.motivo}`);
+        await alertModal('Técnico bloqueado', `O técnico não pode ser selecionado pois está bloqueado.\nMotivo: ${bloqueio.motivo}`, 'aviso');
         return;
       }
     }
@@ -1642,7 +1642,7 @@ function renderEquipeDropdownItems() {
 }
 
 // ── Obra select — auto-preenche endereço ─────────────────────
-function onObraChange() {
+async function onObraChange() {
   const val         = document.getElementById('f-obra').value;
   const outroFields = document.getElementById('outro-fields');
   const endInput    = document.getElementById('f-endereco');
@@ -1651,8 +1651,15 @@ function onObraChange() {
 
   if (val && val !== 'outro') {
     const obra = obras.find(o => String(o.id) === val);
-    if (obra && obra.endereco) {
-      endInput.value = obra.endereco;
+    if (obra) {
+      if (obra.endereco) endInput.value = obra.endereco;
+      if (obra.situacao === 'bloqueado_financeiro') {
+        await alertModal(
+          'Obra bloqueada financeiramente',
+          'Esta obra está bloqueada pelo financeiro. Verifique com o setor antes de agendar.',
+          'erro'
+        );
+      }
     }
   } else if (!val) {
     endInput.value = '';
@@ -2224,6 +2231,19 @@ async function dispararAgendaWhatsapp() {
     </div>
     <div style="height:2px;background:linear-gradient(90deg,${GOLD} 0%,rgba(196,168,130,0.08) 100%);"></div>
     <div style="padding:14px 18px;">${cardsHTML}</div>
+    ${(() => {
+      const bloqDia = bloqueios.filter(b => hoje >= b.data_inicio && hoje <= b.data_fim);
+      if (!bloqDia.length) return '';
+      const fmt = d => new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+      const itens = bloqDia.map(b => {
+        const tec = tecnicos.find(t => t.id === b.tecnico_id);
+        return `<span style="display:inline-block;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:5px;padding:3px 8px;font-size:10px;color:#F87171;margin:2px;font-weight:600">${escHtml(tec?.nome||'—')} — ${escHtml(b.motivo)} (até ${fmt(b.data_fim)})</span>`;
+      }).join('');
+      return `<div style="background:rgba(239,68,68,.06);border-top:1px solid rgba(239,68,68,.2);padding:10px 18px">
+        <div style="font-size:9px;font-weight:700;color:#F87171;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">🔒 Técnicos bloqueados</div>
+        <div>${itens}</div>
+      </div>`;
+    })()}
     <div style="background:${HEADER};padding:9px 26px;border-top:1px solid ${BRDR};display:flex;justify-content:space-between;align-items:center;">
       <div style="font-size:8px;color:${T3};letter-spacing:0.06em;text-transform:uppercase;">Solução Técnica · Sistema de Gestão</div>
       <div style="font-size:8px;color:${T3};">${geradoEm}</div>
@@ -2454,6 +2474,20 @@ async function gerarProgramacaoSemanal() {
     <div style="display:flex;gap:8px;padding:12px;">
       ${colunasHTML}
     </div>
+    ${(() => {
+      const ini = datasISO[0], fim = datasISO[datasISO.length-1];
+      const bloqSemana = bloqueios.filter(b => b.data_fim >= ini && b.data_inicio <= fim);
+      if (!bloqSemana.length) return '';
+      const fmt = d => new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+      const itens = bloqSemana.map(b => {
+        const t = tecnicos.find(x => x.id === b.tecnico_id);
+        return `<span style="display:inline-block;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:5px;padding:3px 8px;font-size:10px;color:#F87171;margin:2px;font-weight:600">${escHtml(t?.nome||'—')} — ${escHtml(b.motivo)} (${fmt(b.data_inicio)}→${fmt(b.data_fim)})</span>`;
+      }).join('');
+      return `<div style="background:rgba(239,68,68,.06);border-top:1px solid rgba(239,68,68,.2);padding:10px 18px">
+        <div style="font-size:9px;font-weight:700;color:#F87171;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">🔒 Técnicos bloqueados neste período</div>
+        <div>${itens}</div>
+      </div>`;
+    })()}
     <div style="background:${S_HEADER};padding:9px 26px;border-top:1px solid ${S_BRDR};display:flex;justify-content:space-between;align-items:center;">
       <div style="font-size:8px;color:${S_T3};letter-spacing:0.06em;text-transform:uppercase;">Solução Técnica · Sistema de Gestão de Obras</div>
       <div style="font-size:8px;color:${S_T3};">${geradoEm}</div>

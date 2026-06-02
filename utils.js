@@ -175,6 +175,49 @@ function showToast(mensagem, tipo, duracao) {
   toast.addEventListener('click', function() { clearTimeout(timer); remover(); });
 }
 
+// ─── Modal de alerta (substitui alert() nativo) ─────────────────
+function alertModal(titulo, mensagem, tipo) {
+  tipo = tipo || 'aviso';
+  var ICONE = { info:'ℹ️', aviso:'⚠️', erro:'🚫', sucesso:'✅' };
+  var COR   = {
+    info:   { borda:'rgba(99,102,241,.3)',  bg:'rgba(99,102,241,.1)',  txt:'#A5B4FC' },
+    aviso:  { borda:'rgba(245,158,11,.3)', bg:'rgba(245,158,11,.1)', txt:'#FCD34D' },
+    erro:   { borda:'rgba(239,68,68,.3)',  bg:'rgba(239,68,68,.1)',  txt:'#F87171' },
+    sucesso:{ borda:'rgba(62,207,142,.3)', bg:'rgba(62,207,142,.1)', txt:'#3ECF8E' },
+  };
+  var c = COR[tipo] || COR.aviso;
+  return new Promise(function(resolve) {
+    var existing = document.getElementById('alert-modal-overlay');
+    if (existing) existing.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'alert-modal-overlay';
+    overlay.setAttribute('role', 'alertdialog');
+    overlay.setAttribute('style', [
+      'position:fixed','inset:0',
+      'background:rgba(0,0,0,0.72)',
+      'display:flex','align-items:center','justify-content:center',
+      'z-index:9999','padding:20px',
+      'backdrop-filter:blur(6px)','-webkit-backdrop-filter:blur(6px)',
+    ].join(';'));
+    overlay.innerHTML =
+      '<div style="background:#161616;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:28px;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.65);">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+      + '<span style="font-size:22px;line-height:1">' + (ICONE[tipo]||ICONE.aviso) + '</span>'
+      + '<h3 style="font-size:15px;font-weight:700;color:#fff;margin:0">' + escHtml(titulo) + '</h3>'
+      + '</div>'
+      + '<p style="font-size:13px;color:#A1A1AA;margin:0 0 22px;line-height:1.65;white-space:pre-line">' + escHtml(mensagem) + '</p>'
+      + '<div style="display:flex;justify-content:flex-end">'
+      + '<button id="am-ok" style="padding:9px 28px;background:'+c.bg+';border:1px solid '+c.borda+';border-radius:7px;color:'+c.txt+';cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;">OK</button>'
+      + '</div></div>';
+    document.body.appendChild(overlay);
+    var btn = overlay.querySelector('#am-ok');
+    setTimeout(function(){ if(btn) btn.focus(); }, 0);
+    function fechar() { overlay.remove(); resolve(); }
+    btn.addEventListener('click', fechar);
+    overlay.addEventListener('keydown', function(e){ if(e.key==='Escape'||e.key==='Enter') fechar(); });
+  });
+}
+
 // ─── Modal de confirmação ────────────────────────────────────────
 function confirmModal(mensagem, onConfirm, onCancel) {
   var existing = document.getElementById('confirm-modal-overlay');
