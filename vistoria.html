@@ -194,16 +194,12 @@ async function iniciar() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { location.href = 'login.html'; return; }
   const { data: eu } = await db.from('tecnicos').select('id,nome,role').eq('auth_user_id', session.user.id).single();
-  const ROLES_ACESSO = ['vistoriador','coordenador','supervisor','agendamento','coordenador_projetos','gerente_comercial'];
-  if (!eu || !ROLES_ACESSO.includes(eu.role)) {
-    showToast('Acesso restrito.', 'error'); location.href = 'obras.html'; return;
+  if (!eu || eu.role !== 'vistoriador') {
+    const dest = eu?.role === 'supervisor' || eu?.role === 'coordenador' ? 'supervisor.html' : 'obras.html';
+    showToast('Acesso restrito.', 'error'); location.href = dest; return;
   }
   usuarioAtual = eu;
-  const paginaAtiva = eu.role === 'vistoriador' ? 'vistoria' : 'relatorios-vistoria';
-  renderTopbar(eu.nome, eu.role, paginaAtiva);
-  if (eu.role !== 'vistoriador') {
-    document.getElementById('lista-titulo').innerHTML = '<i data-lucide="clipboard-list"></i>Relatórios de vistorias pendentes';
-  }
+  renderTopbar(eu.nome, eu.role, 'vistoria');
   await carregarRelatorios();
 }
 
