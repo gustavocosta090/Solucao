@@ -1178,6 +1178,10 @@
             <input type="checkbox" id="f-pular-bloq" checked onchange="atualizarPreviewRep()"> Pular dias bloqueados
           </label>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--primary);cursor:pointer;padding:7px 10px;background:rgba(62,207,142,.06);border:1px solid rgba(62,207,142,.2);border-radius:6px;margin-bottom:10px">
+          <input type="checkbox" id="f-mesma-os" style="accent-color:var(--primary);width:14px;height:14px">
+          Mesma N.OS para todos os dias — gera um único número de OS para toda a replicação
+        </label>
         <div id="rep-preview" style="font-size:11px;color:var(--text-3);line-height:1.8"></div>
       </div>
     </div>
@@ -1717,6 +1721,8 @@ async function abrirModal(data = '') {
   document.getElementById('btn-excluir').style.display  = 'none';
   const repCb = document.getElementById('f-replicar');
   if (repCb) { repCb.checked = false; toggleReplicar(false); }
+  const osSharedCb = document.getElementById('f-mesma-os');
+  if (osSharedCb) osSharedCb.checked = false;
 
   // Verifica se o dia está bloqueado
   const bloqDia = diasBloqueados[dataAgenda];
@@ -1941,6 +1947,7 @@ async function salvarAgendamento() {
 
   // Lista de datas a salvar (replicar ou só a data principal)
   const replicar   = !agEditandoId && document.getElementById('f-replicar')?.checked;
+  const mesmaOS    = replicar && document.getElementById('f-mesma-os')?.checked;
   const diasSalvar = replicar ? diasParaReplicar() : [data];
   if (!diasSalvar.includes(data) && !replicar) diasSalvar.unshift(data);
 
@@ -1959,6 +1966,12 @@ async function salvarAgendamento() {
       const eqCod  = (teRec && EQ_COD[teRec.equipe_id]) || '00';
       return `${y}-${m}-${eqCod}-${String(seqData).padStart(4, '0')}`;
     }
+  }
+
+  // Se "Mesma N.OS", gera apenas uma vez para o primeiro dia e reutiliza
+  let osCompartilhado = null;
+  if (mesmaOS && diasSalvar.length > 0) {
+    osCompartilhado = await gerarNumeroOS(diasSalvar[0]);
   }
 
   const basePayload = {
@@ -1981,7 +1994,7 @@ async function salvarAgendamento() {
   let savedAgId = null;
 
   for (const diaStr of diasSalvar) {
-    const numeroOSGerado = await gerarNumeroOS(diaStr);
+    const numeroOSGerado = osCompartilhado ?? await gerarNumeroOS(diaStr);
     const payload = { ...basePayload, data: diaStr, numero_os: numeroOSGerado };
 
     let result;
