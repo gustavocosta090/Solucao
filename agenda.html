@@ -1404,7 +1404,7 @@ async function carregarAgenda() {
     `${DIAS[0]}, ${fmtBR(dias[0])} — ${DIAS[6]}, ${fmtBR(dias[6])}`;
 
   const agResult = await db.from('agendamentos')
-    .select('*, numero_os, obras(nome_cliente, endereco, arquiteto_responsavel, consultores(nome)), ordens_de_servico!agendamento_id(numero_os)')
+    .select('*, numero_os, obras(nome_cliente, endereco, arquiteto_responsavel, consultores(nome))')
     .gte('data', ini).lte('data', fim).order('hora_inicio');
 
   if (agResult.error) {
@@ -1491,7 +1491,7 @@ function cardHTML(ag) {
   const cliente   = ag.obras?.nome_cliente || ag.cliente_outro || '—';
   const end       = ag.endereco_outro || ag.obras?.endereco || '';
   const hora      = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
-  const osNum     = ag.numero_os || ag.ordens_de_servico?.[0]?.numero_os || null;
+  const osNum     = ag.numero_os || null;
   const consultor = ag.obras?.consultores?.nome || '';
   const arquiteto = ag.obras?.arquiteto_responsavel || '';
 
@@ -1815,7 +1815,7 @@ function verDetalheAgendamento(id) {
   const horaFim  = ag.hora_fim    ? ag.hora_fim.slice(0, 5)    : '';
   const cliente  = ag.obras?.nome_cliente || ag.cliente_outro || '—';
   const end      = ag.endereco_outro || ag.obras?.endereco || '';
-  const osNum    = ag.numero_os || ag.ordens_de_servico?.[0]?.numero_os || null;
+  const osNum    = ag.numero_os || null;
   const consultor = ag.obras?.consultores?.nome || '';
   const arquiteto = ag.obras?.arquiteto_responsavel || '';
 
@@ -2192,7 +2192,7 @@ async function dispararAgendaWhatsapp() {
     const veic      = escHtml(ag.veiculo || '');
     const consultor = escHtml(ag.obras?.consultores?.nome || '');
     const arquiteto = escHtml(ag.obras?.arquiteto_responsavel || '');
-    const osNum     = (ag.numero_os || ag.ordens_de_servico?.[0]?.numero_os) ? escHtml(String(ag.numero_os || ag.ordens_de_servico[0].numero_os)) : '';
+    const osNum     = ag.numero_os ? escHtml(String(ag.numero_os)) : '';
 
     const tecIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
     const tecStr = escHtml(tecIds.map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · '));
@@ -2427,7 +2427,7 @@ async function gerarProgramacaoSemanal() {
           const veic      = escHtml(ag.veiculo || '');
           const consultor = escHtml(ag.obras?.consultores?.nome || '');
           const arquiteto = escHtml(ag.obras?.arquiteto_responsavel || '');
-          const osNum     = (ag.numero_os || ag.ordens_de_servico?.[0]?.numero_os) ? escHtml(String(ag.numero_os || ag.ordens_de_servico[0].numero_os)) : '';
+          const osNum     = ag.numero_os ? escHtml(String(ag.numero_os)) : '';
           const tecIds    = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
           const tecStr    = escHtml(tecIds.map(id => tecnicos.find(t => t.id === id)?.nome?.split(' ')[0] || '').filter(Boolean).join(' · '));
           const corEq     = COR_EQ[ag.equipe_id] || '#334155';
@@ -2597,7 +2597,7 @@ async function exportarAgendaSharePoint() {
           const nomes     = ids.map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · ');
           const cliente   = ag.obras?.nome_cliente || ag.cliente_outro || '—';
           const end       = ag.endereco_outro || ag.obras?.endereco || '';
-          const osNum     = (ag.numero_os || ag.ordens_de_servico?.[0]?.numero_os) ? `N.OS: ${ag.numero_os || ag.ordens_de_servico[0].numero_os}` : '';
+          const osNum     = ag.numero_os ? `N.OS: ${ag.numero_os}` : '';
           const consultor = ag.obras?.consultores?.nome ? `Consultor: ${ag.obras.consultores.nome}` : '';
           const arquiteto = ag.obras?.arquiteto_responsavel ? `Arquiteto: ${ag.obras.arquiteto_responsavel}` : '';
           const veic      = ag.veiculo ? `Veículo: ${ag.veiculo}` : '';
