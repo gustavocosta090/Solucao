@@ -2168,7 +2168,7 @@ async function exportarAgendaSharePoint() {
     const { uploadUrl } = await initRes.json();
     const putRes = await fetch(uploadUrl, {
       method:  'PUT',
-      headers: { 'Content-Type': 'application/pdf' },
+      headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(pdfBlob.size), 'Content-Range': `bytes 0-${pdfBlob.size-1}/${pdfBlob.size}` },
       body:    pdfBlob,
     });
     if (!putRes.ok && putRes.status !== 201 && putRes.status !== 200)
@@ -2338,7 +2338,7 @@ async function gerarRelatorioMes() {
     const { uploadUrl } = await initRes.json();
     const putRes = await fetch(uploadUrl, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/pdf' },
+      headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(pdfBlob.size), 'Content-Range': `bytes 0-${pdfBlob.size-1}/${pdfBlob.size}` },
       body: pdfBlob,
     });
     if (!putRes.ok && putRes.status !== 201 && putRes.status !== 200) throw new Error(`Upload falhou: ${putRes.status}`);
