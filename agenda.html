@@ -1651,8 +1651,14 @@ function renderGrade(dias) {
   // 2. Mapa agMapPorDia[diaIndex][chave] → agendamento
   const agMapPorDia = dias.map(dia => {
     const m = {};
-    visiveis.filter(ag => ag.data === fmtISO(dia))
-      .forEach(ag => { const c = chaveCliente(ag); if (!m[c]) m[c] = ag; });
+    visiveis
+      .filter(ag => ag.data === fmtISO(dia))
+      .sort((a,b) => (a.hora_inicio||'').localeCompare(b.hora_inicio||''))
+      .forEach(ag => {
+        const c = chaveCliente(ag);
+        if (!m[c]) m[c] = [];
+        m[c].push(ag); // guarda TODOS os agendamentos do técnico no dia
+      });
     return m;
   });
 
@@ -1699,9 +1705,11 @@ function renderGrade(dias) {
       dias.forEach((_, di) => {
         const dataStr  = fmtISO(dias[di]);
         const bloqueio = diasBloqueados[dataStr] || null;
-        const ag       = agMapPorDia[di][chave];
+        const ags      = agMapPorDia[di][chave]; // array ou undefined
         linesHTML += `<div class="sc${bloqueio?' bloqueada-col':''}">
-          ${ag ? `<div class="tec-label">${escHtml(nomeTec(chave))}</div>${cardHTML(ag)}` : ''}
+          ${ags && ags.length
+            ? `<div class="tec-label">${escHtml(nomeTec(chave))}</div>${ags.map(a => cardHTML(a)).join('')}`
+            : ''}
         </div>`;
       });
     });
