@@ -189,37 +189,44 @@ function diasSemana(off) {
 function mudarSemana(d){ semanaOffset+=d; carregarSemana(); }
 
 async function carregarSemana(){
-  const dias=diasSemana(semanaOffset);
-  const d0=dias[0], d6=dias[6];
-  document.getElementById('sem-label').textContent =
-    `${d0.getDate()} de ${MESES[d0.getMonth()]} — ${d6.getDate()} de ${MESES[d6.getMonth()]} ${d6.getFullYear()}`;
+  const listaEl = document.getElementById('lista');
+  try {
+    const dias=diasSemana(semanaOffset);
+    const d0=dias[0], d6=dias[6];
 
-  document.getElementById('lista').innerHTML =
-    '<div class="carregando"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>';
+    document.getElementById('sem-label').textContent =
+      `${d0.getDate()} de ${MESES[d0.getMonth()]} — ${d6.getDate()} de ${MESES[d6.getMonth()]} ${d6.getFullYear()}`;
 
-  // 1. Busca agendamentos de viagem (independente da tabela viagens_detalhe)
-  const {data:ags, error:agErr} = await db.from('agendamentos')
-    .select('*,obras(nome_cliente,endereco)')
-    .eq('status','viagem')
-    .gte('data',iso(d0)).lte('data',iso(d6))
-    .order('data').order('hora_inicio');
+    listaEl.innerHTML =
+      '<div class="carregando"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>';
 
-  agendamentos = agErr ? [] : (ags||[]);
+    // 1. Agendamentos de viagem da semana
+    const {data:ags, error:agErr} = await db.from('agendamentos')
+      .select('id,data,hora_inicio,status,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id,obras(nome_cliente,endereco)')
+      .eq('status','viagem')
+      .gte('data',iso(d0)).lte('data',iso(d6))
+      .order('data').order('hora_inicio');
 
-  // 2. Busca detalhes — silencia erro se tabela ainda não existe
-  detalhes = {};
-  if(agendamentos.length){
-    try {
-      const ids = agendamentos.map(a=>a.id);
-      const {data:det} = await db.from('viagens_detalhe').select('*').in('agendamento_id',ids);
-      (det||[]).forEach(d=>{detalhes[d.agendamento_id]=d;});
-    } catch(e){
-      console.warn('[Viagens] viagens_detalhe indisponível:', e.message);
+    if(agErr) console.warn('[Viagens] agendamentos:', agErr.message);
+    agendamentos = ags||[];
+
+    // 2. Detalhes de viagem (silencia se tabela não existir)
+    detalhes = {};
+    if(agendamentos.length){
+      try {
+        const ids = agendamentos.map(a=>a.id);
+        const {data:det} = await db.from('viagens_detalhe').select('*').in('agendamento_id',ids);
+        (det||[]).forEach(d=>{ detalhes[d.agendamento_id]=d; });
+      } catch(e){ console.warn('[Viagens] viagens_detalhe:', e.message); }
     }
-  }
 
-  renderLista(diasSemana(semanaOffset));
-  atualizarSummary();
+    renderLista(dias);
+    atualizarSummary();
+  } catch(e) {
+    console.error('[Viagens] carregarSemana:', e);
+    listaEl.innerHTML = `<div class="vazio"><i data-lucide="alert-triangle"></i><p>Erro ao carregar: ${e.message}</p></div>`;
+    lucide.createIcons();
+  }
 }
 
 function renderLista(dias){
