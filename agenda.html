@@ -195,6 +195,29 @@
     }
 
     .dia-data.hoje { color: var(--primary); }
+    .btn-nota { display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text-3);transition:color .15s,border-color .15s,background .15s;position:relative; }
+    .btn-nota:hover { color:#FBBF24;border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.08); }
+    .btn-nota.tem-nota { color:#FBBF24;border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08); }
+    .btn-nota i { width:12px;height:12px; }
+    .nota-dot { position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:#FBBF24; }
+    /* Painel lateral de anotações */
+    .nota-panel { position:fixed;top:0;right:-380px;width:360px;height:100vh;background:var(--surface-1);border-left:1px solid var(--border);z-index:500;display:flex;flex-direction:column;transition:right .25s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.4); }
+    .nota-panel.aberto { right:0; }
+    .nota-panel-header { padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+    .nota-panel-titulo { font-size:14px;font-weight:700;color:var(--text-1); }
+    .nota-panel-data { font-size:11px;color:var(--text-3);margin-top:2px; }
+    .nota-panel-body { flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:12px;overflow-y:auto; }
+    .nota-textarea { flex:1;min-height:200px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:inherit;font-size:13px;line-height:1.6;padding:12px 14px;resize:none;outline:none;transition:border-color .15s; }
+    .nota-textarea:focus { border-color:rgba(251,191,36,.4); }
+    .nota-textarea::placeholder { color:var(--text-3); }
+    .nota-panel-footer { padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0; }
+    .btn-nota-salvar { flex:1;height:38px;background:#FBBF24;border:none;border-radius:6px;color:#0A0A0A;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s; }
+    .btn-nota-salvar:hover { opacity:.88; }
+    .btn-nota-excluir { height:38px;padding:0 14px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-3);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:color .15s,border-color .15s; }
+    .btn-nota-excluir:hover { color:#f87171;border-color:rgba(239,68,68,.3); }
+    .nota-fechar { background:none;border:none;cursor:pointer;color:var(--text-3);display:flex;padding:4px;border-radius:4px; }
+    .nota-fechar:hover { color:var(--text-1);background:rgba(255,255,255,.06); }
+    .nota-fechar i { width:16px;height:16px; }
     .coluna.bloqueada { border-color: rgba(239,68,68,.4); }
     .coluna.bloqueada .coluna-header { background: rgba(239,68,68,.1); border-bottom-color: rgba(239,68,68,.25); }
     .coluna.bloqueada .dia-nome { color: #f87171; }
@@ -967,6 +990,11 @@
       <span>Disparar dia</span>
     </button>
 
+    <button class="btn-exportar-sp" id="btn-estoque" onclick="exportarProgramacaoEstoque()" title="Gerar PDF semanal para o estoque com motoristas" style="background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.3);color:#A5B4FC">
+      <i data-lucide="package"></i>
+      <span>Prog. Estoque</span>
+    </button>
+
     <button class="btn-bloqueio" id="btn-bloqueio" onclick="abrirModalBloqueio()" title="Gerenciar bloqueios de técnicos">
       <i data-lucide="user-x"></i>
       Bloqueios
@@ -1015,6 +1043,30 @@
     </div>
   </div>
 </div>
+
+<!-- Painel de Anotações -->
+<div class="nota-panel" id="nota-panel" role="dialog" aria-modal="false" aria-label="Anotações do dia">
+  <div class="nota-panel-header">
+    <div>
+      <div class="nota-panel-titulo">📝 Anotações</div>
+      <div class="nota-panel-data" id="nota-panel-data">—</div>
+    </div>
+    <button class="nota-fechar" onclick="fecharNotaPanel()" title="Fechar">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
+  <div class="nota-panel-body">
+    <textarea class="nota-textarea" id="nota-textarea" placeholder="Escreva lembretes, observações do dia...&#10;&#10;Ex: Lembrar cliente Fulano sobre o agendamento de quarta..."></textarea>
+  </div>
+  <div class="nota-panel-footer">
+    <button class="btn-nota-excluir" id="btn-nota-excluir" onclick="excluirNota()" style="display:none">Excluir</button>
+    <button class="btn-nota-salvar" onclick="salvarNota()">
+      <i data-lucide="save" style="display:inline-block;width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Salvar
+    </button>
+  </div>
+</div>
+<!-- Overlay para fechar painel -->
+<div id="nota-overlay" onclick="fecharNotaPanel()" style="display:none;position:fixed;inset:0;z-index:499;background:rgba(0,0,0,.3);backdrop-filter:blur(1px)"></div>
 
 <!-- Grade semanal -->
 <div class="grade" id="grade">
@@ -1199,6 +1251,13 @@
       <input type="text" id="f-veiculo" placeholder="Ex: STRADA-TYR7C97"/>
     </div>
 
+    <div class="form-group" id="motorista-wrap" style="display:none">
+      <label for="f-motorista">Motorista <span class="label-hint">(aparece no PDF do estoque)</span></label>
+      <select id="f-motorista">
+        <option value="">— Selecione o motorista —</option>
+      </select>
+    </div>
+
     <div class="form-group">
       <label for="f-servico">Serviço a realizar</label>
       <textarea id="f-servico" rows="3" placeholder="Descreva o serviço..."></textarea>
@@ -1249,6 +1308,8 @@ let filtroEquipe          = 'todas';
 let agendamentos          = [];
 let diasBloqueados        = {}; // { 'YYYY-MM-DD': { id, motivo } }
 let agendarEmDiaBloqueado = false;
+let anotacoes             = {}; // { 'YYYY-MM-DD': { id, texto } }
+let notaPanelDataAtual    = null;
 let jwtToken          = null;
 let obras             = [];
 let tecnicos          = [];
@@ -1311,7 +1372,7 @@ async function init() {
     if (btnSem) btnSem.style.display = 'none';
   }
 
-  await Promise.all([carregarObras(), carregarTecnicos(), carregarBloqueios(), carregarDiasBloqueados()]);
+  await Promise.all([carregarObras(), carregarTecnicos(), carregarBloqueios(), carregarDiasBloqueados(), carregarAnotacoes()]);
   preencherSelects();
   await carregarAgenda();
 }
@@ -1408,7 +1469,7 @@ async function carregarAgenda() {
     `${DIAS[0]}, ${fmtBR(dias[0])} — ${DIAS[6]}, ${fmtBR(dias[6])}`;
 
   const agResult = await db.from('agendamentos')
-    .select('*, numero_os, obras(nome_cliente, endereco, arquiteto_responsavel, consultores(nome))')
+    .select('*, numero_os, motorista_id, obras(nome_cliente, endereco, arquiteto_responsavel, consultores(nome))')
     .gte('data', ini).lte('data', fim).order('hora_inicio');
 
   if (agResult.error) {
@@ -1460,6 +1521,11 @@ function renderGrade(dias) {
       ? `<button class="btn-lock ${bloqueio ? 'ativo' : ''}" onclick="toggleBloqueioDia('${dataStr}')" title="${bloqueio ? 'Desbloquear dia' : 'Bloquear dia'}"><i data-lucide="${bloqueio ? 'lock' : 'lock-open'}"></i></button>`
       : '';
 
+    const temNota = !!anotacoes[dataStr];
+    const notaBtn = `<button class="btn-nota ${temNota ? 'tem-nota' : ''}" onclick="abrirNotaPanel('${dataStr}')" title="Anotações do dia">
+      <i data-lucide="notebook-pen"></i>${temNota ? '<span class="nota-dot"></span>' : ''}
+    </button>`;
+
     return `
       <div class="coluna ${bloqueio ? 'bloqueada' : ''}">
         <div class="coluna-header">
@@ -1469,6 +1535,7 @@ function renderGrade(dias) {
             ${bloqueio ? `<div class="bloqueio-tag" title="${escHtml(bloqueio.motivo)}">🔒 ${escHtml(bloqueio.motivo)}</div>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+            ${notaBtn}
             ${podeEditar ? `<button class="btn-dispatch-dia" onclick="dispararDia('${dataStr}')" title="Disparar agenda deste dia no WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>` : ''}
             ${lockBtn}
             ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento"><i data-lucide="plus"></i></button>`}
@@ -1530,7 +1597,7 @@ function cardHTML(ag) {
 // ── Navegação de semana ──────────────────────────────────────
 function mudarSemana(delta) {
   semanaOffset += delta;
-  carregarAgenda();
+  carregarAnotacoes().then(() => carregarAgenda());
 }
 
 // ── Equipe multi-select ──────────────────────────────────────
@@ -1605,6 +1672,26 @@ function renderEquipeChips() {
     return;
   }
   if (placeholder) placeholder.style.display = 'none';
+
+  // Atualiza select de motorista com as pessoas da equipe
+  const motWrap = document.getElementById('motorista-wrap');
+  const motSel  = document.getElementById('f-motorista');
+  if (motWrap && motSel) {
+    const ids = equipesSelecionadas.filter(x => x !== A_DEFINIR_ID);
+    if (ids.length > 0) {
+      const prevMotorista = motSel.value;
+      motSel.innerHTML = '<option value="">— Selecione o motorista —</option>' +
+        ids.map(idStr => {
+          const t = tecnicos.find(t => String(t.id) === idStr);
+          return t ? `<option value="${t.id}">${escHtml(t.nome)}</option>` : '';
+        }).join('');
+      if (prevMotorista) motSel.value = prevMotorista;
+      motWrap.style.display = 'block';
+    } else {
+      motWrap.style.display = 'none';
+      motSel.value = '';
+    }
+  }
 
   equipesSelecionadas.forEach(idStr => {
     const chip = document.createElement('span');
@@ -1723,6 +1810,10 @@ async function abrirModal(data = '') {
   if (repCb) { repCb.checked = false; toggleReplicar(false); }
   const osSharedCb = document.getElementById('f-mesma-os');
   if (osSharedCb) osSharedCb.checked = false;
+  const motWrap = document.getElementById('motorista-wrap');
+  if (motWrap) motWrap.style.display = 'none';
+  const motSel = document.getElementById('f-motorista');
+  if (motSel) motSel.value = '';
 
   // Verifica se o dia está bloqueado
   const bloqDia = diasBloqueados[dataAgenda];
@@ -1793,8 +1884,14 @@ async function editarAgendamento(id) {
   document.getElementById('f-status').value  = ag.status          || 'confirmado';
   document.getElementById('f-inicio').value  = ag.hora_inicio     ? ag.hora_inicio.slice(0,5) : '';
   document.getElementById('f-fim').value     = '';
-  document.getElementById('f-veiculo').value = ag.veiculo         || '';
-  document.getElementById('f-servico').value = ag.servico         || '';
+  document.getElementById('f-veiculo').value = ag.veiculo || '';
+  document.getElementById('f-servico').value = ag.servico || '';
+  // Preenche motorista ao editar
+  if (ag.motorista_id && equipesSelecionadas.length > 0) {
+    const motSel = document.getElementById('f-motorista');
+    const motWrap = document.getElementById('motorista-wrap');
+    if (motSel && motWrap) { motWrap.style.display = 'block'; motSel.value = String(ag.motorista_id); }
+  }
   document.getElementById('btn-excluir').style.display = 'flex';
   document.getElementById('overlay').classList.add('aberto');
   lucide.createIcons();
@@ -1983,10 +2080,11 @@ async function salvarAgendamento() {
     auxiliar2_id:   id2 ? parseInt(id2) : null,
     auxiliar3_id:   id3 ? parseInt(id3) : null,
     status,
-    hora_inicio:  inicio || null,
-    hora_fim:     null,
-    veiculo:      veiculo || null,
-    servico:      servico || null,
+    hora_inicio:   inicio || null,
+    hora_fim:      null,
+    veiculo:       veiculo || null,
+    servico:       servico || null,
+    motorista_id:  document.getElementById('f-motorista')?.value ? parseInt(document.getElementById('f-motorista').value) : null,
   };
 
   // Salva cada dia (se replicando, salva em paralelo sequencial para OS numbers únicos)
@@ -2648,9 +2746,10 @@ async function exportarAgendaSharePoint() {
     btn.innerHTML = '<i data-lucide="cloud-upload"></i><span>Enviando...</span>';
     lucide.createIcons();
 
+    const ts      = new Date().toISOString().slice(0,16).replace('T','-').replace(':','h');
     const nomeSemana = `${d0.getDate()} a ${d6.getDate()} de ${mesNome} ${ano}`;
     const pasta      = `Agenda Tecnica/${ano}/${mesNomeCap}`;
-    const arquivo    = `${nomeSemana}.pdf`;
+    const arquivo    = `${nomeSemana} (${ts}).pdf`;
 
     const initRes = await fetch('/api/upload', {
       method:  'POST',
@@ -2665,7 +2764,7 @@ async function exportarAgendaSharePoint() {
     const { uploadUrl } = await initRes.json();
     const putRes = await fetch(uploadUrl, {
       method:  'PUT',
-      headers: { 'Content-Type': 'application/pdf', 'Content-Range': `bytes 0-${pdfBlob.size - 1}/${pdfBlob.size}` },
+      headers: { 'Content-Type': 'application/pdf' },
       body:    pdfBlob,
     });
     if (!putRes.ok && putRes.status !== 201 && putRes.status !== 200)
@@ -2695,6 +2794,137 @@ document.addEventListener('keydown', function(e) {
     }
   }
 });
+
+// ── PROGRAMAÇÃO ESTOQUE ───────────────────────────────────────
+async function exportarProgramacaoEstoque() {
+  const btn = document.getElementById('btn-estoque');
+  if (!jwtToken) { mostrarToast('Sessão expirada, recarregue a página.', 'err'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2"></i><span>Gerando...</span>';
+  lucide.createIcons();
+
+  try {
+    const dias = diasDaSemana(semanaOffset);
+    const MESES_PT  = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    const DIAS_PT   = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+    const d0 = dias[0], d6 = dias[6];
+    const mesNome    = MESES_PT[d0.getMonth()];
+    const mesNomeCap = mesNome[0].toUpperCase() + mesNome.slice(1);
+    const ano        = d0.getFullYear();
+
+    // Busca CPFs dos técnicos (campo cpf na tabela tecnicos)
+    const { data: tecsCpf } = await db.from('tecnicos').select('id, nome, cpf');
+    const cpfMap = {};
+    (tecsCpf || []).forEach(t => { cpfMap[t.id] = t.cpf || '—'; });
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+
+    // Cabeçalho
+    doc.setFillColor(15, 15, 15);
+    doc.rect(0, 0, 297, 22, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+    doc.text('Solução Técnica — Programação Semanal para Estoque', 12, 10);
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(161, 161, 170);
+    doc.text(`Semana: ${d0.getDate()} a ${d6.getDate()} de ${mesNomeCap} ${ano}  ·  Gerado em ${new Date().toLocaleString('pt-BR')}`, 12, 17);
+    doc.setTextColor(62, 207, 142);
+    doc.text('CONFIDENCIAL — USO INTERNO', 260, 10, { align: 'right' });
+
+    let yPos = 28;
+
+    for (let i = 0; i < dias.length; i++) {
+      const dia     = dias[i];
+      const dataStr = fmtISO(dia);
+      const ags     = agendamentos.filter(ag => ag.data === dataStr);
+      if (!ags.length) continue;
+
+      if (yPos > 175) { doc.addPage(); yPos = 14; }
+
+      // Barra do dia
+      doc.setFillColor(25, 25, 25);
+      doc.rect(10, yPos - 5, 277, 8, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.setTextColor(62, 207, 142);
+      doc.text(`${DIAS_PT[i]}, ${String(dia.getDate()).padStart(2,'0')}/${String(dia.getMonth()+1).padStart(2,'0')}/${ano}`, 13, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 5;
+
+      const rows = ags.map(ag => {
+        const tecIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+        const equipeStr = tecIds.map(id => tecnicos.find(t => t.id === id)?.nome?.split(' ')[0] || '').filter(Boolean).join(', ');
+        const eq = equipeDoAg(ag);
+        const equipeNome = eq?.nome || '—';
+        const consultor  = ag.obras?.consultores?.nome || '—';
+        const cliente    = ag.obras?.nome_cliente || ag.cliente_outro || '—';
+        const servico    = ag.servico || '—';
+        const hora       = ag.hora_inicio?.slice(0,5) || '—';
+        const veiculo    = ag.veiculo || '—';
+
+        let motoristaStr = '—';
+        if (ag.motorista_id) {
+          const mot = tecnicos.find(t => t.id === ag.motorista_id);
+          if (mot) motoristaStr = `${mot.nome}\nCPF: ${cpfMap[mot.id] || '—'}`;
+        }
+
+        return [ hora, cliente, equipeNome, equipeStr, consultor, servico, veiculo, motoristaStr ];
+      });
+
+      doc.autoTable({
+        startY: yPos,
+        head: [['Hora', 'Cliente / Obra', 'Equipe', 'Técnicos', 'Consultor', 'Serviço', 'Veículo', 'Motorista / CPF']],
+        body: rows,
+        margin: { left: 10, right: 10 },
+        styles: { fontSize: 7.5, cellPadding: 2, lineColor: [40,40,40], lineWidth: 0.1, textColor: [30,30,30], fillColor: [255,255,255] },
+        headStyles: { fillColor: [20,20,20], textColor: [200,200,200], fontStyle: 'bold', fontSize: 7 },
+        alternateRowStyles: { fillColor: [248,248,248] },
+        columnStyles: {
+          0: { cellWidth: 12 },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 28 },
+          3: { cellWidth: 45 },
+          4: { cellWidth: 28 },
+          5: { cellWidth: 55 },
+          6: { cellWidth: 22 },
+          7: { cellWidth: 35, fontStyle: 'bold' },
+        },
+      });
+      yPos = doc.lastAutoTable.finalY + 8;
+    }
+
+    const pdfBlob = doc.output('blob');
+
+    // Upload SharePoint
+    btn.innerHTML = '<i data-lucide="cloud-upload"></i><span>Enviando...</span>';
+    lucide.createIcons();
+
+    const ts      = new Date().toISOString().slice(0,16).replace('T','-').replace(':','h');
+    const nomeSem = `${d0.getDate()} a ${d6.getDate()} de ${mesNome} ${ano}`;
+    const pasta   = `Agenda Tecnica/${ano}/${mesNomeCap}`;
+    const arquivo = `Estoque - ${nomeSem} (${ts}).pdf`;
+
+    const initRes = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
+      body: JSON.stringify({ path: pasta, filename: arquivo, contentType: 'application/pdf' }),
+    });
+    if (!initRes.ok) throw new Error((await initRes.json().catch(()=>({}))).error || `Erro ${initRes.status}`);
+    const { uploadUrl } = await initRes.json();
+    const putRes = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'application/pdf' }, body: pdfBlob });
+    if (!putRes.ok && putRes.status !== 201 && putRes.status !== 200) throw new Error(`Upload falhou: ${putRes.status}`);
+
+    mostrarToast(`✅ Programação de estoque salva: "${arquivo}"`, 'ok');
+
+  } catch(e) {
+    console.error('[exportarProgramacaoEstoque]', e);
+    mostrarToast('Erro ao exportar: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="package"></i><span>Prog. Estoque</span>';
+    lucide.createIcons();
+  }
+}
 
 // ── REPLICAR AGENDAMENTO ──────────────────────────────────────
 function toggleReplicar(ativo) {
@@ -2806,6 +3036,68 @@ async function toggleBloqueioDia(dataStr) {
       .select().single();
     if (!error && data) { diasBloqueados[dataStr] = data; renderGrade(diasDaSemana(semanaOffset)); }
   }
+}
+
+// ── ANOTAÇÕES POR DIA ────────────────────────────────────────
+async function carregarAnotacoes() {
+  const dias = diasDaSemana(semanaOffset);
+  const ini  = fmtISO(dias[0]), fim = fmtISO(dias[6]);
+  const { data } = await db.from('agenda_anotacoes').select('*').gte('data', ini).lte('data', fim);
+  anotacoes = {};
+  (data || []).forEach(a => { anotacoes[a.data] = a; });
+}
+
+function abrirNotaPanel(dataStr) {
+  notaPanelDataAtual = dataStr;
+  const d = new Date(dataStr + 'T12:00');
+  const DIAS_FULL = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const MESES_PT  = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  document.getElementById('nota-panel-data').textContent =
+    `${DIAS_FULL[d.getDay()]}, ${d.getDate()} de ${MESES_PT[d.getMonth()]}`;
+  const nota = anotacoes[dataStr];
+  document.getElementById('nota-textarea').value = nota?.texto || '';
+  document.getElementById('btn-nota-excluir').style.display = nota ? 'block' : 'none';
+  document.getElementById('nota-panel').classList.add('aberto');
+  document.getElementById('nota-overlay').style.display = 'block';
+  lucide.createIcons();
+  setTimeout(() => document.getElementById('nota-textarea').focus(), 150);
+}
+
+function fecharNotaPanel() {
+  document.getElementById('nota-panel').classList.remove('aberto');
+  document.getElementById('nota-overlay').style.display = 'none';
+  notaPanelDataAtual = null;
+}
+
+async function salvarNota() {
+  if (!notaPanelDataAtual) return;
+  const texto = document.getElementById('nota-textarea').value.trim();
+  if (!texto) { await excluirNota(); return; }
+  const nota = anotacoes[notaPanelDataAtual];
+  const payload = { data: notaPanelDataAtual, texto, atualizado_em: new Date().toISOString() };
+  let res;
+  if (nota?.id) {
+    res = await db.from('agenda_anotacoes').update(payload).eq('id', nota.id).select().single();
+  } else {
+    res = await db.from('agenda_anotacoes').insert(payload).select().single();
+  }
+  if (res.data) {
+    anotacoes[notaPanelDataAtual] = res.data;
+    mostrarToast('✅ Anotação salva.', 'ok');
+    fecharNotaPanel();
+    renderGrade(diasDaSemana(semanaOffset));
+  }
+}
+
+async function excluirNota() {
+  const nota = anotacoes[notaPanelDataAtual];
+  if (nota?.id) {
+    await db.from('agenda_anotacoes').delete().eq('id', nota.id);
+  }
+  delete anotacoes[notaPanelDataAtual];
+  mostrarToast('Anotação removida.', 'ok');
+  fecharNotaPanel();
+  renderGrade(diasDaSemana(semanaOffset));
 }
 
 // ── BLOQUEIOS DE TÉCNICOS ─────────────────────────────────────

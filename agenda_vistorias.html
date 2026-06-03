@@ -1474,7 +1474,7 @@ async function exportarAgendaSharePoint() {
     const { uploadUrl } = await initRes.json();
     const putRes = await fetch(uploadUrl, {
       method:  'PUT',
-      headers: { 'Content-Type': 'application/pdf', 'Content-Range': `bytes 0-${pdfBlob.size - 1}/${pdfBlob.size}` },
+      headers: { 'Content-Type': 'application/pdf', },
       body:    pdfBlob,
     });
     if (!putRes.ok && putRes.status !== 201 && putRes.status !== 200)

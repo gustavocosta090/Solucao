@@ -667,6 +667,10 @@
       <label>Nova senha, se quiser alterar</label>
       <input type="password" id="editSenha" placeholder="Deixe vazio para manter" autocomplete="new-password">
     </div>
+    <div class="form-group">
+      <label>CPF <span style="font-size:11px;color:var(--text-3);font-weight:400">(usado no PDF de estoque)</span></label>
+      <input type="text" id="editCpf" placeholder="000.000.000-00" maxlength="14">
+    </div>
     <div class="form-group" style="margin-top:8px;">
       <label>Equipe(s)</label>
       <div class="equipes-grid" id="equipesEdit"></div>
@@ -884,9 +888,13 @@ async function criarUsuario() {
   }
 }
 
-function abrirEditar(tecnicoId) {
+async function abrirEditar(tecnicoId) {
   const usuario = tecnicos.find(t => Number(t.id) === Number(tecnicoId));
   if (!usuario) return;
+
+  // Busca cpf diretamente da tabela tecnicos
+  const { data: tecData } = await db.from('tecnicos').select('cpf').eq('id', tecnicoId).single();
+  if (tecData) usuario.cpf = tecData.cpf;
 
   editandoUsuario = usuario;
   document.getElementById('editNome').value = usuario.nome || '';
@@ -894,6 +902,7 @@ function abrirEditar(tecnicoId) {
   document.getElementById('editRole').value = usuario.role || 'tecnico';
   document.getElementById('editUsuario').value = usuario.username || '';
   document.getElementById('editSenha').value = '';
+  document.getElementById('editCpf').value = usuario.cpf || '';
   const selecionadas = (usuario.tecnico_equipes || [])
     .map(te => Number(te.equipes?.id || te.equipe_id)).filter(Boolean);
   renderEquipesCheckboxes('equipesEdit', selecionadas);
@@ -929,6 +938,10 @@ async function confirmarEdicao() {
       username,
       password,
     });
+
+    // Salva CPF diretamente na tabela tecnicos
+    const cpf = document.getElementById('editCpf').value.trim() || null;
+    await db.from('tecnicos').update({ cpf }).eq('id', editandoUsuario.id);
 
     // Update equipes: delete all then re-insert selected
     const equipeIds = getSelectedEquipes('equipesEdit');
