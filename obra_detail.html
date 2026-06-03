@@ -658,6 +658,8 @@ async function salvarCampo(campo, valor) {
     return false;
   }
   mostrarSalvo('save-indicator-' + campo);
+  // Invalida cache de obras da agenda quando nome ou endereço mudam
+  if (['nome_cliente','endereco'].includes(campo)) invalidateCache('agenda-obras');
 
   // Atualizar badge da fase no header dinamicamente
   if (campo === 'fase_atual') {

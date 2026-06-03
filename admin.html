@@ -579,6 +579,10 @@
         <label>Senha inicial *</label>
         <input type="password" id="novaSenha" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
       </div>
+      <div class="form-group">
+        <label>CPF <span style="font-size:11px;color:var(--text-3,#52525B);font-weight:400">(usado no PDF de estoque)</span></label>
+        <input type="text" id="novoCpf" placeholder="000.000.000-00" maxlength="14">
+      </div>
       <div class="form-group full">
         <label>Equipe(s)</label>
         <div class="equipes-grid" id="equipesCreate"></div>
@@ -864,22 +868,29 @@ async function criarUsuario() {
       password: senha,
     });
 
-    // Assign equipes to the newly created tecnico
-    const equipeIds = getSelectedEquipes('equipesCreate');
-    if (equipeIds.length > 0) {
-      const { data: novoTecnico } = await db.from('tecnicos')
-        .select('id').eq('nome', nome).order('id', { ascending: false }).limit(1).single();
-      if (novoTecnico) {
+    // Busca o técnico recém-criado para salvar equipes e CPF
+    const { data: novoTecnico } = await db.from('tecnicos')
+      .select('id').eq('nome', nome).order('id', { ascending: false }).limit(1).single();
+
+    if (novoTecnico) {
+      const equipeIds = getSelectedEquipes('equipesCreate');
+      if (equipeIds.length > 0) {
         await db.from('tecnico_equipes')
           .insert(equipeIds.map(eqId => ({ tecnico_id: novoTecnico.id, equipe_id: eqId })));
       }
+      const cpf = document.getElementById('novoCpf').value.trim() || null;
+      if (cpf) await db.from('tecnicos').update({ cpf }).eq('id', novoTecnico.id);
     }
 
+    // Invalida cache de técnicos da agenda
+    invalidateCache('agenda-tecnicos');
+    invalidateCache('agenda-tecnico-equipes');
     mostrarSucesso(`Conta criada com sucesso. Usuário: ${usuario}. Entregue a senha temporária por um canal seguro.`);
     document.getElementById('novoNome').value = '';
     document.getElementById('novoEmailContato').value = '';
     document.getElementById('novoUsuario').value = '';
     document.getElementById('novaSenha').value = '';
+    document.getElementById('novoCpf').value = '';
     renderEquipesCheckboxes('equipesCreate', []);
     await carregarDados();
 
@@ -953,6 +964,8 @@ async function confirmarEdicao() {
       if (insErr) throw new Error('Erro ao salvar equipes: ' + insErr.message);
     }
 
+    invalidateCache('agenda-tecnicos');
+    invalidateCache('agenda-tecnico-equipes');
     fecharModalEditar();
     mostrarSucesso('Usuário atualizado com sucesso.');
     await carregarDados();

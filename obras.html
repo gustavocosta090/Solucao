@@ -1186,6 +1186,8 @@
       return;
     }
 
+    invalidateCache('agenda-obras');
+
     // Audit log (fire-and-forget)
     db.from('audit_log').insert({
       user_id:      _authUserId,
@@ -1304,6 +1306,9 @@
       mostrarErroModal('Erro ao salvar: ' + error.message);
       return;
     }
+
+    // Invalida cache de obras da agenda
+    invalidateCache('agenda-obras');
 
     // Adicionar no topo da lista
     todasObras.unshift(data);
