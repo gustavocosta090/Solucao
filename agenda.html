@@ -2514,8 +2514,26 @@ async function dispararAgendaWhatsapp() {
     return null;
   }
 
-  // Ordena todos os agendamentos de hoje por horário
-  const ordenados = [...agHoje].sort((a, b) =>
+  // Filtra pela equipe ativa (igual à grade)
+  const agFiltrados = filtroEquipe === 'todas' ? agHoje : agHoje.filter(ag => {
+    const ids = tecnicosDaEquipe(parseInt(filtroEquipe));
+    return ids.includes(ag.tecnico_id) || ids.includes(ag.auxiliar_id) ||
+           ids.includes(ag.auxiliar2_id) || ids.includes(ag.auxiliar3_id);
+  });
+
+  if (agFiltrados.length === 0) {
+    mostrarToast(`Sem agendamentos para esta equipe nesta data.`, 'err');
+    btn.style.opacity='1'; btn.style.pointerEvents='auto';
+    btn.querySelector('span') && (btn.querySelector('span').textContent='Disparar dia');
+    return;
+  }
+
+  // Nome da equipe para o header
+  const nomeEquipeAtiva = filtroEquipe === 'todas' ? ''
+    : (equipesDisponiveis.find(e=>String(e.id)===String(filtroEquipe))?.nome || '');
+
+  // Ordena todos os agendamentos filtrados por horário
+  const ordenados = [...agFiltrados].sort((a, b) =>
     (a.hora_inicio || '00:00').localeCompare(b.hora_inicio || '00:00')
   );
 
@@ -2551,21 +2569,21 @@ async function dispararAgendaWhatsapp() {
     const eq  = equipeDoAg(ag);
     const cor = eq ? (COR_EQ[Object.keys(EQUIPE_INFO).find(k => EQUIPE_INFO[k].nome === eq.nome)] || eq.cor) : '#334155';
 
-    const LBL = `color:${T3};font-weight:700;font-size:12px;min-width:72px;flex-shrink:0;`;
-    const VAL = `color:${T2};font-size:12px;`;
+    const LBL = `color:${T3};font-weight:700;font-size:13px;min-width:76px;flex-shrink:0;`;
+    const VAL = `color:${T2};font-size:13px;`;
     const lin = (label, val) => val
-      ? `<div style="display:flex;gap:8px;margin-top:4px;line-height:1.5;align-items:baseline;"><span style="${LBL}">${label}</span><span style="${VAL}">${val}</span></div>`
+      ? `<div style="display:flex;gap:8px;margin-top:5px;line-height:1.5;align-items:baseline;"><span style="${LBL}">${label}</span><span style="${VAL}">${val}</span></div>`
       : '';
 
     return `<div style="background:${SURF};border-radius:8px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${cor};">
-      <!-- Hora + Técnico -->
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.07);">
-        <span style="font-size:17px;font-weight:800;color:${GOLD};flex-shrink:0;font-variant-numeric:tabular-nums;min-width:52px;">${hora}</span>
-        <span style="font-size:14px;font-weight:700;color:${T2};flex:1;line-height:1.3;">${tecStr||'—'}</span>
+      <!-- Hora + Técnico (maior) -->
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;">
+        <span style="font-size:18px;font-weight:900;color:${GOLD};flex-shrink:0;font-variant-numeric:tabular-nums;min-width:54px;">${hora}</span>
+        <span style="font-size:15px;font-weight:700;color:${T2};flex:1;line-height:1.3;">${tecStr||'—'}</span>
       </div>
-      <!-- Cliente destaque -->
-      <div style="font-size:17px;font-weight:800;color:${T1};line-height:1.3;margin-bottom:8px;">${cliente}</div>
-      <!-- Campos -->
+      <!-- Cliente um pouco menor que hora/técnico -->
+      <div style="font-size:14px;font-weight:700;color:${T1};line-height:1.35;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid ${BRDR};">${cliente}</div>
+      <!-- Campos: fonte legível 13px -->
       <div>
         ${lin('Endereço:',  end)}
         ${lin('Arquiteto:', arquiteto)}
@@ -2584,7 +2602,7 @@ async function dispararAgendaWhatsapp() {
       ${logoB64 ? `<img src="${logoB64}" style="height:26px;opacity:0.92;">` : `<span style="font-size:14px;font-weight:800;color:${T1};">SOLUÇÃO TÉCNICA</span>`}
       <div style="width:1px;height:32px;background:${BRDR};"></div>
       <div style="flex:1;">
-        <div style="font-size:10px;font-weight:700;color:${GOLD};letter-spacing:0.09em;text-transform:uppercase;">Agenda do Dia</div>
+        <div style="font-size:10px;font-weight:700;color:${GOLD};letter-spacing:0.09em;text-transform:uppercase;">Agenda do Dia${nomeEquipeAtiva?' — '+escHtml(nomeEquipeAtiva):''}</div>
         <div style="font-size:16px;font-weight:700;color:${T1};margin-top:3px;">${dataFmt}</div>
       </div>
       <div style="text-align:right;">
