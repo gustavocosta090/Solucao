@@ -2582,7 +2582,7 @@ async function dispararAgendaWhatsapp() {
         <span style="font-size:15px;font-weight:700;color:${T1};flex:1;line-height:1.3;">${tecStr||'—'}</span>
       </div>
       <!-- Cliente um pouco menor que hora/técnico -->
-      <div style="font-size:14px;font-weight:700;color:${T1};line-height:1.35;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid ${BRDR};">${cliente}</div>
+      <div style="font-size:14px;font-weight:700;color:${T1};line-height:1.35;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid ${BRDR};"><span style="color:${T3};font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-right:6px;">Cliente:</span>${cliente}</div>
       <!-- Campos: fonte legível 13px -->
       <div>
         ${lin('Endereço:',  end)}
@@ -2612,19 +2612,7 @@ async function dispararAgendaWhatsapp() {
     </div>
     <div style="height:2px;background:linear-gradient(90deg,${GOLD} 0%,rgba(196,168,130,0.08) 100%);"></div>
     <div style="padding:14px 18px;">${cardsHTML}</div>
-    ${(() => {
-      const bloqDia = bloqueios.filter(b => hoje >= b.data_inicio && hoje <= b.data_fim);
-      if (!bloqDia.length) return '';
-      const fmt = d => new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-      const itens = bloqDia.map(b => {
-        const tec = tecnicos.find(t => t.id === b.tecnico_id);
-        return `<span style="display:inline-block;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:5px;padding:3px 8px;font-size:10px;color:#F87171;margin:2px;font-weight:600">${escHtml(tec?.nome||'—')} — ${escHtml(b.motivo)} (até ${fmt(b.data_fim)})</span>`;
-      }).join('');
-      return `<div style="background:rgba(239,68,68,.06);border-top:1px solid rgba(239,68,68,.2);padding:10px 18px">
-        <div style="font-size:9px;font-weight:700;color:#F87171;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">🔒 Técnicos bloqueados</div>
-        <div>${itens}</div>
-      </div>`;
-    })()}
+    ${''/* Técnicos bloqueados removidos do PDF do dia */}
     <div style="background:${HEADER};padding:9px 26px;border-top:1px solid ${BRDR};display:flex;justify-content:space-between;align-items:center;">
       <div style="font-size:8px;color:${T3};letter-spacing:0.06em;text-transform:uppercase;">Solução Técnica · Sistema de Gestão</div>
       <div style="font-size:8px;color:${T3};">${geradoEm}</div>
