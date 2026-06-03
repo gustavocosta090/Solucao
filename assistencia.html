@@ -479,6 +479,7 @@ function brlFull(v) {
   lucide.createIcons();
 
   await carregarDados();
+  iniciarAutoRefresh(carregarDados, 30000);
 })();
 
 // ── Carregar dados ──────────────────────────────────────────────

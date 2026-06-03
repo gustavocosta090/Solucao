@@ -2300,6 +2300,33 @@ async function salvarAgendamento() {
     if (agEditandoId && diaStr === data) {
       result = await (async () => {
         const res = await db.from('agendamentos').update(payload).eq('id', agEditandoId);
+        if (!res.error) {
+          // Atualiza TODAS as OS pendentes vinculadas a este agendamento
+          const { error: osErr } = await db.from('ordens_de_servico')
+            .update({
+              data_servico:      diaStr,
+              servico_planejado: servico || null,
+              endereco_servico:  endereco || null,
+              obra_id:           payload.obra_id || null,
+              atualizado_em:     new Date().toISOString(),
+            })
+            .eq('agendamento_id', agEditandoId)
+            .neq('status_aprovacao', 'cancelada');
+
+          // Se houve mudança de técnico, atualiza o técnico na OS principal
+          const novosTecs = [payload.tecnico_id, payload.auxiliar_id,
+                             payload.auxiliar2_id, payload.auxiliar3_id].filter(Boolean);
+          if (novosTecs.length > 0 && payload.tecnico_id) {
+            // OS do técnico principal recebe o novo tecnico_id
+            await db.from('ordens_de_servico')
+              .update({ tecnico_id: payload.tecnico_id })
+              .eq('agendamento_id', agEditandoId)
+              .neq('status_aprovacao', 'cancelada')
+              .limit(1); // só a primeira (a do líder)
+          }
+
+          if (osErr) console.warn('[agenda] atualizar OS:', osErr.message);
+        }
         return { error: res.error, id: agEditandoId };
       })();
     } else {

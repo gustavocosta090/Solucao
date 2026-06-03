@@ -646,6 +646,7 @@ async function init() {
 
   mostrarTela('tela-lista');
   carregarAgendamentosHoje();
+  iniciarAutoRefresh(carregarAgendamentosHoje, 30000);
 }
 
 // ── Topbar ────────────────────────────────────────────────────
