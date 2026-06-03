@@ -1009,7 +1009,7 @@
 
 <!-- Modal Bloqueio de Técnico -->
 <div class="overlay" id="overlay-bloqueio" style="display:none" onclick="if(event.target===this)fecharModalBloqueio()" role="presentation">
-  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
+  <div class="modal" style="max-width:540px;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
     <h2 style="margin-bottom:16px;display:flex;align-items:center;gap:8px"><i data-lucide="user-x"></i> Bloqueios de Técnicos</h2>
 
     <!-- Lista de bloqueios ativos -->
@@ -1018,10 +1018,12 @@
     <!-- Formulário novo bloqueio -->
     <div style="border-top:1px solid var(--border);padding-top:16px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:12px">Novo bloqueio</div>
+
       <div class="form-group" style="margin-bottom:10px">
         <label>Técnico</label>
         <select id="bl-tecnico"><option value="">Selecione...</option></select>
       </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div class="form-group" style="margin:0">
           <label>Data início</label>
@@ -1032,9 +1034,31 @@
           <input type="date" id="bl-fim">
         </div>
       </div>
+
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Período do bloqueio</label>
+        <select id="bl-tipo" onchange="toggleBloqueioHoras()">
+          <option value="dia_inteiro">Dia inteiro</option>
+          <option value="manha">Manhã (até 12:00)</option>
+          <option value="tarde">Tarde (12:00 em diante)</option>
+          <option value="personalizado">Horário específico</option>
+        </select>
+      </div>
+
+      <div id="bl-horas-wrap" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="form-group" style="margin:0">
+          <label>Hora início</label>
+          <input type="time" id="bl-hora-inicio" value="13:00">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Hora fim</label>
+          <input type="time" id="bl-hora-fim" value="15:00">
+        </div>
+      </div>
+
       <div class="form-group" style="margin-bottom:12px">
         <label>Motivo</label>
-        <input type="text" id="bl-motivo" placeholder="Ex.: Férias, Dispensa, Atestado...">
+        <input type="text" id="bl-motivo" placeholder="Ex.: Consulta médica, Férias, Atestado...">
       </div>
       <div id="bl-erro" style="color:#f87171;font-size:12px;margin-bottom:8px;display:none"></div>
       <button onclick="salvarBloqueio()" style="width:100%;height:40px;background:var(--primary);border:none;border-radius:6px;color:#0A0A0A;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
@@ -1639,10 +1663,12 @@ async function toggleTecnicoEquipe(idStr, evt) {
   } else {
     // Verifica bloqueio na data selecionada
     const dataAgendamento = document.getElementById('f-data')?.value;
+    const horaAgendamento = document.getElementById('f-inicio')?.value;
     if (dataAgendamento && !equipesSelecionadas.includes(idStr)) {
-      const bloqueio = tecnicoBloqueadoNaData(idStr, dataAgendamento);
+      const bloqueio = tecnicoBloqueadoNaData(idStr, dataAgendamento, horaAgendamento);
       if (bloqueio) {
-        await alertModal('Técnico bloqueado', `O técnico não pode ser selecionado pois está bloqueado.\nMotivo: ${bloqueio.motivo}`, 'aviso');
+        const periodo = descricaoPeriodoBloqueio(bloqueio);
+        await alertModal('Técnico bloqueado', `O técnico não pode ser selecionado pois está bloqueado.\nPeríodo: ${periodo}\nMotivo: ${bloqueio.motivo}`, 'aviso');
         return;
       }
     }
@@ -2852,64 +2878,89 @@ async function exportarProgramacaoEstoque() {
     doc.setTextColor(62, 207, 142);
     doc.text('CONFIDENCIAL — USO INTERNO', 260, 10, { align: 'right' });
 
+    // Helper: monta linha da tabela
+    const montarRow = (ag) => {
+      const tecIds    = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+      const equipeStr = tecIds.map(id => tecnicos.find(t => t.id === id)?.nome?.split(' ')[0] || '').filter(Boolean).join(', ');
+      const diaSemana = DIAS_PT[dias.findIndex(d => fmtISO(d) === ag.data)];
+      const diaFmt    = (() => { const d = new Date(ag.data+'T12:00'); return `${DIAS_PT[dias.findIndex(x=>fmtISO(x)===ag.data)]??''} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; })();
+      let motoristaStr = '—';
+      if (ag.motorista_id) {
+        const mot = tecnicos.find(t => t.id === ag.motorista_id);
+        if (mot) motoristaStr = `${mot.nome}\nCPF: ${cpfMap[mot.id] || '—'}`;
+      }
+      return [
+        diaFmt,
+        ag.hora_inicio?.slice(0,5) || '—',
+        ag.obras?.nome_cliente || ag.cliente_outro || '—',
+        equipeDoAgGlobal(ag),
+        equipeStr,
+        ag.obras?.consultores?.nome || '—',
+        ag.servico || '—',
+        ag.veiculo || '—',
+        motoristaStr,
+      ];
+    };
+
+    const COL_STYLES = {
+      0: { cellWidth: 20 }, 1: { cellWidth: 12 }, 2: { cellWidth: 48 },
+      3: { cellWidth: 26 }, 4: { cellWidth: 42 }, 5: { cellWidth: 24 },
+      6: { cellWidth: 52 }, 7: { cellWidth: 20 }, 8: { cellWidth: 33, fontStyle: 'bold' },
+    };
+    const HEAD = [['Dia', 'Hora', 'Cliente / Obra', 'Equipe', 'Técnicos', 'Consultor', 'Serviço', 'Veículo', 'Motorista / CPF']];
+
+    // Agrupa todas as agendas da semana por status
+    const todasAgs = agendamentos.filter(ag => {
+      const d = ag.data;
+      return d >= fmtISO(dias[0]) && d <= fmtISO(dias[6]);
+    });
+
+    const secoes = [
+      { label: 'VIAGENS',          statusFiltro: ['viagem'],        cor: [30,50,80],   corTexto: [120,180,255] },
+      { label: 'CONFIRMADOS',      statusFiltro: ['confirmado'],    cor: [15,40,25],   corTexto: [62,207,142] },
+      { label: 'NÃO CONFIRMADOS',  statusFiltro: ['nao_confirmado'],cor: [50,42,10],   corTexto: [251,191,36] },
+    ];
+
     let yPos = 28;
 
-    for (let i = 0; i < dias.length; i++) {
-      const dia     = dias[i];
-      const dataStr = fmtISO(dia);
-      const ags     = agendamentos.filter(ag => ag.data === dataStr);
+    for (const secao of secoes) {
+      const ags = todasAgs
+        .filter(ag => secao.statusFiltro.includes(ag.status || 'confirmado'))
+        .sort((a,b) => (a.data+a.hora_inicio).localeCompare(b.data+b.hora_inicio));
       if (!ags.length) continue;
 
       if (yPos > 175) { doc.addPage(); yPos = 14; }
 
-      // Barra do dia
-      doc.setFillColor(25, 25, 25);
-      doc.rect(10, yPos - 5, 277, 8, 'F');
+      // Cabeçalho da seção
+      doc.setFillColor(...secao.cor);
+      doc.rect(10, yPos - 5, 277, 9, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-      doc.setTextColor(62, 207, 142);
-      doc.text(`${DIAS_PT[i]}, ${String(dia.getDate()).padStart(2,'0')}/${String(dia.getMonth()+1).padStart(2,'0')}/${ano}`, 13, yPos);
+      doc.setTextColor(...secao.corTexto);
+      doc.text(`▶  ${secao.label}  —  ${ags.length} agendamento${ags.length !== 1 ? 's' : ''}`, 13, yPos + 0.5);
       doc.setTextColor(0, 0, 0);
-      yPos += 5;
+      yPos += 7;
 
-      const rows = ags.map(ag => {
-        const tecIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-        const equipeStr = tecIds.map(id => tecnicos.find(t => t.id === id)?.nome?.split(' ')[0] || '').filter(Boolean).join(', ');
-        const equipeNome = equipeDoAgGlobal(ag);
-        const consultor  = ag.obras?.consultores?.nome || '—';
-        const cliente    = ag.obras?.nome_cliente || ag.cliente_outro || '—';
-        const servico    = ag.servico || '—';
-        const hora       = ag.hora_inicio?.slice(0,5) || '—';
-        const veiculo    = ag.veiculo || '—';
+      const rows = ags.map(montarRow);
 
-        let motoristaStr = '—';
-        if (ag.motorista_id) {
-          const mot = tecnicos.find(t => t.id === ag.motorista_id);
-          if (mot) motoristaStr = `${mot.nome}\nCPF: ${cpfMap[mot.id] || '—'}`;
-        }
-
-        return [ hora, cliente, equipeNome, equipeStr, consultor, servico, veiculo, motoristaStr ];
-      });
+      // Não confirmados: linha amarela
+      const isNaoConf = secao.statusFiltro.includes('nao_confirmado');
 
       doc.autoTable({
         startY: yPos,
-        head: [['Hora', 'Cliente / Obra', 'Equipe', 'Técnicos', 'Consultor', 'Serviço', 'Veículo', 'Motorista / CPF']],
+        head: HEAD,
         body: rows,
         margin: { left: 10, right: 10 },
-        styles: { fontSize: 7.5, cellPadding: 2, lineColor: [40,40,40], lineWidth: 0.1, textColor: [30,30,30], fillColor: [255,255,255] },
-        headStyles: { fillColor: [20,20,20], textColor: [200,200,200], fontStyle: 'bold', fontSize: 7 },
-        alternateRowStyles: { fillColor: [248,248,248] },
-        columnStyles: {
-          0: { cellWidth: 12 },
-          1: { cellWidth: 50 },
-          2: { cellWidth: 28 },
-          3: { cellWidth: 45 },
-          4: { cellWidth: 28 },
-          5: { cellWidth: 55 },
-          6: { cellWidth: 22 },
-          7: { cellWidth: 35, fontStyle: 'bold' },
+        styles: {
+          fontSize: 7.5, cellPadding: 2,
+          lineColor: [60,60,60], lineWidth: 0.1,
+          textColor: isNaoConf ? [80,60,0] : [30,30,30],
+          fillColor: isNaoConf ? [255,252,220] : [255,255,255],
         },
+        headStyles: { fillColor: secao.cor, textColor: secao.corTexto, fontStyle: 'bold', fontSize: 7 },
+        alternateRowStyles: { fillColor: isNaoConf ? [255,248,195] : [248,248,248] },
+        columnStyles: COL_STYLES,
       });
-      yPos = doc.lastAutoTable.finalY + 8;
+      yPos = doc.lastAutoTable.finalY + 10;
     }
 
     const pdfBlob = doc.output('blob');
@@ -3118,28 +3169,44 @@ async function excluirNota() {
 }
 
 // ── BLOQUEIOS DE TÉCNICOS ─────────────────────────────────────
-let bloqueios = []; // { id, tecnico_id, data_inicio, data_fim, motivo }
+let bloqueios = [];
 
 async function carregarBloqueios() {
   const { data } = await db.from('tecnico_bloqueios').select('*').order('data_inicio');
   bloqueios = data || [];
 }
 
-function tecnicoBloqueadoNaData(tecnicoId, dataStr) {
+// Verifica se técnico está bloqueado na data+hora do agendamento
+function tecnicoBloqueadoNaData(tecnicoId, dataStr, horaAgendamento) {
   if (!dataStr) return null;
-  return bloqueios.find(b =>
-    String(b.tecnico_id) === String(tecnicoId) &&
-    dataStr >= b.data_inicio &&
-    dataStr <= b.data_fim
-  ) || null;
+  return bloqueios.find(b => {
+    if (String(b.tecnico_id) !== String(tecnicoId)) return false;
+    if (dataStr < b.data_inicio || dataStr > b.data_fim) return false;
+    // Sem horário definido = dia inteiro
+    if (!b.hora_inicio || !b.hora_fim) return true;
+    // Com horário: verifica se o agendamento cai no período
+    if (!horaAgendamento) return true; // sem hora de agendamento → bloqueia por segurança
+    const horaAg = horaAgendamento.slice(0,5);
+    return horaAg >= b.hora_inicio.slice(0,5) && horaAg < b.hora_fim.slice(0,5);
+  }) || null;
+}
+
+function descricaoPeriodoBloqueio(b) {
+  if (!b.hora_inicio || !b.hora_fim) return 'Dia inteiro';
+  return `${b.hora_inicio.slice(0,5)} – ${b.hora_fim.slice(0,5)}`;
+}
+
+function toggleBloqueioHoras() {
+  const tipo = document.getElementById('bl-tipo').value;
+  document.getElementById('bl-horas-wrap').style.display = tipo === 'personalizado' ? 'grid' : 'none';
 }
 
 function abrirModalBloqueio() {
-  // Popula select de técnicos
   const sel = document.getElementById('bl-tecnico');
   sel.innerHTML = '<option value="">Selecione...</option>' +
     tecnicos.map(t => `<option value="${t.id}">${escHtml(t.nome)}</option>`).join('');
-
+  document.getElementById('bl-tipo').value = 'dia_inteiro';
+  document.getElementById('bl-horas-wrap').style.display = 'none';
   renderBloqueiosLista();
   document.getElementById('overlay-bloqueio').style.display = 'flex';
   lucide.createIcons();
@@ -3157,14 +3224,16 @@ function renderBloqueiosLista() {
   }
   const fmt = d => new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
   el.innerHTML = bloqueios.map(b => {
-    const tec = tecnicos.find(t => t.id === b.tecnico_id);
+    const tec    = tecnicos.find(t => t.id === b.tecnico_id);
+    const periodo = descricaoPeriodoBloqueio(b);
+    const datas  = b.data_inicio === b.data_fim ? fmt(b.data_inicio) : `${fmt(b.data_inicio)} → ${fmt(b.data_fim)}`;
     return `<div class="bloqueio-item">
       <div style="flex:1;min-width:0">
         <div class="bloqueio-nome">${escHtml(tec?.nome || '—')}</div>
-        <div class="bloqueio-info">${fmt(b.data_inicio)} → ${fmt(b.data_fim)}</div>
+        <div class="bloqueio-info">${datas} · <strong style="color:var(--text-2)">${periodo}</strong></div>
         <div class="bloqueio-motivo">${escHtml(b.motivo)}</div>
       </div>
-      <button class="bloqueio-del" onclick="excluirBloqueio(${b.id})" title="Remover bloqueio">
+      <button class="bloqueio-del" onclick="excluirBloqueio(${b.id})" title="Remover">
         <i data-lucide="trash-2" style="width:14px;height:14px"></i>
       </button>
     </div>`;
@@ -3177,6 +3246,7 @@ async function salvarBloqueio() {
   const inicio = document.getElementById('bl-inicio').value;
   const fim    = document.getElementById('bl-fim').value;
   const motivo = document.getElementById('bl-motivo').value.trim();
+  const tipo   = document.getElementById('bl-tipo').value;
   const erroEl = document.getElementById('bl-erro');
 
   if (!tecId || !inicio || !fim || !motivo) {
@@ -3189,8 +3259,23 @@ async function salvarBloqueio() {
   }
   erroEl.style.display = 'none';
 
+  // Resolve hora_inicio e hora_fim conforme tipo
+  let hora_inicio = null, hora_fim = null;
+  if (tipo === 'manha')        { hora_inicio = '00:00'; hora_fim = '12:00'; }
+  else if (tipo === 'tarde')   { hora_inicio = '12:00'; hora_fim = '23:59'; }
+  else if (tipo === 'personalizado') {
+    hora_inicio = document.getElementById('bl-hora-inicio').value;
+    hora_fim    = document.getElementById('bl-hora-fim').value;
+    if (!hora_inicio || !hora_fim) {
+      erroEl.textContent = 'Informe a hora de início e fim.';
+      erroEl.style.display = 'block'; return;
+    }
+  }
+  // dia_inteiro: hora_inicio e hora_fim ficam null
+
   const { data, error } = await db.from('tecnico_bloqueios').insert({
-    tecnico_id: parseInt(tecId), data_inicio: inicio, data_fim: fim, motivo
+    tecnico_id: parseInt(tecId), data_inicio: inicio, data_fim: fim,
+    motivo, hora_inicio, hora_fim
   }).select().single();
 
   if (error) { erroEl.textContent = 'Erro: ' + error.message; erroEl.style.display = 'block'; return; }
@@ -3200,6 +3285,8 @@ async function salvarBloqueio() {
   document.getElementById('bl-inicio').value  = '';
   document.getElementById('bl-fim').value     = '';
   document.getElementById('bl-motivo').value  = '';
+  document.getElementById('bl-tipo').value    = 'dia_inteiro';
+  document.getElementById('bl-horas-wrap').style.display = 'none';
   renderBloqueiosLista();
 }
 
