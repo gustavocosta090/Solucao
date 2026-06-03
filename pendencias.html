@@ -442,6 +442,7 @@ function renderLista(){
           <button class="btn-st ${p.status==='pendencia_solucao'?'active-pendencia_solucao':''}" onclick="mudarStatus(${p.id},'pendencia_solucao')" title="Pendência Solução"><i data-lucide="building-2"></i></button>
           <button class="btn-st ${p.status==='aguardando'?'active-aguardando':''}" onclick="mudarStatus(${p.id},'aguardando')" title="Aguardando"><i data-lucide="pause-circle"></i></button>
           <button class="btn-st" onclick="editarPendencia(${p.id})" title="Editar"><i data-lucide="pencil"></i></button>
+          <button class="btn-st" onclick="agendarPendencia(${p.id})" title="Criar agenda para esta pendência" style="color:#818CF8;border-color:rgba(129,140,248,.3);background:rgba(129,140,248,.08)"><i data-lucide="calendar-plus"></i></button>
           <button class="btn-excluir" onclick="excluirPendencia(${p.id})" title="Excluir"><i data-lucide="trash-2"></i></button>
         </div>
       </td>
@@ -688,6 +689,17 @@ async function init(){
   renderTopbar(eu.nome,eu.role,'pendencias');
   applyTheme(localStorage.getItem('tema')||'auto');
   await Promise.all([carregarObras(),carregarPendencias()]);
+}
+
+function agendarPendencia(id) {
+  const p = pendencias.find(x => x.id === id);
+  if (!p) return;
+  const params = new URLSearchParams();
+  if (p.obra_id)   params.set('obra_id',  p.obra_id);
+  if (p.obra_outro) params.set('cliente_outro', p.obra_outro);
+  if (p.descricao) params.set('servico',  p.descricao);
+  params.set('pendencia_id', p.id);
+  window.location.href = `agenda.html?${params.toString()}`;
 }
 
 init();

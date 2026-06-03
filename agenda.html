@@ -1401,6 +1401,31 @@ async function init() {
   await Promise.all([carregarObras(), carregarTecnicos(), carregarBloqueios(), carregarDiasBloqueados(), carregarAnotacoes()]);
   preencherSelects();
   await carregarAgenda();
+
+  // Pré-preenche modal se veio de uma pendência
+  const params = new URLSearchParams(location.search);
+  if (params.has('pendencia_id') && podeEditar) {
+    await abrirModal();
+    const obraId      = params.get('obra_id');
+    const clienteOutro= params.get('cliente_outro');
+    const servico     = params.get('servico');
+
+    if (obraId) {
+      const sel = document.getElementById('f-obra');
+      if (sel) { sel.value = obraId; onObraChange(); }
+    } else if (clienteOutro) {
+      const sel = document.getElementById('f-obra');
+      if (sel) { sel.value = 'outro'; onObraChange(); }
+      const nomeEl = document.getElementById('f-nome-outro');
+      if (nomeEl) nomeEl.value = clienteOutro;
+    }
+    if (servico) {
+      const srvEl = document.getElementById('f-servico');
+      if (srvEl) srvEl.value = decodeURIComponent(servico);
+    }
+    // Limpa params da URL sem recarregar
+    history.replaceState({}, '', 'agenda.html');
+  }
 }
 // ── Datas ────────────────────────────────────────────────────
 function getSegunda(offset = 0) {
