@@ -499,11 +499,25 @@ async function confirmarMotivoStatus(){
 }
 
 async function _salvarStatus(id, novoStatus, motivo){
-  const payload = {status:novoStatus, motivo_status: motivo ?? null, atualizado_em:new Date().toISOString()};
-  const { error } = await db.from('pendencias').update(payload).eq('id',id);
-  if(error){showToast('Erro: '+error.message, 'error');return;}
+  if(!id){ showToast('Erro: ID inválido.','error'); return; }
+  // Só inclui motivo_status no payload se tiver valor (evita erro se coluna ainda não existe)
+  const payload = { status: novoStatus, atualizado_em: new Date().toISOString() };
+  if(motivo !== null && motivo !== undefined) payload.motivo_status = motivo;
+  if(novoStatus === 'resolvida' || novoStatus === 'aberta') payload.motivo_status = null;
+
+  const { error } = await db.from('pendencias').update(payload).eq('id', id);
+  if(error){
+    // Se coluna motivo_status não existe, tenta sem ela
+    if(error.message && error.message.includes('motivo_status')){
+      delete payload.motivo_status;
+      const { error: e2 } = await db.from('pendencias').update(payload).eq('id', id);
+      if(e2){ showToast('Erro: '+e2.message,'error'); return; }
+    } else {
+      showToast('Erro: '+error.message,'error'); return;
+    }
+  }
   const p = pendencias.find(x=>x.id===id);
-  if(p){ p.status=novoStatus; p.motivo_status=motivo??null; }
+  if(p){ p.status=novoStatus; if('motivo_status' in payload) p.motivo_status=payload.motivo_status; }
   renderLista();
   showToast('Status atualizado.', 'success');
 }
