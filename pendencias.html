@@ -494,8 +494,11 @@ async function confirmarMotivoStatus(){
   const motivo = document.getElementById('motivo-input').value.trim();
   if(!motivo){ document.getElementById('motivo-input').style.borderColor='rgba(239,68,68,.5)'; return; }
   document.getElementById('motivo-input').style.borderColor='';
+  // Captura antes de fechar (fecharModalMotivo reseta as variáveis)
+  const id     = _motivoPendingId;
+  const status = _motivoPendingStatus;
   fecharModalMotivo();
-  await _salvarStatus(_motivoPendingId, _motivoPendingStatus, motivo);
+  await _salvarStatus(id, status, motivo);
 }
 
 async function _salvarStatus(id, novoStatus, motivo){
