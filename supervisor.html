@@ -1152,7 +1152,7 @@
   </div>
   <div class="stat-card">
     <div class="stat-num" id="sPend" style="color: var(--amber);">—</div>
-    <div class="stat-label">Pendentes</div>
+    <div class="stat-label">Atrasadas</div>
   </div>
   <div class="stat-card">
     <div class="stat-num" id="sAprov" style="color: var(--primary);">—</div>
@@ -1514,12 +1514,14 @@ async function carregarOSs() {
   const dataCorte = new Date();
   dataCorte.setDate(dataCorte.getDate() - 90);
   const dataCorteISO = dataCorte.toISOString().split('T')[0];
+  const hojeISO = new Date().toISOString().split('T')[0];
   _osDataCorte = dataCorteISO;
 
   const [{ data: osData, error: osError }, { data: tecList }, { data: teData }] = await Promise.all([
     db.from('ordens_de_servico')
       .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
       .gte('data_servico', dataCorteISO)
+      .lte('data_servico', hojeISO)
       .neq('status_aprovacao', 'cancelada')
       .order('criado_em', { ascending: false }),
     db.from('tecnicos').select('id, nome'),
@@ -1627,7 +1629,7 @@ function atualizarStats() {
   document.getElementById('sTot').textContent = filtradas.length;
   document.getElementById('sPend').textContent = filtradas.filter(o =>
     (!o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada') &&
-    (!o.data_servico || o.data_servico <= hoje)
+    o.data_servico && o.data_servico < hoje
   ).length;
   document.getElementById('sAprov').textContent = filtradas.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
   document.getElementById('sFotos').textContent = filtradas.filter(o => o.fotos_urls?.length > 0).length;

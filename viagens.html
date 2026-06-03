@@ -466,7 +466,7 @@ function exportarSemana(){
     const d=new Date(ag.data+'T12:00');
     const idx=dias.findIndex(x=>_iso(x)===ag.data);
     const tIds=[ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
-    const tNm=tIds.map(id=>{const t=_tecs.find(t=>t.id===id);return t?t.nome.split(' ')[0]:'';}).filter(Boolean).join(', ');
+    const tNm=tIds.map(id=>{const t=_tecs.find(t=>t.id===id);return t?t.nome:'';}).filter(Boolean).join(', ');
     const det=_dets[ag.id]||{};
     const cli=(ag._ob&&ag._ob.nome_cliente)||ag.cliente_outro||'—';
     return [(idx>=0?DIAS[idx]:'')+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'),

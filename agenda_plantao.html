@@ -1248,7 +1248,7 @@ function cardHTML(ag) {
   const ids   = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
   const nomes = ids.map(id => {
     const t = tecnicos.find(t => t.id === id);
-    return t ? t.nome.split(' ')[0] : null; // primeiro nome para caber no card
+    return t ? t.nome : null;
   }).filter(Boolean);
 
   const tecs    = nomes.join(' · ') || '—';

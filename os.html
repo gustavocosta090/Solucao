@@ -636,7 +636,7 @@ async function init() {
 
   const h = new Date().getHours();
   const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  document.getElementById('saudacao').textContent = `${saudacao}, ${tecnicoLogado.nome.split(' ')[0]}`;
+  document.getElementById('saudacao').textContent = `${saudacao}, ${tecnicoLogado.nome}`;
 
   const hoje = new Date();
   const DIAS_PT  = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
@@ -694,6 +694,7 @@ async function _carregarAgendamentosHoje() {
   const osR1 = await db.from('ordens_de_servico')
     .select('id, agendamento_id, obra_id, status_aprovacao, data_servico, criado_em, tecnico_id')
     .gte('data_servico', dataInicio)
+    .lte('data_servico', hoje)
     .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`);
   const osRaw = osR1.data || [];
 
@@ -780,7 +781,7 @@ async function _carregarAgendamentosHoje() {
       const equipeIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
       const equipeNomes = equipeIds.map(eid => {
         const t = tecnicos.find(t => t.id === eid);
-        return t ? t.nome.split(' ')[0] : null;
+        return t ? t.nome : null;
       }).filter(Boolean);
 
       // OS concluída/aprovada → não exibe no os.html (só aparece no tecnico_dashboard)

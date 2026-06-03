@@ -1513,7 +1513,7 @@ async function carregarTecnicos() {
       return data || [];
     }),
     cachedQuery('agenda-equipes', 3600, async () => {
-      const { data } = await db.from('equipes').select('id, nome').order('nome');
+      const { data } = await db.from('equipes').select('id, nome').order('id');
       return data || [];
     }),
   ]);
@@ -1666,7 +1666,7 @@ function renderGrade(dias) {
   const nomeTec = c => {
     if (!c.startsWith('tec_')) return '—';
     const t = tecnicos.find(t => t.id === parseInt(c.replace('tec_','')));
-    return t ? t.nome.split(' ')[0] : '?';
+    return t ? t.nome : '?';
   };
 
   // 3. Headers (7 células)
@@ -1727,7 +1727,7 @@ function cardHTML(ag) {
   const ids   = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
   const nomes = ids.map(id => {
     const t = tecnicos.find(t => t.id === id);
-    return t ? t.nome.split(' ')[0] : null;
+    return t ? t.nome : null;
   }).filter(Boolean);
 
   const tecs      = nomes.join(' · ') || '—';
@@ -1876,7 +1876,7 @@ function renderEquipeChips() {
     } else {
       const t = tecnicos.find(t => String(t.id) === idStr);
       if (!t) return;
-      chip.innerHTML = `${t.nome.split(' ')[0]} <button type="button" class="equipe-chip-del" onclick="event.stopPropagation();removerDaEquipe('${idStr}')">×</button>`;
+      chip.innerHTML = `${t.nome} <button type="button" class="equipe-chip-del" onclick="event.stopPropagation();removerDaEquipe('${idStr}')">×</button>`;
     }
     wrap.appendChild(chip);
   });
@@ -2386,34 +2386,44 @@ async function salvarAgendamento() {
     if (agEditandoId) {
       const agAtual = agendamentos.find(a => a.id === agEditandoId);
       if (agAtual?.serie_id) {
-        // Detecta o que mudou: equipe, status e/ou veículo
-        const equipesMudou = agAtual.tecnico_id !== basePayload.tecnico_id
-          || agAtual.auxiliar_id !== basePayload.auxiliar_id;
-        const statusMudou  = agAtual.status   !== basePayload.status;
-        const veiculoMudou = agAtual.veiculo  !== basePayload.veiculo;
+        // Detecta qualquer alteração relevante na série
+        const algumCampoMudou =
+          agAtual.tecnico_id    !== basePayload.tecnico_id   ||
+          agAtual.auxiliar_id   !== basePayload.auxiliar_id  ||
+          agAtual.auxiliar2_id  !== basePayload.auxiliar2_id ||
+          agAtual.auxiliar3_id  !== basePayload.auxiliar3_id ||
+          agAtual.motorista_id  !== basePayload.motorista_id ||
+          agAtual.status        !== basePayload.status        ||
+          agAtual.veiculo       !== basePayload.veiculo       ||
+          agAtual.servico       !== basePayload.servico       ||
+          agAtual.hora_inicio   !== basePayload.hora_inicio   ||
+          String(agAtual.obra_id || '') !== String(basePayload.obra_id || '') ||
+          (agAtual.endereco_outro || '') !== (basePayload.endereco_outro || '');
 
-        if (equipesMudou || statusMudou || veiculoMudou) {
-          const msg = statusMudou
-            ? `Esta agenda faz parte de uma série replicada.\nO status foi alterado para "${basePayload.status}".\nDeseja aplicar esta alteração a todos os outros dias da série?`
-            : veiculoMudou && !equipesMudou
-              ? 'Esta agenda faz parte de uma série replicada.\nDeseja aplicar o mesmo veículo a todos os outros dias da série?'
-              : 'Esta agenda faz parte de uma série replicada.\nDeseja aplicar as mesmas informações a todos os outros dias da série?';
-
+        if (algumCampoMudou) {
           const propagar = await new Promise(resolve => {
-            confirmModal(msg, () => resolve(true), () => resolve(false));
+            confirmModal(
+              'Esta agenda faz parte de uma série replicada.\nDeseja aplicar as mesmas alterações a todos os outros dias da série?',
+              () => resolve(true),
+              () => resolve(false)
+            );
           });
 
           if (propagar) {
             const updatePayload = {
-              tecnico_id:   basePayload.tecnico_id,
-              auxiliar_id:  basePayload.auxiliar_id,
-              auxiliar2_id: basePayload.auxiliar2_id,
-              auxiliar3_id: basePayload.auxiliar3_id,
-              motorista_id: basePayload.motorista_id,
-              veiculo:      basePayload.veiculo,
-              atualizado_em: new Date().toISOString(),
+              tecnico_id:     basePayload.tecnico_id,
+              auxiliar_id:    basePayload.auxiliar_id,
+              auxiliar2_id:   basePayload.auxiliar2_id,
+              auxiliar3_id:   basePayload.auxiliar3_id,
+              motorista_id:   basePayload.motorista_id,
+              status:         basePayload.status,
+              veiculo:        basePayload.veiculo,
+              servico:        basePayload.servico,
+              hora_inicio:    basePayload.hora_inicio,
+              obra_id:        basePayload.obra_id,
+              cliente_outro:  basePayload.cliente_outro,
+              endereco_outro: basePayload.endereco_outro,
             };
-            if (statusMudou) updatePayload.status = basePayload.status;
 
             const { error: serieErr } = await db.from('agendamentos')
               .update(updatePayload)
@@ -2423,9 +2433,7 @@ async function salvarAgendamento() {
             if (serieErr) {
               mostrarToast('⚠ Série parcialmente atualizada: ' + serieErr.message, 'err');
             } else {
-              mostrarToast(statusMudou
-                ? `✅ Status "${basePayload.status}" aplicado em toda a série.`
-                : '✅ Alterações aplicadas em toda a série.', 'ok');
+              mostrarToast('✅ Alterações aplicadas em toda a série.', 'ok');
             }
           }
         }
@@ -2861,7 +2869,7 @@ async function gerarProgramacaoSemanal() {
           const arquiteto = escHtml(ag.obras?.arquiteto_responsavel || '');
           const osNum     = ag.numero_os ? escHtml(String(ag.numero_os)) : '';
           const tecIds    = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-          const tecStr    = escHtml(tecIds.map(id => tecnicos.find(t => t.id === id)?.nome?.split(' ')[0] || '').filter(Boolean).join(' · '));
+          const tecStr    = escHtml(tecIds.map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · '));
           const corEq     = COR_EQ[ag.equipe_id] || '#334155';
           const LBL = `color:${S_T3};font-weight:600;font-size:10px;`;
           const VAL = `color:${S_T2};font-size:10px;`;
@@ -3174,7 +3182,7 @@ async function exportarProgramacaoEstoque() {
     // Helper: monta linha da tabela
     const montarRow = (ag) => {
       const tecIds    = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-      const equipeStr = tecIds.map(id => tecnicos.find(t => t.id === id)?.nome?.split(' ')[0] || '').filter(Boolean).join(', ');
+      const equipeStr = tecIds.map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(', ');
       const diaSemana = DIAS_PT[dias.findIndex(d => fmtISO(d) === ag.data)];
       const diaFmt    = (() => { const d = new Date(ag.data+'T12:00'); return `${DIAS_PT[dias.findIndex(x=>fmtISO(x)===ag.data)]??''} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; })();
       let motoristaStr = '—';
