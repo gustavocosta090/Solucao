@@ -436,6 +436,7 @@ function renderLista(){
       </td>
       <td class="td-acoes">
         <div style="display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
+          <button class="btn-st ${p.status==='aberta'?'active-resolvida':''}" onclick="mudarStatus(${p.id},'aberta')" title="Em aberto"><i data-lucide="clock"></i></button>
           <button class="btn-st ${p.status==='resolvida'?'active-resolvida':''}" onclick="mudarStatus(${p.id},'resolvida')" title="Resolvida"><i data-lucide="check-circle-2"></i></button>
           <button class="btn-st ${p.status==='pendencia_cliente'?'active-pendencia_cliente':''}" onclick="mudarStatus(${p.id},'pendencia_cliente')" title="Pendência cliente"><i data-lucide="user"></i></button>
           <button class="btn-st ${p.status==='pendencia_solucao'?'active-pendencia_solucao':''}" onclick="mudarStatus(${p.id},'pendencia_solucao')" title="Pendência Solução"><i data-lucide="building-2"></i></button>
