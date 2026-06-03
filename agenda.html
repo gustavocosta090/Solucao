@@ -1332,6 +1332,7 @@ let filtroEquipe          = 'todas';
 let agendamentos          = [];
 let diasBloqueados        = {}; // { 'YYYY-MM-DD': { id, motivo } }
 let agendarEmDiaBloqueado = false;
+let pendenciaOrigemId     = null; // preenchido ao vir de pendencias.html
 let anotacoes             = {}; // { 'YYYY-MM-DD': { id, texto } }
 let notaPanelDataAtual    = null;
 let jwtToken          = null;
@@ -1405,6 +1406,7 @@ async function init() {
   // Pré-preenche modal se veio de uma pendência
   const params = new URLSearchParams(location.search);
   if (params.has('pendencia_id') && podeEditar) {
+    pendenciaOrigemId = parseInt(params.get('pendencia_id'));
     await abrirModal();
     const obraId      = params.get('obra_id');
     const clienteOutro= params.get('cliente_outro');
@@ -1423,7 +1425,6 @@ async function init() {
       const srvEl = document.getElementById('f-servico');
       if (srvEl) srvEl.value = decodeURIComponent(servico);
     }
-    // Limpa params da URL sem recarregar
     history.replaceState({}, '', 'agenda.html');
   }
 }
@@ -2193,6 +2194,16 @@ async function salvarAgendamento() {
   } else {
     invalidateCache('agenda-obras');
     invalidateCache('agenda-tecnicos');
+
+    // Se veio de uma pendência, atualiza data_marcada com a data do agendamento
+    if (!agEditandoId && pendenciaOrigemId) {
+      await db.from('pendencias')
+        .update({ data_marcada: data, atualizado_em: new Date().toISOString() })
+        .eq('id', pendenciaOrigemId);
+      pendenciaOrigemId = null;
+      mostrarToast('✅ Pendência atualizada com a data do agendamento.', 'ok');
+    }
+
     fecharModal();
     if (!agEditandoId && tipoServico === 'assistencia') {
       window.location.href = 'assistencia.html';

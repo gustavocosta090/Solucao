@@ -304,7 +304,15 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 
     <div class="form-group">
       <label for="f-data-marcada">Data marcada com cliente</label>
-      <input type="date" id="f-data-marcada">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="date" id="f-data-marcada" style="flex:1">
+        <button type="button" onclick="document.getElementById('f-data-marcada').value=''" title="Limpar data"
+          style="height:38px;padding:0 10px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-3);cursor:pointer;font-size:11px;white-space:nowrap;font-family:inherit;transition:color .15s,border-color .15s"
+          onmouseover="this.style.color='#f87171';this.style.borderColor='rgba(239,68,68,.3)'"
+          onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)'">
+          ✕ Limpar
+        </button>
+      </div>
     </div>
 
     <label class="toggle-urgente">
