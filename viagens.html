@@ -8,85 +8,90 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script>document.documentElement.dataset.theme = localStorage.getItem('tema') || 'auto';</script>
+<script>document.documentElement.dataset.theme=localStorage.getItem('tema')||'auto';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="utils.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  :root {
-    --bg:#0A0A0A; --surface-1:#111111; --surface-2:#161616; --surface-3:#1B1B1B;
-    --primary:#3ECF8E; --text-1:#FFF; --text-2:#A1A1AA; --text-3:#52525B;
-    --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.12);
-    --amber-text:#FCD34D; --red-text:#F87171;
-  }
-  body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text-1); min-height:100vh; -webkit-font-smoothing:antialiased; }
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0A0A0A;--surface-1:#111111;--surface-2:#161616;--surface-3:#1B1B1B;
+  --primary:#3ECF8E;--text-1:#FFFFFF;--text-2:#A1A1AA;--text-3:#52525B;
+  --border:rgba(255,255,255,0.08);--border-strong:rgba(255,255,255,0.12);--border-hover:rgba(255,255,255,0.16);
+  --amber:#F59E0B;--amber-text:#FCD34D;--red:#EF4444;--red-text:#F87171;--radius:8px;
+}
+:root[data-theme="light"]{--bg:#F4F4F5;--surface-1:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F1;--text-1:#09090B;--text-2:#71717A;--text-3:#A1A1AA;--border:rgba(0,0,0,0.08);--border-strong:rgba(0,0,0,0.14);--border-hover:rgba(0,0,0,0.16);--amber-text:#B45309;--red-text:#B91C1C;}
+@media(prefers-color-scheme:light){:root[data-theme="auto"]{--bg:#F4F4F5;--surface-1:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F1;--text-1:#09090B;--text-2:#71717A;--text-3:#A1A1AA;--border:rgba(0,0,0,0.08);--border-strong:rgba(0,0,0,0.14);--border-hover:rgba(0,0,0,0.16);--amber-text:#B45309;--red-text:#B91C1C;}}
+html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh;-webkit-font-smoothing:antialiased}
+.topbar{background:var(--surface-1);border-bottom:1px solid var(--border);height:56px;padding:0 24px;display:flex;align-items:center;position:sticky;top:0;z-index:100;gap:12px}
+.topbar-logo{font-size:15px;font-weight:700;color:var(--text-1);letter-spacing:-.2px;flex:1}
+.topbar-greeting{font-size:13px;color:var(--text-2)}
+.topbar-links{display:flex;align-items:center;gap:4px}
+.topbar-links a{color:var(--text-2);text-decoration:none;font-size:13px;font-weight:500;padding:6px 12px;border-radius:6px;transition:color .15s,background .15s}
+.topbar-links a:hover{color:var(--text-1);background:rgba(255,255,255,0.06)}
+.topbar-links a.active{color:var(--text-1);background:rgba(255,255,255,0.07)}
+.topbar-links a.nav-sair{color:var(--text-2);border:1px solid rgba(255,255,255,0.12);margin-left:8px}
+.tema-btn{background:transparent;border:1px solid var(--border-strong);border-radius:6px;color:var(--text-2);font-size:15px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
-  /* Stats */
-  .stats-row { display: flex; gap: 12px; padding: 20px 24px; overflow-x: auto; }
-  .stat-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 20px; min-width: 150px; flex: 1; }
-  .stat-num { font-size: 28px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
-  .stat-label { font-size: 12px; color: var(--text-2); font-weight: 500; }
+/* ── Página ── */
+.page{max-width:1200px;margin:0 auto;padding:32px 24px 80px}
+.page-header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+.page-title{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px;flex:1}
+.page-title i{width:22px;height:22px;color:var(--primary)}
 
-  /* Controles */
-  .controles { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--border); background: var(--surface-1); }
-  .sem-nav { display: flex; align-items: center; gap: 10px; }
-  .sem-nav button { width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: border-color .15s, color .15s; font-size: 16px; }
-  .sem-nav button:hover { border-color: var(--border-strong); color: var(--text-1); }
-  .sem-label { font-size: 14px; font-weight: 600; color: var(--text-1); min-width: 260px; text-align: center; }
-  .btn-exp { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: rgba(62,207,142,.1); border: 1px solid rgba(62,207,142,.3); border-radius: 7px; color: var(--primary); font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
-  .btn-exp:hover { background: rgba(62,207,142,.18); }
+/* ── Stats ── */
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stat{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.stat-val{font-size:26px;font-weight:800;line-height:1;margin-bottom:5px}
+.stat-lbl{font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
 
-  /* Lista */
-  .lista-wrap { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+/* ── Nav semana ── */
+.sem-nav{display:flex;align-items:center;gap:8px}
+.sem-nav button{width:30px;height:30px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.sem-nav button:hover{border-color:var(--border-hover);color:var(--text-1)}
+#sem-label{font-size:13px;font-weight:600;color:var(--text-1);min-width:240px;text-align:center}
+.btn-exp-sem{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.3);border-radius:7px;color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn-exp-sem:hover{background:rgba(62,207,142,.18)}
+.btn-exp-sem i{width:14px;height:14px}
 
-  /* Cards */
-  .vcard { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
-  .vcard-top { display: flex; align-items: flex-start; gap: 14px; padding: 14px 18px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
-  .vct-data { font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
-  .vct-cliente { font-size: 15px; font-weight: 700; }
-  .vct-tec { font-size: 12px; color: var(--text-3); margin-top: 3px; }
-  .vct-servico { font-size: 12px; color: var(--text-2); margin-top: 2px; font-style: italic; }
-  .vct-hora { font-size: 20px; font-weight: 800; color: var(--amber-text); flex-shrink: 0; margin-left: auto; }
+/* ── Cards de viagem ── */
+.vcard{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden}
+.vcard:hover{border-color:var(--border-hover)}
+.vcard-top{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+.vct-data{font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.vct-cliente{font-size:15px;font-weight:700}
+.vct-tec{font-size:12px;color:var(--text-3);margin-top:3px}
+.vct-servico{font-size:12px;color:var(--text-2);margin-top:2px;font-style:italic}
+.vct-hora{font-size:20px;font-weight:800;color:var(--amber-text);margin-left:auto;flex-shrink:0}
+.vcard-body{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;padding:18px}
+.vf label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-3);margin-bottom:7px}
+.vf input[type=text],.vf input[type=number]{width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:13px;padding:8px 11px;outline:none;transition:border-color .15s}
+.vf input:focus{border-color:rgba(62,207,142,.4)}
+.hotel-chk{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.hotel-chk input{accent-color:var(--primary);width:15px;height:15px;cursor:pointer}
+.hotel-chk span{font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;user-select:none}
+.vcard-footer{padding:10px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.saved-ok{font-size:11px;color:var(--primary);display:none;align-items:center;gap:4px;margin-right:auto}
+.btn-vcard{height:34px;padding:0 16px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;border:none;transition:opacity .15s}
+.btn-vcard i{width:12px;height:12px}
+.btn-salvar-v{background:var(--primary);color:#000}.btn-salvar-v:hover{opacity:.88}
+.btn-pdf-v{background:transparent;border:1px solid var(--border)!important;color:var(--text-2)}.btn-pdf-v:hover{border-color:var(--border-hover)!important;color:var(--text-1)}
 
-  .vcard-body { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; padding: 18px; }
-  .vf label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-3); margin-bottom: 7px; }
-  .vf input[type=text], .vf input[type=number] {
-    width: 100%; background: var(--surface-2); border: 1px solid var(--border);
-    border-radius: 6px; color: var(--text-1); font-family: inherit; font-size: 13px;
-    padding: 9px 12px; outline: none; transition: border-color .15s;
-  }
-  .vf input:focus { border-color: rgba(62,207,142,.4); }
-  .hotel-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .hotel-row input[type=checkbox] { accent-color: var(--primary); width: 15px; height: 15px; cursor: pointer; }
-  .hotel-row span { font-size: 13px; font-weight: 600; color: var(--text-2); cursor: pointer; }
-
-  .vcard-footer { padding: 10px 18px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
-  .saved-ok { font-size: 11px; color: var(--primary); display: none; align-items: center; gap: 4px; margin-right: auto; }
-  .btn-v { height: 34px; padding: 0 16px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 5px; transition: opacity .15s; border: none; }
-  .btn-v i { width: 12px; height: 12px; }
-  .btn-salvar { background: var(--primary); color: #000; }
-  .btn-salvar:hover { opacity: .88; }
-  .btn-pdf { background: transparent; border: 1px solid var(--border) !important; color: var(--text-2); }
-  .btn-pdf:hover { border-color: var(--border-strong) !important; color: var(--text-1); }
-
-  /* Empty */
-  .empty { text-align: center; padding: 60px 24px; color: var(--text-3); }
-  .empty i { width: 40px; height: 40px; margin: 0 auto 12px; display: block; opacity: .3; }
-  .spinner-wrap { text-align: center; padding: 60px; }
-  .spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 12px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  @media (max-width: 900px) { .vcard-body { grid-template-columns: 1fr; } }
-  @media (max-width: 768px) { input, select, textarea { font-size: 16px !important; } }
+/* ── Misc ── */
+.empty-state{text-align:center;padding:64px;color:var(--text-3)}
+.empty-state i{width:40px;height:40px;margin:0 auto 14px;display:block;opacity:.3}
+.spinner-wrap{text-align:center;padding:64px}
+.spinner{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:900px){.stats-bar{grid-template-columns:repeat(2,1fr)}.vcard-body{grid-template-columns:1fr}}
+@media(max-width:768px){input,select,textarea{font-size:16px!important}}
 </style>
 <link rel="stylesheet" href="app-shell.css">
 </head>
 <body>
 
-<!-- Topbar (vira sidebar pelo app-shell.css) -->
 <header class="topbar">
   <span class="topbar-logo">Solução Técnica</span>
   <span id="topbar-greeting" class="topbar-greeting"></span>
@@ -94,29 +99,31 @@
   <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
-<!-- Stats -->
-<div class="stats-row">
-  <div class="stat-card"><div class="stat-num" id="s-total">—</div><div class="stat-label">Viagens na semana</div></div>
-  <div class="stat-card"><div class="stat-num" id="s-hotel">—</div><div class="stat-label">Com hotel</div></div>
-  <div class="stat-card"><div class="stat-num" id="s-ref" style="font-size:20px;padding-top:4px">—</div><div class="stat-label">Saldo refeição total</div></div>
-  <div class="stat-card"><div class="stat-num" id="s-tecs">—</div><div class="stat-label">Técnicos viajando</div></div>
-</div>
+<div class="page">
 
-<!-- Controles de semana -->
-<div class="controles">
-  <div class="sem-nav">
-    <button onclick="mudarSemana(-1)">‹</button>
-    <span class="sem-label" id="sem-label">—</span>
-    <button onclick="mudarSemana(1)">›</button>
+  <div class="page-header">
+    <h1 class="page-title"><i data-lucide="plane"></i> Viagens e Hotel</h1>
+    <div class="sem-nav">
+      <button onclick="mudarSemana(-1)">‹</button>
+      <span id="sem-label">carregando...</span>
+      <button onclick="mudarSemana(1)">›</button>
+    </div>
+    <button class="btn-exp-sem" onclick="exportarSemana()">
+      <i data-lucide="file-down"></i> Exportar Semana
+    </button>
   </div>
-  <button class="btn-exp" onclick="exportarSemana()">
-    <i data-lucide="file-down"></i> Exportar Semana PDF
-  </button>
-</div>
 
-<!-- Lista -->
-<div class="lista-wrap" id="lista">
-  <div class="spinner-wrap"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-val" id="s-total">—</div><div class="stat-lbl">Viagens na semana</div></div>
+    <div class="stat"><div class="stat-val" id="s-hotel">—</div><div class="stat-lbl">Com hotel</div></div>
+    <div class="stat"><div class="stat-val" id="s-ref" style="font-size:18px;line-height:1.5">—</div><div class="stat-lbl">Saldo refeição total</div></div>
+    <div class="stat"><div class="stat-val" id="s-tecs">—</div><div class="stat-lbl">Técnicos viajando</div></div>
+  </div>
+
+  <div id="viagens-lista">
+    <div class="spinner-wrap"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>
+  </div>
+
 </div>
 
 <script>
@@ -125,291 +132,226 @@ const db = supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
 );
 
-let semanaOffset = 0, agendamentos = [], detalhes = {}, tecnicos = [];
+let semanaOff = 0, ags = [], dets = {}, tecs = [];
 const DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-const fmtD  = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const brl   = v => `R$ ${(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const fmtD  = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const brl   = v => 'R$ '+(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
 
-function semana(off) {
-  const h = new Date(), dow = h.getDay()||7, s = new Date(h);
-  s.setDate(h.getDate() - dow + 1 + off * 7);
-  return Array.from({length:7}, (_,i) => { const d=new Date(s); d.setDate(s.getDate()+i); return d; });
+function semana(off){
+  const h=new Date(),dow=h.getDay()||7,s=new Date(h);
+  s.setDate(h.getDate()-dow+1+off*7);
+  return Array.from({length:7},(_,i)=>{const d=new Date(s);d.setDate(s.getDate()+i);return d;});
 }
 
-(async () => {
+window.addEventListener('DOMContentLoaded', async function(){
+  applyTheme();
   try {
-    const sessRes = await db.auth.getSession();
-    const session = sessRes.data?.session;
-    if (!session) { location.href='login.html'; return; }
-
-    const tecRes = await db.from('tecnicos').select('role,nome').eq('auth_user_id', session.user.id).single();
-    const eu = tecRes.data;
-    if (!eu || !['supervisor','coordenador','agendamento'].includes(eu.role)) { location.href='obras.html'; return; }
-
-    renderTopbar(eu.nome, eu.role, 'viagens');
-    applyTheme();
+    const {data:{session}} = await db.auth.getSession();
+    if(!session){location.href='login.html';return;}
+    const {data:eu} = await db.from('tecnicos').select('role,nome').eq('auth_user_id',session.user.id).single();
+    if(!eu||!['supervisor','coordenador','agendamento'].includes(eu.role)){location.href='obras.html';return;}
+    renderTopbar(eu.nome,eu.role,'viagens');
     lucide.createIcons();
-
-    const tecsRes = await db.from('tecnicos').select('id,nome');
-    tecnicos = tecsRes.data || [];
-
+    const {data:t} = await db.from('tecnicos').select('id,nome');
+    tecs = t||[];
     await carregar();
-  } catch(e) {
-    console.error('[viagens] init:', e);
-    const el = document.getElementById('lista');
-    if (el) el.innerHTML = `<div style="color:#f87171;padding:24px;font-size:13px">Erro ao inicializar: ${e.message}</div>`;
+  } catch(e){
+    document.getElementById('viagens-lista').innerHTML='<p style="color:#f87171;padding:24px">Erro: '+e.message+'</p>';
   }
-})();
+});
 
-function mudarSemana(d) { semanaOffset += d; carregar(); }
+function mudarSemana(d){semanaOff+=d;carregar();}
 
-async function carregar() {
-  const el = document.getElementById('lista');
+async function carregar(){
+  const el=document.getElementById('viagens-lista');
+  el.innerHTML='<div class="spinner-wrap"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>';
   try {
-    el.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>';
+    const dias=semana(semanaOff);
+    const d0=dias[0],d6=dias[6];
+    document.getElementById('sem-label').textContent=
+      d0.getDate()+' de '+MESES[d0.getMonth()]+' — '+d6.getDate()+' de '+MESES[d6.getMonth()]+' '+d6.getFullYear();
 
-    const dias = semana(semanaOffset);
-    const d0 = dias[0], d6 = dias[6];
-
-    const lblEl = document.getElementById('sem-label');
-    if (lblEl) lblEl.textContent = `${d0.getDate()} de ${MESES[d0.getMonth()]} — ${d6.getDate()} de ${MESES[d6.getMonth()]} ${d6.getFullYear()}`;
-
-    // Query sem join para evitar problemas de schema cache
-    const { data:ags, error:agErr } = await db.from('agendamentos')
+    const {data:agList} = await db.from('agendamentos')
       .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id')
-      .eq('status','viagem')
-      .gte('data', fmtD(d0)).lte('data', fmtD(d6))
+      .eq('status','viagem').gte('data',fmtD(d0)).lte('data',fmtD(d6))
       .order('data').order('hora_inicio');
+    ags = agList||[];
 
-    if (agErr) console.warn('[viagens] agendamentos:', agErr.message);
-    agendamentos = ags || [];
-
-    // Resolve nomes de obras separadamente
-    const obraIds = [...new Set(agendamentos.map(a=>a.obra_id).filter(Boolean))];
-    const obrasMap = {};
-    if (obraIds.length) {
-      const { data:obras } = await db.from('obras').select('id,nome_cliente,endereco').in('id', obraIds);
-      (obras||[]).forEach(o => { obrasMap[o.id] = o; });
+    // Obras separado (sem join)
+    const obraIds=[...new Set(ags.map(a=>a.obra_id).filter(Boolean))];
+    const obMap={};
+    if(obraIds.length){
+      const {data:obras}=await db.from('obras').select('id,nome_cliente,endereco').in('id',obraIds);
+      (obras||[]).forEach(o=>{obMap[o.id]=o;});
     }
-    agendamentos.forEach(a => { a._obra = obrasMap[a.obra_id] || null; });
+    ags.forEach(a=>{a._ob=obMap[a.obra_id]||null;});
 
-    // Detalhes de viagem
-    detalhes = {};
-    if (agendamentos.length) {
-      const { data:det } = await db.from('viagens_detalhe').select('*').in('agendamento_id', agendamentos.map(a=>a.id));
-      (det||[]).forEach(d => { detalhes[d.agendamento_id] = d; });
+    dets={};
+    if(ags.length){
+      const {data:detList}=await db.from('viagens_detalhe').select('*').in('agendamento_id',ags.map(a=>a.id));
+      (detList||[]).forEach(d=>{dets[d.agendamento_id]=d;});
     }
-
     renderLista(dias);
-    summary();
-  } catch(e) {
-    console.error('[viagens] carregar:', e);
-    el.innerHTML = `<div style="color:#f87171;padding:24px;font-size:13px">Erro ao carregar: ${e.message}</div>`;
+    atualizarStats();
+  } catch(e){
+    el.innerHTML='<p style="color:#f87171;padding:24px">Erro ao carregar: '+e.message+'</p>';
   }
 }
 
-function renderLista(dias) {
-  const el = document.getElementById('lista');
-  if (!agendamentos.length) {
-    el.innerHTML = '<div class="empty"><i data-lucide="plane-off"></i><p>Nenhuma viagem nesta semana.</p></div>';
-    lucide.createIcons(); return;
+function renderLista(dias){
+  const el=document.getElementById('viagens-lista');
+  if(!ags.length){
+    el.innerHTML='<div class="empty-state"><i data-lucide="plane-off"></i><p>Nenhuma viagem nesta semana.</p></div>';
+    lucide.createIcons();return;
   }
-
-  el.innerHTML = agendamentos.map(ag => {
-    const d   = new Date(ag.data+'T12:00');
-    const idx = dias.findIndex(x => fmtD(x) === ag.data);
-    const dataTxt = `${idx>=0?DIAS[idx]:''}, ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-    const hora    = ag.hora_inicio?.slice(0,5)||'';
-    const cliente = ag._obra?.nome_cliente || ag.cliente_outro || '—';
-    const tecIds  = [ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
-    const tecStr  = tecIds.map(id=>tecnicos.find(t=>t.id===id)?.nome||'').filter(Boolean).join(' · ') || '—';
-    const det     = detalhes[ag.id] || {};
-
-    return `<div class="vcard">
-      <div class="vcard-top">
-        <div style="flex:1;min-width:0">
-          <div class="vct-data">${escHtml(dataTxt)}</div>
-          <div class="vct-cliente">${escHtml(cliente)}</div>
-          <div class="vct-tec">${escHtml(tecStr)}</div>
-          ${ag.servico ? `<div class="vct-servico">${escHtml(ag.servico)}</div>` : ''}
-        </div>
-        ${hora ? `<div class="vct-hora">${hora}</div>` : ''}
-      </div>
-      <div class="vcard-body">
-        <div class="vf">
-          <label>Cidade de destino</label>
-          <input type="text" id="vc-${ag.id}" value="${escHtml(det.cidade||'')}" placeholder="Ex: Cuiabá, MT">
-        </div>
-        <div class="vf">
-          <label>Saldo para refeição (R$)</label>
-          <input type="number" id="vs-${ag.id}" value="${det.saldo_refeicao||''}" placeholder="0,00" step="0.01" min="0">
-        </div>
-        <div class="vf">
-          <label>Hotel</label>
-          <div class="hotel-row">
-            <input type="checkbox" id="vh-${ag.id}" ${det.hotel?'checked':''} onchange="toggleObs(${ag.id})">
-            <span onclick="document.getElementById('vh-${ag.id}').click()">Precisa de hotel</span>
-          </div>
-          <input type="text" id="vo-${ag.id}" value="${escHtml(det.hotel_obs||'')}"
-            placeholder="Nome, preferências..." style="display:${det.hotel?'block':'none'}">
-        </div>
-      </div>
-      <div class="vcard-footer">
-        <span class="saved-ok" id="vok-${ag.id}"><i data-lucide="check-circle-2"></i> Salvo</span>
-        <button class="btn-v btn-pdf" onclick="exportarViagem(${ag.id})">
-          <i data-lucide="file-text"></i> PDF
-        </button>
-        <button class="btn-v btn-salvar" onclick="salvar(${ag.id})">
-          <i data-lucide="save"></i> Salvar
-        </button>
-      </div>
-    </div>`;
+  el.innerHTML=ags.map(ag=>{
+    const d=new Date(ag.data+'T12:00');
+    const idx=dias.findIndex(x=>fmtD(x)===ag.data);
+    const dataTxt=(idx>=0?DIAS[idx]+', ':'')+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+    const hora=ag.hora_inicio?ag.hora_inicio.slice(0,5):'';
+    const cliente=ag._ob?ag._ob.nome_cliente:ag.cliente_outro||'—';
+    const tecIds=[ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
+    const tecStr=tecIds.map(id=>{const t=tecs.find(t=>t.id===id);return t?t.nome:'';}).filter(Boolean).join(' · ')||'—';
+    const det=dets[ag.id]||{};
+    return '<div class="vcard">'+
+      '<div class="vcard-top">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="vct-data">'+escHtml(dataTxt)+'</div>'+
+          '<div class="vct-cliente">'+escHtml(cliente)+'</div>'+
+          '<div class="vct-tec">'+escHtml(tecStr)+'</div>'+
+          (ag.servico?'<div class="vct-servico">'+escHtml(ag.servico)+'</div>':'')+
+        '</div>'+
+        (hora?'<div class="vct-hora">'+hora+'</div>':'')+
+      '</div>'+
+      '<div class="vcard-body">'+
+        '<div class="vf"><label>Cidade de destino</label>'+
+          '<input type="text" id="vc-'+ag.id+'" value="'+escHtml(det.cidade||'')+'" placeholder="Ex: Cuiabá, MT"></div>'+
+        '<div class="vf"><label>Saldo refeição (R$)</label>'+
+          '<input type="number" id="vs-'+ag.id+'" value="'+(det.saldo_refeicao||'')+'" placeholder="0,00" step="0.01" min="0"></div>'+
+        '<div class="vf"><label>Hotel</label>'+
+          '<div class="hotel-chk">'+
+            '<input type="checkbox" id="vh-'+ag.id+'" '+(det.hotel?'checked':'')+' onchange="toggleObs('+ag.id+')">'+
+            '<span onclick="document.getElementById(\'vh-'+ag.id+'\').click()">Precisa de hotel</span>'+
+          '</div>'+
+          '<input type="text" id="vo-'+ag.id+'" value="'+escHtml(det.hotel_obs||'')+'" placeholder="Nome, preferências..." style="display:'+(det.hotel?'block':'none')+'">'+
+        '</div>'+
+      '</div>'+
+      '<div class="vcard-footer">'+
+        '<span class="saved-ok" id="vok-'+ag.id+'">✓ Salvo</span>'+
+        '<button class="btn-vcard btn-pdf-v" onclick="exportPDF('+ag.id+')">PDF</button>'+
+        '<button class="btn-vcard btn-salvar-v" onclick="salvar('+ag.id+')">Salvar</button>'+
+      '</div>'+
+    '</div>';
   }).join('');
   lucide.createIcons();
 }
 
-function toggleObs(id) {
-  document.getElementById(`vo-${id}`).style.display = document.getElementById(`vh-${id}`).checked ? 'block' : 'none';
+function toggleObs(id){
+  document.getElementById('vo-'+id).style.display=document.getElementById('vh-'+id).checked?'block':'none';
 }
 
-async function salvar(agId) {
-  const cidade    = document.getElementById(`vc-${agId}`).value.trim()||null;
-  const saldo     = parseFloat(document.getElementById(`vs-${agId}`).value)||null;
-  const hotel     = document.getElementById(`vh-${agId}`).checked;
-  const hotel_obs = document.getElementById(`vo-${agId}`).value.trim()||null;
-  const payload   = { agendamento_id:agId, cidade, saldo_refeicao:saldo, hotel, hotel_obs, atualizado_em:new Date().toISOString() };
-
-  const res = detalhes[agId]?.id
-    ? await db.from('viagens_detalhe').update(payload).eq('id',detalhes[agId].id).select().single()
-    : await db.from('viagens_detalhe').insert(payload).select().single();
-
-  if (res.data) {
-    detalhes[agId] = res.data;
-    const ok = document.getElementById(`vok-${agId}`);
-    ok.style.display = 'flex'; setTimeout(()=>ok.style.display='none', 2500);
-    summary(); lucide.createIcons();
-  } else if (res.error) {
-    alert('Erro ao salvar: ' + res.error.message);
+async function salvar(agId){
+  const cidade=document.getElementById('vc-'+agId).value.trim()||null;
+  const saldo=parseFloat(document.getElementById('vs-'+agId).value)||null;
+  const hotel=document.getElementById('vh-'+agId).checked;
+  const hotel_obs=document.getElementById('vo-'+agId).value.trim()||null;
+  const payload={agendamento_id:agId,cidade,saldo_refeicao:saldo,hotel,hotel_obs,atualizado_em:new Date().toISOString()};
+  const res=dets[agId]?.id
+    ?await db.from('viagens_detalhe').update(payload).eq('id',dets[agId].id).select().single()
+    :await db.from('viagens_detalhe').insert(payload).select().single();
+  if(res.data){
+    dets[agId]=res.data;
+    const ok=document.getElementById('vok-'+agId);
+    ok.style.display='flex';setTimeout(()=>ok.style.display='none',2500);
+    atualizarStats();
+  } else if(res.error){
+    alert('Erro: '+res.error.message);
   }
 }
 
-function summary() {
-  document.getElementById('s-total').textContent = agendamentos.length;
-  document.getElementById('s-hotel').textContent = agendamentos.filter(a=>detalhes[a.id]?.hotel).length;
-  document.getElementById('s-ref').textContent   = brl(agendamentos.reduce((s,a)=>s+(parseFloat(detalhes[a.id]?.saldo_refeicao)||0),0));
-  const tecs = new Set(agendamentos.flatMap(a=>[a.tecnico_id,a.auxiliar_id,a.auxiliar2_id,a.auxiliar3_id].filter(Boolean)));
-  document.getElementById('s-tecs').textContent  = tecs.size;
+function atualizarStats(){
+  document.getElementById('s-total').textContent=ags.length;
+  document.getElementById('s-hotel').textContent=ags.filter(a=>dets[a.id]?.hotel).length;
+  document.getElementById('s-ref').textContent=brl(ags.reduce((s,a)=>s+(parseFloat(dets[a.id]?.saldo_refeicao)||0),0));
+  const ts=new Set(ags.flatMap(a=>[a.tecnico_id,a.auxiliar_id,a.auxiliar2_id,a.auxiliar3_id].filter(Boolean)));
+  document.getElementById('s-tecs').textContent=ts.size;
 }
 
-function exportarViagem(agId) {
-  const ag  = agendamentos.find(a=>a.id===agId); if(!ag) return;
-  const det = detalhes[agId]||{};
-  const dias= semana(semanaOffset);
-  const idx = dias.findIndex(x=>fmtD(x)===ag.data);
-  const d   = new Date(ag.data+'T12:00');
-  const dataTxt = `${idx>=0?DIAS[idx]:''}, ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-  const cliente = ag.obras?.nome_cliente||ag.cliente_outro||'—';
-  const tecIds  = [ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
-  const tecStr  = tecIds.map(id=>tecnicos.find(t=>t.id===id)?.nome||'').filter(Boolean).join(', ');
-
-  const {jsPDF} = window.jspdf;
-  const doc = new jsPDF({unit:'mm',format:'a4'});
-
-  doc.setFillColor(15,15,15); doc.rect(0,0,210,28,'F');
-  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+function exportPDF(agId){
+  const ag=ags.find(a=>a.id===agId);if(!ag)return;
+  const det=dets[agId]||{};
+  const cliente=ag._ob?ag._ob.nome_cliente:ag.cliente_outro||'—';
+  const tecIds=[ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
+  const tecStr=tecIds.map(id=>{const t=tecs.find(t=>t.id===id);return t?t.nome:'';}).filter(Boolean).join(', ');
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  doc.setFillColor(15,15,15);doc.rect(0,0,210,28,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15);
   doc.text('Solução Técnica — Autorização de Viagem',14,12);
-  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(150,150,150);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(150,150,150);
   doc.text('Gerado em '+new Date().toLocaleString('pt-BR'),14,20);
-
   let y=36;
   const campo=(lbl,val)=>{
-    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(130,130,130);
-    doc.text(lbl.toUpperCase(),14,y);
-    doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.setTextColor(20,20,20);
-    doc.text(String(val||'—').slice(0,80),14,y+6); y+=18;
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(130,130,130);doc.text(lbl.toUpperCase(),14,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(12);doc.setTextColor(20,20,20);doc.text(String(val||'—').slice(0,80),14,y+6);y+=18;
   };
-
-  doc.setFillColor(240,255,248); doc.rect(10,y-4,190,14,'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(10,80,40);
-  doc.text(cliente.slice(0,55),14,y+5); y+=18;
-
-  campo('Data e horário', dataTxt+(ag.hora_inicio?' — '+ag.hora_inicio.slice(0,5):''));
-  campo('Técnico(s)', tecStr||'—');
-  campo('Cidade de destino', det.cidade||'—');
-  campo('Endereço / Obra', ag._obra?.endereco||'—');
-  campo('Serviço', ag.servico||'—');
-
+  doc.setFillColor(240,255,248);doc.rect(10,y-4,190,14,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(10,80,40);
+  doc.text(cliente.slice(0,55),14,y+5);y+=18;
+  campo('Data',ag.data);campo('Horário',ag.hora_inicio?.slice(0,5)||'—');
+  campo('Técnico(s)',tecStr||'—');campo('Cidade',det.cidade||'—');
+  campo('Endereço',ag._ob?.endereco||'—');campo('Serviço',ag.servico||'—');
   y+=4;
   doc.setFillColor(det.hotel?235:248,det.hotel?252:248,det.hotel?242:248);
   doc.rect(10,y-4,190,det.hotel&&det.hotel_obs?22:14,'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.setFont('helvetica','bold');doc.setFontSize(11);
   doc.setTextColor(det.hotel?10:100,det.hotel?90:100,det.hotel?40:100);
   doc.text(det.hotel?'✓  Hotel necessário':'✗  Sem necessidade de hotel',14,y+4);
-  if(det.hotel&&det.hotel_obs){ doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(40,80,40); doc.text(det.hotel_obs,14,y+12); y+=8; }
+  if(det.hotel&&det.hotel_obs){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(40,80,40);doc.text(det.hotel_obs,14,y+12);y+=8;}
   y+=20;
-
-  doc.setFillColor(255,252,220); doc.rect(10,y-4,190,14,'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(80,60,0);
-  doc.text('Saldo para refeição: '+brl(det.saldo_refeicao||0),14,y+5); y+=24;
-
-  y+=8;
-  doc.setDrawColor(180,180,180); doc.setLineWidth(.3);
-  doc.line(14,y,90,y); doc.line(120,y,196,y);
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(130,130,130);
-  doc.text('Gestor / Aprovação',14,y+5); doc.text('Técnico responsável',120,y+5);
-  doc.save(`Viagem - ${cliente.slice(0,30)} - ${ag.data}.pdf`);
+  doc.setFillColor(255,252,220);doc.rect(10,y-4,190,14,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(80,60,0);
+  doc.text('Saldo para refeição: '+brl(det.saldo_refeicao||0),14,y+5);y+=24;
+  y+=8;doc.setDrawColor(180,180,180);doc.setLineWidth(.3);
+  doc.line(14,y,90,y);doc.line(120,y,196,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(130,130,130);
+  doc.text('Gestor / Aprovação',14,y+5);doc.text('Técnico responsável',120,y+5);
+  doc.save('Viagem-'+cliente.slice(0,20)+'-'+ag.data+'.pdf');
 }
 
-function exportarSemana() {
-  if(!agendamentos.length){alert('Nenhuma viagem para exportar.');return;}
-  const dias=semana(semanaOffset);
+function exportarSemana(){
+  if(!ags.length){alert('Nenhuma viagem para exportar.');return;}
+  const dias=semana(semanaOff);
   const d0=dias[0],d6=dias[6];
-  const periodo=`${d0.getDate()} a ${d6.getDate()} de ${MESES[d6.getMonth()]} ${d6.getFullYear()}`;
-
+  const periodo=d0.getDate()+' a '+d6.getDate()+' de '+MESES[d6.getMonth()]+' '+d6.getFullYear();
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
-
-  doc.setFillColor(15,15,15); doc.rect(0,0,297,24,'F');
-  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.setFillColor(15,15,15);doc.rect(0,0,297,24,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(13);
   doc.text('Solução Técnica — Programação de Viagens',12,11);
-  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(150,150,150);
-  doc.text('Semana: '+periodo+'  ·  Gerado em '+new Date().toLocaleString('pt-BR'),12,18);
-  doc.setTextColor(62,207,142); doc.setFont('helvetica','bold');
-  doc.text(agendamentos.length+' viagem'+(agendamentos.length!==1?'s':''),285,11,{align:'right'});
-
-  const rows=agendamentos.map(ag=>{
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(150,150,150);
+  doc.text('Semana: '+periodo+' · Gerado em '+new Date().toLocaleString('pt-BR'),12,18);
+  const rows=ags.map(ag=>{
     const d=new Date(ag.data+'T12:00');
     const idx=dias.findIndex(x=>fmtD(x)===ag.data);
     const tecIds=[ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
-    const tecStr=tecIds.map(id=>tecnicos.find(t=>t.id===id)?.nome?.split(' ')[0]||'').filter(Boolean).join(', ');
-    const det=detalhes[ag.id]||{};
-    return [
-      (idx>=0?DIAS[idx]:'')+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'),
-      ag.hora_inicio?.slice(0,5)||'—',
-      (ag.obras?.nome_cliente||ag.cliente_outro||'—').slice(0,40),
-      tecStr||'—',
-      det.cidade||'—',
-      det.hotel?'Sim'+(det.hotel_obs?'\n'+det.hotel_obs.slice(0,25):''):'Não',
-      det.saldo_refeicao?brl(det.saldo_refeicao):'—',
-      (ag.servico||'—').slice(0,50),
-    ];
+    const tecStr=tecIds.map(id=>{const t=tecs.find(t=>t.id===id);return t?t.nome.split(' ')[0]:'';}).filter(Boolean).join(', ');
+    const det=dets[ag.id]||{};
+    return [(idx>=0?DIAS[idx]:'')+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'),
+      ag.hora_inicio?.slice(0,5)||'—',(ag._ob?.nome_cliente||ag.cliente_outro||'—').slice(0,40),
+      tecStr||'—',det.cidade||'—',det.hotel?'Sim':'Não',det.saldo_refeicao?brl(det.saldo_refeicao):'—',(ag.servico||'—').slice(0,50)];
   });
-
-  doc.autoTable({
-    startY:30,
-    head:[['Dia','Hora','Cliente / Obra','Técnico(s)','Cidade','Hotel','Saldo Ref.','Serviço']],
-    body:rows, margin:{left:10,right:10},
-    styles:{fontSize:8,cellPadding:2.5,lineColor:[60,60,60],lineWidth:.1,textColor:[30,30,30],fillColor:[255,255,255]},
-    headStyles:{fillColor:[15,15,15],textColor:[200,200,200],fontStyle:'bold',fontSize:8},
+  doc.autoTable({startY:30,
+    head:[['Dia','Hora','Cliente','Técnicos','Cidade','Hotel','Saldo','Serviço']],
+    body:rows,margin:{left:10,right:10},
+    styles:{fontSize:8,cellPadding:2.5,textColor:[30,30,30],fillColor:[255,255,255],lineColor:[60,60,60],lineWidth:.1},
+    headStyles:{fillColor:[15,15,15],textColor:[200,200,200],fontStyle:'bold'},
     alternateRowStyles:{fillColor:[248,248,248]},
-    columnStyles:{0:{cellWidth:22},1:{cellWidth:13},2:{cellWidth:50},3:{cellWidth:32},4:{cellWidth:24},5:{cellWidth:22,textColor:[0,100,50]},6:{cellWidth:24,textColor:[80,60,0]},7:{cellWidth:90}},
+    columnStyles:{0:{cellWidth:22},1:{cellWidth:13},2:{cellWidth:52},3:{cellWidth:32},4:{cellWidth:24},5:{cellWidth:18},6:{cellWidth:24},7:{cellWidth:92}},
   });
-
-  doc.save('Viagens - Semana '+periodo+'.pdf');
+  doc.save('Viagens-Semana-'+periodo+'.pdf');
 }
-
-lucide.createIcons();
 </script>
 </body>
 </html>
