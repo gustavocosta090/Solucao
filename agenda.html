@@ -2311,7 +2311,6 @@ async function salvarAgendamento() {
               endereco_servico:  endereco || null,
               obra_id:           payload.obra_id || null,
               tipo_servico:      tipoServico,
-              atualizado_em:     new Date().toISOString(),
             })
             .eq('agendamento_id', agEditandoId)
             .neq('status_aprovacao', 'cancelada');
@@ -3221,13 +3220,13 @@ async function exportarProgramacaoEstoque() {
     const secoes = [
       {
         label: 'VIAGENS', statusFiltro: ['viagem'],
-        bannerBg: [18, 38, 72], bannerTxt: [147, 197, 253],
-        rowBg: [240, 246, 255], rowAltBg: [220, 235, 255], rowTxt: [20, 40, 80],
+        bannerBg: [10, 35, 20], bannerTxt: [52, 211, 153],
+        rowBg: [240, 255, 247], rowAltBg: [210, 245, 228], rowTxt: [10, 50, 25],
       },
       {
         label: 'CONFIRMADOS', statusFiltro: ['confirmado'],
-        bannerBg: [10, 35, 20], bannerTxt: [52, 211, 153],
-        rowBg: [240, 255, 247], rowAltBg: [210, 245, 228], rowTxt: [10, 50, 25],
+        bannerBg: [18, 38, 72], bannerTxt: [147, 197, 253],
+        rowBg: [240, 246, 255], rowAltBg: [220, 235, 255], rowTxt: [20, 40, 80],
       },
       {
         label: 'NÃO CONFIRMADOS', statusFiltro: ['nao_confirmado'],

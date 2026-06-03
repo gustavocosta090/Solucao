@@ -488,7 +488,7 @@ async function carregarDados() {
 
   const [{ data: osList, error: osErr }, { data: relList, error: relErr }] = await Promise.all([
     db.from('ordens_de_servico')
-      .select('id, tecnico_id, obra_id, data_servico, servico_planejado, status_aprovacao, tecnicos!tecnico_id(id, nome), obras(nome_cliente)')
+      .select('id, tecnico_id, obra_id, data_servico, servico_planejado, status_aprovacao, tecnicos!tecnico_id(id, nome), obras(nome_cliente), agendamentos!agendamento_id(cliente_outro)')
       .eq('tipo_servico', 'assistencia')
       .neq('status_aprovacao', 'cancelada')
       .order('data_servico', { ascending: false }),
@@ -544,7 +544,7 @@ function filtrar() {
     const rel    = todosRel[o.id];
     const status = rel ? rel.status : 'pendente';
     const tid    = String(o.tecnico_id || '');
-    const cliente = (o.obras?.nome_cliente || '').toLowerCase();
+    const cliente = (o.obras?.nome_cliente || o.agendamentos?.cliente_outro || '').toLowerCase();
     const servico = (o.servico_planejado || '').toLowerCase();
     return (!fSt  || status === fSt)
         && (!fTec || tid === fTec)
@@ -626,7 +626,7 @@ function renderTabela() {
     const data = o.data_servico
       ? new Date(o.data_servico + 'T12:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'2-digit'})
       : '—';
-    const cliente = escHtml(o.obras?.nome_cliente || '—');
+    const cliente = escHtml(o.obras?.nome_cliente || o.agendamentos?.cliente_outro || '—');
     const tecnico = escHtml(o.tecnicos?.nome || '—');
 
     const stBadge = status === 'concluido'
@@ -721,7 +721,7 @@ function abrirModal(osId, evt) {
   document.getElementById('osInfoBlock').innerHTML = `
     <div class="os-info-row"><span class="os-info-label">Técnico:</span><span class="os-info-val">${escHtml(os.tecnicos?.nome || '—')}</span></div>
     <div class="os-info-row"><span class="os-info-label">Data:</span><span class="os-info-val">${data}</span></div>
-    <div class="os-info-row"><span class="os-info-label">Cliente:</span><span class="os-info-val">${escHtml(os.obras?.nome_cliente || '—')}</span></div>
+    <div class="os-info-row"><span class="os-info-label">Cliente:</span><span class="os-info-val">${escHtml(os.obras?.nome_cliente || os.agendamentos?.cliente_outro || '—')}</span></div>
     ${os.servico_planejado ? `<div class="os-info-row"><span class="os-info-label">Serviço:</span><span class="os-info-val">${escHtml(os.servico_planejado)}</span></div>` : ''}
   `;
 
@@ -934,7 +934,7 @@ function exportarCSV() {
     return [
       data,
       o.tecnicos?.nome || '',
-      o.obras?.nome_cliente || '',
+      o.obras?.nome_cliente || o.agendamentos?.cliente_outro || '',
       o.servico_planejado || '',
       rel.cobrado === true ? 'Sim' : rel.cobrado === false ? 'Não' : '',
       valMO   ? valMO.toFixed(2).replace('.', ',')   : '',
@@ -983,7 +983,7 @@ function gerarPDFRelatorio() {
     : '—';
 
   const linhas = [
-    ['Cliente',  os.obras?.nome_cliente || '—'],
+    ['Cliente',  os.obras?.nome_cliente || os.agendamentos?.cliente_outro || '—'],
     ['Técnico',  os.tecnicos?.nome      || '—'],
     ['Data',     dataFmt],
     ['Serviço',  os.servico_planejado   || '—'],
@@ -1057,7 +1057,7 @@ function gerarPDFRelatorio() {
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(160, 160, 160);
   doc.text('Gerado em ' + dataGer + ' · Solução Técnica SAOS', M, doc.internal.pageSize.getHeight() - 8);
 
-  const nomeCliente = (os.obras?.nome_cliente || 'assistencia').replace(/[^a-zA-Z0-9]/g, '_');
+  const nomeCliente = (os.obras?.nome_cliente || os.agendamentos?.cliente_outro || 'assistencia').replace(/[^a-zA-Z0-9]/g, '_');
   doc.save(`relatorio_assistencia_${nomeCliente}_${dataFmt.replace(/\//g, '-')}.pdf`);
 }
 </script>
