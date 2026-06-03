@@ -147,60 +147,38 @@
 
     /* ── Barra de filtros ── */
     .filtros-bar {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
       display: flex;
-      flex-direction: column;
-      gap: 10px;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
       margin-bottom: 24px;
     }
 
-    .filtros-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .filtros-row-label {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.6px;
-      text-transform: uppercase;
-      color: var(--text-3);
-      white-space: nowrap;
-      min-width: 56px;
-    }
-
-    .filtros {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      flex: 1;
-    }
-
-    .filtro-btn {
-      padding: 5px 14px;
-      border-radius: 999px;
+    .filtros-bar select {
+      background: var(--bg);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2352525B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
       border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text-2);
-      font-size: 0.78rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 150ms;
-      font-family: inherit;
-    }
-
-    .filtro-btn:hover {
-      border-color: var(--border-hover);
       color: var(--text-1);
-      background: rgba(255,255,255,0.04);
+      border-radius: 6px;
+      padding: 8px 30px 8px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
     }
 
-    .filtro-btn.ativo {
-      background: rgba(62,207,142,0.12);
-      border-color: rgba(62,207,142,0.35);
-      color: var(--primary);
-    }
+    .filtros-bar select:focus { border-color: var(--border-strong); }
+    .filtros-bar select option { background: #1B1B1B; color: var(--text-1); }
+    .filtros-bar .sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
 
     /* ── Campo de busca ── */
     .busca-wrap {
@@ -734,47 +712,41 @@
 
   <!-- Filtros + Busca -->
   <div class="filtros-bar">
-    <!-- Linha 1: Etapa da Obra -->
-    <!-- Linha 1: Situação -->
-    <div class="filtros-row">
-      <span class="filtros-row-label">Situação</span>
-      <div class="filtros" role="group" aria-label="Filtrar por situação">
-        <button class="filtro-btn filtro-situacao ativo" data-situacao="todas" aria-pressed="true">Todas</button>
-        <button class="filtro-btn filtro-situacao" data-situacao="liberado" aria-pressed="false">Liberado</button>
-        <button class="filtro-btn filtro-situacao" data-situacao="bloqueado_financeiro" aria-pressed="false">Bloqueado Financeiro</button>
-        <button class="filtro-btn filtro-situacao" data-situacao="parado_cliente" aria-pressed="false">Parado Cliente</button>
-        <button class="filtro-btn filtro-situacao" data-situacao="entregue" aria-pressed="false">Entregue</button>
-      </div>
-    </div>
-    <!-- Linha 2: Etapa da Obra -->
-    <div class="filtros-row">
-      <span class="filtros-row-label">Etapa</span>
-      <div class="filtros" role="group" aria-label="Filtrar por etapa">
-        <button class="filtro-btn filtro-fase ativo" data-fase="todas" aria-pressed="true">Todas</button>
-        <button class="filtro-btn filtro-fase" data-fase="projeto" aria-pressed="false">Projeto</button>
-        <button class="filtro-btn filtro-fase" data-fase="cabeamento" aria-pressed="false">Cabeamento</button>
-        <button class="filtro-btn filtro-fase" data-fase="eletrica" aria-pressed="false">Elétrica</button>
-        <button class="filtro-btn filtro-fase" data-fase="audio_video" aria-pressed="false">Áudio e Vídeo</button>
-        <button class="filtro-btn filtro-fase" data-fase="automacao" aria-pressed="false">Automação</button>
-        <button class="filtro-btn filtro-fase" data-fase="em_finalizacao" aria-pressed="false">Em Finalização</button>
-        <button class="filtro-btn filtro-fase" data-fase="entrega_comercial" aria-pressed="false">Finalizado</button>
-      </div>
-    </div>
-    <!-- Linha 2: Regional (preenchida dinamicamente) -->
-    <div class="filtros-row">
-      <span class="filtros-row-label">Regional</span>
-      <div class="filtros" id="filtros-regional" role="group" aria-label="Filtrar por regional">
-        <button class="filtro-btn filtro-regional ativo" data-regional="todas" aria-pressed="true">Todas</button>
-      </div>
-    </div>
-    <!-- Linha 3: Consultor (preenchida dinamicamente) -->
-    <div class="filtros-row">
-      <span class="filtros-row-label">Consultor</span>
-      <div class="filtros" id="filtros-consultor" role="group" aria-label="Filtrar por consultor">
-        <button class="filtro-btn filtro-consultor ativo" data-consultor="todos" aria-pressed="true">Todos</button>
-      </div>
-    </div>
-    <!-- Linha 4: Busca -->
+    <select id="f-ano" onchange="renderizar()" aria-label="Filtrar por ano">
+      <option value="">Todos os anos</option>
+    </select>
+
+    <div class="sep"></div>
+
+    <select id="f-situacao" onchange="renderizar()" aria-label="Filtrar por situação">
+      <option value="">Todas as situações</option>
+      <option value="liberado">Liberado</option>
+      <option value="bloqueado_financeiro">Bloqueado Financeiro</option>
+      <option value="parado_cliente">Parado Cliente</option>
+      <option value="entregue">Entregue</option>
+    </select>
+
+    <select id="f-fase" onchange="renderizar()" aria-label="Filtrar por etapa">
+      <option value="">Todas as etapas</option>
+      <option value="projeto">Projeto</option>
+      <option value="cabeamento">Cabeamento</option>
+      <option value="eletrica">Elétrica</option>
+      <option value="audio_video">Áudio e Vídeo</option>
+      <option value="automacao">Automação</option>
+      <option value="em_finalizacao">Em Finalização</option>
+      <option value="entrega_comercial">Finalizado</option>
+    </select>
+
+    <select id="f-regional-sel" onchange="renderizar()" aria-label="Filtrar por regional">
+      <option value="">Todas as regionais</option>
+    </select>
+
+    <select id="f-consultor-sel" onchange="renderizar()" aria-label="Filtrar por consultor">
+      <option value="">Todos os consultores</option>
+    </select>
+
+    <div class="sep"></div>
+    <!-- Busca -->
     <div class="filtros-row">
       <div class="busca-wrap" style="flex:1;min-width:0">
         <i data-lucide="search" class="busca-icon" aria-hidden="true"></i>
@@ -1014,50 +986,46 @@
     if (campo) campo.focus();
   }
 
-  // ── Popular filtros dinâmicos de Regional e Consultor ───────
+  // ── Popular filtros dinâmicos ────────────────────────────────
   function popularFiltrosDinamicos() {
     // Regional
     const regionais = [...new Set(todasObras.map(o => o.regional).filter(Boolean))].sort();
 
-    // Popular select do modal com os mesmos valores
+    // Select modal
     const selRegional = document.getElementById('f-regional');
-    selRegional.innerHTML = '<option value="">Selecione...</option>';
-    regionais.forEach(r => {
-      const opt = document.createElement('option');
-      opt.value = r; opt.textContent = r;
-      selRegional.appendChild(opt);
-    });
+    if (selRegional) {
+      selRegional.innerHTML = '<option value="">Selecione...</option>';
+      regionais.forEach(r => { const opt = document.createElement('option'); opt.value = r; opt.textContent = r; selRegional.appendChild(opt); });
+    }
 
-    const fRegional = document.getElementById('filtros-regional');
-    fRegional.innerHTML = `<button class="filtro-btn filtro-regional ativo" data-regional="todas" aria-pressed="true">Todas</button>`;
-    regionais.forEach(r => {
-      const btn = document.createElement('button');
-      btn.className = 'filtro-btn filtro-regional';
-      btn.dataset.regional = r;
-      btn.setAttribute('aria-pressed', 'false');
-      btn.textContent = r;
-      fRegional.appendChild(btn);
-    });
+    // Select filtro da barra
+    const selReg = document.getElementById('f-regional-sel');
+    if (selReg) {
+      const prev = selReg.value;
+      selReg.innerHTML = '<option value="">Todas as regionais</option>';
+      regionais.forEach(r => { const opt = document.createElement('option'); opt.value = r; opt.textContent = r; selReg.appendChild(opt); });
+      if (prev) selReg.value = prev;
+    }
 
     // Consultor
-    const consultoresSet = new Map();
-    todasObras.forEach(o => {
-      if (o.consultores?.nome) consultoresSet.set(o.consultores.nome, o.consultores.nome);
-    });
-    const consultores = [...consultoresSet.keys()].sort();
-    const fConsultor = document.getElementById('filtros-consultor');
-    fConsultor.innerHTML = `<button class="filtro-btn filtro-consultor ativo" data-consultor="todos" aria-pressed="true">Todos</button>`;
-    consultores.forEach(c => {
-      const btn = document.createElement('button');
-      btn.className = 'filtro-btn filtro-consultor';
-      btn.dataset.consultor = c;
-      btn.setAttribute('aria-pressed', 'false');
-      btn.textContent = c;
-      fConsultor.appendChild(btn);
-    });
+    const consultores = [...new Set(todasObras.map(o => o.consultores?.nome).filter(Boolean))].sort();
+    const selCons = document.getElementById('f-consultor-sel');
+    if (selCons) {
+      const prev = selCons.value;
+      selCons.innerHTML = '<option value="">Todos os consultores</option>';
+      consultores.forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = c; selCons.appendChild(opt); });
+      if (prev) selCons.value = prev;
+    }
 
-    // Re-registrar handlers nos novos botões
-    registrarHandlersFiltros();
+    // Ano (a partir de criado_em)
+    const anos = [...new Set(todasObras.map(o => o.criado_em?.slice(0,4)).filter(Boolean))].sort().reverse();
+    const selAno = document.getElementById('f-ano');
+    if (selAno) {
+      const prev = selAno.value;
+      selAno.innerHTML = '<option value="">Todos os anos</option>';
+      anos.forEach(a => { const opt = document.createElement('option'); opt.value = a; opt.textContent = a; selAno.appendChild(opt); });
+      if (prev) selAno.value = prev;
+    }
   }
 
   // ── Renderizar cards ────────────────────────────────────────
@@ -1067,27 +1035,33 @@
       (FASES_SITUACAO_ESPECIAL.has(o.fase_atual) ? o.fase_atual :
        o.fase_atual === 'entrega_comercial' ? 'entregue' : 'liberado');
 
-    let obras;
-    if (situacaoFiltro === 'todas') {
-      obras = todasObras;
-    } else {
-      obras = todasObras.filter(o => getSituacao(o) === situacaoFiltro);
-    }
+    // Lê filtros dos selects
+    const situacaoFiltro  = document.getElementById('f-situacao')?.value  || '';
+    const faseFiltro      = document.getElementById('f-fase')?.value       || '';
+    const regionalFiltro  = document.getElementById('f-regional-sel')?.value || '';
+    const consultorFiltro = document.getElementById('f-consultor-sel')?.value || '';
+    const anoFiltro       = document.getElementById('f-ano')?.value        || '';
 
+    let obras = todasObras;
+
+    if (anoFiltro) {
+      obras = obras.filter(o => o.criado_em && o.criado_em.startsWith(anoFiltro));
+    }
+    if (situacaoFiltro) {
+      obras = obras.filter(o => getSituacao(o) === situacaoFiltro);
+    }
     // Etapa — "projeto" cobre projeto_iniciado e projeto_concluido (legado)
-    if (faseFiltro !== 'todas') {
+    if (faseFiltro) {
       if (faseFiltro === 'projeto') {
         obras = obras.filter(o => ['projeto','projeto_iniciado','projeto_concluido'].includes(o.fase_atual));
       } else {
         obras = obras.filter(o => o.fase_atual === faseFiltro);
       }
     }
-
-    if (regionalFiltro !== 'todas') {
+    if (regionalFiltro) {
       obras = obras.filter(o => (o.regional || '') === regionalFiltro);
     }
-
-    if (consultorFiltro !== 'todos') {
+    if (consultorFiltro) {
       obras = obras.filter(o => (o.consultores?.nome || '') === consultorFiltro);
     }
 
@@ -1241,57 +1215,7 @@
   }
 
   // ── Handlers de filtros ──────────────────────────────────────
-  function registrarHandlersFiltros() {
-    // Situação
-    document.querySelectorAll('.filtro-situacao').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filtro-situacao').forEach(b => {
-          b.classList.remove('ativo'); b.setAttribute('aria-pressed', 'false');
-        });
-        btn.classList.add('ativo'); btn.setAttribute('aria-pressed', 'true');
-        situacaoFiltro = btn.dataset.situacao;
-        renderizar();
-      });
-    });
-
-    // Fase
-    document.querySelectorAll('.filtro-fase').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filtro-fase').forEach(b => {
-          b.classList.remove('ativo'); b.setAttribute('aria-pressed', 'false');
-        });
-        btn.classList.add('ativo'); btn.setAttribute('aria-pressed', 'true');
-        faseFiltro = btn.dataset.fase;
-        renderizar();
-      });
-    });
-
-    // Regional
-    document.querySelectorAll('.filtro-regional').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filtro-regional').forEach(b => {
-          b.classList.remove('ativo'); b.setAttribute('aria-pressed', 'false');
-        });
-        btn.classList.add('ativo'); btn.setAttribute('aria-pressed', 'true');
-        regionalFiltro = btn.dataset.regional;
-        renderizar();
-      });
-    });
-
-    // Consultor
-    document.querySelectorAll('.filtro-consultor').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filtro-consultor').forEach(b => {
-          b.classList.remove('ativo'); b.setAttribute('aria-pressed', 'false');
-        });
-        btn.classList.add('ativo'); btn.setAttribute('aria-pressed', 'true');
-        consultorFiltro = btn.dataset.consultor;
-        renderizar();
-      });
-    });
-  }
-
-  registrarHandlersFiltros();
+  // Handlers agora são onchange direto nos selects — nada a registrar
 
   // ── Pré-selecionar filtro ao voltar de obra_detail ──────────
   function aplicarFiltroSalvo() {
@@ -1299,20 +1223,8 @@
       const savedFase = sessionStorage.getItem('obraFaseFilter');
       if (!savedFase) return;
       sessionStorage.removeItem('obraFaseFilter');
-      const btn = document.querySelector(`.filtro-btn[data-fase="${savedFase}"]`);
-      if (btn) {
-        document.querySelectorAll('.filtro-btn').forEach(b => {
-          b.classList.remove('ativo');
-          b.setAttribute('aria-pressed', 'false');
-        });
-        btn.classList.add('ativo');
-        btn.setAttribute('aria-pressed', 'true');
-        faseFiltro = savedFase;
-        // pisca o botão para indicar o filtro ativo
-        btn.style.transition = 'none';
-        btn.style.transform = 'scale(1.08)';
-        setTimeout(() => { btn.style.transform = ''; btn.style.transition = ''; }, 300);
-      }
+      const sel = document.getElementById('f-fase');
+      if (sel) { sel.value = savedFase; renderizar(); }
     } catch(e) {}
   }
 

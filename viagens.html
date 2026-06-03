@@ -1,0 +1,492 @@
+<!-- SAOS: viagens.html — Controle de Viagens e Hotel -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solução Técnica — Viagens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="utils.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0A0A0A; --surface-1: #111111; --surface-2: #161616; --surface-3: #1B1B1B;
+      --primary: #3ECF8E; --text-1: #FFFFFF; --text-2: #A1A1AA; --text-3: #52525B;
+      --border: rgba(255,255,255,0.08); --border-hover: rgba(255,255,255,0.16);
+      --amber: #F59E0B; --red: #EF4444;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-1); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    .topbar { background: var(--surface-1); border-bottom: 1px solid var(--border); height: 56px; padding: 0 24px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .topbar-logo { font-size: 15px; font-weight: 700; color: var(--text-1); flex: 1; }
+    .topbar-greeting { font-size: 13px; color: var(--text-2); margin-right: 16px; }
+    .topbar-links { display: flex; align-items: center; gap: 4px; }
+    .topbar-links a { color: var(--text-2); text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 6px; transition: color .15s, background .15s; }
+    .topbar-links a:hover { color: var(--text-1); background: rgba(255,255,255,0.06); }
+    .topbar-links a.active { color: var(--text-1); background: rgba(255,255,255,0.07); }
+    .topbar-links a.nav-sair { color: var(--text-2); border: 1px solid rgba(255,255,255,0.12); margin-left: 8px; }
+
+    .page { max-width: 1200px; margin: 0 auto; padding: 32px 24px 64px; }
+
+    /* Header */
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+    .page-title { font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .page-title i { width: 22px; height: 22px; color: var(--primary); }
+
+    /* Nav semana */
+    .semana-nav { display: flex; align-items: center; gap: 10px; }
+    .semana-nav button { background: var(--surface-1); border: 1px solid var(--border); color: var(--text-2); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: border-color 150ms, color 150ms; }
+    .semana-nav button:hover { border-color: var(--border-hover); color: var(--text-1); }
+    .semana-nav button i { width: 16px; height: 16px; }
+    .semana-nav span { font-size: 14px; font-weight: 600; color: var(--text-1); min-width: 240px; text-align: center; }
+
+    /* Ações topo */
+    .acoes-topo { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-acao { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .15s, transform .15s; border: none; }
+    .btn-acao:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-acao i { width: 14px; height: 14px; }
+    .btn-semana { background: rgba(62,207,142,.1); border: 1px solid rgba(62,207,142,.3) !important; color: var(--primary); border: none; }
+    .btn-novo { background: var(--primary); color: #000; }
+
+    /* Summary bar */
+    .summary-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    .summary-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+    .summary-card .sc-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--text-3); margin-bottom: 6px; }
+    .summary-card .sc-val { font-size: 24px; font-weight: 800; color: var(--text-1); }
+    .summary-card .sc-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+
+    /* Lista de viagens */
+    .viagem-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+    .viagem-header { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+    .viagem-data { font-size: 12px; font-weight: 700; color: var(--primary); white-space: nowrap; }
+    .viagem-cliente { font-size: 15px; font-weight: 700; color: var(--text-1); flex: 1; }
+    .viagem-tec { font-size: 12px; color: var(--text-3); }
+    .viagem-body { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 16px 18px; }
+    .viagem-field label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-3); margin-bottom: 6px; }
+    .viagem-field input[type=text], .viagem-field input[type=number] {
+      width: 100%; background: var(--surface-3); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-1); font-family: inherit; font-size: 13px;
+      padding: 8px 10px; outline: none; transition: border-color .15s;
+    }
+    .viagem-field input:focus { border-color: rgba(62,207,142,.4); }
+    .viagem-field.hotel-field { display: flex; flex-direction: column; }
+    .hotel-toggle { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .hotel-toggle input[type=checkbox] { accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer; }
+    .hotel-toggle span { font-size: 13px; font-weight: 600; color: var(--text-2); cursor: pointer; }
+    .viagem-acoes { padding: 10px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+    .btn-salvar-viagem { height: 34px; padding: 0 16px; background: var(--primary); border: none; border-radius: 6px; color: #000; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 5px; }
+    .btn-salvar-viagem i { width: 12px; height: 12px; }
+    .btn-exportar-viagem { height: 34px; padding: 0 14px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-2); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 5px; }
+    .btn-exportar-viagem:hover { border-color: var(--border-hover); color: var(--text-1); }
+    .btn-exportar-viagem i { width: 12px; height: 12px; }
+    .saved-msg { font-size: 11px; color: var(--primary); display: none; align-items: center; gap: 4px; }
+
+    /* Empty */
+    .empty { text-align: center; padding: 64px 24px; color: var(--text-3); }
+    .empty i { width: 40px; height: 40px; margin: 0 auto 14px; display: block; opacity: .35; }
+    .spinner-wrap { text-align: center; padding: 64px; }
+    .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 14px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .summary-bar { grid-template-columns: repeat(2, 1fr); }
+      .viagem-body { grid-template-columns: 1fr; }
+      .semana-nav span { min-width: 160px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-logo">solução<strong>técnica</strong></div>
+  <span class="topbar-greeting" id="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
+</div>
+
+<div class="page">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-title">
+      <i data-lucide="plane"></i>
+      Viagens e Hotel
+    </div>
+
+    <div class="semana-nav">
+      <button onclick="mudarSemana(-1)" title="Semana anterior"><i data-lucide="chevron-left"></i></button>
+      <span id="semana-label">—</span>
+      <button onclick="mudarSemana(1)" title="Próxima semana"><i data-lucide="chevron-right"></i></button>
+    </div>
+
+    <div class="acoes-topo">
+      <button class="btn-acao btn-semana" onclick="exportarSemana()">
+        <i data-lucide="file-down"></i> Exportar Semana
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-bar">
+    <div class="summary-card">
+      <div class="sc-label">Viagens na semana</div>
+      <div class="sc-val" id="sum-total">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-label">Com hotel</div>
+      <div class="sc-val" id="sum-hotel">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-label">Saldo refeição total</div>
+      <div class="sc-val" id="sum-refeicao">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-label">Técnicos viajando</div>
+      <div class="sc-val" id="sum-tecs">—</div>
+    </div>
+  </div>
+
+  <!-- Lista -->
+  <div id="lista-viagens">
+    <div class="spinner-wrap"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>
+  </div>
+</div>
+
+<script>
+const db = supabase.createClient(
+  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
+);
+
+let semanaOffset = 0;
+let agendamentos  = [];
+let detalhes      = {}; // agendamento_id → viagem_detalhe
+let tecnicos      = [];
+let jwtToken      = null;
+
+const DIAS_PT  = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+function fmtISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function diasDaSemana(offset) {
+  const hoje = new Date();
+  const dow   = hoje.getDay() || 7;
+  const seg   = new Date(hoje); seg.setDate(hoje.getDate() - dow + 1 + offset * 7);
+  return Array.from({length:7}, (_, i) => { const d = new Date(seg); d.setDate(seg.getDate()+i); return d; });
+}
+function brl(v) {
+  v = parseFloat(v) || 0;
+  return `R$ ${v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+}
+
+// ── Init ──────────────────────────────────────────────────────
+(async () => {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+  jwtToken = session.access_token;
+
+  const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
+  if (!eu || !['supervisor','agendamento','coordenador'].includes(eu.role)) {
+    window.location.href = 'obras.html'; return;
+  }
+
+  renderTopbar(eu.nome, eu.role, 'viagens');
+  applyTheme();
+  lucide.createIcons();
+
+  const { data: tecs } = await db.from('tecnicos').select('id, nome');
+  tecnicos = tecs || [];
+
+  await carregarSemana();
+})();
+
+// ── Navegação ─────────────────────────────────────────────────
+function mudarSemana(delta) {
+  semanaOffset += delta;
+  carregarSemana();
+}
+
+async function carregarSemana() {
+  const dias = diasDaSemana(semanaOffset);
+  const d0 = dias[0], d6 = dias[6];
+  const ini = fmtISO(d0), fim = fmtISO(d6);
+
+  document.getElementById('semana-label').textContent =
+    `${d0.getDate()} de ${MESES_PT[d0.getMonth()]} — ${d6.getDate()} de ${MESES_PT[d6.getMonth()]} ${d6.getFullYear()}`;
+
+  document.getElementById('lista-viagens').innerHTML =
+    '<div class="spinner-wrap"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>';
+
+  // Busca agendamentos de viagem da semana
+  const { data: ags } = await db.from('agendamentos')
+    .select('*, obras(nome_cliente, endereco)')
+    .eq('status', 'viagem')
+    .gte('data', ini).lte('data', fim)
+    .order('data').order('hora_inicio');
+
+  agendamentos = ags || [];
+
+  // Busca detalhes já cadastrados
+  const ids = agendamentos.map(a => a.id);
+  if (ids.length) {
+    const { data: det } = await db.from('viagens_detalhe').select('*').in('agendamento_id', ids);
+    detalhes = {};
+    (det || []).forEach(d => { detalhes[d.agendamento_id] = d; });
+  } else {
+    detalhes = {};
+  }
+
+  renderLista(dias);
+  atualizarSummary();
+}
+
+// ── Render ────────────────────────────────────────────────────
+function renderLista(dias) {
+  const el = document.getElementById('lista-viagens');
+  if (!agendamentos.length) {
+    el.innerHTML = `<div class="empty"><i data-lucide="plane-off"></i><p>Nenhuma viagem esta semana.</p></div>`;
+    lucide.createIcons(); return;
+  }
+
+  el.innerHTML = agendamentos.map((ag, idx) => {
+    const d   = new Date(ag.data + 'T12:00');
+    const diaIdx = dias.findIndex(x => fmtISO(x) === ag.data);
+    const diaNome = diaIdx >= 0 ? DIAS_PT[diaIdx] : '';
+    const dataFmt = `${diaNome}, ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    const cliente = ag.obras?.nome_cliente || ag.cliente_outro || '—';
+    const hora    = ag.hora_inicio?.slice(0,5) || '';
+
+    const tecIds  = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+    const tecNomes = tecIds.map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · ');
+
+    const det  = detalhes[ag.id] || {};
+    const hotel = det.hotel || false;
+
+    return `<div class="viagem-card" id="vcard-${ag.id}">
+      <div class="viagem-header">
+        <div>
+          <div class="viagem-data">${dataFmt}${hora ? ' · ' + hora : ''}</div>
+          <div class="viagem-cliente">${escHtml(cliente)}</div>
+        </div>
+        <div class="viagem-tec">${escHtml(tecNomes || '—')}</div>
+      </div>
+      <div class="viagem-body">
+        <div class="viagem-field">
+          <label>Cidade de destino</label>
+          <input type="text" id="v-cidade-${ag.id}" value="${escHtml(det.cidade||'')}" placeholder="Ex: Cuiabá, MT">
+        </div>
+        <div class="viagem-field">
+          <label>Saldo para refeição (R$)</label>
+          <input type="number" id="v-saldo-${ag.id}" value="${det.saldo_refeicao||''}" placeholder="0,00" step="0.01" min="0">
+        </div>
+        <div class="viagem-field hotel-field">
+          <label>Hotel</label>
+          <div class="hotel-toggle">
+            <input type="checkbox" id="v-hotel-${ag.id}" ${hotel?'checked':''} onchange="toggleHotelObs(${ag.id})">
+            <span onclick="document.getElementById('v-hotel-${ag.id}').click()">Precisa de hotel</span>
+          </div>
+          <input type="text" id="v-hotel-obs-${ag.id}" value="${escHtml(det.hotel_obs||'')}"
+            placeholder="Observações do hotel..." style="${hotel?'':'display:none'}">
+        </div>
+      </div>
+      <div class="viagem-acoes">
+        <span class="saved-msg" id="v-saved-${ag.id}"><i data-lucide="check"></i> Salvo</span>
+        <button class="btn-exportar-viagem" onclick="exportarViagem(${ag.id})">
+          <i data-lucide="file-text"></i> Exportar
+        </button>
+        <button class="btn-salvar-viagem" onclick="salvarDetalhe(${ag.id})">
+          <i data-lucide="save"></i> Salvar
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+function toggleHotelObs(agId) {
+  const checked = document.getElementById(`v-hotel-${agId}`).checked;
+  const obs = document.getElementById(`v-hotel-obs-${agId}`);
+  obs.style.display = checked ? 'block' : 'none';
+}
+
+// ── Salvar detalhe ────────────────────────────────────────────
+async function salvarDetalhe(agId) {
+  const cidade      = document.getElementById(`v-cidade-${agId}`).value.trim() || null;
+  const saldo       = parseFloat(document.getElementById(`v-saldo-${agId}`).value) || null;
+  const hotel       = document.getElementById(`v-hotel-${agId}`).checked;
+  const hotel_obs   = document.getElementById(`v-hotel-obs-${agId}`).value.trim() || null;
+
+  const payload = { agendamento_id: agId, cidade, saldo_refeicao: saldo, hotel, hotel_obs, atualizado_em: new Date().toISOString() };
+
+  let res;
+  if (detalhes[agId]?.id) {
+    res = await db.from('viagens_detalhe').update(payload).eq('id', detalhes[agId].id).select().single();
+  } else {
+    res = await db.from('viagens_detalhe').insert(payload).select().single();
+  }
+
+  if (res.data) {
+    detalhes[agId] = res.data;
+    const msg = document.getElementById(`v-saved-${agId}`);
+    if (msg) { msg.style.display = 'flex'; setTimeout(() => msg.style.display = 'none', 2500); }
+    atualizarSummary();
+    lucide.createIcons();
+  }
+}
+
+// ── Summary ───────────────────────────────────────────────────
+function atualizarSummary() {
+  const total    = agendamentos.length;
+  const comHotel = agendamentos.filter(a => detalhes[a.id]?.hotel).length;
+  const totalRef = agendamentos.reduce((s, a) => s + (parseFloat(detalhes[a.id]?.saldo_refeicao)||0), 0);
+  const tecsSet  = new Set();
+  agendamentos.forEach(a => [a.tecnico_id, a.auxiliar_id, a.auxiliar2_id, a.auxiliar3_id].filter(Boolean).forEach(id => tecsSet.add(id)));
+
+  document.getElementById('sum-total').textContent    = total;
+  document.getElementById('sum-hotel').textContent    = comHotel;
+  document.getElementById('sum-refeicao').textContent = brl(totalRef);
+  document.getElementById('sum-tecs').textContent     = tecsSet.size;
+}
+
+// ── Exportar viagem individual ────────────────────────────────
+async function exportarViagem(agId) {
+  const ag  = agendamentos.find(a => a.id === agId);
+  if (!ag) return;
+  const det = detalhes[agId] || {};
+  const dias = diasDaSemana(semanaOffset);
+  const diaIdx = dias.findIndex(x => fmtISO(x) === ag.data);
+  const d = new Date(ag.data + 'T12:00');
+  const dataFmt = `${diaIdx>=0?DIAS_PT[diaIdx]:''} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  const cliente = ag.obras?.nome_cliente || ag.cliente_outro || '—';
+  const tecIds  = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+  const tecNomes = tecIds.map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(', ');
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+  doc.setFillColor(15,15,15); doc.rect(0,0,210,28,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16);
+  doc.text('Solução Técnica — Autorização de Viagem', 14, 12);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.setTextColor(161,161,170);
+  doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 14, 20);
+
+  let y = 38;
+  const row = (label, val) => {
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(100,100,100);
+    doc.text(label.toUpperCase(), 14, y);
+    doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.setTextColor(30,30,30);
+    doc.text(String(val||'—'), 14, y+7);
+    y += 18;
+  };
+
+  doc.setFillColor(240,255,247); doc.rect(10,y-6,190,14,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(10,100,50);
+  doc.text(escHtmlPdf(cliente), 14, y+2); y += 16;
+
+  row('Data', dataFmt);
+  row('Hora', ag.hora_inicio?.slice(0,5) || '—');
+  row('Técnico(s)', tecNomes || '—');
+  row('Cidade de destino', det.cidade || '—');
+  row('Endereço / Obra', ag.obras?.endereco || '—');
+  row('Serviço', ag.servico || '—');
+
+  y += 4;
+  // Hotel
+  doc.setFillColor(det.hotel ? 240 : 250, det.hotel ? 255 : 250, det.hotel ? 247 : 250);
+  doc.rect(10,y-4,190,18,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.setTextColor(det.hotel ? 10 : 80, det.hotel ? 100 : 80, det.hotel ? 50 : 80);
+  doc.text(det.hotel ? '✓  Hotel necessário' : '✗  Sem necessidade de hotel', 14, y+5);
+  if (det.hotel && det.hotel_obs) {
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+    doc.text(det.hotel_obs, 14, y+12);
+  }
+  y += 24;
+
+  // Saldo refeição
+  doc.setFillColor(255,252,220); doc.rect(10,y-4,190,14,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(80,60,0);
+  doc.text(`Saldo para refeição: ${brl(det.saldo_refeicao||0)}`, 14, y+4);
+  y += 20;
+
+  // Assinaturas
+  y += 10;
+  doc.setDrawColor(180,180,180);
+  doc.line(14, y, 90, y); doc.line(120, y, 196, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(120,120,120);
+  doc.text('Autorização', 14, y+5);
+  doc.text('Técnico responsável', 120, y+5);
+
+  doc.save(`Viagem - ${escHtmlPdf(cliente)} - ${ag.data}.pdf`);
+}
+
+// ── Exportar semana completa ──────────────────────────────────
+async function exportarSemana() {
+  if (!agendamentos.length) { alert('Nenhuma viagem para exportar.'); return; }
+  const dias   = diasDaSemana(semanaOffset);
+  const d0 = dias[0], d6 = dias[6];
+  const periodoLabel = `${d0.getDate()} a ${d6.getDate()} de ${MESES_PT[d6.getMonth()]} ${d6.getFullYear()}`;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+
+  doc.setFillColor(15,15,15); doc.rect(0,0,297,24,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('Solução Técnica — Programação de Viagens', 12, 11);
+  doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(161,161,170);
+  doc.text(`Semana: ${periodoLabel}  ·  Gerado em ${new Date().toLocaleString('pt-BR')}`, 12, 18);
+  doc.setTextColor(62,207,142); doc.setFont('helvetica','bold');
+  doc.text(`${agendamentos.length} viagem${agendamentos.length!==1?'s':''}`, 285, 11, {align:'right'});
+
+  const rows = agendamentos.map(ag => {
+    const d = new Date(ag.data+'T12:00');
+    const diaIdx = dias.findIndex(x => fmtISO(x) === ag.data);
+    const dataFmt = `${diaIdx>=0?DIAS_PT[diaIdx]:''} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+    const cliente = ag.obras?.nome_cliente || ag.cliente_outro || '—';
+    const tecIds  = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+    const tecNomes= tecIds.map(id => tecnicos.find(t=>t.id===id)?.nome?.split(' ')[0]||'').filter(Boolean).join(', ');
+    const det = detalhes[ag.id] || {};
+    return [
+      dataFmt,
+      ag.hora_inicio?.slice(0,5)||'—',
+      cliente,
+      tecNomes||'—',
+      det.cidade||'—',
+      det.hotel ? 'Sim' + (det.hotel_obs ? `\n${det.hotel_obs}` : '') : 'Não',
+      det.saldo_refeicao ? brl(det.saldo_refeicao) : '—',
+      ag.servico||'—',
+    ];
+  });
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Dia', 'Hora', 'Cliente / Obra', 'Técnico(s)', 'Cidade', 'Hotel', 'Saldo Refeição', 'Serviço']],
+    body: rows,
+    margin: { left: 10, right: 10 },
+    styles: { fontSize: 8, cellPadding: 2.5, lineColor: [60,60,60], lineWidth: 0.1, textColor: [30,30,30], fillColor: [255,255,255] },
+    headStyles: { fillColor: [15,15,15], textColor: [200,200,200], fontStyle: 'bold', fontSize: 8 },
+    alternateRowStyles: { fillColor: [248,248,248] },
+    columnStyles: {
+      0: { cellWidth: 24 }, 1: { cellWidth: 14 }, 2: { cellWidth: 52 },
+      3: { cellWidth: 38 }, 4: { cellWidth: 28 }, 5: { cellWidth: 24, textColor: [0,100,50] },
+      6: { cellWidth: 28, textColor: [80,60,0] }, 7: { cellWidth: 79 },
+    },
+  });
+
+  doc.save(`Viagens - Semana ${d0.getDate()} a ${d6.getDate()} de ${MESES_PT[d6.getMonth()]} ${d6.getFullYear()}.pdf`);
+}
+
+function escHtmlPdf(str) {
+  return String(str||'').replace(/[<>&"']/g, c => ({'<':'<','>':'>','&':'&','"':'"',"'":'&#39;'}[c]));
+}
+
+lucide.createIcons();
+</script>
+</body>
+</html>
