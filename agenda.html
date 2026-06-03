@@ -2256,10 +2256,12 @@ async function salvarAgendamento() {
     osCompartilhado = await gerarNumeroOS(diasSalvar[0]);
   }
 
-  // serie_id: agrupa todos os dias replicados para permitir edição em lote
-  const serieId = (replicar && diasSalvar.length > 1)
-    ? (crypto.randomUUID?.() || Math.random().toString(36).slice(2))
-    : null;
+  // serie_id: ao editar, preserva o existente; ao criar com replicar, gera novo UUID
+  const serieId = agEditandoId
+    ? (agendamentos.find(a => a.id === agEditandoId)?.serie_id ?? null)
+    : ((replicar && diasSalvar.length > 1)
+        ? (crypto.randomUUID?.() || Math.random().toString(36).slice(2))
+        : null);
 
   const basePayload = {
     obra_id:        obraVal !== 'outro' ? parseInt(obraVal) : null,
@@ -2308,6 +2310,7 @@ async function salvarAgendamento() {
               servico_planejado: servico || null,
               endereco_servico:  endereco || null,
               obra_id:           payload.obra_id || null,
+              tipo_servico:      tipoServico,
               atualizado_em:     new Date().toISOString(),
             })
             .eq('agendamento_id', agEditandoId)
@@ -2383,15 +2386,18 @@ async function salvarAgendamento() {
     if (agEditandoId) {
       const agAtual = agendamentos.find(a => a.id === agEditandoId);
       if (agAtual?.serie_id) {
-        // Detecta o que mudou: equipe E/OU status
+        // Detecta o que mudou: equipe, status e/ou veículo
         const equipesMudou = agAtual.tecnico_id !== basePayload.tecnico_id
           || agAtual.auxiliar_id !== basePayload.auxiliar_id;
-        const statusMudou  = agAtual.status !== basePayload.status;
+        const statusMudou  = agAtual.status   !== basePayload.status;
+        const veiculoMudou = agAtual.veiculo  !== basePayload.veiculo;
 
-        if (equipesMudou || statusMudou) {
+        if (equipesMudou || statusMudou || veiculoMudou) {
           const msg = statusMudou
             ? `Esta agenda faz parte de uma série replicada.\nO status foi alterado para "${basePayload.status}".\nDeseja aplicar esta alteração a todos os outros dias da série?`
-            : 'Esta agenda faz parte de uma série replicada.\nDeseja aplicar a mesma equipe para todos os outros dias da série?';
+            : veiculoMudou && !equipesMudou
+              ? 'Esta agenda faz parte de uma série replicada.\nDeseja aplicar o mesmo veículo a todos os outros dias da série?'
+              : 'Esta agenda faz parte de uma série replicada.\nDeseja aplicar as mesmas informações a todos os outros dias da série?';
 
           const propagar = await new Promise(resolve => {
             confirmModal(msg, () => resolve(true), () => resolve(false));
@@ -2404,9 +2410,9 @@ async function salvarAgendamento() {
               auxiliar2_id: basePayload.auxiliar2_id,
               auxiliar3_id: basePayload.auxiliar3_id,
               motorista_id: basePayload.motorista_id,
+              veiculo:      basePayload.veiculo,
               atualizado_em: new Date().toISOString(),
             };
-            // Propaga status se mudou
             if (statusMudou) updatePayload.status = basePayload.status;
 
             const { error: serieErr } = await db.from('agendamentos')
@@ -2419,7 +2425,7 @@ async function salvarAgendamento() {
             } else {
               mostrarToast(statusMudou
                 ? `✅ Status "${basePayload.status}" aplicado em toda a série.`
-                : '✅ Equipe atualizada em toda a série.', 'ok');
+                : '✅ Alterações aplicadas em toda a série.', 'ok');
             }
           }
         }
@@ -2435,10 +2441,11 @@ async function salvarAgendamento() {
       mostrarToast('✅ Pendência atualizada com a data do agendamento.', 'ok');
     }
 
+    const eraEdicao = !!agEditandoId;
     fecharModal();
-    if (!agEditandoId && tipoServico === 'assistencia') {
+    if (!eraEdicao && tipoServico === 'assistencia') {
       window.location.href = 'assistencia.html';
-    } else if (!agEditandoId && status === 'viagem') {
+    } else if (!eraEdicao && status === 'viagem') {
       window.location.href = 'viagens.html';
     } else {
       await carregarAgenda();

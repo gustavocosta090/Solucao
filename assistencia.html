@@ -490,6 +490,7 @@ async function carregarDados() {
     db.from('ordens_de_servico')
       .select('id, tecnico_id, obra_id, data_servico, servico_planejado, status_aprovacao, tecnicos!tecnico_id(id, nome), obras(nome_cliente)')
       .eq('tipo_servico', 'assistencia')
+      .neq('status_aprovacao', 'cancelada')
       .order('data_servico', { ascending: false }),
     db.from('relatorios_assistencia')
       .select('*'),
