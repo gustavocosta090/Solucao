@@ -1024,7 +1024,8 @@
       const prev = selAno.value;
       selAno.innerHTML = '<option value="">Todos os anos</option>';
       anos.forEach(a => { const opt = document.createElement('option'); opt.value = a; opt.textContent = a; selAno.appendChild(opt); });
-      if (prev) selAno.value = prev;
+      // Se já havia seleção, mantém; senão padrão para ano atual
+      selAno.value = prev || String(new Date().getFullYear());
     }
   }
 
