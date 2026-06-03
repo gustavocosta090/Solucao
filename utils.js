@@ -424,19 +424,20 @@ function renderTopbar(nome, role, paginaAtiva) {
   var greetEl = document.getElementById('topbar-greeting');
   if (greetEl && primeiro) greetEl.textContent = s + ', ' + primeiro;
 
+  // 'agendamento' tem as mesmas permissões que 'coordenador'
   var links = [
     { href: 'obras.html',                label: 'Obras',                  id: 'obras',                roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
     { href: 'agenda.html',               label: 'Agenda Técnica',         id: 'agenda',               roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
     { href: 'agenda_plantao.html',       label: 'Agenda de Plantão',      id: 'agenda-plantao',       roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos'] },
     { href: 'agenda_vistorias.html',     label: 'Agenda de Vistorias',    id: 'agenda-vistorias',     roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador'] },
-    { href: 'assistencia.html',          label: 'Assistências',           id: 'assistencia',          roles: ['agendamento'] },
+    { href: 'assistencia.html',          label: 'Assistências',           id: 'assistencia',          roles: ['agendamento','supervisor','coordenador'] },
     { href: 'vistoria.html',             label: 'Minhas Vistorias',       id: 'vistoria',             roles: ['vistoriador'] },
     { href: 'vistoria.html',             label: 'Relatórios de Vistoria', id: 'relatorios-vistoria',  roles: [] },
     { href: 'os.html',                   label: 'Fazer OS',               id: 'os',                   roles: ['tecnico','auxiliar'] },
     { href: 'supervisor.html',           label: 'Supervisor',             id: 'supervisor',           roles: ['supervisor','coordenador','agendamento','coordenador_projetos'] },
     { href: 'pendencias.html',           label: 'Pendências',             id: 'pendencias',           roles: ['supervisor','coordenador','agendamento'] },
-    { href: 'viagens.html',              label: 'Viagens',                id: 'viagens',               roles: ['supervisor','coordenador','agendamento'] },
-    { href: 'admin.html',                label: 'Admin',                  id: 'admin',                roles: ['coordenador'] },
+    { href: 'viagens.html',              label: 'Viagens',                id: 'viagens',              roles: ['supervisor','coordenador','agendamento'] },
+    { href: 'admin.html',                label: 'Admin',                  id: 'admin',                roles: ['coordenador','agendamento'] },
     { href: 'tecnico_dashboard.html',    label: 'Minhas OSs',             id: 'minhas-os',            roles: ['tecnico','auxiliar'] },
     { href: 'gerente_comercial.html',    label: 'Comercial',              id: 'comercial',            roles: ['gerente_comercial'] },
     { href: 'projetista.html',           label: 'Meu Painel',             id: 'projetista',           roles: ['projetista'] },

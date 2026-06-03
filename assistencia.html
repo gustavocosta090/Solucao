@@ -438,7 +438,7 @@
 </div>
 
 <script>
-const ROLES_PERMITIDOS = ['agendamento'];
+const ROLES_PERMITIDOS = ['agendamento','supervisor','coordenador'];
 const PER_PAGE = 25;
 
 let todasOS     = [];  // OS com tipo_servico='assistencia'
@@ -470,9 +470,7 @@ function brlFull(v) {
 
   const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
   if (!eu || !ROLES_PERMITIDOS.includes(eu.role)) {
-    window.location.href = eu?.role === 'supervisor' || eu?.role === 'coordenador' ? 'supervisor.html'
-                         : eu?.role === 'tecnico'    || eu?.role === 'auxiliar'    ? 'tecnico_dashboard.html'
-                         : 'login.html';
+    window.location.href = eu?.role === 'tecnico' || eu?.role === 'auxiliar' ? 'tecnico_dashboard.html' : 'login.html';
     return;
   }
 
