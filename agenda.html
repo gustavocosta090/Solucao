@@ -2352,27 +2352,49 @@ async function salvarAgendamento() {
     invalidateCache('agenda-obras');
     invalidateCache('agenda-tecnicos');
 
-    // Se editando um agendamento de uma série, pergunta se propaga equipe para os demais
+    // Se editando um agendamento de uma série, pergunta se propaga para os demais
     if (agEditandoId) {
       const agAtual = agendamentos.find(a => a.id === agEditandoId);
       if (agAtual?.serie_id) {
-        const propagar = await new Promise(resolve => {
-          confirmModal(
-            'Esta agenda faz parte de uma série replicada.\nDeseja aplicar a mesma equipe para todos os outros dias da série?',
-            () => resolve(true),
-            () => resolve(false)
-          );
-        });
-        if (propagar) {
-          await db.from('agendamentos').update({
-            tecnico_id:   basePayload.tecnico_id,
-            auxiliar_id:  basePayload.auxiliar_id,
-            auxiliar2_id: basePayload.auxiliar2_id,
-            auxiliar3_id: basePayload.auxiliar3_id,
-            motorista_id: basePayload.motorista_id,
-            atualizado_em: new Date().toISOString(),
-          }).eq('serie_id', agAtual.serie_id).neq('id', agEditandoId);
-          mostrarToast('✅ Equipe atualizada em toda a série.', 'ok');
+        // Detecta o que mudou: equipe E/OU status
+        const equipesMudou = agAtual.tecnico_id !== basePayload.tecnico_id
+          || agAtual.auxiliar_id !== basePayload.auxiliar_id;
+        const statusMudou  = agAtual.status !== basePayload.status;
+
+        if (equipesMudou || statusMudou) {
+          const msg = statusMudou
+            ? `Esta agenda faz parte de uma série replicada.\nO status foi alterado para "${basePayload.status}".\nDeseja aplicar esta alteração a todos os outros dias da série?`
+            : 'Esta agenda faz parte de uma série replicada.\nDeseja aplicar a mesma equipe para todos os outros dias da série?';
+
+          const propagar = await new Promise(resolve => {
+            confirmModal(msg, () => resolve(true), () => resolve(false));
+          });
+
+          if (propagar) {
+            const updatePayload = {
+              tecnico_id:   basePayload.tecnico_id,
+              auxiliar_id:  basePayload.auxiliar_id,
+              auxiliar2_id: basePayload.auxiliar2_id,
+              auxiliar3_id: basePayload.auxiliar3_id,
+              motorista_id: basePayload.motorista_id,
+              atualizado_em: new Date().toISOString(),
+            };
+            // Propaga status se mudou
+            if (statusMudou) updatePayload.status = basePayload.status;
+
+            const { error: serieErr } = await db.from('agendamentos')
+              .update(updatePayload)
+              .eq('serie_id', agAtual.serie_id)
+              .neq('id', agEditandoId);
+
+            if (serieErr) {
+              mostrarToast('⚠ Série parcialmente atualizada: ' + serieErr.message, 'err');
+            } else {
+              mostrarToast(statusMudou
+                ? `✅ Status "${basePayload.status}" aplicado em toda a série.`
+                : '✅ Equipe atualizada em toda a série.', 'ok');
+            }
+          }
         }
       }
     }
@@ -2619,11 +2641,17 @@ async function dispararAgendaWhatsapp() {
       </div>
     </div>
     <div style="height:2px;background:linear-gradient(90deg,${GOLD} 0%,rgba(196,168,130,0.08) 100%);"></div>
-    <div style="padding:14px 18px;">${cardsHTML}</div>
-    ${''/* Técnicos bloqueados removidos do PDF do dia */}
-    <div style="background:${HEADER};padding:9px 26px;border-top:1px solid ${BRDR};display:flex;justify-content:space-between;align-items:center;">
-      <div style="font-size:8px;color:${T3};letter-spacing:0.06em;text-transform:uppercase;">Solução Técnica · Sistema de Gestão</div>
-      <div style="font-size:8px;color:${T3};">${geradoEm}</div>
+    <div style="padding:14px 18px 4px;">${cardsHTML}</div>
+    <div style="height:1px;background:linear-gradient(90deg,rgba(196,168,130,0.18) 0%,rgba(196,168,130,0.04) 60%,transparent 100%);margin:0 18px;"></div>
+    <div style="background:${HEADER};padding:14px 26px 18px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:${GOLD};letter-spacing:0.08em;text-transform:uppercase;">Solução Técnica</div>
+        <div style="font-size:8px;color:${T3};margin-top:2px;letter-spacing:0.04em;">Sistema de Gestão · ${geradoEm}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:9px;color:${T3};letter-spacing:0.04em;">${nomeEquipeAtiva ? escHtml(nomeEquipeAtiva) : 'Todas as equipes'}</div>
+        <div style="font-size:8px;color:${T3};margin-top:2px;opacity:0.6;">solucaotecnica.vercel.app</div>
+      </div>
     </div>
   </div>`;
 
