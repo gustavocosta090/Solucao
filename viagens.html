@@ -12,81 +12,57 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="utils.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-:root{
-  --bg:#0A0A0A;--surface-1:#111111;--surface-2:#161616;--surface-3:#1B1B1B;
-  --primary:#3ECF8E;--text-1:#FFFFFF;--text-2:#A1A1AA;--text-3:#52525B;
-  --border:rgba(255,255,255,0.08);--border-strong:rgba(255,255,255,0.12);--border-hover:rgba(255,255,255,0.16);
-  --amber:#F59E0B;--amber-text:#FCD34D;--red:#EF4444;--red-text:#F87171;--radius:8px;
-}
-:root[data-theme="light"]{--bg:#F4F4F5;--surface-1:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F1;--text-1:#09090B;--text-2:#71717A;--text-3:#A1A1AA;--border:rgba(0,0,0,0.08);--border-strong:rgba(0,0,0,0.14);--border-hover:rgba(0,0,0,0.16);--amber-text:#B45309;--red-text:#B91C1C;}
-@media(prefers-color-scheme:light){:root[data-theme="auto"]{--bg:#F4F4F5;--surface-1:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F1;--text-1:#09090B;--text-2:#71717A;--text-3:#A1A1AA;--border:rgba(0,0,0,0.08);--border-strong:rgba(0,0,0,0.14);--border-hover:rgba(0,0,0,0.16);--amber-text:#B45309;--red-text:#B91C1C;}}
+:root{--bg:#0A0A0A;--surface-1:#111;--surface-2:#161616;--primary:#3ECF8E;--text-1:#fff;--text-2:#A1A1AA;--text-3:#52525B;--border:rgba(255,255,255,.08);--border-hover:rgba(255,255,255,.16);--amber-text:#FCD34D;}
 html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh;-webkit-font-smoothing:antialiased}
-.topbar{background:var(--surface-1);border-bottom:1px solid var(--border);height:56px;padding:0 24px;display:flex;align-items:center;position:sticky;top:0;z-index:100;gap:12px}
-.topbar-logo{font-size:15px;font-weight:700;color:var(--text-1);letter-spacing:-.2px;flex:1}
+.topbar{background:var(--surface-1);border-bottom:1px solid var(--border);height:56px;padding:0 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.topbar-logo{font-size:15px;font-weight:700;flex:1;letter-spacing:-.2px}
 .topbar-greeting{font-size:13px;color:var(--text-2)}
 .topbar-links{display:flex;align-items:center;gap:4px}
 .topbar-links a{color:var(--text-2);text-decoration:none;font-size:13px;font-weight:500;padding:6px 12px;border-radius:6px;transition:color .15s,background .15s}
-.topbar-links a:hover{color:var(--text-1);background:rgba(255,255,255,0.06)}
-.topbar-links a.active{color:var(--text-1);background:rgba(255,255,255,0.07)}
-.topbar-links a.nav-sair{color:var(--text-2);border:1px solid rgba(255,255,255,0.12);margin-left:8px}
-.tema-btn{background:transparent;border:1px solid var(--border-strong);border-radius:6px;color:var(--text-2);font-size:15px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-
-/* ── Página ── */
-.page{max-width:1200px;margin:0 auto;padding:32px 24px 80px}
-.page-header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+.topbar-links a:hover{color:var(--text-1);background:rgba(255,255,255,.06)}
+.topbar-links a.active{color:var(--text-1);background:rgba(255,255,255,.07)}
+.topbar-links a.nav-sair{border:1px solid rgba(255,255,255,.12);margin-left:8px}
+.tema-btn{background:transparent;border:1px solid rgba(255,255,255,.12);border-radius:6px;color:var(--text-2);font-size:15px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.page{max-width:1100px;margin:0 auto;padding:28px 24px 80px}
+.page-header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:24px}
 .page-title{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px;flex:1}
-.page-title i{width:22px;height:22px;color:var(--primary)}
-
-/* ── Stats ── */
-.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-.stat{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
-.stat-val{font-size:26px;font-weight:800;line-height:1;margin-bottom:5px}
-.stat-lbl{font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-
-/* ── Nav semana ── */
 .sem-nav{display:flex;align-items:center;gap:8px}
-.sem-nav button{width:30px;height:30px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.sem-nav button:hover{border-color:var(--border-hover);color:var(--text-1)}
-#sem-label{font-size:13px;font-weight:600;color:var(--text-1);min-width:240px;text-align:center}
-.btn-exp-sem{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.3);border-radius:7px;color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s}
-.btn-exp-sem:hover{background:rgba(62,207,142,.18)}
-.btn-exp-sem i{width:14px;height:14px}
-
-/* ── Cards de viagem ── */
-.vcard{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden}
+.sem-btn{width:30px;height:30px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;font-size:16px}
+.sem-btn:hover{border-color:var(--border-hover);color:var(--text-1)}
+#sem-label{font-size:13px;font-weight:600;min-width:230px;text-align:center}
+.btn-exp{padding:8px 16px;background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.3);border-radius:7px;color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.sc{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.sc-val{font-size:26px;font-weight:800;line-height:1;margin-bottom:5px}
+.sc-lbl{font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.vcard{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}
 .vcard:hover{border-color:var(--border-hover)}
-.vcard-top{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;background:var(--surface-2);border-bottom:1px solid var(--border)}
-.vct-data{font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
-.vct-cliente{font-size:15px;font-weight:700}
-.vct-tec{font-size:12px;color:var(--text-3);margin-top:3px}
-.vct-servico{font-size:12px;color:var(--text-2);margin-top:2px;font-style:italic}
-.vct-hora{font-size:20px;font-weight:800;color:var(--amber-text);margin-left:auto;flex-shrink:0}
-.vcard-body{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;padding:18px}
+.vtop{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+.vdata{font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.vcliente{font-size:15px;font-weight:700}
+.vtec{font-size:12px;color:var(--text-3);margin-top:3px}
+.vservico{font-size:12px;color:var(--text-2);margin-top:2px;font-style:italic}
+.vhora{font-size:20px;font-weight:800;color:var(--amber-text);margin-left:auto;flex-shrink:0}
+.vbody{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;padding:18px}
 .vf label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-3);margin-bottom:7px}
-.vf input[type=text],.vf input[type=number]{width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:13px;padding:8px 11px;outline:none;transition:border-color .15s}
+.vf input[type=text],.vf input[type=number]{width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:13px;padding:8px 11px;outline:none}
 .vf input:focus{border-color:rgba(62,207,142,.4)}
-.hotel-chk{display:flex;align-items:center;gap:8px;margin-bottom:9px}
-.hotel-chk input{accent-color:var(--primary);width:15px;height:15px;cursor:pointer}
-.hotel-chk span{font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;user-select:none}
-.vcard-footer{padding:10px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;justify-content:flex-end}
-.saved-ok{font-size:11px;color:var(--primary);display:none;align-items:center;gap:4px;margin-right:auto}
-.btn-vcard{height:34px;padding:0 16px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;border:none;transition:opacity .15s}
-.btn-vcard i{width:12px;height:12px}
-.btn-salvar-v{background:var(--primary);color:#000}.btn-salvar-v:hover{opacity:.88}
-.btn-pdf-v{background:transparent;border:1px solid var(--border)!important;color:var(--text-2)}.btn-pdf-v:hover{border-color:var(--border-hover)!important;color:var(--text-1)}
-
-/* ── Misc ── */
-.empty-state{text-align:center;padding:64px;color:var(--text-3)}
-.empty-state i{width:40px;height:40px;margin:0 auto 14px;display:block;opacity:.3}
-.spinner-wrap{text-align:center;padding:64px}
-.spinner{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
-@keyframes spin{to{transform:rotate(360deg)}}
-@media(max-width:900px){.stats-bar{grid-template-columns:repeat(2,1fr)}.vcard-body{grid-template-columns:1fr}}
-@media(max-width:768px){input,select,textarea{font-size:16px!important}}
+.hchk{display:flex;align-items:center;gap:8px;margin-bottom:9px;cursor:pointer}
+.hchk input{accent-color:var(--primary);width:15px;height:15px}
+.hchk span{font-size:13px;font-weight:600;color:var(--text-2)}
+.vfoot{padding:10px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.vok{font-size:11px;color:var(--primary);display:none;align-items:center;gap:4px;margin-right:auto}
+.bv{height:34px;padding:0 16px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;border:none}
+.bsalvar{background:var(--primary);color:#000}.bsalvar:hover{opacity:.88}
+.bpdf{background:transparent;border:1px solid var(--border)!important;color:var(--text-2)}.bpdf:hover{border-color:var(--border-hover)!important;color:var(--text-1)}
+.empty{text-align:center;padding:60px;color:var(--text-3)}
+.spin-wrap{text-align:center;padding:60px}
+.spin{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:sp .7s linear infinite;margin:0 auto 12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(max-width:900px){.stats{grid-template-columns:1fr 1fr}.vbody{grid-template-columns:1fr}}
+@media(max-width:600px){.stats{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="app-shell.css">
 </head>
@@ -95,263 +71,191 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 <header class="topbar">
   <span class="topbar-logo">Solução Técnica</span>
   <span id="topbar-greeting" class="topbar-greeting"></span>
-  <button id="tema-btn" class="tema-btn" onclick="ciclarTema()" title="Alternar tema">🖥️</button>
+  <button id="tema-btn" class="tema-btn" onclick="ciclarTema()">🖥️</button>
   <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
 <div class="page">
-
   <div class="page-header">
     <h1 class="page-title"><i data-lucide="plane"></i> Viagens e Hotel</h1>
     <div class="sem-nav">
-      <button onclick="mudarSemana(-1)">‹</button>
-      <span id="sem-label">carregando...</span>
-      <button onclick="mudarSemana(1)">›</button>
+      <button class="sem-btn" onclick="mudarSemana(-1)">‹</button>
+      <span id="sem-label">—</span>
+      <button class="sem-btn" onclick="mudarSemana(1)">›</button>
     </div>
-    <button class="btn-exp-sem" onclick="exportarSemana()">
-      <i data-lucide="file-down"></i> Exportar Semana
-    </button>
+    <button class="btn-exp" onclick="exportarSemana()">Exportar PDF Semana</button>
   </div>
-
-  <div class="stats-bar">
-    <div class="stat"><div class="stat-val" id="s-total">—</div><div class="stat-lbl">Viagens na semana</div></div>
-    <div class="stat"><div class="stat-val" id="s-hotel">—</div><div class="stat-lbl">Com hotel</div></div>
-    <div class="stat"><div class="stat-val" id="s-ref" style="font-size:18px;line-height:1.5">—</div><div class="stat-lbl">Saldo refeição total</div></div>
-    <div class="stat"><div class="stat-val" id="s-tecs">—</div><div class="stat-lbl">Técnicos viajando</div></div>
+  <div class="stats">
+    <div class="sc"><div class="sc-val" id="st">0</div><div class="sc-lbl">Viagens na semana</div></div>
+    <div class="sc"><div class="sc-val" id="sh">0</div><div class="sc-lbl">Com hotel</div></div>
+    <div class="sc"><div class="sc-val" id="sr" style="font-size:18px;line-height:1.5">R$ 0</div><div class="sc-lbl">Saldo refeição total</div></div>
+    <div class="sc"><div class="sc-val" id="stc">0</div><div class="sc-lbl">Técnicos viajando</div></div>
   </div>
-
-  <div id="viagens-lista">
-    <div class="spinner-wrap"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>
-  </div>
-
+  <div id="vlista"><div class="spin-wrap"><div class="spin"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div></div>
 </div>
 
 <script>
-const db = supabase.createClient(
-  'https://kxtjqudpnmdqkzqhyhmz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0'
-);
+// ── Configuração ──────────────────────────────────────────────
+const SUPA_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGpxdWRwbm1kcWt6cWh5aG16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYzMzEsImV4cCI6MjA5NTIyMjMzMX0.tba066RGNwDbXaNEy3w_OHbblll_bky6Dx10mXnxVQ0';
 
-let semanaOff = 0, ags = [], dets = {}, tecs = [];
+// db já criado pelo utils.js (usa o mesmo supabase global)
+// Se não existir, cria aqui
+const _db = (typeof db !== 'undefined') ? db : supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let _off = 0, _ags = [], _dets = {}, _tecs = [];
 const DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-const fmtD  = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-const brl   = v => 'R$ '+(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+const _iso  = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const _brl  = v => 'R$ '+(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
 
-function semana(off){
-  const h=new Date(),dow=h.getDay()||7,s=new Date(h);
+function _semana(off){
+  const h=new Date(), dow=h.getDay()||7, s=new Date(h);
   s.setDate(h.getDate()-dow+1+off*7);
   return Array.from({length:7},(_,i)=>{const d=new Date(s);d.setDate(s.getDate()+i);return d;});
 }
 
-window.addEventListener('DOMContentLoaded', async function(){
+// ── Init (IIFE no final do body — padrão de todas as páginas) ──
+(async()=>{
   applyTheme();
-  try {
-    const {data:{session}} = await db.auth.getSession();
-    if(!session){location.href='login.html';return;}
-    const {data:eu} = await db.from('tecnicos').select('role,nome').eq('auth_user_id',session.user.id).single();
-    if(!eu||!['supervisor','coordenador','agendamento'].includes(eu.role)){location.href='obras.html';return;}
-    renderTopbar(eu.nome,eu.role,'viagens');
-    lucide.createIcons();
-    const {data:t} = await db.from('tecnicos').select('id,nome');
-    tecs = t||[];
-    await carregar();
-  } catch(e){
-    document.getElementById('viagens-lista').innerHTML='<p style="color:#f87171;padding:24px">Erro: '+e.message+'</p>';
+  lucide.createIcons();
+
+  const {data:{session}} = await _db.auth.getSession();
+  if(!session){location.href='login.html';return;}
+
+  const {data:eu} = await _db.from('tecnicos').select('role,nome').eq('auth_user_id',session.user.id).single();
+  if(!eu||!['supervisor','coordenador','agendamento'].includes(eu.role)){location.href='obras.html';return;}
+
+  renderTopbar(eu.nome,eu.role,'viagens');
+  lucide.createIcons();
+
+  const {data:tList} = await _db.from('tecnicos').select('id,nome');
+  _tecs = tList||[];
+
+  await _carregar();
+})();
+
+function mudarSemana(d){_off+=d;_carregar();}
+
+async function _carregar(){
+  const el = document.getElementById('vlista');
+  el.innerHTML = '<div class="spin-wrap"><div class="spin"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>';
+
+  // Semana
+  const dias = _semana(_off);
+  const d0=dias[0], d6=dias[6];
+  document.getElementById('sem-label').textContent =
+    d0.getDate()+' de '+MESES[d0.getMonth()]+' — '+d6.getDate()+' de '+MESES[d6.getMonth()]+' '+d6.getFullYear();
+
+  // Agendamentos de viagem
+  const {data:aList, error:aErr} = await _db.from('agendamentos')
+    .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id')
+    .eq('status','viagem').gte('data',_iso(d0)).lte('data',_iso(d6))
+    .order('data').order('hora_inicio');
+
+  _ags = aList||[];
+
+  // Obras (sem join para evitar erro de schema cache)
+  const obraIds = [...new Set(_ags.map(a=>a.obra_id).filter(Boolean))];
+  if(obraIds.length){
+    const {data:obList} = await _db.from('obras').select('id,nome_cliente,endereco').in('id',obraIds);
+    const obMap = {};
+    (obList||[]).forEach(o=>{obMap[o.id]=o;});
+    _ags.forEach(a=>{a._ob=obMap[a.obra_id]||null;});
   }
-});
 
-function mudarSemana(d){semanaOff+=d;carregar();}
-
-async function carregar(){
-  const el=document.getElementById('viagens-lista');
-  el.innerHTML='<div class="spinner-wrap"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>';
-  try {
-    const dias=semana(semanaOff);
-    const d0=dias[0],d6=dias[6];
-    document.getElementById('sem-label').textContent=
-      d0.getDate()+' de '+MESES[d0.getMonth()]+' — '+d6.getDate()+' de '+MESES[d6.getMonth()]+' '+d6.getFullYear();
-
-    const {data:agList} = await db.from('agendamentos')
-      .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id')
-      .eq('status','viagem').gte('data',fmtD(d0)).lte('data',fmtD(d6))
-      .order('data').order('hora_inicio');
-    ags = agList||[];
-
-    // Obras separado (sem join)
-    const obraIds=[...new Set(ags.map(a=>a.obra_id).filter(Boolean))];
-    const obMap={};
-    if(obraIds.length){
-      const {data:obras}=await db.from('obras').select('id,nome_cliente,endereco').in('id',obraIds);
-      (obras||[]).forEach(o=>{obMap[o.id]=o;});
-    }
-    ags.forEach(a=>{a._ob=obMap[a.obra_id]||null;});
-
-    dets={};
-    if(ags.length){
-      const {data:detList}=await db.from('viagens_detalhe').select('*').in('agendamento_id',ags.map(a=>a.id));
-      (detList||[]).forEach(d=>{dets[d.agendamento_id]=d;});
-    }
-    renderLista(dias);
-    atualizarStats();
-  } catch(e){
-    el.innerHTML='<p style="color:#f87171;padding:24px">Erro ao carregar: '+e.message+'</p>';
+  // Detalhes (ignora se tabela não existir)
+  _dets = {};
+  if(_ags.length){
+    try{
+      const {data:dList} = await _db.from('viagens_detalhe').select('*').in('agendamento_id',_ags.map(a=>a.id));
+      (dList||[]).forEach(d=>{_dets[d.agendamento_id]=d;});
+    }catch(e){console.warn('viagens_detalhe não existe ainda',(e.message||''));}
   }
+
+  _renderLista(dias);
+  _stats();
 }
 
-function renderLista(dias){
-  const el=document.getElementById('viagens-lista');
-  if(!ags.length){
-    el.innerHTML='<div class="empty-state"><i data-lucide="plane-off"></i><p>Nenhuma viagem nesta semana.</p></div>';
-    lucide.createIcons();return;
+function _renderLista(dias){
+  const el = document.getElementById('vlista');
+  if(!_ags.length){
+    el.innerHTML='<div class="empty"><p style="font-size:14px">Nenhuma viagem nesta semana.</p><p style="font-size:12px;margin-top:8px;color:var(--text-3)">Agendamentos com status "Viagem" aparecerão aqui.</p></div>';
+    return;
   }
-  el.innerHTML=ags.map(ag=>{
-    const d=new Date(ag.data+'T12:00');
-    const idx=dias.findIndex(x=>fmtD(x)===ag.data);
-    const dataTxt=(idx>=0?DIAS[idx]+', ':'')+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
-    const hora=ag.hora_inicio?ag.hora_inicio.slice(0,5):'';
-    const cliente=ag._ob?ag._ob.nome_cliente:ag.cliente_outro||'—';
-    const tecIds=[ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
-    const tecStr=tecIds.map(id=>{const t=tecs.find(t=>t.id===id);return t?t.nome:'';}).filter(Boolean).join(' · ')||'—';
-    const det=dets[ag.id]||{};
+  el.innerHTML = _ags.map(ag=>{
+    const d   = new Date(ag.data+'T12:00');
+    const idx = dias.findIndex(x=>_iso(x)===ag.data);
+    const dTxt= (idx>=0?DIAS[idx]+', ':'')+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+    const hora= ag.hora_inicio?ag.hora_inicio.slice(0,5):'';
+    const cli = (ag._ob&&ag._ob.nome_cliente)||ag.cliente_outro||'(sem obra)';
+    const tIds= [ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
+    const tNm = tIds.map(id=>{const t=_tecs.find(t=>t.id===id);return t?t.nome:'';}).filter(Boolean).join(' · ')||'A definir';
+    const det = _dets[ag.id]||{};
+    const eid = 'v'+ag.id;
     return '<div class="vcard">'+
-      '<div class="vcard-top">'+
+      '<div class="vtop">'+
         '<div style="flex:1;min-width:0">'+
-          '<div class="vct-data">'+escHtml(dataTxt)+'</div>'+
-          '<div class="vct-cliente">'+escHtml(cliente)+'</div>'+
-          '<div class="vct-tec">'+escHtml(tecStr)+'</div>'+
-          (ag.servico?'<div class="vct-servico">'+escHtml(ag.servico)+'</div>':'')+
+          '<div class="vdata">'+dTxt+'</div>'+
+          '<div class="vcliente">'+escHtml(cli)+'</div>'+
+          '<div class="vtec">'+escHtml(tNm)+'</div>'+
+          (ag.servico?'<div class="vservico">'+escHtml(ag.servico)+'</div>':'')+
         '</div>'+
-        (hora?'<div class="vct-hora">'+hora+'</div>':'')+
+        (hora?'<div class="vhora">'+hora+'</div>':'')+
       '</div>'+
-      '<div class="vcard-body">'+
+      '<div class="vbody">'+
         '<div class="vf"><label>Cidade de destino</label>'+
-          '<input type="text" id="vc-'+ag.id+'" value="'+escHtml(det.cidade||'')+'" placeholder="Ex: Cuiabá, MT"></div>'+
+          '<input type="text" id="c'+eid+'" value="'+escHtml(det.cidade||'')+'" placeholder="Ex: Cuiabá, MT"></div>'+
         '<div class="vf"><label>Saldo refeição (R$)</label>'+
-          '<input type="number" id="vs-'+ag.id+'" value="'+(det.saldo_refeicao||'')+'" placeholder="0,00" step="0.01" min="0"></div>'+
+          '<input type="number" id="s'+eid+'" value="'+(det.saldo_refeicao||'')+'" placeholder="0,00" step="0.01" min="0"></div>'+
         '<div class="vf"><label>Hotel</label>'+
-          '<div class="hotel-chk">'+
-            '<input type="checkbox" id="vh-'+ag.id+'" '+(det.hotel?'checked':'')+' onchange="toggleObs('+ag.id+')">'+
-            '<span onclick="document.getElementById(\'vh-'+ag.id+'\').click()">Precisa de hotel</span>'+
-          '</div>'+
-          '<input type="text" id="vo-'+ag.id+'" value="'+escHtml(det.hotel_obs||'')+'" placeholder="Nome, preferências..." style="display:'+(det.hotel?'block':'none')+'">'+
+          '<label class="hchk"><input type="checkbox" id="h'+eid+'" '+(det.hotel?'checked':'')+' onchange="tObs(\''+eid+'\')">'+
+          '<span>Precisa de hotel</span></label>'+
+          '<input type="text" id="o'+eid+'" value="'+escHtml(det.hotel_obs||'')+'" placeholder="Nome, preferências..." style="display:'+(det.hotel?'block':'none')+'">'+
         '</div>'+
       '</div>'+
-      '<div class="vcard-footer">'+
-        '<span class="saved-ok" id="vok-'+ag.id+'">✓ Salvo</span>'+
-        '<button class="btn-vcard btn-pdf-v" onclick="exportPDF('+ag.id+')">PDF</button>'+
-        '<button class="btn-vcard btn-salvar-v" onclick="salvar('+ag.id+')">Salvar</button>'+
+      '<div class="vfoot">'+
+        '<span class="vok" id="ok'+eid+'">✓ Salvo</span>'+
+        '<button class="bv bpdf" onclick="_pdf('+ag.id+')">PDF</button>'+
+        '<button class="bv bsalvar" onclick="_salvar('+ag.id+')">Salvar</button>'+
       '</div>'+
     '</div>';
   }).join('');
-  lucide.createIcons();
 }
 
-function toggleObs(id){
-  document.getElementById('vo-'+id).style.display=document.getElementById('vh-'+id).checked?'block':'none';
+function tObs(eid){
+  document.getElementById('o'+eid).style.display=document.getElementById('h'+eid).checked?'block':'none';
 }
 
-async function salvar(agId){
-  const cidade=document.getElementById('vc-'+agId).value.trim()||null;
-  const saldo=parseFloat(document.getElementById('vs-'+agId).value)||null;
-  const hotel=document.getElementById('vh-'+agId).checked;
-  const hotel_obs=document.getElementById('vo-'+agId).value.trim()||null;
-  const payload={agendamento_id:agId,cidade,saldo_refeicao:saldo,hotel,hotel_obs,atualizado_em:new Date().toISOString()};
-  const res=dets[agId]?.id
-    ?await db.from('viagens_detalhe').update(payload).eq('id',dets[agId].id).select().single()
-    :await db.from('viagens_detalhe').insert(payload).select().single();
+async function _salvar(agId){
+  const eid='v'+agId;
+  const p={agendamento_id:agId,
+    cidade:document.getElementById('c'+eid).value.trim()||null,
+    saldo_refeicao:parseFloat(document.getElementById('s'+eid).value)||null,
+    hotel:document.getElementById('h'+eid).checked,
+    hotel_obs:document.getElementById('o'+eid).value.trim()||null,
+    atualizado_em:new Date().toISOString()};
+  const res=_dets[agId]?.id
+    ?await _db.from('viagens_detalhe').update(p).eq('id',_dets[agId].id).select().single()
+    :await _db.from('viagens_detalhe').insert(p).select().single();
   if(res.data){
-    dets[agId]=res.data;
-    const ok=document.getElementById('vok-'+agId);
-    ok.style.display='flex';setTimeout(()=>ok.style.display='none',2500);
-    atualizarStats();
-  } else if(res.error){
-    alert('Erro: '+res.error.message);
-  }
+    _dets[agId]=res.data;
+    const ok=document.getElementById('ok'+eid);
+    ok.style.display='flex';setTimeout(()=>{ok.style.display='none';},2500);
+    _stats();
+  }else if(res.error){alert('Erro: '+res.error.message);}
 }
 
-function atualizarStats(){
-  document.getElementById('s-total').textContent=ags.length;
-  document.getElementById('s-hotel').textContent=ags.filter(a=>dets[a.id]?.hotel).length;
-  document.getElementById('s-ref').textContent=brl(ags.reduce((s,a)=>s+(parseFloat(dets[a.id]?.saldo_refeicao)||0),0));
-  const ts=new Set(ags.flatMap(a=>[a.tecnico_id,a.auxiliar_id,a.auxiliar2_id,a.auxiliar3_id].filter(Boolean)));
-  document.getElementById('s-tecs').textContent=ts.size;
+function _stats(){
+  document.getElementById('st').textContent=_ags.length;
+  document.getElementById('sh').textContent=_ags.filter(a=>_dets[a.id]?.hotel).length;
+  document.getElementById('sr').textContent=_brl(_ags.reduce((s,a)=>s+(parseFloat(_dets[a.id]?.saldo_refeicao)||0),0));
+  const ts=new Set(_ags.flatMap(a=>[a.tecnico_id,a.auxiliar_id,a.auxiliar2_id,a.auxiliar3_id].filter(Boolean)));
+  document.getElementById('stc').textContent=ts.size;
 }
 
-function exportPDF(agId){
-  const ag=ags.find(a=>a.id===agId);if(!ag)return;
-  const det=dets[agId]||{};
-  const cliente=ag._ob?ag._ob.nome_cliente:ag.cliente_outro||'—';
-  const tecIds=[ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
-  const tecStr=tecIds.map(id=>{const t=tecs.find(t=>t.id===id);return t?t.nome:'';}).filter(Boolean).join(', ');
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({unit:'mm',format:'a4'});
-  doc.setFillColor(15,15,15);doc.rect(0,0,210,28,'F');
-  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15);
-  doc.text('Solução Técnica — Autorização de Viagem',14,12);
-  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(150,150,150);
-  doc.text('Gerado em '+new Date().toLocaleString('pt-BR'),14,20);
-  let y=36;
-  const campo=(lbl,val)=>{
-    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(130,130,130);doc.text(lbl.toUpperCase(),14,y);
-    doc.setFont('helvetica','normal');doc.setFontSize(12);doc.setTextColor(20,20,20);doc.text(String(val||'—').slice(0,80),14,y+6);y+=18;
-  };
-  doc.setFillColor(240,255,248);doc.rect(10,y-4,190,14,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(10,80,40);
-  doc.text(cliente.slice(0,55),14,y+5);y+=18;
-  campo('Data',ag.data);campo('Horário',ag.hora_inicio?.slice(0,5)||'—');
-  campo('Técnico(s)',tecStr||'—');campo('Cidade',det.cidade||'—');
-  campo('Endereço',ag._ob?.endereco||'—');campo('Serviço',ag.servico||'—');
-  y+=4;
-  doc.setFillColor(det.hotel?235:248,det.hotel?252:248,det.hotel?242:248);
-  doc.rect(10,y-4,190,det.hotel&&det.hotel_obs?22:14,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(11);
-  doc.setTextColor(det.hotel?10:100,det.hotel?90:100,det.hotel?40:100);
-  doc.text(det.hotel?'✓  Hotel necessário':'✗  Sem necessidade de hotel',14,y+4);
-  if(det.hotel&&det.hotel_obs){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(40,80,40);doc.text(det.hotel_obs,14,y+12);y+=8;}
-  y+=20;
-  doc.setFillColor(255,252,220);doc.rect(10,y-4,190,14,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(80,60,0);
-  doc.text('Saldo para refeição: '+brl(det.saldo_refeicao||0),14,y+5);y+=24;
-  y+=8;doc.setDrawColor(180,180,180);doc.setLineWidth(.3);
-  doc.line(14,y,90,y);doc.line(120,y,196,y);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(130,130,130);
-  doc.text('Gestor / Aprovação',14,y+5);doc.text('Técnico responsável',120,y+5);
-  doc.save('Viagem-'+cliente.slice(0,20)+'-'+ag.data+'.pdf');
-}
-
-function exportarSemana(){
-  if(!ags.length){alert('Nenhuma viagem para exportar.');return;}
-  const dias=semana(semanaOff);
-  const d0=dias[0],d6=dias[6];
-  const periodo=d0.getDate()+' a '+d6.getDate()+' de '+MESES[d6.getMonth()]+' '+d6.getFullYear();
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
-  doc.setFillColor(15,15,15);doc.rect(0,0,297,24,'F');
-  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(13);
-  doc.text('Solução Técnica — Programação de Viagens',12,11);
-  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(150,150,150);
-  doc.text('Semana: '+periodo+' · Gerado em '+new Date().toLocaleString('pt-BR'),12,18);
-  const rows=ags.map(ag=>{
-    const d=new Date(ag.data+'T12:00');
-    const idx=dias.findIndex(x=>fmtD(x)===ag.data);
-    const tecIds=[ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
-    const tecStr=tecIds.map(id=>{const t=tecs.find(t=>t.id===id);return t?t.nome.split(' ')[0]:'';}).filter(Boolean).join(', ');
-    const det=dets[ag.id]||{};
-    return [(idx>=0?DIAS[idx]:'')+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'),
-      ag.hora_inicio?.slice(0,5)||'—',(ag._ob?.nome_cliente||ag.cliente_outro||'—').slice(0,40),
-      tecStr||'—',det.cidade||'—',det.hotel?'Sim':'Não',det.saldo_refeicao?brl(det.saldo_refeicao):'—',(ag.servico||'—').slice(0,50)];
-  });
-  doc.autoTable({startY:30,
-    head:[['Dia','Hora','Cliente','Técnicos','Cidade','Hotel','Saldo','Serviço']],
-    body:rows,margin:{left:10,right:10},
-    styles:{fontSize:8,cellPadding:2.5,textColor:[30,30,30],fillColor:[255,255,255],lineColor:[60,60,60],lineWidth:.1},
-    headStyles:{fillColor:[15,15,15],textColor:[200,200,200],fontStyle:'bold'},
-    alternateRowStyles:{fillColor:[248,248,248]},
-    columnStyles:{0:{cellWidth:22},1:{cellWidth:13},2:{cellWidth:52},3:{cellWidth:32},4:{cellWidth:24},5:{cellWidth:18},6:{cellWidth:24},7:{cellWidth:92}},
-  });
-  doc.save('Viagens-Semana-'+periodo+'.pdf');
-}
+function exportarSemana(){alert('Funcionalidade de exportar PDF - em breve!');}
+function _pdf(agId){alert('Exportar PDF individual - em breve!');}
 </script>
 </body>
 </html>
