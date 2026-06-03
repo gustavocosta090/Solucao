@@ -1365,6 +1365,8 @@ async function init() {
     if (btnSem) btnSem.style.display = 'inline-flex';
     const btnSp = document.getElementById('btn-exportar-sp');
     if (btnSp) btnSp.style.display = 'inline-flex';
+    const btnEst = document.getElementById('btn-estoque');
+    if (btnEst) btnEst.style.display = 'inline-flex';
   } else {
     const dpWrap = document.getElementById('data-dispatch');
     if (dpWrap) dpWrap.style.display = 'none';
@@ -2746,30 +2748,14 @@ async function exportarAgendaSharePoint() {
     btn.innerHTML = '<i data-lucide="cloud-upload"></i><span>Enviando...</span>';
     lucide.createIcons();
 
-    const ts      = new Date().toISOString().slice(0,19).replace('T','-').replace(':','h').replace(':','m');
+    const ts         = new Date().toISOString().slice(0,19).replace('T','-').replace(':','h').replace(':','m');
     const nomeSemana = `${d0.getDate()} a ${d6.getDate()} de ${mesNome} ${ano}`;
     const pasta      = `Agenda Tecnica/${ano}/${mesNomeCap}`;
     const arquivo    = `${nomeSemana} (${ts}).pdf`;
 
-    const initRes = await fetch('/api/upload', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-      body:    JSON.stringify({ path: pasta, filename: arquivo, contentType: 'application/pdf' }),
-    });
-    if (!initRes.ok) {
-      const err = await initRes.json().catch(() => ({}));
-      throw new Error(err.error || `Erro ${initRes.status}`);
-    }
-
-    const { uploadUrl } = await initRes.json();
-    const putRes = await fetch(uploadUrl, {
-      method:  'PUT',
-      headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(pdfBlob.size), 'Content-Range': `bytes 0-${pdfBlob.size - 1}/${pdfBlob.size}` },
-      body:    pdfBlob,
-    });
-    if (!putRes.ok && putRes.status !== 201 && putRes.status !== 200)
-      throw new Error(`Upload falhou: ${putRes.status}`);
-
+    btn.innerHTML = '<i data-lucide="cloud-upload"></i><span>Enviando...</span>';
+    lucide.createIcons();
+    await uploadPDFServidor(pdfBlob, pasta, arquivo);
     mostrarToast(`✅ Agenda salva: "${arquivo}"`, 'ok');
 
   } catch (e) {
@@ -2794,6 +2780,27 @@ document.addEventListener('keydown', function(e) {
     }
   }
 });
+
+// ── HELPER: Upload PDF via servidor (evita CORS) ─────────────
+async function uploadPDFServidor(pdfBlob, pasta, arquivo) {
+  // Converte blob para base64
+  const arrayBuf = await pdfBlob.arrayBuffer();
+  const bytes    = new Uint8Array(arrayBuf);
+  let binary     = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const base64   = btoa(binary);
+
+  const res = await fetch('/api/upload-pdf', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
+    body:    JSON.stringify({ path: pasta, filename: arquivo, contentBase64: base64 }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Erro ${res.status}`);
+  }
+  return res.json();
+}
 
 // ── PROGRAMAÇÃO ESTOQUE ───────────────────────────────────────
 async function exportarProgramacaoEstoque() {
@@ -2895,7 +2902,7 @@ async function exportarProgramacaoEstoque() {
 
     const pdfBlob = doc.output('blob');
 
-    // Upload SharePoint
+    // Upload SharePoint via servidor
     btn.innerHTML = '<i data-lucide="cloud-upload"></i><span>Enviando...</span>';
     lucide.createIcons();
 
@@ -2904,16 +2911,7 @@ async function exportarProgramacaoEstoque() {
     const pasta   = `Agenda Tecnica/${ano}/${mesNomeCap}`;
     const arquivo = `Estoque - ${nomeSem} (${ts}).pdf`;
 
-    const initRes = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-      body: JSON.stringify({ path: pasta, filename: arquivo, contentType: 'application/pdf' }),
-    });
-    if (!initRes.ok) throw new Error((await initRes.json().catch(()=>({}))).error || `Erro ${initRes.status}`);
-    const { uploadUrl } = await initRes.json();
-    const putRes = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(pdfBlob.size), 'Content-Range': `bytes 0-${pdfBlob.size-1}/${pdfBlob.size}` }, body: pdfBlob });
-    if (!putRes.ok && putRes.status !== 201 && putRes.status !== 200) throw new Error(`Upload falhou: ${putRes.status}`);
-
+    await uploadPDFServidor(pdfBlob, pasta, arquivo);
     mostrarToast(`✅ Programação de estoque salva: "${arquivo}"`, 'ok');
 
   } catch(e) {
