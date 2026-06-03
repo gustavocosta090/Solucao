@@ -35,7 +35,7 @@
 
     /* ── Página ── */
     body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-1); min-height:100vh; -webkit-font-smoothing:antialiased; }
-    .conteudo { max-width:1200px; margin:0 auto; padding:32px 24px 80px; }
+    main { max-width:1200px; margin:0 auto; padding:32px 24px 80px; }
 
     /* ── Cabeçalho da página ── */
     .pg-header { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:28px; }
@@ -118,7 +118,7 @@
   <nav class="topbar-links" id="topbar-nav"></nav>
 </header>
 
-<div class="conteudo">
+<main>
 
   <!-- Cabeçalho -->
   <div class="pg-header">
@@ -146,7 +146,7 @@
   <!-- Lista -->
   <div id="lista"></div>
 
-</div>
+</main>
 
 <script>
 const db = supabase.createClient(
@@ -174,7 +174,7 @@ function diasSemana(off) {
   if(!session){location.href='login.html';return;}
 
   const {data:eu} = await db.from('tecnicos').select('role,nome').eq('auth_user_id',session.user.id).single();
-  if(!eu||!['supervisor','agendamento','coordenador'].includes(eu.role)){location.href='obras.html';return;}
+  if(!eu||!['supervisor','coordenador','agendamento'].includes(eu.role)){location.href='obras.html';return;}
 
   renderTopbar(eu.nome, eu.role, 'viagens');
   applyTheme();
@@ -197,28 +197,24 @@ async function carregarSemana(){
   document.getElementById('lista').innerHTML =
     '<div class="carregando"><div class="spinner"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>';
 
-  try {
-    const {data:ags, error} = await db.from('agendamentos')
-      .select('*,obras(nome_cliente,endereco)')
-      .eq('status','viagem')
-      .gte('data',iso(d0)).lte('data',iso(d6))
-      .order('data').order('hora_inicio');
+  // 1. Busca agendamentos de viagem (independente da tabela viagens_detalhe)
+  const {data:ags, error:agErr} = await db.from('agendamentos')
+    .select('*,obras(nome_cliente,endereco)')
+    .eq('status','viagem')
+    .gte('data',iso(d0)).lte('data',iso(d6))
+    .order('data').order('hora_inicio');
 
-    if(error) throw error;
-    agendamentos = ags||[];
+  agendamentos = agErr ? [] : (ags||[]);
 
-    detalhes = {};
-    if(agendamentos.length){
+  // 2. Busca detalhes — silencia erro se tabela ainda não existe
+  detalhes = {};
+  if(agendamentos.length){
+    try {
       const ids = agendamentos.map(a=>a.id);
       const {data:det} = await db.from('viagens_detalhe').select('*').in('agendamento_id',ids);
       (det||[]).forEach(d=>{detalhes[d.agendamento_id]=d;});
-    }
-  } catch(e) {
-    // Se tabela não existe ainda, mostra lista vazia sem travar
-    agendamentos = [];
-    detalhes = {};
-    if(e.message&&e.message.includes('viagens_detalhe')){
-      console.warn('[Viagens] Tabela viagens_detalhe não existe ainda. Execute o SQL de criação.');
+    } catch(e){
+      console.warn('[Viagens] viagens_detalhe indisponível:', e.message);
     }
   }
 
