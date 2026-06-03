@@ -1481,6 +1481,7 @@ let _authUserId = null;
   renderTopbar(eu.nome, eu.role, 'supervisor');
 
   await Promise.all([carregarOSs(), carregarTecnicos()]);
+  iniciarAutoRefresh(carregarOSs, 30000);
 })();
 
 async function carregarTecnicos() {

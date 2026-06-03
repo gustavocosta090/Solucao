@@ -697,6 +697,7 @@ async function init(){
   renderTopbar(eu.nome,eu.role,'pendencias');
   applyTheme(localStorage.getItem('tema')||'auto');
   await Promise.all([carregarObras(),carregarPendencias()]);
+  iniciarAutoRefresh(carregarPendencias, 30000);
 }
 
 function agendarPendencia(id) {

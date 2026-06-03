@@ -134,17 +134,20 @@ function _semana(off){
   const {data:tList} = await _db.from('tecnicos').select('id,nome');
   _tecs = tList||[];
 
-  // Descobre a semana mais próxima com viagens (olha até 4 semanas à frente)
-  const hoje = new Date();
-  for(let off=0; off<=4; off++){
+  // Descobre semana com viagem mais próxima: -2 semanas a +8 semanas
+  let encontrou = false;
+  for(let off=-2; off<=8; off++){
     const dias = _semana(off);
-    const {data:check} = await _db.from('agendamentos')
+    const {data:check, error:ce} = await _db.from('agendamentos')
       .select('id').eq('status','viagem')
       .gte('data',_iso(dias[0])).lte('data',_iso(dias[6])).limit(1);
-    if(check&&check.length){_off=off;break;}
+    if(ce) { console.warn('[viagens] detecção semana off='+off+':', ce.message); continue; }
+    if(check && check.length){ _off=off; encontrou=true; break; }
   }
+  if(!encontrou) _off = 0; // sem viagens: mostra semana atual
 
   await _carregar();
+  iniciarAutoRefresh(_carregar, 30000);
 })();
 
 function mudarSemana(d){_off+=d;_carregar();}
@@ -161,10 +164,15 @@ async function _carregar(){
 
   // Agendamentos de viagem
   const {data:aList, error:aErr} = await _db.from('agendamentos')
-    .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id')
+    .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id,status')
     .eq('status','viagem').gte('data',_iso(d0)).lte('data',_iso(d6))
     .order('data').order('hora_inicio');
 
+  if(aErr){
+    console.error('[viagens] query agendamentos:', aErr.message);
+    el.innerHTML = '<p style="color:#f87171;padding:24px;font-size:13px">Erro ao buscar viagens: '+aErr.message+'</p>';
+    return;
+  }
   _ags = aList||[];
 
   // Obras (sem join para evitar erro de schema cache)

@@ -968,6 +968,9 @@
     renderizar();
   }
 
+  // Auto-refresh ao voltar para a aba ou a cada 60s
+  iniciarAutoRefresh(carregarObras, 60000);
+
   // ── Busca em tempo real ──────────────────────────────────────
   function buscar(val) {
     termoBusca = val.trim().toLowerCase();

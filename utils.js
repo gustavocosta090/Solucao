@@ -55,6 +55,68 @@ function debounce(fn, delay) {
   };
 }
 
+// ─── Auto-refresh colaborativo ───────────────────────────────────
+// Recarrega dados quando: tab volta ao foco (após 30s oculta) OU polling a cada N segundos
+// Uso: iniciarAutoRefresh(carregarAgenda, 60000) — intervalo em ms (padrão 60s)
+function iniciarAutoRefresh(callbackFn, intervaloMs) {
+  intervaloMs = intervaloMs || 60000;
+  var _ultimaAtt = Date.now();
+  var _interval  = null;
+  var _toast     = null;
+
+  function _mostrarToastRefresh() {
+    // Remove toast anterior se existir
+    if (_toast && _toast.parentNode) _toast.parentNode.removeChild(_toast);
+    _toast = document.createElement('div');
+    _toast.style.cssText = [
+      'position:fixed','bottom:72px','left:50%','transform:translateX(-50%)',
+      'background:rgba(22,22,22,0.95)','border:1px solid rgba(62,207,142,0.3)',
+      'color:#3ECF8E','font-size:12px','font-weight:600','font-family:Inter,system-ui,sans-serif',
+      'padding:7px 16px','border-radius:20px','z-index:9990','pointer-events:none',
+      'display:flex','align-items:center','gap:8px','white-space:nowrap',
+      'box-shadow:0 4px 16px rgba(0,0,0,0.4)',
+    ].join(';');
+    _toast.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin .7s linear infinite"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-4.56"/></svg> Atualizando...';
+    document.body.appendChild(_toast);
+    setTimeout(function(){ if(_toast&&_toast.parentNode) _toast.parentNode.removeChild(_toast); }, 2000);
+  }
+
+  function _refresh() {
+    _ultimaAtt = Date.now();
+    _mostrarToastRefresh();
+    try { callbackFn(); } catch(e) { console.warn('[autoRefresh]', e.message); }
+  }
+
+  // Page Visibility: atualiza ao voltar para a aba (se ficou > 30s oculta)
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && Date.now() - _ultimaAtt > 30000) {
+      _refresh();
+    }
+  });
+
+  // Window focus: atualiza ao focar a janela (se ficou > 30s sem foco)
+  window.addEventListener('focus', function() {
+    if (Date.now() - _ultimaAtt > 30000) {
+      _refresh();
+    }
+  });
+
+  // Polling como fallback
+  _interval = setInterval(function() {
+    if (document.visibilityState === 'visible') {
+      callbackFn();
+      _ultimaAtt = Date.now();
+    }
+  }, intervaloMs);
+
+  // Retorna função para parar se necessário
+  return function() {
+    clearInterval(_interval);
+    document.removeEventListener('visibilitychange', _refresh);
+    window.removeEventListener('focus', _refresh);
+  };
+}
+
 // ─── Tema — sempre noturno ───────────────────────────────────────
 function applyTheme() {
   document.documentElement.dataset.theme = 'dark';

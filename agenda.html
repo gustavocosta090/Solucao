@@ -1244,8 +1244,8 @@
       <div style="border:1px solid rgba(62,207,142,.2);border-radius:8px;padding:12px 14px;background:rgba(62,207,142,.04);margin-bottom:4px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
           <div class="form-group" style="margin:0;flex:1">
-            <label for="f-data-fim-rep">Até a data</label>
-            <input type="date" id="f-data-fim-rep" oninput="atualizarPreviewRep()">
+            <label for="f-data-fim-rep">Até a data <span style="color:#f87171">*</span></label>
+            <input type="date" id="f-data-fim-rep" oninput="atualizarPreviewRep()" style="border-color:rgba(62,207,142,.3)">
           </div>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);cursor:pointer;margin-top:18px;white-space:nowrap">
             <input type="checkbox" id="f-pular-fds" checked onchange="atualizarPreviewRep()"> Pular fins de semana
@@ -1403,6 +1403,9 @@ async function init() {
   preencherSelects();
   await carregarAgenda();
 
+  // Auto-refresh: atualiza ao voltar para a aba ou a cada 45s
+  iniciarAutoRefresh(carregarAgenda, 45000);
+
   // Pré-preenche modal se veio de uma pendência
   const params = new URLSearchParams(location.search);
   if (params.has('pendencia_id') && podeEditar) {
@@ -1521,7 +1524,7 @@ async function carregarAgenda() {
     `${DIAS[0]}, ${fmtBR(dias[0])} — ${DIAS[6]}, ${fmtBR(dias[6])}`;
 
   const agResult = await db.from('agendamentos')
-    .select('*, numero_os, motorista_id, obras(nome_cliente, endereco, arquiteto_responsavel, consultores(nome))')
+    .select('*, numero_os, motorista_id, serie_id, obras(nome_cliente, endereco, arquiteto_responsavel, consultores(nome))')
     .gte('data', ini).lte('data', fim).order('hora_inicio');
 
   if (agResult.error) {
@@ -1554,18 +1557,49 @@ function agendamentosVisiveis() {
   );
 }
 
+// ── Chave única de cliente para alinhar swimlanes ────────────
+function chaveCliente(ag) {
+  return ag.obra_id ? `obra_${ag.obra_id}` : `outro_${(ag.cliente_outro||'').trim().toLowerCase()}`;
+}
+
 // ── Renderizar grade ─────────────────────────────────────────
 function renderGrade(dias) {
   const visiveis = agendamentosVisiveis();
   const grade    = document.getElementById('grade');
 
+  // Constrói ordem global de clientes pela primeira aparição na semana (dia + hora)
+  const ordemGlobal = [];
+  const ordemSet    = new Set();
+  [...dias]
+    .flatMap(dia => visiveis
+      .filter(ag => ag.data === fmtISO(dia))
+      .sort((a,b) => (a.hora_inicio||'').localeCompare(b.hora_inicio||''))
+      .map(ag => ({ chave: chaveCliente(ag), ag }))
+    )
+    .forEach(({chave}) => {
+      if (!ordemSet.has(chave)) { ordemSet.add(chave); ordemGlobal.push(chave); }
+    });
+
   grade.innerHTML = dias.map((dia, i) => {
     const dataStr  = fmtISO(dia);
-    const ags      = visiveis.filter(ag => ag.data === dataStr);
+    const agsDia   = visiveis.filter(ag => ag.data === dataStr);
     const bloqueio = diasBloqueados[dataStr] || null;
 
-    const cards = ags.length
-      ? ags.map(cardHTML).join('')
+    // Mapa chave → agendamento para este dia
+    const agMap = new Map();
+    agsDia.forEach(ag => { agMap.set(chaveCliente(ag), ag); });
+
+    // Só mostra as linhas de clientes presentes NESTE dia, mas na ordem global
+    const chavesPresentes = ordemGlobal.filter(c => agMap.has(c));
+
+    // Agendamentos extras sem ordem global (edge case)
+    agsDia.forEach(ag => {
+      const c = chaveCliente(ag);
+      if (!ordemSet.has(c)) chavesPresentes.push(c);
+    });
+
+    const cards = chavesPresentes.length
+      ? chavesPresentes.map(c => cardHTML(agMap.get(c))).join('')
       : `<div class="coluna-vazia">Sem agendamentos</div>`;
 
     const podeEditar = ['agendamento','coordenador','supervisor'].includes(roleAtual);
@@ -2048,7 +2082,7 @@ async function salvarAgendamento() {
   if (obraVal === 'outro' && !nomeOutro) {
     mostrarErroModal('Informe o nome do cliente.'); return;
   }
-  if (equipesSelecionadas.length === 0) {
+  if (equipesSelecionadas.length === 0 && status !== 'viagem') {
     mostrarErroModal('Selecione pelo menos uma pessoa ou "A definir equipe".'); return;
   }
   if (!data) {
@@ -2064,8 +2098,9 @@ async function salvarAgendamento() {
   }
 
   // Verificar conflito de agendamento: técnico já alocado neste dia?
+  // Viagens não precisam de verificação de conflito
   const isADefinir = equipesSelecionadas[0] === A_DEFINIR_ID;
-  const techIds = isADefinir ? [] : equipesSelecionadas.map(Number).filter(Boolean);
+  const techIds = (isADefinir || status === 'viagem') ? [] : equipesSelecionadas.map(Number).filter(Boolean);
   const { data: mesmaData } = await db.from('agendamentos')
     .select('id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, obras(nome_cliente), cliente_outro')
     .eq('data', data);
@@ -2099,8 +2134,18 @@ async function salvarAgendamento() {
   // Lista de datas a salvar (replicar ou só a data principal)
   const replicar   = !agEditandoId && document.getElementById('f-replicar')?.checked;
   const mesmaOS    = replicar && document.getElementById('f-mesma-os')?.checked;
-  const diasSalvar = replicar ? diasParaReplicar() : [data];
-  if (!diasSalvar.includes(data) && !replicar) diasSalvar.unshift(data);
+  let diasSalvar   = replicar ? diasParaReplicar() : [data];
+
+  // Validação: replicar marcado mas sem data fim ou data fim inválida
+  if (replicar && (!diasSalvar.length || !document.getElementById('f-data-fim-rep')?.value)) {
+    mostrarErroModal('Preencha a data "Até" para replicar os dias.');
+    btn.disabled  = false;
+    btn.innerHTML = '<i data-lucide="save"></i> Salvar';
+    lucide.createIcons();
+    return;
+  }
+  // Garante que o dia inicial está sempre incluído
+  if (!diasSalvar.includes(data)) diasSalvar.unshift(data);
 
   // Helper: gera número de OS para uma data
   async function gerarNumeroOS(dataStr) {
@@ -2125,6 +2170,11 @@ async function salvarAgendamento() {
     osCompartilhado = await gerarNumeroOS(diasSalvar[0]);
   }
 
+  // serie_id: agrupa todos os dias replicados para permitir edição em lote
+  const serieId = (replicar && diasSalvar.length > 1)
+    ? (crypto.randomUUID?.() || Math.random().toString(36).slice(2))
+    : null;
+
   const basePayload = {
     obra_id:        obraVal !== 'outro' ? parseInt(obraVal) : null,
     cliente_outro:  obraVal === 'outro' ? nomeOutro          : null,
@@ -2139,6 +2189,7 @@ async function salvarAgendamento() {
     veiculo:       veiculo || null,
     servico:       servico || null,
     motorista_id:  document.getElementById('f-motorista')?.value ? parseInt(document.getElementById('f-motorista').value) : null,
+    serie_id:      serieId,
   };
 
   // Salva cada dia (se replicando, salva em paralelo sequencial para OS numbers únicos)
@@ -2214,6 +2265,31 @@ async function salvarAgendamento() {
   } else {
     invalidateCache('agenda-obras');
     invalidateCache('agenda-tecnicos');
+
+    // Se editando um agendamento de uma série, pergunta se propaga equipe para os demais
+    if (agEditandoId) {
+      const agAtual = agendamentos.find(a => a.id === agEditandoId);
+      if (agAtual?.serie_id) {
+        const propagar = await new Promise(resolve => {
+          confirmModal(
+            'Esta agenda faz parte de uma série replicada.\nDeseja aplicar a mesma equipe para todos os outros dias da série?',
+            () => resolve(true),
+            () => resolve(false)
+          );
+        });
+        if (propagar) {
+          await db.from('agendamentos').update({
+            tecnico_id:   basePayload.tecnico_id,
+            auxiliar_id:  basePayload.auxiliar_id,
+            auxiliar2_id: basePayload.auxiliar2_id,
+            auxiliar3_id: basePayload.auxiliar3_id,
+            motorista_id: basePayload.motorista_id,
+            atualizado_em: new Date().toISOString(),
+          }).eq('serie_id', agAtual.serie_id).neq('id', agEditandoId);
+          mostrarToast('✅ Equipe atualizada em toda a série.', 'ok');
+        }
+      }
+    }
 
     // Se veio de uma pendência, atualiza data_marcada com a data do agendamento
     if (!agEditandoId && pendenciaOrigemId) {
