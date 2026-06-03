@@ -2915,52 +2915,77 @@ async function exportarProgramacaoEstoque() {
       return d >= fmtISO(dias[0]) && d <= fmtISO(dias[6]);
     });
 
+    const semanaLabel = `Semana ${d0.getDate()} a ${d6.getDate()} de ${mesNomeCap} ${ano}`;
+
     const secoes = [
-      { label: 'VIAGENS',          statusFiltro: ['viagem'],        cor: [30,50,80],   corTexto: [120,180,255] },
-      { label: 'CONFIRMADOS',      statusFiltro: ['confirmado'],    cor: [15,40,25],   corTexto: [62,207,142] },
-      { label: 'NÃO CONFIRMADOS',  statusFiltro: ['nao_confirmado'],cor: [50,42,10],   corTexto: [251,191,36] },
+      {
+        label: 'VIAGENS', statusFiltro: ['viagem'],
+        bannerBg: [18, 38, 72], bannerTxt: [147, 197, 253],
+        rowBg: [240, 246, 255], rowAltBg: [220, 235, 255], rowTxt: [20, 40, 80],
+      },
+      {
+        label: 'CONFIRMADOS', statusFiltro: ['confirmado'],
+        bannerBg: [10, 35, 20], bannerTxt: [52, 211, 153],
+        rowBg: [240, 255, 247], rowAltBg: [210, 245, 228], rowTxt: [10, 50, 25],
+      },
+      {
+        label: 'NÃO CONFIRMADOS', statusFiltro: ['nao_confirmado'],
+        bannerBg: [60, 48, 0], bannerTxt: [253, 224, 71],
+        rowBg: [255, 253, 230], rowAltBg: [255, 246, 180], rowTxt: [70, 55, 0],
+      },
     ];
 
     let yPos = 28;
+    let primeiraSecao = true;
 
     for (const secao of secoes) {
       const ags = todasAgs
         .filter(ag => secao.statusFiltro.includes(ag.status || 'confirmado'))
-        .sort((a,b) => (a.data+a.hora_inicio).localeCompare(b.data+b.hora_inicio));
+        .sort((a, b) => (a.data + (a.hora_inicio||'')).localeCompare(b.data + (b.hora_inicio||'')));
       if (!ags.length) continue;
 
-      if (yPos > 175) { doc.addPage(); yPos = 14; }
+      // Nova página para cada seção (exceto a primeira)
+      if (!primeiraSecao) { doc.addPage(); yPos = 14; }
+      primeiraSecao = false;
 
-      // Cabeçalho da seção
-      doc.setFillColor(...secao.cor);
-      doc.rect(10, yPos - 5, 277, 9, 'F');
+      // ── Banner da seção ─────────────────────────────────────
+      doc.setFillColor(...secao.bannerBg);
+      doc.rect(0, yPos - 6, 297, 18, 'F');
+
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+      doc.setTextColor(...secao.bannerTxt);
+      doc.text(secao.label, 12, yPos + 4);
+
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      doc.setTextColor(200, 200, 200);
+      doc.text(semanaLabel, 12, yPos + 10);
+
       doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-      doc.setTextColor(...secao.corTexto);
-      doc.text(`▶  ${secao.label}  —  ${ags.length} agendamento${ags.length !== 1 ? 's' : ''}`, 13, yPos + 0.5);
-      doc.setTextColor(0, 0, 0);
-      yPos += 7;
+      doc.setTextColor(...secao.bannerTxt);
+      doc.text(`${ags.length} agendamento${ags.length !== 1 ? 's' : ''}`, 285, yPos + 4, { align: 'right' });
 
-      const rows = ags.map(montarRow);
+      yPos += 18;
 
-      // Não confirmados: linha amarela
-      const isNaoConf = secao.statusFiltro.includes('nao_confirmado');
-
+      // ── Tabela ──────────────────────────────────────────────
       doc.autoTable({
         startY: yPos,
         head: HEAD,
-        body: rows,
+        body: ags.map(montarRow),
         margin: { left: 10, right: 10 },
         styles: {
-          fontSize: 7.5, cellPadding: 2,
-          lineColor: [60,60,60], lineWidth: 0.1,
-          textColor: isNaoConf ? [80,60,0] : [30,30,30],
-          fillColor: isNaoConf ? [255,252,220] : [255,255,255],
+          fontSize: 7.5, cellPadding: 2.5,
+          lineColor: [180, 180, 180], lineWidth: 0.15,
+          textColor: secao.rowTxt,
+          fillColor: secao.rowBg,
         },
-        headStyles: { fillColor: secao.cor, textColor: secao.corTexto, fontStyle: 'bold', fontSize: 7 },
-        alternateRowStyles: { fillColor: isNaoConf ? [255,248,195] : [248,248,248] },
+        headStyles: {
+          fillColor: secao.bannerBg, textColor: secao.bannerTxt,
+          fontStyle: 'bold', fontSize: 8, cellPadding: 3,
+        },
+        alternateRowStyles: { fillColor: secao.rowAltBg },
         columnStyles: COL_STYLES,
       });
-      yPos = doc.lastAutoTable.finalY + 10;
+      yPos = doc.lastAutoTable.finalY + 6;
     }
 
     const pdfBlob = doc.output('blob');
