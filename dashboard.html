@@ -783,6 +783,31 @@
     </div>
   </div>
 
+  <!-- VIAGENS -->
+  <div style="margin-bottom:32px">
+    <div class="section-label" style="margin-bottom:12px">Viagens e deslocamentos</div>
+    <div class="assist-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+      <div class="assist-card">
+        <div class="assist-icon" style="background:rgba(129,140,248,.12)"><i data-lucide="plane"></i></div>
+        <div><div class="assist-num" id="vg-total" style="color:#818cf8">—</div><div class="assist-desc">Viagens no período</div></div>
+      </div>
+      <div class="assist-card">
+        <div class="assist-icon" style="background:rgba(251,191,36,.12)"><i data-lucide="calendar-days"></i></div>
+        <div><div class="assist-num" id="vg-dias" style="color:#fbbf24">—</div><div class="assist-desc">Total de dias</div></div>
+      </div>
+      <div class="assist-card">
+        <div class="assist-icon" style="background:rgba(62,207,142,.12)"><i data-lucide="utensils"></i></div>
+        <div><div class="assist-num" id="vg-ref" style="color:var(--primary)">—</div><div class="assist-desc">Saldo refeição total</div></div>
+      </div>
+      <div class="assist-card">
+        <div class="assist-icon" style="background:rgba(244,114,182,.12)"><i data-lucide="hotel"></i></div>
+        <div><div class="assist-num" id="vg-hotel" style="color:#f472b6">—</div><div class="assist-desc">Com hotel</div></div>
+      </div>
+    </div>
+    <!-- Lista resumida das viagens -->
+    <div id="vg-lista" style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;overflow:hidden"></div>
+  </div>
+
   <!-- ASSISTÊNCIAS -->
   <div>
     <div class="section-label" style="margin-bottom:12px">Assistências técnicas</div>
@@ -892,9 +917,21 @@ async function carregarEExibir(ano = null) {
     relAssistQ = relAssistQ.gte('criado_em', doisAnosAtras.toISOString());
   }
 
-  const [{ data: obras, error: oErr }, { data: relAssist }] = await Promise.all([
+  // Viagens: agendamentos com status='viagem' no ano filtrado
+  let viagemQ = db.from('agendamentos')
+    .select('id,data,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,serie_id,obras(nome_cliente)')
+    .eq('status','viagem');
+  if (ano) {
+    viagemQ = viagemQ
+      .gte('data', `${ano}-01-01`)
+      .lt('data',  `${ano+1}-01-01`);
+  }
+
+  const [{ data: obras, error: oErr }, { data: relAssist }, { data: viagAgs }, { data: viagDets }] = await Promise.all([
     obraQ.order('valor_total', { ascending: false, nullsFirst: false }),
     relAssistQ,
+    viagemQ,
+    db.from('viagens_detalhe').select('agendamento_id,cidade,saldo_refeicao,hotel'),
   ]);
 
   if (oErr) {
@@ -903,7 +940,7 @@ async function carregarEExibir(ano = null) {
     return;
   }
 
-  const d = buildData(obras || [], relAssist || []);
+  const d = buildData(obras || [], relAssist || [], viagAgs || [], viagDets || []);
   renderAll(d);
 
   if (badge) {
@@ -912,7 +949,7 @@ async function carregarEExibir(ano = null) {
   }
 }
 
-function buildData(obras, relAssist) {
+function buildData(obras, relAssist, viagAgs, viagDets) {
   const num = v => parseFloat(v) || 0;
 
   // Totais financeiros
@@ -1007,6 +1044,35 @@ function buildData(obras, relAssist) {
   const assValEq   = (relAssist || []).reduce((s, r) => s + num(r.valor_equip), 0);
   const assValTot  = assValMO + assValEq;
 
+  // Viagens
+  const detMap = {};
+  (viagDets||[]).forEach(d => { detMap[d.agendamento_id] = d; });
+  // Agrupa por serie_id para contar viagens únicas
+  const seriesVisto = new Set();
+  const viagGrupos = [];
+  (viagAgs||[]).forEach(ag => {
+    const chave = ag.serie_id || ('solo_'+ag.id);
+    if (seriesVisto.has(chave)) return;
+    seriesVisto.add(chave);
+    const membros = ag.serie_id
+      ? (viagAgs||[]).filter(a => a.serie_id === ag.serie_id)
+      : [ag];
+    membros.sort((a,b)=>a.data.localeCompare(b.data));
+    const det = detMap[membros[0].id] || {};
+    viagGrupos.push({
+      cliente: membros[0].obras?.nome_cliente || '—',
+      dias: membros.length,
+      cidade: det.cidade || '—',
+      hotel: !!det.hotel,
+      saldo_ref: num(det.saldo_refeicao) * membros.length,
+    });
+  });
+  const viag_total   = viagGrupos.length;
+  const viag_dias    = viagGrupos.reduce((s,v)=>s+v.dias, 0);
+  const viag_ref     = viagGrupos.reduce((s,v)=>s+v.saldo_ref, 0);
+  const viag_hotel   = viagGrupos.filter(v=>v.hotel).length;
+  const viag_grupos  = viagGrupos.slice(0, 8);
+
   // % por obra (para nova seção)
   const obras_pct = pctObras
     .map(o => ({
@@ -1023,6 +1089,7 @@ function buildData(obras, relAssist) {
     arquitetos: arquitetos.length ? arquitetos : [{ nome: 'A preencher após cadastro completo', obras: 0 }],
     composicao: { produtos: Math.round(total_produtos), servicos: Math.round(total_servicos), pct_med },
     assist:     { total: assTotal, concluidas: assConcl, cobradas: assCobradas, val_mo: Math.round(assValMO), val_equip: Math.round(assValEq), val_total: Math.round(assValTot) },
+    viagens:    { total: viag_total, dias: viag_dias, ref: Math.round(viag_ref), hotel: viag_hotel, grupos: viag_grupos },
     fases,
     status,
     equipes:    [],
@@ -1314,6 +1381,40 @@ function setPeriodo(ano, btn) {
 }
 
 // ── Render all ─────────────────────────────────────────────────
+function renderViagens(d) {
+  const v = d.viagens;
+  counter(document.getElementById('vg-total'), v.total, fmt.int, 600);
+  counter(document.getElementById('vg-dias'),  v.dias,  fmt.int, 600);
+  counter(document.getElementById('vg-ref'),   v.ref,   fmt.brl, 700);
+  counter(document.getElementById('vg-hotel'), v.hotel, fmt.int, 600);
+
+  const lista = document.getElementById('vg-lista');
+  if (!v.grupos.length) {
+    lista.innerHTML = '<div style="padding:18px;text-align:center;color:var(--text-3);font-size:13px">Nenhuma viagem no período.</div>';
+    return;
+  }
+  lista.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead>
+      <tr style="background:var(--surface-2)">
+        <th style="padding:10px 16px;text-align:left;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Cliente / Obra</th>
+        <th style="padding:10px 16px;text-align:center;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Dias</th>
+        <th style="padding:10px 16px;text-align:left;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Cidade</th>
+        <th style="padding:10px 16px;text-align:center;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Hotel</th>
+        <th style="padding:10px 16px;text-align:right;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Saldo Ref.</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${v.grupos.map((g,i) => `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
+        <td style="padding:10px 16px;font-weight:600;color:var(--text-1)">${escHtml(g.cliente)}</td>
+        <td style="padding:10px 16px;text-align:center;color:var(--text-2)">${g.dias}</td>
+        <td style="padding:10px 16px;color:var(--text-2)">${escHtml(g.cidade)}</td>
+        <td style="padding:10px 16px;text-align:center">${g.hotel ? '<span style="color:#f472b6;font-weight:700">✓</span>' : '<span style="color:var(--text-3)">—</span>'}</td>
+        <td style="padding:10px 16px;text-align:right;font-weight:600;color:var(--primary)">${g.saldo_ref > 0 ? fmt.brl(g.saldo_ref) : '—'}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
 function renderAll(d) {
   renderKPIs(d);
   renderStatus(d);
@@ -1325,6 +1426,7 @@ function renderAll(d) {
   renderArquitetosValor(d);
   renderComposicao(d);
   renderPctObras(d);
+  renderViagens(d);
   renderAssist(d);
 }
 </script>

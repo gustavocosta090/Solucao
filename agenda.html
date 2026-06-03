@@ -152,8 +152,12 @@
       padding: 0 24px;
       display: grid;
       grid-template-columns: repeat(7, minmax(170px, 1fr));
-      gap: 10px;
+      gap: 0 10px; /* sem gap vertical — swim lanes usam margin */
     }
+
+    /* Swim lane: célula de um cliente num dia */
+    .swim-cell { padding: 0 0 10px 0; }
+    .swim-empty { padding: 0 0 10px 0; min-height: 10px; }
 
     @media (max-width: 900px) { .grade { grid-template-columns: repeat(3, 1fr); } }
     @media (max-width: 600px) { .grade { grid-template-columns: 1fr; } }
@@ -1500,19 +1504,42 @@ function renderFiltrosEquipe() {
   const comAgenda = equipesDisponiveis.filter(
     eq => !EQUIPES_SEM_AGENDA.has((eq.nome || '').toLowerCase())
   );
-  // Remover botões antigos exceto "Todas equipes"
-  container.innerHTML = '<button class="filtro-btn ativo" data-equipe="todas">Todas equipes</button>'
+  container.innerHTML = '<button class="filtro-btn" data-equipe="todas">Todas equipes</button>'
     + comAgenda.map(eq =>
         `<button class="filtro-btn" data-equipe="${eq.id}">${escHtml(eq.nome)}</button>`
       ).join('');
+
+  // Recupera preferência salva ou usa Automação como padrão
+  const saved = sessionStorage.getItem('agenda-filtro-equipe') || 'automacao-default';
+
   container.querySelectorAll('.filtro-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       container.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
       btn.classList.add('ativo');
       filtroEquipe = btn.dataset.equipe;
+      sessionStorage.setItem('agenda-filtro-equipe', filtroEquipe);
       renderGrade(diasDaSemana(semanaOffset));
     });
   });
+
+  // Aplica filtro salvo (ou Automação por padrão)
+  let btnAtivo = null;
+  if (saved && saved !== 'automacao-default') {
+    btnAtivo = container.querySelector(`[data-equipe="${saved}"]`);
+  }
+  if (!btnAtivo) {
+    // Padrão: Automação
+    btnAtivo = [...container.querySelectorAll('.filtro-btn')]
+      .find(b => (b.textContent.trim().toLowerCase()).includes('automa'));
+  }
+  if (btnAtivo) {
+    btnAtivo.classList.add('ativo');
+    filtroEquipe = btnAtivo.dataset.equipe;
+  } else {
+    // Fallback: Todas
+    container.querySelector('[data-equipe="todas"]')?.classList.add('ativo');
+    filtroEquipe = 'todas';
+  }
 }
 
 async function carregarAgenda() {
@@ -1567,71 +1594,77 @@ function renderGrade(dias) {
   const visiveis = agendamentosVisiveis();
   const grade    = document.getElementById('grade');
 
-  // Constrói ordem global de clientes pela primeira aparição na semana (dia + hora)
+  // 1. Constrói ordem global de clientes pela primeira aparição (dia + hora)
   const ordemGlobal = [];
   const ordemSet    = new Set();
-  [...dias]
-    .flatMap(dia => visiveis
+  dias.forEach(dia => {
+    visiveis
       .filter(ag => ag.data === fmtISO(dia))
       .sort((a,b) => (a.hora_inicio||'').localeCompare(b.hora_inicio||''))
-      .map(ag => ({ chave: chaveCliente(ag), ag }))
-    )
-    .forEach(({chave}) => {
-      if (!ordemSet.has(chave)) { ordemSet.add(chave); ordemGlobal.push(chave); }
-    });
+      .forEach(ag => {
+        const c = chaveCliente(ag);
+        if (!ordemSet.has(c)) { ordemSet.add(c); ordemGlobal.push(c); }
+      });
+  });
 
-  grade.innerHTML = dias.map((dia, i) => {
+  // 2. Para cada dia, mapa chave→agendamento
+  const agMaps = dias.map(dia => {
+    const m = new Map();
+    visiveis.filter(ag => ag.data === fmtISO(dia)).forEach(ag => m.set(chaveCliente(ag), ag));
+    return m;
+  });
+
+  // 3. Renderiza: primeiro os headers (7 colunas), depois swim lanes
+  // Headers
+  const headersHTML = dias.map((dia, i) => {
     const dataStr  = fmtISO(dia);
-    const agsDia   = visiveis.filter(ag => ag.data === dataStr);
     const bloqueio = diasBloqueados[dataStr] || null;
-
-    // Mapa chave → agendamento para este dia
-    const agMap = new Map();
-    agsDia.forEach(ag => { agMap.set(chaveCliente(ag), ag); });
-
-    // Só mostra as linhas de clientes presentes NESTE dia, mas na ordem global
-    const chavesPresentes = ordemGlobal.filter(c => agMap.has(c));
-
-    // Agendamentos extras sem ordem global (edge case)
-    agsDia.forEach(ag => {
-      const c = chaveCliente(ag);
-      if (!ordemSet.has(c)) chavesPresentes.push(c);
-    });
-
-    const cards = chavesPresentes.length
-      ? chavesPresentes.map(c => cardHTML(agMap.get(c))).join('')
-      : `<div class="coluna-vazia">Sem agendamentos</div>`;
-
     const podeEditar = ['agendamento','coordenador','supervisor'].includes(roleAtual);
     const lockBtn = podeEditar
       ? `<button class="btn-lock ${bloqueio ? 'ativo' : ''}" onclick="toggleBloqueioDia('${dataStr}')" title="${bloqueio ? 'Desbloquear dia' : 'Bloquear dia'}"><i data-lucide="${bloqueio ? 'lock' : 'lock-open'}"></i></button>`
       : '';
-
     const temNota = !!anotacoes[dataStr];
-    const notaBtn = `<button class="btn-nota ${temNota ? 'tem-nota' : ''}" onclick="abrirNotaPanel('${dataStr}')" title="Anotações do dia">
-      <i data-lucide="notebook-pen"></i>${temNota ? '<span class="nota-dot"></span>' : ''}
-    </button>`;
-
-    return `
-      <div class="coluna ${bloqueio ? 'bloqueada' : ''}">
-        <div class="coluna-header">
-          <div style="min-width:0;flex:1">
-            <div class="dia-nome">${DIAS[i]}</div>
-            <div class="dia-data ${isHoje(dia) ? 'hoje' : ''}">${fmtBR(dia)}</div>
-            ${bloqueio ? `<div class="bloqueio-tag" title="${escHtml(bloqueio.motivo)}">🔒 ${escHtml(bloqueio.motivo)}</div>` : ''}
-          </div>
-          <div style="display:flex;align-items:center;gap:2px;flex-shrink:0">
-            ${notaBtn}
-            ${podeEditar ? `<button class="btn-dispatch-dia" onclick="dispararDia('${dataStr}')" title="Disparar agenda deste dia no WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>` : ''}
-            ${lockBtn}
-            ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento"><i data-lucide="plus"></i></button>`}
-          </div>
+    const notaBtn = `<button class="btn-nota ${temNota ? 'tem-nota' : ''}" onclick="abrirNotaPanel('${dataStr}')" title="Anotações do dia"><i data-lucide="notebook-pen"></i>${temNota ? '<span class="nota-dot"></span>' : ''}</button>`;
+    return `<div class="coluna ${bloqueio ? 'bloqueada' : ''}" style="border-radius:var(--radius-card) var(--radius-card) 0 0;margin-bottom:0;min-height:auto">
+      <div class="coluna-header" style="border-radius:0">
+        <div style="min-width:0;flex:1">
+          <div class="dia-nome">${DIAS[i]}</div>
+          <div class="dia-data ${isHoje(dia) ? 'hoje' : ''}">${fmtBR(dia)}</div>
+          ${bloqueio ? `<div class="bloqueio-tag" title="${escHtml(bloqueio.motivo)}">🔒 ${escHtml(bloqueio.motivo)}</div>` : ''}
         </div>
-        <div class="coluna-body">${cards}</div>
-      </div>`;
+        <div style="display:flex;align-items:center;gap:2px;flex-shrink:0">
+          ${notaBtn}
+          ${podeEditar ? `<button class="btn-dispatch-dia" onclick="dispararDia('${dataStr}')" title="Disparar agenda deste dia no WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>` : ''}
+          ${lockBtn}
+          ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento"><i data-lucide="plus"></i></button>`}
+        </div>
+      </div>
+    </div>`;
   }).join('');
 
+  // 4. Swim lanes: uma linha por cliente, 7 células
+  let swimHTML = '';
+  if (ordemGlobal.length === 0) {
+    // Semana sem agendamentos — linha de vazio em cada coluna
+    swimHTML = dias.map(() => `<div class="coluna-body" style="border-radius:0 0 var(--radius-card) var(--radius-card);border:1px solid var(--border);border-top:none;background:var(--surface-1)"><div class="coluna-vazia">Sem agendamentos</div></div>`).join('');
+  } else {
+    ordemGlobal.forEach((chave, rowIdx) => {
+      const isLast = rowIdx === ordemGlobal.length - 1;
+      swimHTML += dias.map((_, di) => {
+        const ag = agMaps[di].get(chave);
+        const borderR = isLast ? 'border-radius:0 0 var(--radius-card) var(--radius-card)' : 'border-radius:0';
+        return `<div class="swim-cell" style="background:var(--surface-1);border:1px solid var(--border);border-top:none;${borderR}">
+          ${ag ? cardHTML(ag) : ''}
+        </div>`;
+      }).join('');
+    });
+  }
+
+  grade.innerHTML = headersHTML + swimHTML;
   lucide.createIcons();
+  return; // renderizado acima — não continua para o código antigo
+  // ---- código antigo abaixo (nunca alcançado) ----
+
 }
 
 // ── Card de agendamento ──────────────────────────────────────
