@@ -152,12 +152,8 @@
       padding: 0 24px;
       display: grid;
       grid-template-columns: repeat(7, minmax(170px, 1fr));
-      gap: 0 10px; /* sem gap vertical — swim lanes usam margin */
+      gap: 10px;
     }
-
-    /* Swim lane: célula de um cliente num dia */
-    .swim-cell { padding: 0 0 10px 0; }
-    .swim-empty { padding: 0 0 10px 0; min-height: 10px; }
 
     @media (max-width: 900px) { .grade { grid-template-columns: repeat(3, 1fr); } }
     @media (max-width: 600px) { .grade { grid-template-columns: 1fr; } }
@@ -1584,8 +1580,12 @@ function agendamentosVisiveis() {
   );
 }
 
-// ── Chave única de cliente para alinhar swimlanes ────────────
+// ── Chave de ordenação por técnico principal ─────────────────
 function chaveCliente(ag) {
+  // Usa tecnico_id como chave principal — mesmo técnico fica na mesma linha
+  if (ag.tecnico_id) return `tec_${ag.tecnico_id}`;
+  // Fallback: auxiliar, ou cliente
+  if (ag.auxiliar_id) return `tec_${ag.auxiliar_id}`;
   return ag.obra_id ? `obra_${ag.obra_id}` : `outro_${(ag.cliente_outro||'').trim().toLowerCase()}`;
 }
 
@@ -1607,26 +1607,41 @@ function renderGrade(dias) {
       });
   });
 
-  // 2. Para cada dia, mapa chave→agendamento
-  const agMaps = dias.map(dia => {
-    const m = new Map();
-    visiveis.filter(ag => ag.data === fmtISO(dia)).forEach(ag => m.set(chaveCliente(ag), ag));
-    return m;
-  });
-
-  // 3. Renderiza: primeiro os headers (7 colunas), depois swim lanes
-  // Headers
-  const headersHTML = dias.map((dia, i) => {
+  // 2. Renderiza cada coluna com agendamentos ordenados pela ordem global do técnico
+  grade.innerHTML = dias.map((dia, i) => {
     const dataStr  = fmtISO(dia);
+    const agsDia   = visiveis.filter(ag => ag.data === dataStr);
     const bloqueio = diasBloqueados[dataStr] || null;
     const podeEditar = ['agendamento','coordenador','supervisor'].includes(roleAtual);
+
+    // Reordena: agendamentos presentes neste dia na ordem global do técnico
+    const agMap = new Map();
+    agsDia.forEach(ag => {
+      const c = chaveCliente(ag);
+      if (!agMap.has(c)) agMap.set(c, ag); // um técnico pode ter mais de um ag/dia
+    });
+    // Técnicos presentes neste dia, na ordem global
+    const ordenados = ordemGlobal
+      .filter(c => agMap.has(c))
+      .map(c => agMap.get(c));
+    // Agendamentos sem técnico na ordem global ficam no final
+    agsDia.forEach(ag => {
+      const c = chaveCliente(ag);
+      if (!ordemSet.has(c)) ordenados.push(ag);
+    });
+
+    const cards = ordenados.length
+      ? ordenados.map(ag => cardHTML(ag)).join('')
+      : `<div class="coluna-vazia">Sem agendamentos</div>`;
+
     const lockBtn = podeEditar
       ? `<button class="btn-lock ${bloqueio ? 'ativo' : ''}" onclick="toggleBloqueioDia('${dataStr}')" title="${bloqueio ? 'Desbloquear dia' : 'Bloquear dia'}"><i data-lucide="${bloqueio ? 'lock' : 'lock-open'}"></i></button>`
       : '';
     const temNota = !!anotacoes[dataStr];
     const notaBtn = `<button class="btn-nota ${temNota ? 'tem-nota' : ''}" onclick="abrirNotaPanel('${dataStr}')" title="Anotações do dia"><i data-lucide="notebook-pen"></i>${temNota ? '<span class="nota-dot"></span>' : ''}</button>`;
-    return `<div class="coluna ${bloqueio ? 'bloqueada' : ''}" style="border-radius:var(--radius-card) var(--radius-card) 0 0;margin-bottom:0;min-height:auto">
-      <div class="coluna-header" style="border-radius:0">
+
+    return `<div class="coluna ${bloqueio ? 'bloqueada' : ''}">
+      <div class="coluna-header">
         <div style="min-width:0;flex:1">
           <div class="dia-nome">${DIAS[i]}</div>
           <div class="dia-data ${isHoje(dia) ? 'hoje' : ''}">${fmtBR(dia)}</div>
@@ -1639,31 +1654,11 @@ function renderGrade(dias) {
           ${modoVisualizacao ? '' : `<button class="btn-add" onclick="abrirModal('${dataStr}')" title="Novo agendamento"><i data-lucide="plus"></i></button>`}
         </div>
       </div>
+      <div class="coluna-body">${cards}</div>
     </div>`;
   }).join('');
 
-  // 4. Swim lanes: uma linha por cliente, 7 células
-  let swimHTML = '';
-  if (ordemGlobal.length === 0) {
-    // Semana sem agendamentos — linha de vazio em cada coluna
-    swimHTML = dias.map(() => `<div class="coluna-body" style="border-radius:0 0 var(--radius-card) var(--radius-card);border:1px solid var(--border);border-top:none;background:var(--surface-1)"><div class="coluna-vazia">Sem agendamentos</div></div>`).join('');
-  } else {
-    ordemGlobal.forEach((chave, rowIdx) => {
-      const isLast = rowIdx === ordemGlobal.length - 1;
-      swimHTML += dias.map((_, di) => {
-        const ag = agMaps[di].get(chave);
-        const borderR = isLast ? 'border-radius:0 0 var(--radius-card) var(--radius-card)' : 'border-radius:0';
-        return `<div class="swim-cell" style="background:var(--surface-1);border:1px solid var(--border);border-top:none;${borderR}">
-          ${ag ? cardHTML(ag) : ''}
-        </div>`;
-      }).join('');
-    });
-  }
-
-  grade.innerHTML = headersHTML + swimHTML;
   lucide.createIcons();
-  return; // renderizado acima — não continua para o código antigo
-  // ---- código antigo abaixo (nunca alcançado) ----
 
 }
 
