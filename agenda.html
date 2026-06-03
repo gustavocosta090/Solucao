@@ -2145,8 +2145,18 @@ async function salvarAgendamento() {
   let error     = null;
   let savedAgId = null;
 
-  for (const diaStr of diasSalvar) {
-    const numeroOSGerado = osCompartilhado ?? await gerarNumeroOS(diaStr);
+  let osCriadaNoFirstDay = false; // quando mesmaOS=true, cria OS só uma vez
+
+  for (let diaIdx = 0; diaIdx < diasSalvar.length; diaIdx++) {
+    const diaStr = diasSalvar[diaIdx];
+    const isPrimeiroDia = diaIdx === 0;
+
+    // Quando mesmaOS: só o primeiro dia guarda o numero_os no agendamento
+    // (evita violação da constraint UNIQUE idx_agendamentos_numero_os)
+    const numeroOSGerado = mesmaOS
+      ? (isPrimeiroDia ? osCompartilhado : null)
+      : await gerarNumeroOS(diaStr);
+
     const payload = { ...basePayload, data: diaStr, numero_os: numeroOSGerado };
 
     let result;
@@ -2165,25 +2175,35 @@ async function salvarAgendamento() {
     if (result.error) { error = result.error; break; }
     if (!savedAgId) savedAgId = result.id;
 
-    // Cria OS pendentes para este dia
-    if (!agEditandoId && result.id && status !== 'viagem') {
+    // Cria OS pendentes:
+    // - Sem mesmaOS: uma por dia (comportamento padrão)
+    // - Com mesmaOS: apenas no primeiro dia, cobrindo toda a semana
+    const devecriarOS = !agEditandoId && result.id && status !== 'viagem'
+      && (!mesmaOS || (mesmaOS && !osCriadaNoFirstDay));
+
+    if (devecriarOS) {
       const equipeOS = [payload.tecnico_id, payload.auxiliar_id, payload.auxiliar2_id, payload.auxiliar3_id]
         .filter(Boolean).filter((id, idx, arr) => arr.indexOf(id) === idx);
       if (equipeOS.length) {
         const agora = new Date().toISOString();
+        // Quando mesmaOS, descreve todos os dias no servico_planejado
+        const servicoOS = mesmaOS && diasSalvar.length > 1
+          ? `${servico || ''} [Obra continuada: ${diasSalvar.join(', ')}]`.trim()
+          : servico || null;
         const osPayloads = equipeOS.map(tecId => ({
           agendamento_id:    result.id,
           obra_id:           payload.obra_id,
           endereco_servico:  endereco || null,
           tecnico_id:        tecId,
           data_servico:      diaStr,
-          servico_planejado: servico || null,
+          servico_planejado: servicoOS,
           status_aprovacao:  'pendente',
           tipo_servico:      tipoServico,
-          numero_os:         numeroOSGerado,
+          numero_os:         osCompartilhado ?? numeroOSGerado,
           criado_em:         agora,
         }));
         await db.from('ordens_de_servico').insert(osPayloads);
+        if (mesmaOS) osCriadaNoFirstDay = true;
       }
     }
   }
