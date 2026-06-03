@@ -35,10 +35,19 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .sem-btn:hover{border-color:var(--border-hover);color:var(--text-1)}
 #sem-label{font-size:13px;font-weight:600;min-width:230px;text-align:center}
 .btn-exp{padding:8px 16px;background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.3);border-radius:7px;color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:0}
 .sc{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
 .sc-val{font-size:26px;font-weight:800;line-height:1;margin-bottom:5px}
 .sc-lbl{font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+/* Filtros */
+.filtros-bar{background:var(--surface-1);padding:12px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);margin-bottom:24px;margin-top:12px}
+.filtros-bar input[type=date]{background:var(--bg);border:1px solid var(--border);color:var(--text-1);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;width:148px}
+.filtros-bar input[type=date]:focus{border-color:var(--border-strong)}
+.filtros-bar select{background:var(--bg);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2352525B' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;border:1px solid var(--border);color:var(--text-1);border-radius:6px;padding:8px 30px 8px 12px;font-size:13px;font-family:inherit;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer}
+.filtros-bar select option{background:#1B1B1B}
+.filtros-bar .fb-lbl{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.btn-limpar-f{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-3);font-size:12px;padding:8px 12px;cursor:pointer;font-family:inherit}
+.btn-limpar-f:hover{border-color:var(--border-hover);color:var(--text-2)}
 .vcard{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}
 .vcard:hover{border-color:var(--border-hover)}
 .vtop{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;background:var(--surface-2);border-bottom:1px solid var(--border)}
@@ -88,11 +97,22 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
     <button class="btn-exp" onclick="exportarSemana()">Exportar PDF Semana</button>
   </div>
   <div class="stats">
-    <div class="sc"><div class="sc-val" id="st">0</div><div class="sc-lbl">Viagens na semana</div></div>
-    <div class="sc"><div class="sc-val" id="sh">0</div><div class="sc-lbl">Com hotel</div></div>
-    <div class="sc"><div class="sc-val" id="sr" style="font-size:18px;line-height:1.5">R$ 0</div><div class="sc-lbl">Saldo refeição total</div></div>
-    <div class="sc"><div class="sc-val" id="stc">0</div><div class="sc-lbl">Técnicos viajando</div></div>
+    <div class="sc"><div class="sc-val" id="st">0</div><div class="sc-lbl">Qtd. de Viagens</div></div>
+    <div class="sc"><div class="sc-val" id="sr" style="font-size:18px;line-height:1.5">R$ 0,00</div><div class="sc-lbl">Valor Ref. (total)</div></div>
+    <div class="sc"><div class="sc-val" id="sh" style="font-size:18px;line-height:1.5">R$ 0,00</div><div class="sc-lbl">Diária de Hotel (total)</div></div>
   </div>
+
+  <!-- Filtros por data -->
+  <div class="filtros-bar">
+    <span class="fb-lbl">Período:</span>
+    <input type="date" id="f-ini" onchange="_aplicarFiltro()" title="Data início">
+    <input type="date" id="f-fim" onchange="_aplicarFiltro()" title="Data fim">
+    <select id="f-tec" onchange="_aplicarFiltro()">
+      <option value="">Todos os técnicos</option>
+    </select>
+    <button class="btn-limpar-f" onclick="_limparFiltros()">Limpar filtros</button>
+  </div>
+
   <div id="vlista"><div class="spin-wrap"><div class="spin"></div><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div></div>
 </div>
 
@@ -164,7 +184,7 @@ async function _carregar(){
 
   // Agendamentos de viagem
   const {data:aList, error:aErr} = await _db.from('agendamentos')
-    .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id,status')
+    .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id,status,serie_id')
     .eq('status','viagem').gte('data',_iso(d0)).lte('data',_iso(d6))
     .order('data').order('hora_inicio');
 
@@ -193,55 +213,87 @@ async function _carregar(){
     }catch(e){console.warn('viagens_detalhe não existe ainda',(e.message||''));}
   }
 
+  _agsFiltrados = [..._ags];
+  _popularTecsFiltro();
   _renderLista(dias);
   _stats();
+}
+
+// Agrupa agendamentos por série (serie_id) ou por agendamento individual
+function _agruparViagens(){
+  const base = _agsFiltrados.length ? _agsFiltrados : _ags;
+  const grupos = [];
+  const visto  = new Set();
+  base.forEach(ag => {
+    const chave = ag.serie_id || ('solo_'+ag.id);
+    if(visto.has(chave)) return;
+    visto.add(chave);
+    const membros = ag.serie_id
+      ? _ags.filter(a => a.serie_id === ag.serie_id)
+      : [ag];
+    membros.sort((a,b)=>a.data.localeCompare(b.data));
+    grupos.push({ chave, membros, serie_id: ag.serie_id||null });
+  });
+  return grupos;
 }
 
 function _renderLista(dias){
   const el = document.getElementById('vlista');
   if(!_ags.length){
-    el.innerHTML='<div class="empty"><p style="font-size:14px">Nenhuma viagem nesta semana.</p><p style="font-size:12px;margin-top:8px;color:var(--text-3)">Agendamentos com status "Viagem" aparecerão aqui.</p></div>';
+    el.innerHTML='<div class="empty"><p style="font-size:14px">Nenhuma viagem nesta semana.</p><p style="font-size:12px;margin-top:8px;color:var(--text-3)">Crie agendamentos com status "Viagem" na Agenda Técnica.</p></div>';
     return;
   }
-  el.innerHTML = _ags.map(ag=>{
-    const d   = new Date(ag.data+'T12:00');
-    const idx = dias.findIndex(x=>_iso(x)===ag.data);
-    const dTxt= (idx>=0?DIAS[idx]+', ':'')+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
-    const hora= ag.hora_inicio?ag.hora_inicio.slice(0,5):'';
-    const cli = (ag._ob&&ag._ob.nome_cliente)||ag.cliente_outro||'(sem obra)';
-    const tIds= [ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
-    const tNm = tIds.map(id=>{const t=_tecs.find(t=>t.id===id);return t?t.nome:'';}).filter(Boolean).join(' · ')||'A definir';
-    const det = _dets[ag.id]||{};
-    const eid = 'v'+ag.id;
+
+  const grupos = _agruparViagens();
+
+  el.innerHTML = grupos.map(g=>{
+    const ag0  = g.membros[0];
+    const agN  = g.membros[g.membros.length-1];
+    const cli  = (ag0._ob&&ag0._ob.nome_cliente)||ag0.cliente_outro||'(sem obra)';
+    const tIds = [ag0.tecnico_id,ag0.auxiliar_id,ag0.auxiliar2_id,ag0.auxiliar3_id].filter(Boolean);
+    const tNm  = tIds.map(id=>{const t=_tecs.find(t=>t.id===id);return t?t.nome:'';}).filter(Boolean).join(' · ')||'A definir';
+
+    // Período da viagem
+    const d0 = new Date(ag0.data+'T12:00'), dN = new Date(agN.data+'T12:00');
+    const fmtDia = d => String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+    const periodo = ag0.data===agN.data
+      ? fmtDia(d0)+'/'+d0.getFullYear()
+      : fmtDia(d0)+' — '+fmtDia(dN)+'/'+dN.getFullYear();
+    const nDias = g.membros.length;
+    const idx0  = dias.findIndex(x=>_iso(x)===ag0.data);
+    const diaNome = idx0>=0?DIAS[idx0]:'';
+
+    // Detalhe: usa o primeiro agendamento como referência
+    const det = _dets[ag0.id]||{};
+    const gid = 'g'+ag0.id; // id único para este grupo
+
     return '<div class="vcard">'+
       '<div class="vtop">'+
         '<div style="flex:1;min-width:0">'+
-          '<div class="vdata">'+dTxt+'</div>'+
+          '<div class="vdata">'+(diaNome?diaNome+' — ':'')+periodo+
+            '<span style="margin-left:8px;font-size:10px;background:rgba(62,207,142,.12);color:var(--primary);border:1px solid rgba(62,207,142,.25);border-radius:4px;padding:1px 6px;">'+nDias+' dia'+(nDias>1?'s':'')+'</span>'+
+          '</div>'+
           '<div class="vcliente">'+escHtml(cli)+'</div>'+
           '<div class="vtec">'+escHtml(tNm)+'</div>'+
-          (ag.servico?'<div class="vservico">'+escHtml(ag.servico)+'</div>':'')+
+          (ag0.servico?'<div class="vservico">'+escHtml(ag0.servico)+'</div>':'')+
         '</div>'+
-        (hora?'<div class="vhora">'+hora+'</div>':'')+
+        (ag0.hora_inicio?'<div class="vhora">'+ag0.hora_inicio.slice(0,5)+'</div>':'')+
       '</div>'+
       '<div class="vbody">'+
         '<div class="vf"><label>Cidade de destino</label>'+
-          '<input type="text" id="c'+eid+'" value="'+escHtml(det.cidade||'')+'" placeholder="Ex: Cuiabá, MT"></div>'+
-        '<div class="vf"><label>Saldo refeição (R$)</label>'+
-          '<input type="number" id="s'+eid+'" value="'+(det.saldo_refeicao||'')+'" placeholder="0,00" step="0.01" min="0"></div>'+
+          '<input type="text" id="c'+gid+'" value="'+escHtml(det.cidade||'')+'" placeholder="Ex: Cuiabá, MT"></div>'+
+        '<div class="vf"><label>Saldo refeição / pessoa (R$)</label>'+
+          '<input type="number" id="s'+gid+'" value="'+(det.saldo_refeicao||'')+'" placeholder="0,00" step="0.01" min="0"></div>'+
         '<div class="vf"><label>Hotel</label>'+
-          '<label class="hchk"><input type="checkbox" id="h'+eid+'" '+(det.hotel?'checked':'')+' onchange="tObs(\''+eid+'\')">'+
+          '<label class="hchk"><input type="checkbox" id="h'+gid+'" '+(det.hotel?'checked':'')+' onchange="tObs(\''+gid+'\')">'+
           '<span>Precisa de hotel</span></label>'+
-          '<input type="text" id="o'+eid+'" value="'+escHtml(det.hotel_obs||'')+'" placeholder="Nome, preferências..." style="display:'+(det.hotel?'block':'none')+'">'+
+          '<input type="text" id="o'+gid+'" value="'+escHtml(det.hotel_obs||'')+'" placeholder="Nome do hotel, preferências..." style="display:'+(det.hotel?'block':'none')+'">'+
         '</div>'+
       '</div>'+
       '<div class="vfoot">'+
-        '<span class="vok" id="ok'+eid+'">✓ Salvo com sucesso</span>'+
-        '<button class="bv bpdf" onclick="_pdf('+ag.id+')" title="Exportar PDF desta viagem" style="gap:5px">'+
-          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> PDF desta viagem'+
-        '</button>'+
-        '<button class="bv bsalvar" onclick="_salvar('+ag.id+')" style="gap:5px">'+
-          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar'+
-        '</button>'+
+        '<span class="vok" id="ok'+gid+'">✓ Salvo em todos os dias</span>'+
+        '<button class="bv bpdf" onclick="_pdfGrupo(\''+g.chave+'\')" >PDF da viagem</button>'+
+        '<button class="bv bsalvar" onclick="_salvarGrupo(\''+g.chave+'\')">Salvar</button>'+
       '</div>'+
     '</div>';
   }).join('');
@@ -251,31 +303,104 @@ function tObs(eid){
   document.getElementById('o'+eid).style.display=document.getElementById('h'+eid).checked?'block':'none';
 }
 
-async function _salvar(agId){
-  const eid='v'+agId;
-  const p={agendamento_id:agId,
-    cidade:document.getElementById('c'+eid).value.trim()||null,
-    saldo_refeicao:parseFloat(document.getElementById('s'+eid).value)||null,
-    hotel:document.getElementById('h'+eid).checked,
-    hotel_obs:document.getElementById('o'+eid).value.trim()||null,
-    atualizado_em:new Date().toISOString()};
-  const res=_dets[agId]?.id
-    ?await _db.from('viagens_detalhe').update(p).eq('id',_dets[agId].id).select().single()
-    :await _db.from('viagens_detalhe').insert(p).select().single();
-  if(res.data){
-    _dets[agId]=res.data;
-    const ok=document.getElementById('ok'+eid);
-    ok.style.display='flex';setTimeout(()=>{ok.style.display='none';},2500);
-    _stats();
-  }else if(res.error){alert('Erro: '+res.error.message);}
+async function _salvarGrupo(chave){
+  const grupos = _agruparViagens();
+  const g = grupos.find(x=>x.chave===chave);
+  if(!g) return;
+  const gid = 'g'+g.membros[0].id;
+  const cidade    = document.getElementById('c'+gid).value.trim()||null;
+  const saldo     = parseFloat(document.getElementById('s'+gid).value)||null;
+  const hotel     = document.getElementById('h'+gid).checked;
+  const hotel_obs = document.getElementById('o'+gid).value.trim()||null;
+
+  let erro = null;
+  for(const ag of g.membros){
+    const p={agendamento_id:ag.id,cidade,saldo_refeicao:saldo,hotel,hotel_obs,atualizado_em:new Date().toISOString()};
+    let res;
+    if(_dets[ag.id]?.id){
+      res=await _db.from('viagens_detalhe').update(p).eq('id',_dets[ag.id].id).select().single();
+    }else{
+      res=await _db.from('viagens_detalhe').insert(p).select().single();
+    }
+    if(res.data){_dets[ag.id]=res.data;}
+    else if(res.error){erro=res.error.message;break;}
+  }
+  if(erro){alert('Erro ao salvar: '+erro);return;}
+  const ok=document.getElementById('ok'+gid);
+  if(ok){ok.style.display='flex';setTimeout(()=>ok.style.display='none',2500);}
+  _stats();
 }
 
+// Compat: salvar individual (fallback)
+async function _salvar(agId){ await _salvarGrupo('solo_'+agId); }
+
+function _pdfGrupo(chave){
+  const grupos=_agruparViagens();
+  const g=grupos.find(x=>x.chave===chave);
+  if(!g){return;}
+  _pdf(g.membros[0].id); // usa o primeiro dia como referência
+}
+
+let _agsFiltrados = [];
+
+function _aplicarFiltro(){
+  const ini = document.getElementById('f-ini').value;
+  const fim = document.getElementById('f-fim').value;
+  const tec = document.getElementById('f-tec').value;
+  _agsFiltrados = _ags.filter(a=>{
+    if(ini && a.data < ini) return false;
+    if(fim && a.data > fim) return false;
+    if(tec){
+      const ids=[a.tecnico_id,a.auxiliar_id,a.auxiliar2_id,a.auxiliar3_id].filter(Boolean).map(String);
+      if(!ids.includes(tec)) return false;
+    }
+    return true;
+  });
+  _renderLista(_semana(_off));
+  _stats();
+}
+
+function _limparFiltros(){
+  document.getElementById('f-ini').value='';
+  document.getElementById('f-fim').value='';
+  document.getElementById('f-tec').value='';
+  _agsFiltrados = [..._ags];
+  _renderLista(_semana(_off));
+  _stats();
+}
+
+// Popula select de técnicos
+function _popularTecsFiltro(){
+  const sel=document.getElementById('f-tec');
+  const prev=sel.value;
+  sel.innerHTML='<option value="">Todos os técnicos</option>';
+  const ids=new Set(_ags.flatMap(a=>[a.tecnico_id,a.auxiliar_id,a.auxiliar2_id,a.auxiliar3_id].filter(Boolean)));
+  ids.forEach(id=>{const t=_tecs.find(t=>t.id===id);if(t){const o=document.createElement('option');o.value=t.id;o.textContent=t.nome;sel.appendChild(o);}});
+  if(prev) sel.value=prev;
+}
+
+const DIARIA_HOTEL = 200; // R$ por dia por default — ajustar conforme necessário
+
 function _stats(){
-  document.getElementById('st').textContent=_ags.length;
-  document.getElementById('sh').textContent=_ags.filter(a=>_dets[a.id]?.hotel).length;
-  document.getElementById('sr').textContent=_brl(_ags.reduce((s,a)=>s+(parseFloat(_dets[a.id]?.saldo_refeicao)||0),0));
-  const ts=new Set(_ags.flatMap(a=>[a.tecnico_id,a.auxiliar_id,a.auxiliar2_id,a.auxiliar3_id].filter(Boolean)));
-  document.getElementById('stc').textContent=ts.size;
+  const grupos=_agruparViagens();
+  const agsFil=_agsFiltrados.length?_agsFiltrados:_ags;
+  const gruposFil=grupos.filter(g=>g.membros.some(a=>agsFil.includes(a)));
+
+  // Valor ref: soma saldo_refeicao do primeiro ag de cada grupo (representa a diária)
+  const totalRef = gruposFil.reduce((s,g)=>{
+    const det=_dets[g.membros[0].id]||{};
+    return s+(parseFloat(det.saldo_refeicao)||0)*g.membros.length;
+  },0);
+
+  // Diária hotel: grupos com hotel × dias × valor diária
+  const totalHotel = gruposFil.reduce((s,g)=>{
+    const det=_dets[g.membros[0].id]||{};
+    return s+(det.hotel?DIARIA_HOTEL*g.membros.length:0);
+  },0);
+
+  document.getElementById('st').textContent=gruposFil.length;
+  document.getElementById('sr').textContent=_brl(totalRef);
+  document.getElementById('sh').textContent=_brl(totalHotel);
 }
 
 function _pdf(agId){
