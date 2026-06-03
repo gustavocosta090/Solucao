@@ -2227,6 +2227,8 @@ async function salvarAgendamento() {
     fecharModal();
     if (!agEditandoId && tipoServico === 'assistencia') {
       window.location.href = 'assistencia.html';
+    } else if (!agEditandoId && status === 'viagem') {
+      window.location.href = 'viagens.html';
     } else {
       await carregarAgenda();
     }

@@ -134,6 +134,16 @@ function _semana(off){
   const {data:tList} = await _db.from('tecnicos').select('id,nome');
   _tecs = tList||[];
 
+  // Descobre a semana mais próxima com viagens (olha até 4 semanas à frente)
+  const hoje = new Date();
+  for(let off=0; off<=4; off++){
+    const dias = _semana(off);
+    const {data:check} = await _db.from('agendamentos')
+      .select('id').eq('status','viagem')
+      .gte('data',_iso(dias[0])).lte('data',_iso(dias[6])).limit(1);
+    if(check&&check.length){_off=off;break;}
+  }
+
   await _carregar();
 })();
 
@@ -217,9 +227,13 @@ function _renderLista(dias){
         '</div>'+
       '</div>'+
       '<div class="vfoot">'+
-        '<span class="vok" id="ok'+eid+'">✓ Salvo</span>'+
-        '<button class="bv bpdf" onclick="_pdf('+ag.id+')">PDF</button>'+
-        '<button class="bv bsalvar" onclick="_salvar('+ag.id+')">Salvar</button>'+
+        '<span class="vok" id="ok'+eid+'">✓ Salvo com sucesso</span>'+
+        '<button class="bv bpdf" onclick="_pdf('+ag.id+')" title="Exportar PDF desta viagem" style="gap:5px">'+
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> PDF desta viagem'+
+        '</button>'+
+        '<button class="bv bsalvar" onclick="_salvar('+ag.id+')" style="gap:5px">'+
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar'+
+        '</button>'+
       '</div>'+
     '</div>';
   }).join('');
