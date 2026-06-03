@@ -116,7 +116,10 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .btn-st.active-resolvida{background:rgba(62,207,142,.1);border-color:rgba(62,207,142,.3);color:var(--primary)}
 .btn-st.active-pendencia_cliente{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:var(--red-text)}
 .btn-st.active-pendencia_solucao{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.3);color:#A5B4FC}
+.btn-st.active-aguardando{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3);color:#FBBF24}
 .btn-st i{width:11px;height:11px}
+.badge-aguardando{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);color:#FBBF24}
+.motivo-status-txt{font-size:11px;color:var(--text-3);font-style:italic;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
 .btn-excluir{display:inline-flex;align-items:center;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text-3);font-size:11px;font-family:inherit;cursor:pointer;transition:all 150ms}
 .btn-excluir:hover{color:var(--red-text);border-color:rgba(239,68,68,.3)}
 .btn-excluir i{width:11px;height:11px}
@@ -242,6 +245,7 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
     <button class="filtro-st" data-st="aberta" onclick="setStatus(this,'aberta')">Em aberto</button>
     <button class="filtro-st" data-st="pendencia_cliente" onclick="setStatus(this,'pendencia_cliente')">Pendência cliente</button>
     <button class="filtro-st" data-st="pendencia_solucao" onclick="setStatus(this,'pendencia_solucao')">Pendência Solução</button>
+    <button class="filtro-st" data-st="aguardando" onclick="setStatus(this,'aguardando')">Aguardando</button>
     <button class="filtro-st" data-st="resolvida" onclick="setStatus(this,'resolvida')">Resolvidas</button>
     <div class="busca-wrap">
       <i data-lucide="search" class="busca-icon" style="width:14px;height:14px"></i>
@@ -332,6 +336,7 @@ const STATUS_INFO = {
   aberta:             { label:'Em aberto',         cls:'badge-aberta',            icon:'clock' },
   pendencia_cliente:  { label:'Pendência cliente', cls:'badge-pendencia_cliente', icon:'user' },
   pendencia_solucao:  { label:'Pendência Solução', cls:'badge-pendencia_solucao', icon:'building-2' },
+  aguardando:         { label:'Aguardando',        cls:'badge-aguardando',        icon:'pause-circle' },
   resolvida:          { label:'Resolvida',          cls:'badge-resolvida',         icon:'check-circle-2' },
 };
 function setEquipe(el, eq){
@@ -409,6 +414,9 @@ function renderLista(){
       ? new Date(p.data_marcada+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})
       : null;
 
+    const motivoTxt = p.motivo_status && STATUS_COM_MOTIVO.has(p.status)
+      ? `<div class="motivo-status-txt" title="${escHtml(p.motivo_status)}">↳ ${escHtml(p.motivo_status)}</div>` : '';
+
     return `<tr class="${p.urgente?'urgente':''} ${p.status==='resolvida'?'resolvida':''}" id="pcard-${p.id}">
       <td>
         <div class="card-equipe-row">
@@ -422,12 +430,16 @@ function renderLista(){
       </td>
       <td><div class="td-desc" title="${escHtml(p.descricao)}">${escHtml(p.descricao)}</div></td>
       <td class="td-meta">${dataFmt}</td>
-      <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td>
+        <span class="badge ${st.cls}">${st.label}</span>
+        ${motivoTxt}
+      </td>
       <td class="td-acoes">
         <div style="display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
           <button class="btn-st ${p.status==='resolvida'?'active-resolvida':''}" onclick="mudarStatus(${p.id},'resolvida')" title="Resolvida"><i data-lucide="check-circle-2"></i></button>
-          <button class="btn-st ${p.status==='pendencia_cliente'?'active-pendencia_cliente':''}" onclick="mudarStatus(${p.id},'pendencia_cliente')" title="Pend. cliente"><i data-lucide="user"></i></button>
-          <button class="btn-st ${p.status==='pendencia_solucao'?'active-pendencia_solucao':''}" onclick="mudarStatus(${p.id},'pendencia_solucao')" title="Pend. Solução"><i data-lucide="building-2"></i></button>
+          <button class="btn-st ${p.status==='pendencia_cliente'?'active-pendencia_cliente':''}" onclick="mudarStatus(${p.id},'pendencia_cliente')" title="Pendência cliente"><i data-lucide="user"></i></button>
+          <button class="btn-st ${p.status==='pendencia_solucao'?'active-pendencia_solucao':''}" onclick="mudarStatus(${p.id},'pendencia_solucao')" title="Pendência Solução"><i data-lucide="building-2"></i></button>
+          <button class="btn-st ${p.status==='aguardando'?'active-aguardando':''}" onclick="mudarStatus(${p.id},'aguardando')" title="Aguardando"><i data-lucide="pause-circle"></i></button>
           <button class="btn-st" onclick="editarPendencia(${p.id})" title="Editar"><i data-lucide="pencil"></i></button>
           <button class="btn-excluir" onclick="excluirPendencia(${p.id})" title="Excluir"><i data-lucide="trash-2"></i></button>
         </div>
@@ -450,11 +462,48 @@ function renderLista(){
   lucide.createIcons();
 }
 
-async function mudarStatus(id, novoStatus){
-  const { error } = await db.from('pendencias').update({status:novoStatus,atualizado_em:new Date().toISOString()}).eq('id',id);
+// Status que exigem motivo
+const STATUS_COM_MOTIVO = new Set(['pendencia_cliente','pendencia_solucao','aguardando']);
+const STATUS_TITULOS = {
+  pendencia_cliente: '👤 Pendência cliente — informe o motivo',
+  pendencia_solucao: '🏢 Pendência Solução — informe o motivo',
+  aguardando:        '⏸ Aguardando — informe o motivo',
+};
+let _motivoPendingId = null, _motivoPendingStatus = null;
+
+function mudarStatus(id, novoStatus){
+  if(STATUS_COM_MOTIVO.has(novoStatus)){
+    _motivoPendingId     = id;
+    _motivoPendingStatus = novoStatus;
+    document.getElementById('motivo-titulo').textContent = STATUS_TITULOS[novoStatus] || 'Informe o motivo';
+    const p = pendencias.find(x=>x.id===id);
+    document.getElementById('motivo-input').value = (p?.motivo_status && p?.status === novoStatus) ? p.motivo_status : '';
+    document.getElementById('overlay-motivo').style.display='flex';
+    setTimeout(()=>document.getElementById('motivo-input').focus(),100);
+    return;
+  }
+  _salvarStatus(id, novoStatus, null);
+}
+
+function fecharModalMotivo(){
+  document.getElementById('overlay-motivo').style.display='none';
+  _motivoPendingId = _motivoPendingStatus = null;
+}
+
+async function confirmarMotivoStatus(){
+  const motivo = document.getElementById('motivo-input').value.trim();
+  if(!motivo){ document.getElementById('motivo-input').style.borderColor='rgba(239,68,68,.5)'; return; }
+  document.getElementById('motivo-input').style.borderColor='';
+  fecharModalMotivo();
+  await _salvarStatus(_motivoPendingId, _motivoPendingStatus, motivo);
+}
+
+async function _salvarStatus(id, novoStatus, motivo){
+  const payload = {status:novoStatus, motivo_status: motivo ?? null, atualizado_em:new Date().toISOString()};
+  const { error } = await db.from('pendencias').update(payload).eq('id',id);
   if(error){showToast('Erro: '+error.message, 'error');return;}
   const p = pendencias.find(x=>x.id===id);
-  if(p) p.status = novoStatus;
+  if(p){ p.status=novoStatus; p.motivo_status=motivo??null; }
   renderLista();
   showToast('Status atualizado.', 'success');
 }
@@ -625,6 +674,22 @@ async function init(){
 
 init();
 </script>
+
+<!-- Modal de motivo do status -->
+<div class="overlay" id="overlay-motivo" style="display:none" onclick="if(event.target===this)fecharModalMotivo()" role="presentation">
+  <div class="modal-pend" style="max-width:420px" onclick="event.stopPropagation()">
+    <h2 id="motivo-titulo" style="margin-bottom:12px;font-size:15px;display:flex;align-items:center;gap:8px"></h2>
+    <div class="form-group">
+      <label for="motivo-input">Motivo</label>
+      <textarea id="motivo-input" rows="3" placeholder="Descreva o motivo..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancelar" onclick="fecharModalMotivo()">Cancelar</button>
+      <button class="btn-salvar" id="btn-motivo-confirmar" onclick="confirmarMotivoStatus()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <script>lucide.createIcons();</script>
 </body>
 </html>

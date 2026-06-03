@@ -2781,6 +2781,19 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+// ── HELPER: Equipe de um agendamento (global) ────────────────
+const EQUIPE_NOMES = {
+  1:'Cabeamento', 2:'Elétrica', 3:'Áudio e Vídeo', 4:'Automação', 5:'Regional Norte'
+};
+function equipeDoAgGlobal(ag) {
+  const ids = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+  for (const tid of ids) {
+    const te = tecnicoEquipes.find(e => e.tecnico_id === tid);
+    if (te && EQUIPE_NOMES[te.equipe_id]) return EQUIPE_NOMES[te.equipe_id];
+  }
+  return '—';
+}
+
 // ── HELPER: Upload PDF via servidor (evita CORS) ─────────────
 async function uploadPDFServidor(pdfBlob, pasta, arquivo) {
   // Converte blob para base64
@@ -2861,8 +2874,7 @@ async function exportarProgramacaoEstoque() {
       const rows = ags.map(ag => {
         const tecIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
         const equipeStr = tecIds.map(id => tecnicos.find(t => t.id === id)?.nome?.split(' ')[0] || '').filter(Boolean).join(', ');
-        const eq = equipeDoAg(ag);
-        const equipeNome = eq?.nome || '—';
+        const equipeNome = equipeDoAgGlobal(ag);
         const consultor  = ag.obras?.consultores?.nome || '—';
         const cliente    = ag.obras?.nome_cliente || ag.cliente_outro || '—';
         const servico    = ag.servico || '—';
