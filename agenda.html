@@ -2920,11 +2920,18 @@ async function exportarProgramacaoEstoque() {
 
     const ts      = new Date().toISOString().slice(0,19).replace('T','-').replace(':','h').replace(':','m');
     const nomeSem = `${d0.getDate()} a ${d6.getDate()} de ${mesNome} ${ano}`;
-    const pasta   = `Agenda Tecnica/${ano}/${mesNomeCap}`;
+    const pasta   = `Obras e Clientes ${ano}/Programacao Estoque`;
     const arquivo = `Estoque - ${nomeSem} (${ts}).pdf`;
 
+    // Download local automático
+    const url = URL.createObjectURL(pdfBlob);
+    const a   = document.createElement('a');
+    a.href = url; a.download = arquivo; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    // Upload SharePoint
     await uploadPDFServidor(pdfBlob, pasta, arquivo);
-    mostrarToast(`✅ Programação de estoque salva: "${arquivo}"`, 'ok');
+    mostrarToast(`✅ Baixado e salvo no SharePoint: "${arquivo}"`, 'ok');
 
   } catch(e) {
     console.error('[exportarProgramacaoEstoque]', e);
