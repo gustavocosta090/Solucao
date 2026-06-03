@@ -2551,21 +2551,26 @@ async function dispararAgendaWhatsapp() {
     const eq  = equipeDoAg(ag);
     const cor = eq ? (COR_EQ[Object.keys(EQUIPE_INFO).find(k => EQUIPE_INFO[k].nome === eq.nome)] || eq.cor) : '#334155';
 
-    const LBL  = `color:${T3};font-weight:600;`;
-    const ROW  = `font-size:11.5px;color:${T2};margin-top:3px;line-height:1.5;`;
-    const lin  = (label, val) => val ? `<div style="${ROW}"><span style="${LBL}">${label} </span>${val}</div>` : '';
+    const LBL = `color:${T3};font-weight:700;font-size:12px;min-width:72px;flex-shrink:0;`;
+    const VAL = `color:${T2};font-size:12px;`;
+    const lin = (label, val) => val
+      ? `<div style="display:flex;gap:8px;margin-top:4px;line-height:1.5;align-items:baseline;"><span style="${LBL}">${label}</span><span style="${VAL}">${val}</span></div>`
+      : '';
 
-    return `<div style="background:${SURF};border-radius:7px;padding:13px 15px;margin-bottom:9px;border-left:3px solid ${cor};">
-      <div style="display:flex;align-items:baseline;gap:13px;">
-        <span style="font-size:14px;font-weight:700;color:${GOLD};flex-shrink:0;min-width:46px;font-variant-numeric:tabular-nums;">${hora}</span>
-        <span style="font-size:15px;font-weight:700;color:${T1};flex:1;line-height:1.3;">${cliente}</span>
+    return `<div style="background:${SURF};border-radius:8px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${cor};">
+      <!-- Hora + Técnico -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.07);">
+        <span style="font-size:17px;font-weight:800;color:${GOLD};flex-shrink:0;font-variant-numeric:tabular-nums;min-width:52px;">${hora}</span>
+        <span style="font-size:14px;font-weight:700;color:${T2};flex:1;line-height:1.3;">${tecStr||'—'}</span>
       </div>
-      <div style="margin-top:6px;">
-        ${lin('Técnico:',   tecStr)}
+      <!-- Cliente destaque -->
+      <div style="font-size:17px;font-weight:800;color:${T1};line-height:1.3;margin-bottom:8px;">${cliente}</div>
+      <!-- Campos -->
+      <div>
         ${lin('Endereço:',  end)}
-        ${lin('N.OS:',      osNum)}
-        ${lin('Consultor:', consultor)}
         ${lin('Arquiteto:', arquiteto)}
+        ${lin('Consultor:', consultor)}
+        ${lin('N.OS:',      osNum)}
         ${lin('Serviço:',   serv)}
         ${lin('Veículo:',   veic)}
       </div>
