@@ -443,14 +443,14 @@ function renderLista(){
         ${motivoTxt}
       </td>
       <td class="td-acoes">
-        <div style="display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
+        <div style="display:grid;grid-template-columns:repeat(4,auto);gap:4px;justify-content:end">
           <button class="btn-st ${p.status==='aberta'?'active-resolvida':''}" onclick="mudarStatus(${p.id},'aberta')" title="Em aberto"><i data-lucide="clock"></i></button>
           <button class="btn-st ${p.status==='resolvida'?'active-resolvida':''}" onclick="mudarStatus(${p.id},'resolvida')" title="Resolvida"><i data-lucide="check-circle-2"></i></button>
           <button class="btn-st ${p.status==='pendencia_cliente'?'active-pendencia_cliente':''}" onclick="mudarStatus(${p.id},'pendencia_cliente')" title="Pendência cliente"><i data-lucide="user"></i></button>
           <button class="btn-st ${p.status==='pendencia_solucao'?'active-pendencia_solucao':''}" onclick="mudarStatus(${p.id},'pendencia_solucao')" title="Pendência Solução"><i data-lucide="building-2"></i></button>
           <button class="btn-st ${p.status==='aguardando'?'active-aguardando':''}" onclick="mudarStatus(${p.id},'aguardando')" title="Aguardando"><i data-lucide="pause-circle"></i></button>
           <button class="btn-st" onclick="editarPendencia(${p.id})" title="Editar"><i data-lucide="pencil"></i></button>
-          <button class="btn-st" onclick="agendarPendencia(${p.id})" title="Criar agenda para esta pendência" style="color:#818CF8;border-color:rgba(129,140,248,.3);background:rgba(129,140,248,.08)"><i data-lucide="calendar-plus"></i></button>
+          <button class="btn-st" onclick="agendarPendencia(${p.id})" title="Criar agenda" style="color:#818CF8;border-color:rgba(129,140,248,.3);background:rgba(129,140,248,.08)"><i data-lucide="calendar-plus"></i></button>
           <button class="btn-excluir" onclick="excluirPendencia(${p.id})" title="Excluir"><i data-lucide="trash-2"></i></button>
         </div>
       </td>

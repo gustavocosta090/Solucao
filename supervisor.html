@@ -1878,6 +1878,7 @@ function renderTabela() {
       <td style="white-space:nowrap;" onclick="event.stopPropagation()">
         ${btnAcao}
         <button class="btn-ver" onclick="verOS(${o.id})">Ver</button>
+        <button class="btn-reprovar" style="background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3);color:#f87171;" onclick="event.stopPropagation();deletarOS(${o.id})" title="Deletar OS">Deletar</button>
       </td>
     </tr>`;
   }).join('');
@@ -2078,6 +2079,17 @@ async function reabrirOSModal() {
   if (!osSendoVisualizada) return;
   await mudarStatusOS(osSendoVisualizada.id, 'pendente', '');
   fecharModal();
+}
+
+async function deletarOS(id) {
+  const os = todasOSs.find(o => o.id === id);
+  const label = os ? (os.numero_os || `OS #${id}`) : `OS #${id}`;
+  if (!window.confirm(`Deletar ${label} permanentemente? Esta ação não pode ser desfeita.`)) return;
+  const { error } = await db.from('ordens_de_servico').delete().eq('id', id);
+  if (error) { showToast('Erro ao deletar: ' + error.message, 'error'); return; }
+  todasOSs = todasOSs.filter(o => o.id !== id);
+  filtrar();
+  showToast('OS deletada.', 'success');
 }
 
 async function mudarStatusOS(id, status, obs) {
