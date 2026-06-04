@@ -208,9 +208,6 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
       <option value="compra_material">Compra de Material</option>
       <option value="outros">Outros</option>
     </select>
-    <select id="f-eq" onchange="_filtrar()">
-      <option value="">Todas as equipes</option>
-    </select>
     <div class="busca-wrap">
       <i data-lucide="search"></i>
       <input type="text" id="f-busca" placeholder="Buscar cliente ou descrição..."
@@ -251,11 +248,9 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
           </select>
         </div>
 
-        <div class="mf-group">
-          <label for="m-eq">Equipe</label>
-          <select id="m-eq">
-            <option value="">Sem equipe</option>
-          </select>
+        <div class="mf-group mf-full">
+          <label for="m-tecs">Técnicos <span style="font-size:11px;color:var(--text-3);font-weight:400">(nomes completos, separados por vírgula)</span></label>
+          <input type="text" id="m-tecs" placeholder="Ex: Lucas Albuquerque Santos, Pedro Henrique Lima...">
         </div>
 
         <div class="mf-group mf-full">
@@ -376,15 +371,6 @@ async function _carregarTudo() {
   _equipes = eqData || [];
   _obras   = obData || [];
 
-  // Popula selects de equipe (filtro + modal)
-  const fEq = document.getElementById('f-eq');
-  const mEq = document.getElementById('m-eq');
-  _equipes.forEach(e => {
-    const o1 = `<option value="${e.id}">${escHtml(e.nome)}</option>`;
-    fEq.innerHTML += o1;
-    mEq.innerHTML += o1;
-  });
-
   // Popula obras no modal
   const mObra = document.getElementById('m-obra');
   const outroOpt = mObra.querySelector('option[value="outro"]');
@@ -401,7 +387,7 @@ async function _carregarTudo() {
 async function _carregarSolicitacoes() {
   const { data, error } = await db
     .from('solicitacoes')
-    .select('*, obras(nome_cliente), equipes(nome)')
+    .select('*, obras(nome_cliente)')
     .order('criado_em', { ascending: false });
 
   if (error) {
@@ -413,8 +399,7 @@ async function _carregarSolicitacoes() {
 
   _sols = (data || []).map(s => ({
     ...s,
-    _obra_nome:   s.obras?.nome_cliente || null,
-    _equipe_nome: s.equipes?.nome       || null,
+    _obra_nome: s.obras?.nome_cliente || null,
   }));
 
   _filtrar();
@@ -425,7 +410,6 @@ function _filtrar() {
   const fIni   = document.getElementById('f-ini')?.value   || '';
   const fFim   = document.getElementById('f-fim')?.value   || '';
   const fFin   = document.getElementById('f-fin')?.value   || '';
-  const fEq    = document.getElementById('f-eq')?.value    || '';
   const fBusca = (document.getElementById('f-busca')?.value || '').toLowerCase().trim();
 
   _filtradas = _sols.filter(s => {
@@ -433,9 +417,8 @@ function _filtrar() {
     if (fIni && dt < fIni) return false;
     if (fFim && dt > fFim) return false;
     if (fFin && s.finalidade !== fFin) return false;
-    if (fEq  && String(s.equipe_id) !== fEq) return false;
     if (fBusca) {
-      const haystack = [_clienteLabel(s), s.descricao || ''].join(' ').toLowerCase();
+      const haystack = [_clienteLabel(s), s.descricao || '', s.tecnicos_nomes || ''].join(' ').toLowerCase();
       if (!haystack.includes(fBusca)) return false;
     }
     return true;
@@ -451,7 +434,6 @@ function _limparFiltros() {
     if (el) el.value = '';
   });
   document.getElementById('f-fin').value = '';
-  document.getElementById('f-eq').value  = '';
   _filtrar();
 }
 
@@ -504,19 +486,19 @@ function _cardHtml(s) {
   const dtFmt     = _dtBR(s.criado_em);
   const finLabel  = FINALIDADE_LABEL[s.finalidade] || s.finalidade;
   const finCor    = FINALIDADE_COR[s.finalidade]   || 'sc-badge-outros';
-  const cliLabel  = _clienteLabel(s);
-  const eqLabel   = s._equipe_nome || '—';
-  const vtFmt     = _brl(s.valor_total);
+  const cliLabel   = _clienteLabel(s);
+  const tecsLabel  = s.tecnicos_nomes || '—';
+  const vtFmt      = _brl(s.valor_total);
   const podeApagar = _meuRole === 'coordenador';
-  const outroVis  = !s.obra_id && s.cliente_outro ? 'block' : 'none';
-  const vpFmt     = (parseFloat(s.valor_pessoa) || 0).toFixed(2);
+  const outroVis   = !s.obra_id && s.cliente_outro ? 'block' : 'none';
+  const vpFmt      = (parseFloat(s.valor_pessoa) || 0).toFixed(2);
 
   return `
 <div class="scard" data-id="${id}">
   <div class="sc-head">
     <span class="sc-badge ${escHtml(finCor)}">${escHtml(finLabel)}</span>
     <span class="sc-head-cliente">${escHtml(cliLabel)}</span>
-    <span class="sc-head-eq">· ${escHtml(eqLabel)}</span>
+    <span class="sc-head-eq">· ${escHtml(tecsLabel)}</span>
     <span class="sc-num">#${String(id).padStart(4,'0')} · ${dtFmt} · ${vtFmt}</span>
   </div>
   <div class="sc-body">
@@ -528,9 +510,9 @@ function _cardHtml(s) {
         <option value="outros"${s.finalidade==='outros'?' selected':''}>Outros</option>
       </select>
     </div>
-    <div class="sf">
-      <label>Equipe</label>
-      <select id="eq-${id}">${_equipeOpts(s.equipe_id)}</select>
+    <div class="sf" style="grid-column:span 2">
+      <label>Técnicos</label>
+      <input type="text" id="tecs-${id}" placeholder="Ex: Lucas Albuquerque Santos, Pedro Henrique Lima..." value="${escHtml(s.tecnicos_nomes||'')}">
     </div>
     <div class="sf sf-full">
       <label>Obra / Cliente</label>
@@ -602,7 +584,7 @@ function _onModalObraChange() {
 // ── Modal ─────────────────────────────────────────────────────
 function abrirModalNova() {
   document.getElementById('m-fin').value   = 'alimentacao_noturna';
-  document.getElementById('m-eq').value    = '';
+  document.getElementById('m-tecs').value  = '';
   document.getElementById('m-obra').value  = '';
   document.getElementById('m-cliout').value = '';
   document.getElementById('m-cliout').style.display = 'none';
@@ -619,9 +601,9 @@ function _fecharModal() {
 }
 
 async function _salvarModal() {
-  const finalidade    = document.getElementById('m-fin').value;
-  const equipe_id     = parseInt(document.getElementById('m-eq').value)   || null;
-  const np            = parseInt(document.getElementById('m-np').value)   || 1;
+  const finalidade     = document.getElementById('m-fin').value;
+  const tecnicos_nomes = document.getElementById('m-tecs').value.trim() || null;
+  const np             = parseInt(document.getElementById('m-np').value)   || 1;
   const vp            = parseFloat(document.getElementById('m-vp').value) || 0;
   const vt            = np * vp;
   const obraVal       = document.getElementById('m-obra').value;
@@ -651,7 +633,7 @@ async function _salvarModal() {
     .from('solicitacoes')
     .insert({
       finalidade,
-      equipe_id,
+      tecnicos_nomes,
       obra_id,
       cliente_outro,
       descricao,
@@ -673,8 +655,7 @@ async function _salvarModal() {
 
   _sols.unshift({
     ...data,
-    _obra_nome:   data.obras?.nome_cliente || null,
-    _equipe_nome: data.equipes?.nome       || null,
+    _obra_nome: data.obras?.nome_cliente || null,
   });
 
   _fecharModal();
@@ -687,21 +668,21 @@ async function salvar(id) {
   const btn = document.getElementById('btn-salvar-' + id);
   setLoading(btn, true, 'Salvar');
 
-  const finalidade    = document.getElementById('fin-' + id)?.value;
-  const equipe_id     = parseInt(document.getElementById('eq-' + id)?.value)   || null;
-  const np            = parseInt(document.getElementById('np-' + id)?.value)   || 1;
-  const vp            = parseFloat(document.getElementById('vp-' + id)?.value) || 0;
-  const vt            = np * vp;
-  const obraVal       = document.getElementById('obra-' + id)?.value || '';
-  const obra_id       = obraVal && obraVal !== 'outro' ? parseInt(obraVal) : null;
-  const cliente_outro = obraVal === 'outro'
+  const finalidade     = document.getElementById('fin-' + id)?.value;
+  const tecnicos_nomes = document.getElementById('tecs-' + id)?.value?.trim() || null;
+  const np             = parseInt(document.getElementById('np-' + id)?.value)   || 1;
+  const vp             = parseFloat(document.getElementById('vp-' + id)?.value) || 0;
+  const vt             = np * vp;
+  const obraVal        = document.getElementById('obra-' + id)?.value || '';
+  const obra_id        = obraVal && obraVal !== 'outro' ? parseInt(obraVal) : null;
+  const cliente_outro  = obraVal === 'outro'
     ? (document.getElementById('cliout-' + id)?.value?.trim() || null)
     : null;
-  const descricao     = document.getElementById('desc-' + id)?.value?.trim() || null;
+  const descricao      = document.getElementById('desc-' + id)?.value?.trim() || null;
 
   const { error } = await db
     .from('solicitacoes')
-    .update({ finalidade, equipe_id, obra_id, cliente_outro, descricao,
+    .update({ finalidade, tecnicos_nomes, obra_id, cliente_outro, descricao,
               num_pessoas: np, valor_pessoa: vp, valor_total: vt })
     .eq('id', id);
 
@@ -715,31 +696,28 @@ async function salvar(id) {
   // Atualiza memória
   const idx = _sols.findIndex(s => s.id === id);
   if (idx !== -1) {
-    const eq   = _equipes.find(e => e.id === equipe_id);
     const obra = _obras.find(o => o.id === obra_id);
     _sols[idx] = {
       ..._sols[idx],
-      finalidade, equipe_id, obra_id, cliente_outro, descricao,
+      finalidade, tecnicos_nomes, obra_id, cliente_outro, descricao,
       num_pessoas: np, valor_pessoa: vp, valor_total: vt,
-      _equipe_nome: eq?.nome            || null,
-      _obra_nome:   obra?.nome_cliente  || null,
+      _obra_nome: obra?.nome_cliente || null,
     };
   }
 
   // Atualiza header do card sem re-render completo
   const card = document.querySelector(`.scard[data-id="${id}"]`);
   if (card && idx !== -1) {
-    const finLabel  = FINALIDADE_LABEL[finalidade] || finalidade;
-    const finCor    = FINALIDADE_COR[finalidade]   || 'sc-badge-outros';
-    const cliLabel  = obra_id
+    const finLabel = FINALIDADE_LABEL[finalidade] || finalidade;
+    const finCor   = FINALIDADE_COR[finalidade]   || 'sc-badge-outros';
+    const cliLabel = obra_id
       ? (_obras.find(o => o.id === obra_id)?.nome_cliente || '—')
       : (cliente_outro || '—');
-    const eqLabel   = _equipes.find(e => e.id === equipe_id)?.nome || '—';
-    const dtFmt     = _dtBR(_sols[idx]?.criado_em);
+    const dtFmt    = _dtBR(_sols[idx]?.criado_em);
     card.querySelector('.sc-head').innerHTML =
       `<span class="sc-badge ${finCor}">${escHtml(finLabel)}</span>` +
       `<span class="sc-head-cliente">${escHtml(cliLabel)}</span>` +
-      `<span class="sc-head-eq">· ${escHtml(eqLabel)}</span>` +
+      `<span class="sc-head-eq">· ${escHtml(tecnicos_nomes || '—')}</span>` +
       `<span class="sc-num">#${String(id).padStart(4,'0')} · ${dtFmt} · ${_brl(vt)}</span>`;
   }
 
@@ -857,7 +835,7 @@ async function gerarPDF(id) {
   // ── Bloco de informações ──────────────────────────────────────
   const infoRows = [
     ['CLIENTE / OBRA', _clienteLabel(s)],
-    ['EQUIPE',         s._equipe_nome || '—'],
+    ['TÉCNICOS',       s.tecnicos_nomes || '—'],
   ];
   if (s.descricao) infoRows.push(['DESCRIÇÃO', s.descricao]);
 

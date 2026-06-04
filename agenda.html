@@ -1407,6 +1407,8 @@ async function init() {
     modoVisualizacao = true;
     const btnNovo = document.getElementById('btn-novo');
     if (btnNovo) btnNovo.style.display = 'none';
+    const btnBloqueio = document.getElementById('btn-bloqueio');
+    if (btnBloqueio) btnBloqueio.style.display = 'none';
   }
 
   // Inicializa date picker com hoje
@@ -2511,25 +2513,36 @@ async function _verificarSolicitacaoAlimentacao(payload, dataStr, horaInicio) {
   const numPessoas = Math.max(pessoas.length, 1);
   const valorTotal = valorPorPessoa * numPessoas;
 
-  const obraObj    = obras.find(o => o.id === payload.obra_id);
-  const obraLabel  = obraObj?.nome_cliente || payload.cliente_outro || '—';
-  const equipeId   = tecnicoEquipes.find(e => e.tecnico_id === payload.tecnico_id)?.equipe_id || null;
-  const equipeLabel = equipesDisponiveis.find(e => e.id === equipeId)?.nome || '—';
-  const criado_em  = new Date().toISOString();
+  const obraObj   = obras.find(o => o.id === payload.obra_id);
+  const obraLabel = obraObj?.nome_cliente || payload.cliente_outro || '—';
+  const criado_em = new Date().toISOString();
+
+  // Busca nome_completo dos técnicos desta equipe (query leve, separada da agenda)
+  const tecIds = [payload.tecnico_id, payload.auxiliar_id,
+                  payload.auxiliar2_id, payload.auxiliar3_id].filter(Boolean);
+  const { data: tecsFull } = await db.from('tecnicos')
+    .select('id, nome, nome_completo')
+    .in('id', tecIds);
+  const tecMap = {};
+  (tecsFull || []).forEach(t => { tecMap[t.id] = t; });
+  const tecnicosNomes = tecIds
+    .map(id => { const t = tecMap[id]; return t?.nome_completo || t?.nome || ''; })
+    .filter(Boolean)
+    .join(', ');
 
   showToast('Gerando PDF da Solicitação...', 'info', 8000);
 
   // Salva no banco (não bloqueia o PDF se falhar)
   const { data: sol } = await db.from('solicitacoes').insert({
-    finalidade:    'alimentacao_noturna',
-    obra_id:       payload.obra_id || null,
-    cliente_outro: payload.obra_id ? null : (payload.cliente_outro || null),
-    equipe_id:     equipeId,
-    descricao:     payload.servico || null,
-    num_pessoas:   numPessoas,
-    valor_pessoa:  valorPorPessoa,
-    valor_total:   valorTotal,
-    criado_por:    _authUserId,
+    finalidade:     'alimentacao_noturna',
+    obra_id:        payload.obra_id || null,
+    cliente_outro:  payload.obra_id ? null : (payload.cliente_outro || null),
+    tecnicos_nomes: tecnicosNomes || null,
+    descricao:      payload.servico || null,
+    num_pessoas:    numPessoas,
+    valor_pessoa:   valorPorPessoa,
+    valor_total:    valorTotal,
+    criado_por:     _authUserId,
     criado_em,
   }).select('id').single();
 
@@ -2537,7 +2550,7 @@ async function _verificarSolicitacaoAlimentacao(payload, dataStr, horaInicio) {
     id:             sol?.id || 0,
     criado_em,
     obraLabel,
-    equipeLabel,
+    tecnicosNomes:  tecnicosNomes || '—',
     descricao:      payload.servico || null,
     numPessoas,
     valorPorPessoa,
@@ -2623,7 +2636,7 @@ async function _gerarPDFSolicitacaoAgenda(s) {
   y += 22;
 
   // ── Informações ───────────────────────────────────────────────
-  const infoRows = [['CLIENTE / OBRA', s.obraLabel], ['EQUIPE', s.equipeLabel]];
+  const infoRows = [['CLIENTE / OBRA', s.obraLabel], ['TÉCNICOS', s.tecnicosNomes || '—']];
   if (s.descricao) infoRows.push(['DESCRIÇÃO', s.descricao]);
 
   infoRows.forEach((row, i) => {
