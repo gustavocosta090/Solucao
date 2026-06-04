@@ -675,6 +675,10 @@
       <label>CPF <span style="font-size:11px;color:var(--text-3);font-weight:400">(usado no PDF de estoque)</span></label>
       <input type="text" id="editCpf" placeholder="000.000.000-00" maxlength="14">
     </div>
+    <div class="form-group">
+      <label>Nome completo <span style="font-size:11px;color:var(--text-3);font-weight:400">(usado nas Solicitações)</span></label>
+      <input type="text" id="editNomeCompleto" placeholder="Ex: Lucas Albuquerque Santos">
+    </div>
     <div class="form-group" style="margin-top:8px;">
       <label>Equipe(s)</label>
       <div class="equipes-grid" id="equipesEdit"></div>
@@ -903,9 +907,9 @@ async function abrirEditar(tecnicoId) {
   const usuario = tecnicos.find(t => Number(t.id) === Number(tecnicoId));
   if (!usuario) return;
 
-  // Busca cpf diretamente da tabela tecnicos
-  const { data: tecData } = await db.from('tecnicos').select('cpf').eq('id', tecnicoId).single();
-  if (tecData) usuario.cpf = tecData.cpf;
+  // Busca cpf e nome_completo diretamente da tabela tecnicos
+  const { data: tecData } = await db.from('tecnicos').select('cpf, nome_completo').eq('id', tecnicoId).single();
+  if (tecData) { usuario.cpf = tecData.cpf; usuario.nome_completo = tecData.nome_completo; }
 
   editandoUsuario = usuario;
   document.getElementById('editNome').value = usuario.nome || '';
@@ -914,6 +918,7 @@ async function abrirEditar(tecnicoId) {
   document.getElementById('editUsuario').value = usuario.username || '';
   document.getElementById('editSenha').value = '';
   document.getElementById('editCpf').value = usuario.cpf || '';
+  document.getElementById('editNomeCompleto').value = usuario.nome_completo || '';
   const selecionadas = (usuario.tecnico_equipes || [])
     .map(te => Number(te.equipes?.id || te.equipe_id)).filter(Boolean);
   renderEquipesCheckboxes('equipesEdit', selecionadas);
@@ -950,9 +955,10 @@ async function confirmarEdicao() {
       password,
     });
 
-    // Salva CPF diretamente na tabela tecnicos
-    const cpf = document.getElementById('editCpf').value.trim() || null;
-    await db.from('tecnicos').update({ cpf }).eq('id', editandoUsuario.id);
+    // Salva CPF e nome completo diretamente na tabela tecnicos
+    const cpf           = document.getElementById('editCpf').value.trim()           || null;
+    const nome_completo = document.getElementById('editNomeCompleto').value.trim()   || null;
+    await db.from('tecnicos').update({ cpf, nome_completo }).eq('id', editandoUsuario.id);
 
     // Update equipes: delete all then re-insert selected
     const equipeIds = getSelectedEquipes('equipesEdit');

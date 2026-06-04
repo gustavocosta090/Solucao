@@ -783,31 +783,6 @@
     </div>
   </div>
 
-  <!-- VIAGENS -->
-  <div style="margin-bottom:32px">
-    <div class="section-label" style="margin-bottom:12px">Viagens e deslocamentos</div>
-    <div class="assist-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
-      <div class="assist-card">
-        <div class="assist-icon" style="background:rgba(129,140,248,.12)"><i data-lucide="plane"></i></div>
-        <div><div class="assist-num" id="vg-total" style="color:#818cf8">—</div><div class="assist-desc">Viagens no período</div></div>
-      </div>
-      <div class="assist-card">
-        <div class="assist-icon" style="background:rgba(251,191,36,.12)"><i data-lucide="calendar-days"></i></div>
-        <div><div class="assist-num" id="vg-dias" style="color:#fbbf24">—</div><div class="assist-desc">Total de dias</div></div>
-      </div>
-      <div class="assist-card">
-        <div class="assist-icon" style="background:rgba(62,207,142,.12)"><i data-lucide="utensils"></i></div>
-        <div><div class="assist-num" id="vg-ref" style="color:var(--primary)">—</div><div class="assist-desc">Saldo refeição total</div></div>
-      </div>
-      <div class="assist-card">
-        <div class="assist-icon" style="background:rgba(244,114,182,.12)"><i data-lucide="hotel"></i></div>
-        <div><div class="assist-num" id="vg-hotel" style="color:#f472b6">—</div><div class="assist-desc">Com hotel</div></div>
-      </div>
-    </div>
-    <!-- Lista resumida das viagens -->
-    <div id="vg-lista" style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;overflow:hidden"></div>
-  </div>
-
   <!-- ASSISTÊNCIAS -->
   <div>
     <div class="section-label" style="margin-bottom:12px">Assistências técnicas</div>
@@ -1381,40 +1356,6 @@ function setPeriodo(ano, btn) {
 }
 
 // ── Render all ─────────────────────────────────────────────────
-function renderViagens(d) {
-  const v = d.viagens;
-  counter(document.getElementById('vg-total'), v.total, fmt.int, 600);
-  counter(document.getElementById('vg-dias'),  v.dias,  fmt.int, 600);
-  counter(document.getElementById('vg-ref'),   v.ref,   fmt.brl, 700);
-  counter(document.getElementById('vg-hotel'), v.hotel, fmt.int, 600);
-
-  const lista = document.getElementById('vg-lista');
-  if (!v.grupos.length) {
-    lista.innerHTML = '<div style="padding:18px;text-align:center;color:var(--text-3);font-size:13px">Nenhuma viagem no período.</div>';
-    return;
-  }
-  lista.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
-    <thead>
-      <tr style="background:var(--surface-2)">
-        <th style="padding:10px 16px;text-align:left;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Cliente / Obra</th>
-        <th style="padding:10px 16px;text-align:center;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Dias</th>
-        <th style="padding:10px 16px;text-align:left;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Cidade</th>
-        <th style="padding:10px 16px;text-align:center;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Hotel</th>
-        <th style="padding:10px 16px;text-align:right;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Saldo Ref.</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${v.grupos.map((g,i) => `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
-        <td style="padding:10px 16px;font-weight:600;color:var(--text-1)">${escHtml(g.cliente)}</td>
-        <td style="padding:10px 16px;text-align:center;color:var(--text-2)">${g.dias}</td>
-        <td style="padding:10px 16px;color:var(--text-2)">${escHtml(g.cidade)}</td>
-        <td style="padding:10px 16px;text-align:center">${g.hotel ? '<span style="color:#f472b6;font-weight:700">✓</span>' : '<span style="color:var(--text-3)">—</span>'}</td>
-        <td style="padding:10px 16px;text-align:right;font-weight:600;color:var(--primary)">${g.saldo_ref > 0 ? fmt.brl(g.saldo_ref) : '—'}</td>
-      </tr>`).join('')}
-    </tbody>
-  </table>`;
-}
-
 function renderAll(d) {
   renderKPIs(d);
   renderStatus(d);
@@ -1426,7 +1367,6 @@ function renderAll(d) {
   renderArquitetosValor(d);
   renderComposicao(d);
   renderPctObras(d);
-  renderViagens(d);
   renderAssist(d);
 }
 </script>
