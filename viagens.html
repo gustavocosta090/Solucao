@@ -417,60 +417,99 @@ function _pdfViagem(g){
   const cli=(ag0._ob&&ag0._ob.nome_cliente)||ag0.cliente_outro||'—';
   const tIds=[ag0.tecnico_id,ag0.auxiliar_id,ag0.auxiliar2_id,ag0.auxiliar3_id].filter(Boolean);
   const nPessoas=tIds.length||1,nDias=g.membros.length;
-  const tNm=tIds.map(id=>{const t=_tecs.find(t=>t.id===id);return t?t.nome:'';}).filter(Boolean).join(', ')||'—';
-  const fmt=d=>{const x=new Date(d+'T12:00');return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0');};
-  const periodo=ag0.data===agN.data?fmt(ag0.data)+'/'+new Date(ag0.data+'T12:00').getFullYear():fmt(ag0.data)+' — '+fmt(agN.data)+'/'+new Date(agN.data+'T12:00').getFullYear();
-  const saldoPessoa=parseFloat(det.saldo_refeicao)||0;
-  const totalAlim=saldoPessoa*nPessoas*nDias;
+  const tNm=tIds.map(id=>{const t=_tecs.find(t=>t.id===id);return t?t.nome:'';}).filter(Boolean).join(' · ')||'—';
+  const fmtD=d=>{const x=new Date(d+'T12:00');return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0');};
+  const fmtFull=d=>{const x=new Date(d+'T12:00');return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear();};
+  const periodo=ag0.data===agN.data?fmtFull(ag0.data):fmtD(ag0.data)+' a '+fmtFull(agN.data);
+  const saldo=parseFloat(det.saldo_refeicao)||0;
+  const totalAlim=saldo*nPessoas*nDias;
   const isHotel=det.hotel===true;
   const hospText=(!isHotel&&det.hotel_obs)?det.hotel_obs:null;
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
-  doc.setFillColor(15,15,15);doc.rect(0,0,210,28,'F');
-  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15);
-  doc.text('Solucao Tecnica — Autorizacao de Viagem',14,12);
-  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(150,150,150);
-  doc.text('Gerado em '+new Date().toLocaleString('pt-BR'),14,20);
-  let y=36;
-  doc.setFillColor(240,255,248);doc.rect(10,y-4,190,14,'F');
+  const PW=210,M=14,CW=PW-M*2; // usable width = 182mm
+
+  // Header
+  doc.setFillColor(15,15,15);doc.rect(0,0,PW,32,'F');
+  doc.setFillColor(62,207,142);doc.rect(0,30,PW,3,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(255,255,255);
+  doc.text('Solucao Tecnica',M,14);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(62,207,142);
+  doc.text('Autorizacao de Viagem',M,23);
+  doc.setFontSize(8);doc.setTextColor(140,140,140);
+  doc.text('Gerado em '+new Date().toLocaleString('pt-BR'),PW-M,23,{align:'right'});
+
+  let y=40;
+
+  // Banner cliente
+  doc.setFillColor(240,255,248);doc.rect(M,y,CW,16,'F');
+  doc.setFillColor(62,207,142);doc.rect(M,y,3,16,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(10,80,40);
-  doc.text(cli.slice(0,55),14,y+5);y+=18;
-  const campo=(lbl,val)=>{
-    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(130,130,130);doc.text(lbl.toUpperCase(),14,y);
-    doc.setFont('helvetica','normal');doc.setFontSize(12);doc.setTextColor(20,20,20);doc.text(String(val||'—').slice(0,80),14,y+6);y+=18;
-  };
-  campo('Periodo',periodo+(nDias>1?' ('+nDias+' dias)':''));
-  campo('Tecnico(s)',tNm);
-  campo('Cidade de destino',det.cidade||'—');
-  if(ag0._ob&&ag0._ob.endereco) campo('Endereco / Obra',ag0._ob.endereco);
-  y+=4;
-  if(isHotel){
-    doc.setFillColor(235,252,242);doc.rect(10,y-4,190,14,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(10,90,40);
-    doc.text('Hotel necessario (diaria inclusa)',14,y+4);y+=18;
-  }else if(hospText){
-    doc.setFillColor(248,248,255);doc.rect(10,y-4,190,14,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(40,40,120);
-    doc.text('Hospedagem: '+hospText.slice(0,70),14,y+4);y+=18;
-  }else{
-    doc.setFillColor(248,248,248);doc.rect(10,y-4,190,14,'F');
-    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(120,120,120);
-    doc.text('Sem hospedagem',14,y+4);y+=18;
-  }
-  y+=6;
-  doc.setFillColor(255,252,220);doc.rect(10,y-4,190,saldoPessoa?26:14,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(80,60,0);
-  doc.text('Alimentacao: '+_brl(saldoPessoa)+' / pessoa / dia',14,y+4);
-  if(saldoPessoa){
-    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,80,20);
-    doc.text(_brl(saldoPessoa)+' x '+nPessoas+' pessoa'+(nPessoas>1?'s':'')+(nDias>1?' x '+nDias+' dias':'')+' = '+_brl(totalAlim)+' total',14,y+13);
-    y+=8;
-  }
+  doc.text(cli,M+7,y+10.5);
   y+=22;
-  doc.setDrawColor(180,180,180);doc.setLineWidth(.3);
-  doc.line(14,y,90,y);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(130,130,130);
-  doc.text('Gestor / Aprovacao',14,y+5);
+
+  // Grid de informacoes
+  const LBL=40; // largura coluna label
+  const infoRows=[
+    ['Periodo',periodo+(nDias>1?' ('+nDias+' dia'+(nDias>1?'s)':')'):'')],
+    ['Tecnico(s)',tNm],
+    ['Cidade',det.cidade||'—'],
+  ];
+  if(ag0._ob&&ag0._ob.endereco) infoRows.push(['Endereco',ag0._ob.endereco]);
+
+  doc.autoTable({
+    startY:y,body:infoRows,
+    margin:{left:M,right:M},
+    styles:{fontSize:10,cellPadding:{top:5,right:6,bottom:5,left:6},textColor:[25,25,25],fillColor:[255,255,255],lineColor:[235,235,235],lineWidth:0.2,valign:'middle'},
+    columnStyles:{0:{cellWidth:LBL,fontStyle:'bold',textColor:[110,110,110],fontSize:8},1:{cellWidth:CW-LBL}},
+    alternateRowStyles:{fillColor:[249,251,253]},showHead:false,
+  });
+  y=doc.lastAutoTable.finalY+10;
+
+  // Hospedagem
+  if(isHotel){
+    doc.setFillColor(232,252,240);doc.rect(M,y,CW,15,'F');
+    doc.setFillColor(62,207,142);doc.rect(M,y,3,15,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(10,90,40);
+    doc.text('Hotel necessario  —  diaria inclusa',M+7,y+10);y+=23;
+  }else if(hospText){
+    doc.setFillColor(238,238,255);doc.rect(M,y,CW,15,'F');
+    doc.setFillColor(100,100,220);doc.rect(M,y,3,15,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(40,40,140);
+    doc.text('Hospedagem: '+hospText,M+7,y+10);y+=23;
+  }else{
+    doc.setFillColor(245,245,245);doc.rect(M,y,CW,15,'F');
+    doc.setFillColor(180,180,180);doc.rect(M,y,3,15,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(130,130,130);
+    doc.text('Sem hospedagem',M+7,y+10);y+=23;
+  }
+
+  // Alimentacao
+  if(saldo){
+    const boxH=30;
+    doc.setFillColor(255,252,218);doc.rect(M,y,CW,boxH,'F');
+    doc.setFillColor(200,150,0);doc.rect(M,y,3,boxH,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(90,65,0);
+    doc.text('Alimentacao',M+7,y+8);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(110,85,10);
+    const calc=_brl(saldo)+' x '+nPessoas+' pessoa'+(nPessoas>1?'s':'')+(nDias>1?' x '+nDias+' dias':'');
+    doc.text(calc,M+7,y+17);
+    doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(80,55,0);
+    doc.text(_brl(totalAlim),PW-M,y+21,{align:'right'});
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(130,100,20);
+    doc.text('TOTAL',PW-M,y+27,{align:'right'});
+    y+=38;
+  }
+
+  // Assinatura
+  y+=8;
+  doc.setDrawColor(180,180,180);doc.setLineWidth(0.3);
+  doc.line(M,y,M+75,y);
+  doc.line(M+90,y,PW-M,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(120,120,120);
+  doc.text('Gestor / Aprovacao',M,y+5);
+  doc.text('Data: ______ / ______ / __________',M+90,y+5);
+
   doc.save('Viagem-'+cli.replace(/[^a-zA-Z0-9]/g,'-').slice(0,25)+'-'+ag0.data+'.pdf');
 }
 
@@ -531,11 +570,11 @@ function exportarSemana(){
     alternateRowStyles:{fillColor:[248,250,252]},
     columnStyles:{
       0:{cellWidth:28,fontStyle:'bold',textColor:[40,40,40]},
-      1:{cellWidth:54},
+      1:{cellWidth:50},
       2:{cellWidth:52},
-      3:{cellWidth:30},
+      3:{cellWidth:28},
       4:{cellWidth:38},
-      5:{cellWidth:26,halign:'center'},
+      5:{cellWidth:32,halign:'center'},
       6:{cellWidth:40,fontStyle:'bold',textColor:[10,70,35]},
     },
     didParseCell:function(data){
@@ -543,14 +582,15 @@ function exportarSemana(){
     },
   });
 
-  // Linha de total geral
+  // Linha de total — largura exata da tabela (soma das colunas = 268mm)
+  const TW=28+50+52+28+38+32+40; // 268
   const yT=doc.lastAutoTable.finalY;
   doc.setFillColor(240,253,246);
-  doc.rect(M,yT,PW-M*2,10,'F');
+  doc.rect(M,yT,TW,10,'F');
   doc.setDrawColor(62,207,142);doc.setLineWidth(0.4);
-  doc.line(M,yT,PW-M,yT);doc.line(M,yT+10,PW-M,yT+10);
+  doc.line(M,yT,M+TW,yT);doc.line(M,yT+10,M+TW,yT+10);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,80,40);
-  doc.text('Total geral de alimentacao: '+_brl(totalGeral),PW-M,yT+6.5,{align:'right'});
+  doc.text('Total geral de alimentacao: '+_brl(totalGeral),M+TW,yT+6.5,{align:'right'});
 
   // Assinatura
   const yS=yT+28;
