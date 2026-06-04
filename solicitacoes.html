@@ -754,14 +754,16 @@ async function _logoBase64() {
   if (_logoCached) return _logoCached;
   return new Promise(resolve => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
+        // Limita a 320px — evita PDF de centenas de páginas por imagem enorme
+        const MAX = 320;
+        const scale = img.width > MAX ? MAX / img.width : 1;
         const c = document.createElement('canvas');
-        c.width = img.width;
-        c.height = img.height;
-        c.getContext('2d').drawImage(img, 0, 0);
-        _logoCached = c.toDataURL('image/png');
+        c.width  = Math.round(img.width  * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        _logoCached = c.toDataURL('image/jpeg', 0.88);
         resolve(_logoCached);
       } catch { resolve(null); }
     };
@@ -781,107 +783,111 @@ async function gerarPDF(id) {
   const G   = [62, 207, 142];
   const BLK = [26, 26, 26];
   const GR2 = [100, 100, 100];
-  const GR3 = [160, 160, 160];
-  const BDR = [210, 210, 210];
-  const ALT = [248, 249, 250];
-  const SHD = [232, 248, 241];
+  const GR3 = [150, 150, 150];
+  const BDR = [218, 218, 218];
+  const ALT = [247, 248, 249];
+  const SHD = [233, 248, 242];
   const WHT = [255, 255, 255];
 
-  const corBadge = s.finalidade === 'alimentacao_noturna' ? [245,158,11]
-    : s.finalidade === 'compra_material' ? [99,102,241]
-    : [100,100,100];
+  const corBadge = s.finalidade === 'alimentacao_noturna' ? [245, 158, 11]
+    : s.finalidade === 'compra_material' ? [99, 102, 241]
+    : [100, 100, 100];
   const finLabel = FINALIDADE_LABEL[s.finalidade] || s.finalidade;
+  const hoje = new Date().toLocaleDateString('pt-BR');
 
-  // Helper: linha de tabela com quebra automática
+  // ── Linha de tabela com quebra automática ─────────────────────
   function row(y, label, value, alt) {
-    const LW = 56, VW = W - LW;
-    const vLines = doc.splitTextToSize(String(value || '—'), VW - 8);
-    const rh = Math.max(9, vLines.length * 5 + 5);
+    const LW = 58, VW = W - LW - 8;
+    const lines = doc.splitTextToSize(String(value || '—'), VW);
+    const rh = Math.max(9.5, lines.length * 5.2 + 4.5);
     if (alt) { doc.setFillColor(...ALT); doc.rect(M, y, W, rh, 'F'); }
-    doc.setDrawColor(...BDR); doc.setLineWidth(0.25);
+    doc.setDrawColor(...BDR); doc.setLineWidth(0.2);
     doc.rect(M, y, W, rh, 'S');
     doc.line(M + LW, y, M + LW, y + rh);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...GR2);
-    doc.text(label, M + 3, y + 6);
+    doc.text(label, M + 4, y + 6.5);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...BLK);
-    vLines.forEach((ln, i) => doc.text(ln, M + LW + 4, y + 6 + i * 5));
+    lines.forEach((ln, i) => doc.text(ln, M + LW + 4, y + 6.5 + i * 5.2));
     return rh;
   }
 
-  // Helper: cabeçalho de seção
+  // ── Cabeçalho de seção ────────────────────────────────────────
   function secao(y, titulo) {
-    doc.setFillColor(...SHD); doc.rect(M, y, W, 7.5, 'F');
-    doc.setFillColor(...G);   doc.rect(M, y, 3,   7.5, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...BLK);
-    doc.text(titulo, M + 7, y + 5.5);
-    return y + 7.5;
+    doc.setFillColor(...SHD); doc.rect(M, y, W, 8, 'F');
+    doc.setFillColor(...G);   doc.rect(M, y, 3, 8, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...BLK);
+    doc.text(titulo, M + 8, y + 5.8);
+    return y + 8;
   }
 
-  // ── Cabeçalho ────────────────────────────────────────────────
-  doc.setFillColor(...G); doc.rect(0, 0, 4, 40, 'F');
+  // ── Cabeçalho do documento ────────────────────────────────────
+  doc.setFillColor(...G); doc.rect(0, 0, 4, 42, 'F');
   const logoData = await _logoBase64();
-  if (logoData) doc.addImage(logoData, 'PNG', M, 8, 38, 22);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...BLK);
-  doc.text('SOLICITAÇÃO DE VERBA', PW - M, 16, { align: 'right' });
+  if (logoData) doc.addImage(logoData, 'JPEG', M, 9, 38, 22);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(...BLK);
+  doc.text('SOLICITAÇÃO DE VERBA', PW - M, 17, { align: 'right' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GR2);
-  doc.text('Solução Técnica – Automação Residencial', PW - M, 23, { align: 'right' });
-  doc.text('Nº ' + String(s.id).padStart(4,'0') + '   ·   ' + _dtBR(s.criado_em), PW - M, 30, { align: 'right' });
-  doc.setDrawColor(...G); doc.setLineWidth(1); doc.line(0, 40, PW, 40);
+  doc.text('Solução Técnica – Automação Residencial', PW - M, 24, { align: 'right' });
+  doc.text('Nº ' + String(s.id).padStart(4, '0') + '   ·   ' + hoje, PW - M, 31, { align: 'right' });
+  doc.setDrawColor(...G); doc.setLineWidth(1.2); doc.line(0, 42, PW, 42);
 
-  let y = 48;
+  let y = 51;
 
   // ── Badge de finalidade ───────────────────────────────────────
-  doc.setFillColor(...corBadge); doc.roundedRect(M, y, W * 0.66, 8.5, 1.5, 1.5, 'F');
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...WHT);
-  doc.text(finLabel.toUpperCase(), M + 5, y + 6);
-  y += 15;
+  doc.setFillColor(...corBadge); doc.rect(M, y, W * 0.66, 9, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...WHT);
+  doc.text(finLabel.toUpperCase(), M + 5, y + 6.3);
+  y += 16;
 
-  // ── Seção: Dados da Solicitação ───────────────────────────────
+  // ── Dados da Solicitação ──────────────────────────────────────
   y = secao(y, 'DADOS DA SOLICITAÇÃO');
   y += row(y, 'Cliente / Obra', _clienteLabel(s), false);
   if (s.tecnicos_nomes) y += row(y, 'Técnicos', s.tecnicos_nomes, true);
   if (s.descricao)      y += row(y, 'Descrição', s.descricao, !s.tecnicos_nomes);
   y += 8;
 
-  // ── Seção: Valores ────────────────────────────────────────────
+  // ── Valores ───────────────────────────────────────────────────
   y = secao(y, 'VALORES');
   y += row(y, 'N.º de Pessoas',   String(s.num_pessoas || 1), false);
   y += row(y, 'Valor por Pessoa', _brl(s.valor_pessoa), true);
-  y += row(y, 'Cálculo',          (s.num_pessoas||1) + ' pessoa(s) × ' + _brl(s.valor_pessoa) + ' = ' + _brl(s.valor_total), false);
-  y += 5;
+  y += row(y, 'Total',
+    (s.num_pessoas || 1) + ' pessoa(s) × ' + _brl(s.valor_pessoa) + ' = ' + _brl(s.valor_total),
+    false);
+  y += 6;
 
-  // ── Total ─────────────────────────────────────────────────────
-  doc.setFillColor(...G); doc.roundedRect(M, y, W, 12, 2, 2, 'F');
+  // ── Total geral ───────────────────────────────────────────────
+  doc.setFillColor(...G); doc.rect(M, y, W, 13, 'F');
   doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...WHT);
-  doc.text('TOTAL GERAL', M + 6, y + 8.5);
-  doc.setFontSize(13); doc.text(_brl(s.valor_total), PW - M - 4, y + 8.5, { align: 'right' });
-  y += 20;
+  doc.text('TOTAL GERAL', M + 6, y + 9);
+  doc.setFontSize(14); doc.text(_brl(s.valor_total), PW - M - 4, y + 9, { align: 'right' });
+  y += 22;
 
   // ── Autorização ───────────────────────────────────────────────
-  const sigY = Math.max(y + 6, 228);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...BLK);
+  const sigY = Math.max(y + 8, 230);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...BLK);
   doc.text('AUTORIZAÇÃO', M, sigY);
-  doc.setDrawColor(...BDR); doc.setLineWidth(0.4); doc.line(M, sigY + 2, PW - M, sigY + 2);
+  doc.setDrawColor(...BDR); doc.setLineWidth(0.5); doc.line(M, sigY + 2.5, PW - M, sigY + 2.5);
 
-  doc.setDrawColor(160, 160, 160); doc.setLineWidth(0.5);
-  doc.line(M, sigY + 18, M + 108, sigY + 18);
-  doc.line(PW - M - 50, sigY + 18, PW - M, sigY + 18);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GR3);
-  doc.text('Assinatura do Gestor Responsável', M, sigY + 23);
-  doc.text('Data', PW - M - 50, sigY + 23);
-  doc.line(M, sigY + 35, M + 108, sigY + 35);
-  doc.text('Nome por extenso', M, sigY + 40);
+  doc.setDrawColor(...GR3); doc.setLineWidth(0.6);
+  doc.line(M, sigY + 22, M + 110, sigY + 22);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GR2);
+  doc.text('Assinatura do Gestor Responsável', M, sigY + 27.5);
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...BLK);
+  doc.text(hoje, PW - M, sigY + 22, { align: 'right' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GR2);
+  doc.text('Data', PW - M, sigY + 27.5, { align: 'right' });
 
   // ── Rodapé ────────────────────────────────────────────────────
-  doc.setFillColor(...G); doc.rect(0, PH - 8, PW, 8, 'F');
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...WHT);
-  doc.text('Solução Técnica  –  Automação Residencial', PW / 2, PH - 3, { align: 'center' });
+  doc.setFillColor(...G); doc.rect(0, PH - 9, PW, 9, 'F');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...WHT);
+  doc.text('Solução Técnica  –  Automação Residencial', PW / 2, PH - 3.5, { align: 'center' });
 
   // ── Download ──────────────────────────────────────────────────
   const nomeArquivo = _clienteLabel(s)
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-zA-Z0-9 ]/g, '').trim().slice(0, 28).replace(/ +/g, '_');
-  doc.save(`Solicitacao_${String(s.id).padStart(4,'0')}_${nomeArquivo}_${_dtBR(s.criado_em).replace(/\//g,'-')}.pdf`);
+  doc.save('Solicitacao_' + String(s.id).padStart(4, '0') + '_' + nomeArquivo + '_' + hoje.replace(/\//g, '-') + '.pdf');
 }
 
 // ── Fechar modal com ESC ──────────────────────────────────────
