@@ -2450,6 +2450,12 @@ async function salvarAgendamento() {
 
     const eraEdicao = !!agEditandoId;
     fecharModal();
+
+    // Verifica se precisa gerar solicitação de alimentação (noturno, FDS ou feriado)
+    if (!eraEdicao && status !== 'viagem') {
+      await _verificarSolicitacaoAlimentacao(basePayload, data, inicio);
+    }
+
     if (!eraEdicao && tipoServico === 'assistencia') {
       window.location.href = 'assistencia.html';
     } else if (!eraEdicao && status === 'viagem') {
@@ -2462,6 +2468,256 @@ async function salvarAgendamento() {
   btn.disabled  = false;
   btn.innerHTML = '<i data-lucide="save"></i> Salvar';
   lucide.createIcons();
+}
+
+// ── Solicitação de Alimentação automática ────────────────────
+
+function _isApos1730(horaStr) {
+  if (!horaStr) return false;
+  const partes = String(horaStr).slice(0, 5).split(':');
+  const h = parseInt(partes[0], 10);
+  const m = parseInt(partes[1], 10) || 0;
+  return h > 17 || (h === 17 && m >= 30);
+}
+
+async function _verificarSolicitacaoAlimentacao(payload, dataStr, horaInicio) {
+  const dow           = new Date(dataStr + 'T12:00:00').getDay(); // 0=Dom 6=Sab
+  const isFimDeSemana = dow === 0 || dow === 6;
+  const isBloqueado   = !!diasBloqueados[dataStr];
+  const isNoturno     = _isApos1730(horaInicio);
+
+  if (!isNoturno && !isFimDeSemana && !isBloqueado) return;
+
+  const querSolicitar = await new Promise(resolve => {
+    confirmModal(
+      'Este agendamento é noturno ou em dia diferenciado.\nDeseja gerar a Solicitação de Alimentação?',
+      () => resolve(true),
+      () => resolve(false)
+    );
+  });
+  if (!querSolicitar) return;
+
+  const almocoPlusJanta = await new Promise(resolve => {
+    confirmModal(
+      'Almoço e Janta?\n\nSim → R$ 70,00 por pessoa (almoço + janta)\nNão → R$ 35,00 por pessoa (uma refeição)',
+      () => resolve(true),
+      () => resolve(false)
+    );
+  });
+
+  const valorPorPessoa = almocoPlusJanta ? 70 : 35;
+  const pessoas = [payload.tecnico_id, payload.auxiliar_id,
+                   payload.auxiliar2_id, payload.auxiliar3_id].filter(Boolean);
+  const numPessoas = Math.max(pessoas.length, 1);
+  const valorTotal = valorPorPessoa * numPessoas;
+
+  const obraObj    = obras.find(o => o.id === payload.obra_id);
+  const obraLabel  = obraObj?.nome_cliente || payload.cliente_outro || '—';
+  const equipeId   = tecnicoEquipes.find(e => e.tecnico_id === payload.tecnico_id)?.equipe_id || null;
+  const equipeLabel = equipesDisponiveis.find(e => e.id === equipeId)?.nome || '—';
+  const criado_em  = new Date().toISOString();
+
+  showToast('Gerando PDF da Solicitação...', 'info', 8000);
+
+  // Salva no banco (não bloqueia o PDF se falhar)
+  const { data: sol } = await db.from('solicitacoes').insert({
+    finalidade:    'alimentacao_noturna',
+    obra_id:       payload.obra_id || null,
+    cliente_outro: payload.obra_id ? null : (payload.cliente_outro || null),
+    equipe_id:     equipeId,
+    descricao:     payload.servico || null,
+    num_pessoas:   numPessoas,
+    valor_pessoa:  valorPorPessoa,
+    valor_total:   valorTotal,
+    criado_por:    _authUserId,
+    criado_em,
+  }).select('id').single();
+
+  await _gerarPDFSolicitacaoAgenda({
+    id:             sol?.id || 0,
+    criado_em,
+    obraLabel,
+    equipeLabel,
+    descricao:      payload.servico || null,
+    numPessoas,
+    valorPorPessoa,
+    valorTotal,
+    almocoPlusJanta,
+  });
+}
+
+let _logoSolAgenda = null;
+async function _logoBase64Agenda() {
+  if (_logoSolAgenda) return _logoSolAgenda;
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.width; c.height = img.height;
+        c.getContext('2d').drawImage(img, 0, 0);
+        _logoSolAgenda = c.toDataURL('image/png');
+        resolve(_logoSolAgenda);
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = 'logosolucao.png';
+  });
+}
+
+async function _gerarPDFSolicitacaoAgenda(s) {
+  const { jsPDF } = window.jspdf;
+  const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW   = 210;
+  const M    = 18;
+  const VERDE  = [62, 207, 142];
+  const ESCURO = [10, 10, 10];
+  const SUP    = [22, 22, 22];
+  const TEXTO  = [255, 255, 255];
+  const MUTED  = [161, 161, 170];
+  const AMBER  = [245, 158, 11];
+  const SUTIL  = [80, 80, 80];
+
+  const brl = v => (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const dtBR = iso => {
+    if (!iso) return '—';
+    const str = iso.includes('T') ? iso : iso + 'T12:00:00';
+    return new Date(str).toLocaleDateString('pt-BR');
+  };
+
+  // ── Cabeçalho ────────────────────────────────────────────────
+  doc.setFillColor(...ESCURO);
+  doc.rect(0, 0, PW, 48, 'F');
+  doc.setFillColor(...VERDE);
+  doc.rect(0, 48, PW, 2.5, 'F');
+
+  const logoData = await _logoBase64Agenda();
+  if (logoData) doc.addImage(logoData, 'PNG', M, 11, 46, 26);
+
+  doc.setTextColor(...TEXTO);
+  doc.setFontSize(15);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SOLICITAÇÃO DE VERBA', PW - M, 21, { align: 'right' });
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...MUTED);
+  doc.text('Solução Técnica – Automação Residencial', PW - M, 29, { align: 'right' });
+  doc.text(
+    (s.id > 0 ? 'Nº ' + String(s.id).padStart(4, '0') + '   ·   ' : '') + dtBR(s.criado_em),
+    PW - M, 37, { align: 'right' }
+  );
+
+  let y = 60;
+
+  // ── Banner de finalidade ──────────────────────────────────────
+  doc.setFillColor(...SUP);
+  doc.roundedRect(M, y, PW - M * 2, 14, 2, 2, 'F');
+  doc.setFillColor(...AMBER);
+  doc.roundedRect(M, y, 4, 14, 1, 1, 'F');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...AMBER);
+  doc.text('ALIMENTAÇÃO – AGENDA NOTURNA', M + 10, y + 9);
+  y += 22;
+
+  // ── Informações ───────────────────────────────────────────────
+  const infoRows = [['CLIENTE / OBRA', s.obraLabel], ['EQUIPE', s.equipeLabel]];
+  if (s.descricao) infoRows.push(['DESCRIÇÃO', s.descricao]);
+
+  infoRows.forEach((row, i) => {
+    const ry = y + i * 13;
+    doc.setFillColor(i % 2 === 0 ? 15 : 20, i % 2 === 0 ? 15 : 20, i % 2 === 0 ? 15 : 20);
+    doc.rect(M, ry, PW - M * 2, 12, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...MUTED);
+    doc.text(row[0], M + 4, ry + 8);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...TEXTO);
+    const maxW = PW - M * 2 - 48;
+    doc.text(doc.splitTextToSize(String(row[1]), maxW)[0], M + 44, ry + 8.5);
+  });
+  y += infoRows.length * 13 + 14;
+
+  // ── Tipo de refeição ──────────────────────────────────────────
+  doc.setFillColor(...SUP);
+  doc.roundedRect(M, y, PW - M * 2, 14, 2, 2, 'F');
+  doc.setFillColor(...AMBER);
+  doc.roundedRect(M, y, 4, 14, 1, 1, 'F');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...TEXTO);
+  doc.text(
+    s.almocoPlusJanta
+      ? 'Almoço + Janta   (R$ 35,00 + R$ 35,00 por pessoa)'
+      : 'Refeição   (R$ 35,00 por pessoa)',
+    M + 10, y + 9
+  );
+  y += 22;
+
+  // ── Caixa de valores ─────────────────────────────────────────
+  const boxH = 44;
+  doc.setFillColor(...SUP);
+  doc.roundedRect(M, y, PW - M * 2, boxH, 3, 3, 'F');
+  doc.setFillColor(...VERDE);
+  doc.roundedRect(M, y, 4, boxH, 1, 1, 'F');
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...MUTED);
+  doc.text('N.º DE PESSOAS',   M + 10,     y + 10);
+  doc.text('VALOR / PESSOA',   M + 62,     y + 10);
+  doc.text('VALOR TOTAL',      PW - M - 4, y + 10, { align: 'right' });
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...TEXTO);
+  doc.text(String(s.numPessoas),     M + 10, y + 22);
+  doc.text(brl(s.valorPorPessoa),    M + 62, y + 22);
+
+  doc.setFontSize(18);
+  doc.setTextColor(...VERDE);
+  doc.text(brl(s.valorTotal), PW - M - 4, y + 23, { align: 'right' });
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...MUTED);
+  doc.text(
+    `${s.numPessoas} pessoa(s)  ×  ${brl(s.valorPorPessoa)}  =  ${brl(s.valorTotal)}`,
+    M + 10, y + 36
+  );
+  y += boxH + 22;
+
+  // ── Assinatura ────────────────────────────────────────────────
+  const sigY = Math.max(y + 10, 218);
+  doc.setDrawColor(...SUTIL);
+  doc.setLineWidth(0.35);
+  doc.line(M, sigY, M + 100, sigY);
+  doc.line(PW - M - 55, sigY, PW - M, sigY);
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...MUTED);
+  doc.text('Assinatura do Gestor Responsável', M, sigY + 5.5);
+  doc.text('Data', PW - M - 55, sigY + 5.5);
+  doc.line(M, sigY + 18, M + 100, sigY + 18);
+  doc.text('Nome por extenso', M, sigY + 23.5);
+
+  // ── Rodapé ───────────────────────────────────────────────────
+  doc.setFillColor(...VERDE);
+  doc.rect(0, 287, PW, 10, 'F');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...ESCURO);
+  doc.text('Solução Técnica – Automação Residencial', PW / 2, 293.5, { align: 'center' });
+
+  // ── Download ─────────────────────────────────────────────────
+  const nomeArq = (s.obraLabel || 'cliente')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9 ]/g, '').trim().slice(0, 28).replace(/ +/g, '_');
+  doc.save(`Solicitacao_Alimentacao_${nomeArq}_${dtBR(s.criado_em).replace(/\//g, '-')}.pdf`);
 }
 
 // ── Excluir agendamento ──────────────────────────────────────

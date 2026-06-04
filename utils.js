@@ -437,6 +437,7 @@ function renderTopbar(nome, role, paginaAtiva) {
     { href: 'supervisor.html',           label: 'Supervisor',             id: 'supervisor',           roles: ['supervisor','coordenador','agendamento','coordenador_projetos'] },
     { href: 'pendencias.html',           label: 'Pendências',             id: 'pendencias',           roles: ['supervisor','coordenador','agendamento'] },
     { href: 'viagens.html',              label: 'Viagens',                id: 'viagens',              roles: ['supervisor','coordenador','agendamento'] },
+    { href: 'solicitacoes.html',         label: 'Solicitações',           id: 'solicitacoes',         roles: ['coordenador','agendamento'] },
     { href: 'admin.html',                label: 'Admin',                  id: 'admin',                roles: ['coordenador','agendamento'] },
     { href: 'tecnico_dashboard.html',    label: 'Minhas OSs',             id: 'minhas-os',            roles: ['tecnico','auxiliar'] },
     { href: 'gerente_comercial.html',    label: 'Comercial',              id: 'comercial',            roles: ['gerente_comercial'] },
