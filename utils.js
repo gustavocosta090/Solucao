@@ -420,9 +420,8 @@ function _fecharMobNav() {
 function renderTopbar(nome, role, paginaAtiva) {
   var h = new Date().getHours();
   var s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  var primeiro = (nome || '').split(' ')[0];
   var greetEl = document.getElementById('topbar-greeting');
-  if (greetEl && primeiro) greetEl.textContent = s + ', ' + primeiro;
+  if (greetEl && nome) greetEl.textContent = s + ', ' + nome;
 
   // 'agendamento' tem as mesmas permissões que 'coordenador'
   var links = [

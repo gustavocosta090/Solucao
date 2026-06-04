@@ -714,6 +714,7 @@ const LOGIN_DOMAIN = 'solucaotecnica.local';
 
 
 let tecnicos = [];
+let _meuRole = '';
 let todasEquipes = [];
 let resetUserId = null;
 let editandoUsuario = null;
@@ -790,13 +791,23 @@ async function chamarAdminFunction(payload) {
   if (!session) { window.location.href = 'login.html'; return; }
 
   const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
-  if (!eu || eu.role !== 'coordenador') {
-    showToast('Acesso restrito ao coordenador.', 'error');
+  if (!eu || !['coordenador', 'agendamento'].includes(eu.role)) {
+    showToast('Acesso restrito.', 'error');
     window.location.href = 'obras.html';
     return;
   }
+  _meuRole = eu.role;
 
   renderTopbar(eu.nome, eu.role, 'admin');
+
+  // Agendamento não pode atribuir nem criar o cargo de coordenador
+  if (_meuRole === 'agendamento') {
+    ['selectRole', 'editRole'].forEach(id => {
+      const el = document.getElementById(id);
+      const opt = el?.querySelector('option[value="coordenador"]');
+      if (opt) opt.remove();
+    });
+  }
 
   await carregarEquipes();
   await carregarDados();
@@ -816,11 +827,12 @@ async function carregarDados() {
       ? '<span class="badge badge-ativo">Ativo</span>'
       : '<span class="badge badge-sem-conta">Sem conta</span>';
 
+    const podeDemitir = _meuRole === 'coordenador' || t.role !== 'coordenador';
     const acoes = t.auth_user_id
       ? `<div class="btn-actions">
           <button class="btn-sm btn-edit" onclick="abrirEditar(${t.id})" title="Editar usuário"><i data-lucide="pencil"></i> Editar</button>
           <button class="btn-sm btn-reset" data-user-id="${escHtml(t.auth_user_id)}" data-nome="${escHtml(t.nome)}" onclick="abrirReset(this.dataset.userId, this.dataset.nome)" title="Redefinir senha"><i data-lucide="key-round"></i> Senha</button>
-          <button class="btn-sm btn-delete" onclick="apagarUsuario(${t.id})" title="Demitir funcionário"><i data-lucide="user-x"></i> Demitir</button>
+          ${podeDemitir ? `<button class="btn-sm btn-delete" onclick="apagarUsuario(${t.id})" title="Demitir funcionário"><i data-lucide="user-x"></i> Demitir</button>` : ''}
         </div>`
       : `<button class="btn-sm btn-delete" onclick="removerTecnico(${t.id}, '${escHtml(t.nome)}')" title="Remover registro"><i data-lucide="trash-2"></i> Remover</button>`;
 
@@ -850,6 +862,10 @@ async function criarUsuario() {
   const usuario = normalizarUsuario(document.getElementById('novoUsuario').value);
   const senha = document.getElementById('novaSenha').value;
 
+  if (_meuRole === 'agendamento' && role === 'coordenador') {
+    mostrarErro('Sem permissão para criar usuário com cargo coordenador.');
+    return;
+  }
   if (!nome || !email || !usuario || !senha) {
     mostrarErro('Preencha todos os campos obrigatórios.');
     return;
@@ -939,6 +955,9 @@ async function confirmarEdicao() {
   const username = normalizarUsuario(document.getElementById('editUsuario').value);
   const password = document.getElementById('editSenha').value;
 
+  if (_meuRole === 'agendamento' && role === 'coordenador') {
+    showToast('Sem permissão para atribuir o cargo de coordenador.', 'warning'); return;
+  }
   if (!nome || !email || !username) {
     showToast('Preencha nome, e-mail e usuário.', 'warning'); return;
   }
@@ -983,6 +1002,11 @@ async function confirmarEdicao() {
 async function apagarUsuario(tecnicoId) {
   const usuario = tecnicos.find(t => Number(t.id) === Number(tecnicoId));
   if (!usuario) return;
+
+  if (_meuRole === 'agendamento' && usuario.role === 'coordenador') {
+    showToast('Sem permissão para demitir o coordenador.', 'warning');
+    return;
+  }
 
   confirmModal(
     `Demitir ${usuario.nome}? O acesso ao sistema será revogado e a pessoa sumirá da lista. Histórico de OS é preservado.`,

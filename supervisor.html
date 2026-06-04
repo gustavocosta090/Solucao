@@ -372,6 +372,13 @@
     border-style: dashed;
   }
 
+  .badge-cancelada {
+    background: rgba(113,113,122,0.12);
+    color: #A1A1AA;
+    border-color: rgba(113,113,122,0.25);
+    text-decoration: line-through;
+  }
+
   .badge-banco-horas {
     background: rgba(79,70,229,0.1);
     color: #A5B4FC;
@@ -1233,6 +1240,7 @@
     <option value="concluida">Concluída</option>
     <option value="noturna">Agenda noturna</option>
     <option value="banco_horas">Banco de horas</option>
+    <option value="cancelada">Cancelada</option>
   </select>
   <label for="fTipo" class="sr-only">Tipo</label>
   <select id="fTipo" onchange="filtrar()" aria-label="Filtrar por tipo">
@@ -1451,6 +1459,9 @@
 let todasOSs = [];
 let filtradas = [];
 let currentPage = 1;
+let _canceladasCache   = null;
+let _tecMapGlobal      = {};
+let _tecEquipeMapGlobal = {};
 const PER_PAGE = 25;
 let sortField = 'data_servico';
 let sortDir = 'desc';
@@ -1545,6 +1556,8 @@ async function carregarOSs() {
   const tecEquipeMap = {};
   (tecList || []).forEach(t => { tecMap[t.id] = t; });
   (teData  || []).forEach(te => { tecEquipeMap[te.tecnico_id] = te.equipe_id; });
+  _tecMapGlobal = tecMap;
+  _tecEquipeMapGlobal = tecEquipeMap;
 
   const finalData = (osData || []).map(o => {
     const equipe = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id]
@@ -1737,6 +1750,42 @@ async function filtrar() {
   const fDf    = document.getElementById('fDataFim').value;
   const fBusca = document.getElementById('fBusca').value.toLowerCase();
 
+  // ── Filtro especial: Canceladas (não estão em todasOSs — carregadas sob demanda) ──
+  if (fSt === 'cancelada') {
+    if (!_canceladasCache) {
+      document.getElementById('loadingEl').style.display = 'block';
+      document.getElementById('tabelaEl').style.display  = 'none';
+      const { data: osData } = await db
+        .from('ordens_de_servico')
+        .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
+        .eq('status_aprovacao', 'cancelada')
+        .order('criado_em', { ascending: false });
+      _canceladasCache = (osData || []).map(o => {
+        const equipe = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id]
+          .filter(Boolean).map(tid => _tecMapGlobal[tid]?.nome).filter(Boolean);
+        return { ...o, tecnicos: o.tecnico_id ? (_tecMapGlobal[o.tecnico_id] || null) : null,
+                 equipeNomes: equipe, equipeId: _tecEquipeMapGlobal[o.tecnico_id] || null };
+      });
+      document.getElementById('loadingEl').style.display = 'none';
+      document.getElementById('tabelaEl').style.display  = 'block';
+    }
+    filtradas = _canceladasCache.filter(o => {
+      const matchTec   = !fTec  || String(o.tecnico_id) === fTec || String(o.auxiliar_id) === fTec || String(o.auxiliar2_id) === fTec || String(o.auxiliar3_id) === fTec;
+      const matchTipo  = !fTipo || (o.tipo_servico || 'execucao') === fTipo;
+      const matchDi    = !fDi   || !o.data_servico || o.data_servico >= fDi;
+      const matchDf    = !fDf   || !o.data_servico || o.data_servico <= fDf;
+      const matchBusca = !fBusca ||
+        (o.obras?.nome_cliente || '').toLowerCase().includes(fBusca) ||
+        (o.equipeNomes || []).some(n => n.toLowerCase().includes(fBusca)) ||
+        formatarNumeroOS(o).includes(fBusca);
+      return matchTec && matchTipo && matchDi && matchDf && matchBusca;
+    });
+    currentPage = 1;
+    atualizarStats();
+    renderTabela();
+    return;
+  }
+
   // Se o usuário selecionou uma data de início anterior ao corte atual,
   // re-busca do banco com a nova janela de tempo.
   if (fDi && _osDataCorte && fDi < _osDataCorte) {
@@ -1758,6 +1807,8 @@ async function filtrar() {
     const tecMap = {}, tecEquipeMap = {};
     (tecList || []).forEach(t => { tecMap[t.id] = t; });
     (teData  || []).forEach(te => { tecEquipeMap[te.tecnico_id] = te.equipe_id; });
+    _tecMapGlobal = tecMap;
+    _tecEquipeMapGlobal = tecEquipeMap;
 
     todasOSs = (osData || []).map(o => {
       const equipe = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id]
@@ -1838,10 +1889,13 @@ function renderTabela() {
   tbody.innerHTML = pagina.map(o => {
     const dataRef = o.data_servico || (o.criado_em ? o.criado_em.slice(0,10) : null);
     const data = dataRef ? new Date(dataRef + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—';
+    const isCancelada = o.status_aprovacao === 'cancelada';
     const _stNorm = (o.status_aprovacao === 'aprovada' || o.status_aprovacao === 'concluida') ? 'concluida' : 'pendente';
-    const statusBadge = _stNorm === 'concluida'
-      ? '<span class="badge badge-aprovada">Concluída</span>'
-      : '<span class="badge badge-pendente">Pendente</span>';
+    const statusBadge = isCancelada
+      ? '<span class="badge badge-cancelada">Cancelada</span>'
+      : (_stNorm === 'concluida'
+          ? '<span class="badge badge-aprovada">Concluída</span>'
+          : '<span class="badge badge-pendente">Pendente</span>');
     const noturnaInfo = agendaNoturnaInfo(o);
     let noturnaBadge = '';
     if (noturnaInfo) {
@@ -1855,9 +1909,9 @@ function renderTabela() {
     }
     const nFotos = o.fotos_urls?.length || 0;
 
-    const btnAcao = _stNorm === 'concluida'
+    const btnAcao = isCancelada ? '' : (_stNorm === 'concluida'
       ? `<button class="btn-reprovar" onclick="event.stopPropagation();reabrirOS(${o.id})">Reabrir</button>`
-      : `<button class="btn-aprovar" onclick="event.stopPropagation();concluirOS(${o.id})">Concluir</button>`;
+      : `<button class="btn-aprovar" onclick="event.stopPropagation();concluirOS(${o.id})">Concluir</button>`);
 
     const tipoTxt  = (o.tipo_servico || 'execucao') === 'assistencia' ? 'Assistência' : 'Execução';
     const tipoColor= (o.tipo_servico || 'execucao') === 'assistencia'
@@ -1878,7 +1932,7 @@ function renderTabela() {
       <td style="white-space:nowrap;" onclick="event.stopPropagation()">
         ${btnAcao}
         <button class="btn-ver" onclick="verOS(${o.id})">Ver</button>
-        <button class="btn-reprovar" style="background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3);color:#f87171;" onclick="event.stopPropagation();deletarOS(${o.id})" title="Deletar OS">Deletar</button>
+        ${!isCancelada ? `<button class="btn-reprovar" style="background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3);color:#f87171;" onclick="event.stopPropagation();deletarOS(${o.id})" title="Cancelar OS">Cancelar</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -2084,12 +2138,19 @@ async function reabrirOSModal() {
 async function deletarOS(id) {
   const os = todasOSs.find(o => o.id === id);
   const label = os ? (os.numero_os || `OS #${id}`) : `OS #${id}`;
-  if (!window.confirm(`Deletar ${label} permanentemente? Esta ação não pode ser desfeita.`)) return;
-  const { error } = await db.from('ordens_de_servico').delete().eq('id', id);
-  if (error) { showToast('Erro ao deletar: ' + error.message, 'error'); return; }
-  todasOSs = todasOSs.filter(o => o.id !== id);
-  filtrar();
-  showToast('OS deletada.', 'success');
+  confirmModal(
+    `Cancelar ${label}?\n\nA OS ficará oculta da lista e o número será liberado. Você pode vê-la depois usando o filtro "Cancelada".`,
+    async () => {
+      const { error } = await db.from('ordens_de_servico')
+        .update({ status_aprovacao: 'cancelada', numero_os: null })
+        .eq('id', id);
+      if (error) { showToast('Erro ao cancelar OS: ' + error.message, 'error'); return; }
+      _canceladasCache = null;
+      todasOSs = todasOSs.filter(o => o.id !== id);
+      filtrar();
+      showToast('OS cancelada. Use o filtro "Cancelada" para visualizá-la.', 'success');
+    }
+  );
 }
 
 async function mudarStatusOS(id, status, obs) {

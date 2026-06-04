@@ -2876,7 +2876,9 @@ async function dispararAgendaWhatsapp() {
     const osNum     = ag.numero_os ? escHtml(String(ag.numero_os)) : '';
 
     const tecIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-    const tecStr = escHtml(tecIds.map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · '));
+    const tecStr = escHtml(tecIds
+      .filter(id => !tecnicoBloqueadoNaData(id, hoje, ag.hora_inicio))
+      .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · '));
 
     const eq  = equipeDoAg(ag);
     const cor = eq ? (COR_EQ[Object.keys(EQUIPE_INFO).find(k => EQUIPE_INFO[k].nome === eq.nome)] || eq.cor) : '#334155';
@@ -3091,15 +3093,18 @@ async function gerarProgramacaoSemanal() {
 
   // Gera HTML de uma coluna (um dia da semana)
   function colunaHTML(iso, idx) {
-    const d      = diasSemana[idx];
-    const ags    = agSemana.filter(ag => ag.data === iso);
-    const diaN   = DIAS_PT[d.getDay()];
-    const dataL  = `${String(d.getDate()).padStart(2,'0')} ${MESES_PT[d.getMonth()]}`;
-    const temAgs = ags.length > 0;
+    const d       = diasSemana[idx];
+    const ags     = agSemana.filter(ag => ag.data === iso);
+    const diaN    = DIAS_PT[d.getDay()];
+    const dataL   = `${String(d.getDate()).padStart(2,'0')} ${MESES_PT[d.getMonth()]}`;
+    const bloqueio = tecnicoBloqueadoNaData(tecId, iso, null);
+    const temAgs  = ags.length > 0 && !bloqueio;
 
-    const cardsHTML = !temAgs
-      ? `<div style="padding:24px 8px;text-align:center;font-size:11px;color:${S_T3};font-style:italic;">Sem serviços</div>`
-      : ags.map(ag => {
+    const cardsHTML = bloqueio
+      ? `<div style="padding:28px 8px;text-align:center;font-size:11px;color:#F87171;font-weight:600;letter-spacing:0.03em;">BLOQUEADO${bloqueio.motivo ? '<br><span style="font-weight:400;color:#A1A1AA">' + escHtml(bloqueio.motivo) + '</span>' : ''}</div>`
+      : (!temAgs
+          ? `<div style="padding:24px 8px;text-align:center;font-size:11px;color:${S_T3};font-style:italic;">Sem serviços</div>`
+          : ags.map(ag => {
           const hora      = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
           const cliente   = escHtml(ag.obras?.nome_cliente || ag.cliente_outro || '—');
           const serv      = escHtml(ag.servico || '');
@@ -3127,12 +3132,13 @@ async function gerarProgramacaoSemanal() {
               ${lin('Veículo:',   veic)}
             </div>
           </div>`;
-        }).join('');
+        }).join(''));
 
+    const subtituloCol = bloqueio ? ' · Bloqueado' : (temAgs ? ` · ${ags.length} serv.` : '');
     return `<div style="flex:1;min-width:0;display:flex;flex-direction:column;">
-      <div style="background:${S_SURF};border-radius:7px 7px 0 0;padding:11px 13px;border-bottom:2px solid ${S_GOLD};">
-        <div style="font-size:12px;font-weight:700;color:${S_T1};text-transform:uppercase;letter-spacing:0.07em;">${diaN}</div>
-        <div style="font-size:10px;color:${S_T2};margin-top:3px;">${dataL}${temAgs ? ` · ${ags.length} serv.` : ''}</div>
+      <div style="background:${bloqueio ? 'rgba(239,68,68,0.08)' : S_SURF};border-radius:7px 7px 0 0;padding:11px 13px;border-bottom:2px solid ${bloqueio ? '#F87171' : S_GOLD};">
+        <div style="font-size:12px;font-weight:700;color:${bloqueio ? '#F87171' : S_T1};text-transform:uppercase;letter-spacing:0.07em;">${diaN}</div>
+        <div style="font-size:10px;color:${S_T2};margin-top:3px;">${dataL}${subtituloCol}</div>
       </div>
       <div style="background:${S_SURF};border-radius:0 0 7px 7px;padding:9px;flex:1;">${cardsHTML}</div>
     </div>`;
@@ -3422,7 +3428,9 @@ async function exportarProgramacaoEstoque() {
     // Helper: monta linha da tabela
     const montarRow = (ag) => {
       const tecIds    = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-      const equipeStr = tecIds.map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(', ');
+      const equipeStr = tecIds
+        .filter(id => !tecnicoBloqueadoNaData(id, ag.data, ag.hora_inicio))
+        .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(', ');
       const diaSemana = DIAS_PT[dias.findIndex(d => fmtISO(d) === ag.data)];
       const diaFmt    = (() => { const d = new Date(ag.data+'T12:00'); return `${DIAS_PT[dias.findIndex(x=>fmtISO(x)===ag.data)]??''} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; })();
       let motoristaStr = '—';
