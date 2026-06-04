@@ -2581,152 +2581,113 @@ async function _logoBase64Agenda() {
 
 async function _gerarPDFSolicitacaoAgenda(s) {
   const { jsPDF } = window.jspdf;
-  const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const PW   = 210;
-  const M    = 18;
-  const VERDE  = [62, 207, 142];
-  const ESCURO = [10, 10, 10];
-  const SUP    = [22, 22, 22];
-  const TEXTO  = [255, 255, 255];
-  const MUTED  = [161, 161, 170];
-  const AMBER  = [245, 158, 11];
-  const SUTIL  = [80, 80, 80];
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297, M = 16, W = PW - M * 2;
 
-  const brl = v => (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const dtBR = iso => {
-    if (!iso) return '—';
-    const str = iso.includes('T') ? iso : iso + 'T12:00:00';
-    return new Date(str).toLocaleDateString('pt-BR');
-  };
+  // Paleta (fundo branco — imprimível e profissional)
+  const G   = [62, 207, 142];    // verde
+  const AMB = [245, 158, 11];    // âmbar
+  const BLK = [26, 26, 26];      // texto principal
+  const GR2 = [100, 100, 100];   // label
+  const GR3 = [160, 160, 160];   // placeholder assinatura
+  const BDR = [210, 210, 210];   // borda tabela
+  const ALT = [248, 249, 250];   // linha alternada
+  const SHD = [232, 248, 241];   // fundo seção (verde claro)
+  const WHT = [255, 255, 255];
+
+  const brl  = v => (parseFloat(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const dtBR = iso => { if(!iso) return '—'; return new Date(iso.includes('T')?iso:iso+'T12:00').toLocaleDateString('pt-BR'); };
+
+  // Helper: linha de tabela com quebra de texto automática
+  function row(y, label, value, alt) {
+    const LW = 56, VW = W - LW;
+    const vLines = doc.splitTextToSize(String(value || '—'), VW - 8);
+    const rh = Math.max(9, vLines.length * 5 + 5);
+    if (alt) { doc.setFillColor(...ALT); doc.rect(M, y, W, rh, 'F'); }
+    doc.setDrawColor(...BDR); doc.setLineWidth(0.25);
+    doc.rect(M, y, W, rh, 'S');
+    doc.line(M + LW, y, M + LW, y + rh);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...GR2);
+    doc.text(label, M + 3, y + 6);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...BLK);
+    vLines.forEach((ln, i) => doc.text(ln, M + LW + 4, y + 6 + i * 5));
+    return rh;
+  }
+
+  // Helper: cabeçalho de seção
+  function secao(y, titulo) {
+    doc.setFillColor(...SHD); doc.rect(M, y, W, 7.5, 'F');
+    doc.setFillColor(...G);   doc.rect(M, y, 3,   7.5, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...BLK);
+    doc.text(titulo, M + 7, y + 5.5);
+    return y + 7.5;
+  }
 
   // ── Cabeçalho ────────────────────────────────────────────────
-  doc.setFillColor(...ESCURO);
-  doc.rect(0, 0, PW, 48, 'F');
-  doc.setFillColor(...VERDE);
-  doc.rect(0, 48, PW, 2.5, 'F');
+  doc.setFillColor(...G); doc.rect(0, 0, 4, 40, 'F');
+  const logo = await _logoBase64Agenda();
+  if (logo) doc.addImage(logo, 'PNG', M, 8, 38, 22);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...BLK);
+  doc.text('SOLICITAÇÃO DE VERBA', PW - M, 16, { align: 'right' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GR2);
+  doc.text('Solução Técnica – Automação Residencial', PW - M, 23, { align: 'right' });
+  doc.text((s.id > 0 ? 'Nº ' + String(s.id).padStart(4,'0') + '   ·   ' : '') + dtBR(s.criado_em), PW - M, 30, { align: 'right' });
+  doc.setDrawColor(...G); doc.setLineWidth(1); doc.line(0, 40, PW, 40);
 
-  const logoData = await _logoBase64Agenda();
-  if (logoData) doc.addImage(logoData, 'PNG', M, 11, 46, 26);
+  let y = 48;
 
-  doc.setTextColor(...TEXTO);
-  doc.setFontSize(15);
-  doc.setFont('helvetica', 'bold');
-  doc.text('SOLICITAÇÃO DE VERBA', PW - M, 21, { align: 'right' });
+  // ── Badge de tipo ─────────────────────────────────────────────
+  const tipoRef = s.almocoPlusJanta ? 'Almoço + Janta' : 'Refeição simples';
+  doc.setFillColor(...AMB); doc.roundedRect(M, y, 120, 8.5, 1.5, 1.5, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...WHT);
+  doc.text('ALIMENTAÇÃO  –  AGENDA NOTURNA', M + 5, y + 6);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...GR2);
+  doc.text(tipoRef, PW - M, y + 6, { align: 'right' });
+  y += 15;
 
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...MUTED);
-  doc.text('Solução Técnica – Automação Residencial', PW - M, 29, { align: 'right' });
-  doc.text(
-    (s.id > 0 ? 'Nº ' + String(s.id).padStart(4, '0') + '   ·   ' : '') + dtBR(s.criado_em),
-    PW - M, 37, { align: 'right' }
-  );
+  // ── Seção: Dados da Solicitação ───────────────────────────────
+  y = secao(y, 'DADOS DA SOLICITAÇÃO');
+  y += row(y, 'Cliente / Obra', s.obraLabel || '—', false);
+  y += row(y, 'Técnicos',       s.tecnicosNomes || '—', true);
+  if (s.descricao) y += row(y, 'Descrição', s.descricao, false);
+  y += 8;
 
-  let y = 60;
+  // ── Seção: Detalhamento ───────────────────────────────────────
+  y = secao(y, 'DETALHAMENTO');
+  y += row(y, 'Tipo de refeição',  tipoRef, false);
+  y += row(y, 'N.º de Pessoas',    String(s.numPessoas), true);
+  y += row(y, 'Valor por Pessoa',  brl(s.valorPorPessoa) + (s.almocoPlusJanta ? '  (2 refeições × R$ 35,00)' : '  (1 refeição × R$ 35,00)'), false);
+  y += row(y, 'Cálculo',           s.numPessoas + ' pessoa(s) × ' + brl(s.valorPorPessoa) + ' = ' + brl(s.valorTotal), true);
+  y += 5;
 
-  // ── Banner de finalidade ──────────────────────────────────────
-  doc.setFillColor(...SUP);
-  doc.roundedRect(M, y, PW - M * 2, 14, 2, 2, 'F');
-  doc.setFillColor(...AMBER);
-  doc.roundedRect(M, y, 4, 14, 1, 1, 'F');
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...AMBER);
-  doc.text('ALIMENTAÇÃO – AGENDA NOTURNA', M + 10, y + 9);
-  y += 22;
+  // ── Total ─────────────────────────────────────────────────────
+  doc.setFillColor(...G); doc.roundedRect(M, y, W, 12, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...WHT);
+  doc.text('TOTAL GERAL', M + 6, y + 8.5);
+  doc.setFontSize(13); doc.text(brl(s.valorTotal), PW - M - 4, y + 8.5, { align: 'right' });
+  y += 20;
 
-  // ── Informações ───────────────────────────────────────────────
-  const infoRows = [['CLIENTE / OBRA', s.obraLabel], ['TÉCNICOS', s.tecnicosNomes || '—']];
-  if (s.descricao) infoRows.push(['DESCRIÇÃO', s.descricao]);
+  // ── Autorização ───────────────────────────────────────────────
+  const sigY = Math.max(y + 6, 228);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...BLK);
+  doc.text('AUTORIZAÇÃO', M, sigY);
+  doc.setDrawColor(...BDR); doc.setLineWidth(0.4); doc.line(M, sigY + 2, PW - M, sigY + 2);
 
-  infoRows.forEach((row, i) => {
-    const ry = y + i * 13;
-    doc.setFillColor(i % 2 === 0 ? 15 : 20, i % 2 === 0 ? 15 : 20, i % 2 === 0 ? 15 : 20);
-    doc.rect(M, ry, PW - M * 2, 12, 'F');
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...MUTED);
-    doc.text(row[0], M + 4, ry + 8);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...TEXTO);
-    const maxW = PW - M * 2 - 48;
-    doc.text(doc.splitTextToSize(String(row[1]), maxW)[0], M + 44, ry + 8.5);
-  });
-  y += infoRows.length * 13 + 14;
+  doc.setDrawColor(160, 160, 160); doc.setLineWidth(0.5);
+  doc.line(M, sigY + 18, M + 108, sigY + 18);
+  doc.line(PW - M - 50, sigY + 18, PW - M, sigY + 18);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GR3);
+  doc.text('Assinatura do Gestor Responsável', M, sigY + 23);
+  doc.text('Data', PW - M - 50, sigY + 23);
+  doc.line(M, sigY + 35, M + 108, sigY + 35);
+  doc.text('Nome por extenso', M, sigY + 40);
 
-  // ── Tipo de refeição ──────────────────────────────────────────
-  doc.setFillColor(...SUP);
-  doc.roundedRect(M, y, PW - M * 2, 14, 2, 2, 'F');
-  doc.setFillColor(...AMBER);
-  doc.roundedRect(M, y, 4, 14, 1, 1, 'F');
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...TEXTO);
-  doc.text(
-    s.almocoPlusJanta
-      ? 'Almoço + Janta   (R$ 35,00 + R$ 35,00 por pessoa)'
-      : 'Refeição   (R$ 35,00 por pessoa)',
-    M + 10, y + 9
-  );
-  y += 22;
+  // ── Rodapé ────────────────────────────────────────────────────
+  doc.setFillColor(...G); doc.rect(0, PH - 8, PW, 8, 'F');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...WHT);
+  doc.text('Solução Técnica  –  Automação Residencial', PW / 2, PH - 3, { align: 'center' });
 
-  // ── Caixa de valores ─────────────────────────────────────────
-  const boxH = 44;
-  doc.setFillColor(...SUP);
-  doc.roundedRect(M, y, PW - M * 2, boxH, 3, 3, 'F');
-  doc.setFillColor(...VERDE);
-  doc.roundedRect(M, y, 4, boxH, 1, 1, 'F');
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...MUTED);
-  doc.text('N.º DE PESSOAS',   M + 10,     y + 10);
-  doc.text('VALOR / PESSOA',   M + 62,     y + 10);
-  doc.text('VALOR TOTAL',      PW - M - 4, y + 10, { align: 'right' });
-
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...TEXTO);
-  doc.text(String(s.numPessoas),     M + 10, y + 22);
-  doc.text(brl(s.valorPorPessoa),    M + 62, y + 22);
-
-  doc.setFontSize(18);
-  doc.setTextColor(...VERDE);
-  doc.text(brl(s.valorTotal), PW - M - 4, y + 23, { align: 'right' });
-
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...MUTED);
-  doc.text(
-    `${s.numPessoas} pessoa(s)  ×  ${brl(s.valorPorPessoa)}  =  ${brl(s.valorTotal)}`,
-    M + 10, y + 36
-  );
-  y += boxH + 22;
-
-  // ── Assinatura ────────────────────────────────────────────────
-  const sigY = Math.max(y + 10, 218);
-  doc.setDrawColor(...SUTIL);
-  doc.setLineWidth(0.35);
-  doc.line(M, sigY, M + 100, sigY);
-  doc.line(PW - M - 55, sigY, PW - M, sigY);
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...MUTED);
-  doc.text('Assinatura do Gestor Responsável', M, sigY + 5.5);
-  doc.text('Data', PW - M - 55, sigY + 5.5);
-  doc.line(M, sigY + 18, M + 100, sigY + 18);
-  doc.text('Nome por extenso', M, sigY + 23.5);
-
-  // ── Rodapé ───────────────────────────────────────────────────
-  doc.setFillColor(...VERDE);
-  doc.rect(0, 287, PW, 10, 'F');
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...ESCURO);
-  doc.text('Solução Técnica – Automação Residencial', PW / 2, 293.5, { align: 'center' });
-
-  // ── Download ─────────────────────────────────────────────────
+  // ── Download ──────────────────────────────────────────────────
   const nomeArq = (s.obraLabel || 'cliente')
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-zA-Z0-9 ]/g, '').trim().slice(0, 28).replace(/ +/g, '_');

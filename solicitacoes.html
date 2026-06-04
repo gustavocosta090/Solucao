@@ -776,160 +776,112 @@ async function gerarPDF(id) {
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const PW  = 210;
-  const M   = 18;
-  const VERDE  = [62, 207, 142];
-  const ESCURO = [10, 10, 10];
-  const SUP    = [22, 22, 22];
-  const TEXTO  = [255, 255, 255];
-  const MUTED  = [161, 161, 170];
-  const SUTIL  = [80, 80, 80];
+  const PW = 210, PH = 297, M = 16, W = PW - M * 2;
 
-  // ── Cabeçalho escuro ──────────────────────────────────────────
-  doc.setFillColor(...ESCURO);
-  doc.rect(0, 0, PW, 48, 'F');
-  doc.setFillColor(...VERDE);
-  doc.rect(0, 48, PW, 2.5, 'F');
+  const G   = [62, 207, 142];
+  const BLK = [26, 26, 26];
+  const GR2 = [100, 100, 100];
+  const GR3 = [160, 160, 160];
+  const BDR = [210, 210, 210];
+  const ALT = [248, 249, 250];
+  const SHD = [232, 248, 241];
+  const WHT = [255, 255, 255];
 
-  // Logo
-  const logoData = await _logoBase64();
-  if (logoData) doc.addImage(logoData, 'PNG', M, 11, 46, 26);
-
-  // Título
-  doc.setTextColor(...TEXTO);
-  doc.setFontSize(15);
-  doc.setFont('helvetica', 'bold');
-  doc.text('SOLICITAÇÃO DE VERBA', PW - M, 21, { align: 'right' });
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...MUTED);
-  doc.text('Solução Técnica – Automação Residencial', PW - M, 29, { align: 'right' });
-  doc.text(
-    'Nº ' + String(s.id).padStart(4, '0') + '   ·   ' + _dtBR(s.criado_em),
-    PW - M, 37, { align: 'right' }
-  );
-
-  let y = 60;
-
-  // ── Banner de finalidade ──────────────────────────────────────
+  const corBadge = s.finalidade === 'alimentacao_noturna' ? [245,158,11]
+    : s.finalidade === 'compra_material' ? [99,102,241]
+    : [100,100,100];
   const finLabel = FINALIDADE_LABEL[s.finalidade] || s.finalidade;
-  const corBanner = s.finalidade === 'alimentacao_noturna'
-    ? [245, 158, 11]
-    : s.finalidade === 'compra_material'
-    ? [99, 102, 241]
-    : [100, 100, 100];
 
-  doc.setFillColor(...SUP);
-  doc.roundedRect(M, y, PW - M * 2, 14, 2, 2, 'F');
-  doc.setFillColor(...corBanner);
-  doc.roundedRect(M, y, 4, 14, 1, 1, 'F');
+  // Helper: linha de tabela com quebra automática
+  function row(y, label, value, alt) {
+    const LW = 56, VW = W - LW;
+    const vLines = doc.splitTextToSize(String(value || '—'), VW - 8);
+    const rh = Math.max(9, vLines.length * 5 + 5);
+    if (alt) { doc.setFillColor(...ALT); doc.rect(M, y, W, rh, 'F'); }
+    doc.setDrawColor(...BDR); doc.setLineWidth(0.25);
+    doc.rect(M, y, W, rh, 'S');
+    doc.line(M + LW, y, M + LW, y + rh);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...GR2);
+    doc.text(label, M + 3, y + 6);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...BLK);
+    vLines.forEach((ln, i) => doc.text(ln, M + LW + 4, y + 6 + i * 5));
+    return rh;
+  }
 
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...corBanner);
-  doc.text(finLabel.toUpperCase(), M + 10, y + 9);
+  // Helper: cabeçalho de seção
+  function secao(y, titulo) {
+    doc.setFillColor(...SHD); doc.rect(M, y, W, 7.5, 'F');
+    doc.setFillColor(...G);   doc.rect(M, y, 3,   7.5, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...BLK);
+    doc.text(titulo, M + 7, y + 5.5);
+    return y + 7.5;
+  }
 
-  y += 22;
+  // ── Cabeçalho ────────────────────────────────────────────────
+  doc.setFillColor(...G); doc.rect(0, 0, 4, 40, 'F');
+  const logoData = await _logoBase64();
+  if (logoData) doc.addImage(logoData, 'PNG', M, 8, 38, 22);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...BLK);
+  doc.text('SOLICITAÇÃO DE VERBA', PW - M, 16, { align: 'right' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GR2);
+  doc.text('Solução Técnica – Automação Residencial', PW - M, 23, { align: 'right' });
+  doc.text('Nº ' + String(s.id).padStart(4,'0') + '   ·   ' + _dtBR(s.criado_em), PW - M, 30, { align: 'right' });
+  doc.setDrawColor(...G); doc.setLineWidth(1); doc.line(0, 40, PW, 40);
 
-  // ── Bloco de informações ──────────────────────────────────────
-  const infoRows = [
-    ['CLIENTE / OBRA', _clienteLabel(s)],
-    ['TÉCNICOS',       s.tecnicos_nomes || '—'],
-  ];
-  if (s.descricao) infoRows.push(['DESCRIÇÃO', s.descricao]);
+  let y = 48;
 
-  infoRows.forEach((row, i) => {
-    const rowY = y + i * 13;
-    doc.setFillColor(i % 2 === 0 ? 15 : 20, i % 2 === 0 ? 15 : 20, i % 2 === 0 ? 15 : 20);
-    doc.rect(M, rowY, PW - M * 2, 12, 'F');
+  // ── Badge de finalidade ───────────────────────────────────────
+  doc.setFillColor(...corBadge); doc.roundedRect(M, y, W * 0.66, 8.5, 1.5, 1.5, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...WHT);
+  doc.text(finLabel.toUpperCase(), M + 5, y + 6);
+  y += 15;
 
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...MUTED);
-    doc.text(row[0], M + 4, rowY + 8);
+  // ── Seção: Dados da Solicitação ───────────────────────────────
+  y = secao(y, 'DADOS DA SOLICITAÇÃO');
+  y += row(y, 'Cliente / Obra', _clienteLabel(s), false);
+  if (s.tecnicos_nomes) y += row(y, 'Técnicos', s.tecnicos_nomes, true);
+  if (s.descricao)      y += row(y, 'Descrição', s.descricao, !s.tecnicos_nomes);
+  y += 8;
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...TEXTO);
-    const maxWidth = PW - M * 2 - 48;
-    const lines = doc.splitTextToSize(String(row[1]), maxWidth);
-    doc.text(lines[0], M + 44, rowY + 8.5);
-  });
+  // ── Seção: Valores ────────────────────────────────────────────
+  y = secao(y, 'VALORES');
+  y += row(y, 'N.º de Pessoas',   String(s.num_pessoas || 1), false);
+  y += row(y, 'Valor por Pessoa', _brl(s.valor_pessoa), true);
+  y += row(y, 'Cálculo',          (s.num_pessoas||1) + ' pessoa(s) × ' + _brl(s.valor_pessoa) + ' = ' + _brl(s.valor_total), false);
+  y += 5;
 
-  y += infoRows.length * 13 + 14;
+  // ── Total ─────────────────────────────────────────────────────
+  doc.setFillColor(...G); doc.roundedRect(M, y, W, 12, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...WHT);
+  doc.text('TOTAL GERAL', M + 6, y + 8.5);
+  doc.setFontSize(13); doc.text(_brl(s.valor_total), PW - M - 4, y + 8.5, { align: 'right' });
+  y += 20;
 
-  // ── Caixa de valores ──────────────────────────────────────────
-  const boxH = 44;
-  doc.setFillColor(...SUP);
-  doc.roundedRect(M, y, PW - M * 2, boxH, 3, 3, 'F');
-  doc.setFillColor(...VERDE);
-  doc.roundedRect(M, y, 4, boxH, 1, 1, 'F');
+  // ── Autorização ───────────────────────────────────────────────
+  const sigY = Math.max(y + 6, 228);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...BLK);
+  doc.text('AUTORIZAÇÃO', M, sigY);
+  doc.setDrawColor(...BDR); doc.setLineWidth(0.4); doc.line(M, sigY + 2, PW - M, sigY + 2);
 
-  // Labels
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...MUTED);
-  doc.text('N.º DE PESSOAS', M + 10, y + 10);
-  doc.text('VALOR / PESSOA', M + 62, y + 10);
-  doc.text('VALOR TOTAL', PW - M - 4, y + 10, { align: 'right' });
-
-  // Valores
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...TEXTO);
-  doc.text(String(s.num_pessoas || 1), M + 10, y + 22);
-  doc.text(_brl(s.valor_pessoa), M + 62, y + 22);
-
-  // Total em destaque verde
-  doc.setFontSize(18);
-  doc.setTextColor(...VERDE);
-  doc.text(_brl(s.valor_total), PW - M - 4, y + 23, { align: 'right' });
-
-  // Linha de cálculo
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...MUTED);
-  const calcTxt = `${s.num_pessoas || 1} pessoa(s)  ×  ${_brl(s.valor_pessoa)}  =  ${_brl(s.valor_total)}`;
-  doc.text(calcTxt, M + 10, y + 36);
-
-  y += boxH + 22;
-
-  // ── Área de assinatura ────────────────────────────────────────
-  const sigY = Math.max(y + 10, 218);
-  doc.setDrawColor(...SUTIL);
-  doc.setLineWidth(0.35);
-
-  // Linha assinatura gestor
-  doc.line(M, sigY, M + 100, sigY);
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...MUTED);
-  doc.text('Assinatura do Gestor Responsável', M, sigY + 5.5);
-
-  // Linha data
-  doc.line(PW - M - 55, sigY, PW - M, sigY);
-  doc.text('Data', PW - M - 55, sigY + 5.5);
-
-  // Nome (campo aberto)
-  const nomeSigY = sigY + 18;
-  doc.line(M, nomeSigY, M + 100, nomeSigY);
-  doc.text('Nome por extenso', M, nomeSigY + 5.5);
+  doc.setDrawColor(160, 160, 160); doc.setLineWidth(0.5);
+  doc.line(M, sigY + 18, M + 108, sigY + 18);
+  doc.line(PW - M - 50, sigY + 18, PW - M, sigY + 18);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GR3);
+  doc.text('Assinatura do Gestor Responsável', M, sigY + 23);
+  doc.text('Data', PW - M - 50, sigY + 23);
+  doc.line(M, sigY + 35, M + 108, sigY + 35);
+  doc.text('Nome por extenso', M, sigY + 40);
 
   // ── Rodapé ────────────────────────────────────────────────────
-  doc.setFillColor(...VERDE);
-  doc.rect(0, 287, PW, 10, 'F');
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...ESCURO);
-  doc.text('Solução Técnica – Automação Residencial', PW / 2, 293.5, { align: 'center' });
+  doc.setFillColor(...G); doc.rect(0, PH - 8, PW, 8, 'F');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...WHT);
+  doc.text('Solução Técnica  –  Automação Residencial', PW / 2, PH - 3, { align: 'center' });
 
-  // ── Salvar arquivo ────────────────────────────────────────────
+  // ── Download ──────────────────────────────────────────────────
   const nomeArquivo = _clienteLabel(s)
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-zA-Z0-9 ]/g, '').trim().slice(0, 28).replace(/ +/g, '_');
-  const dtArquivo = _dtBR(s.criado_em).replace(/\//g, '-');
-  doc.save(`Solicitacao_${String(s.id).padStart(4,'0')}_${nomeArquivo}_${dtArquivo}.pdf`);
+  doc.save(`Solicitacao_${String(s.id).padStart(4,'0')}_${nomeArquivo}_${_dtBR(s.criado_em).replace(/\//g,'-')}.pdf`);
 }
 
 // ── Fechar modal com ESC ──────────────────────────────────────
