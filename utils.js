@@ -70,11 +70,11 @@ function iniciarAutoRefresh(callbackFn, intervaloMs) {
     _toast = document.createElement('div');
     _toast.style.cssText = [
       'position:fixed','bottom:72px','left:50%','transform:translateX(-50%)',
-      'background:rgba(22,22,22,0.95)','border:1px solid rgba(62,207,142,0.3)',
-      'color:#3ECF8E','font-size:12px','font-weight:600','font-family:Inter,system-ui,sans-serif',
+      'background:var(--surface-1)','border:1px solid var(--border-strong)',
+      'color:var(--primary)','font-size:12px','font-weight:600','font-family:Inter,system-ui,sans-serif',
       'padding:7px 16px','border-radius:20px','z-index:9990','pointer-events:none',
       'display:flex','align-items:center','gap:8px','white-space:nowrap',
-      'box-shadow:0 4px 16px rgba(0,0,0,0.4)',
+      'box-shadow:var(--shadow-soft,0 4px 16px rgba(0,0,0,0.25))',
     ].join(';');
     _toast.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin .7s linear infinite"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-4.56"/></svg> Atualizando...';
     document.body.appendChild(_toast);
@@ -126,14 +126,17 @@ function iniciarAutoRefresh(callbackFn, intervaloMs) {
   s.textContent = [
     /* ── Variáveis raiz ── */
     ':root[data-tema="classico"]{',
-    '--bg:#F0F4F8!important;--surface-1:#FFFFFF!important;--surface-2:#F1F5F9!important;--surface-3:#E2E8F0!important;',
+    '--bg:#F3F6FA!important;--surface-1:#FFFFFF!important;--surface-2:#F8FAFC!important;--surface-3:#EEF3F8!important;',
     '--primary:#2563EB!important;--primary-hover:#1D4ED8!important;--primary-muted:rgba(37,99,235,0.1)!important;',
-    '--text-1:#0F172A!important;--text-2:#475569!important;--text-3:#94A3B8!important;',
-    '--border:rgba(0,0,0,0.09)!important;--border-strong:rgba(0,0,0,0.16)!important;',
+    '--secondary:#64748B!important;--success:#16A34A!important;--warning:#D97706!important;--danger:#DC2626!important;--info:#2563EB!important;',
+    '--text-1:#0F172A!important;--text-2:#475569!important;--text-3:#7C8A9A!important;',
+    '--border:rgba(15,23,42,0.10)!important;--border-strong:rgba(15,23,42,0.18)!important;--border-hover:rgba(15,23,42,0.26)!important;',
     '--border-focus:rgba(37,99,235,0.4)!important;',
+    '--field-bg:#FFFFFF!important;--field-border:rgba(15,23,42,0.15)!important;--field-placeholder:#94A3B8!important;',
+    '--row-bg:#FFFFFF!important;--row-hover:#F8FAFC!important;--overlay-bg:rgba(15,23,42,0.50)!important;--shadow-soft:0 14px 36px rgba(15,23,42,0.08)!important;',
     '}',
     /* ── Body e overlay ── */
-    ':root[data-tema="classico"] body{background:#F0F4F8!important;}',
+    ':root[data-tema="classico"] body{background:#F3F6FA!important;}',
     ':root[data-tema="classico"] body::before{display:none!important;}',
     /* ── Sidebar clara (topbar vira coluna no app-shell) ── */
     ':root[data-tema="classico"] .topbar{background:#FFFFFF!important;border-right:1px solid rgba(0,0,0,0.08)!important;box-shadow:2px 0 16px rgba(0,0,0,0.06)!important;}',
@@ -156,7 +159,7 @@ function iniciarAutoRefresh(callbackFn, intervaloMs) {
     ':root[data-tema="classico"] .ag-val{color:#64748B!important;}',
     ':root[data-tema="classico"] .tec-label{color:#2563EB!important;border-bottom-color:rgba(37,99,235,0.15)!important;}',
     /* ── Grade swim lanes ── */
-    ':root[data-tema="classico"] .sh{background:#E8EEF4!important;border-bottom-color:rgba(0,0,0,0.1)!important;}',
+    ':root[data-tema="classico"] .sh{background:#EAF0F6!important;border-bottom-color:rgba(15,23,42,0.1)!important;}',
     ':root[data-tema="classico"] .sc{background:#FFFFFF!important;border-color:rgba(0,0,0,0.06)!important;}',
     ':root[data-tema="classico"] .grade{border-color:rgba(0,0,0,0.1)!important;}',
     ':root[data-tema="classico"] .dia-data.hoje{color:#2563EB!important;}',
@@ -193,10 +196,21 @@ function iniciarAutoRefresh(callbackFn, intervaloMs) {
     ':root[data-tema="classico"] .input-data-dispatch::-webkit-calendar-picker-indicator{filter:none!important;}',
     /* Icones dos headers da grade — escuros */
     ':root[data-tema="classico"] .btn-lock,.btn-nota,.btn-add,.btn-dispatch-dia{color:#64748B!important;}',
+    /* ── Correções globais do tema claro ── */
+    ':root[data-tema="classico"] input,:root[data-tema="classico"] select,:root[data-tema="classico"] textarea{background:#FFFFFF!important;border-color:rgba(15,23,42,0.15)!important;color:#0F172A!important;box-shadow:0 1px 2px rgba(15,23,42,0.04)!important;}',
+    ':root[data-tema="classico"] input::placeholder,:root[data-tema="classico"] textarea::placeholder{color:#94A3B8!important;}',
+    ':root[data-tema="classico"] input:focus,:root[data-tema="classico"] select:focus,:root[data-tema="classico"] textarea:focus{border-color:rgba(37,99,235,0.42)!important;box-shadow:0 0 0 3px rgba(37,99,235,0.10),0 1px 2px rgba(15,23,42,0.04)!important;}',
+    ':root[data-tema="classico"] .card,:root[data-tema="classico"] .modal,:root[data-tema="classico"] .panel,:root[data-tema="classico"] .table-card,:root[data-tema="classico"] .filters-card,:root[data-tema="classico"] .lista-grid,:root[data-tema="classico"] .table-container{background:#FFFFFF!important;border-color:rgba(15,23,42,0.10)!important;box-shadow:0 14px 36px rgba(15,23,42,0.08)!important;}',
+    ':root[data-tema="classico"] tbody tr{background:#FFFFFF!important;}',
+    ':root[data-tema="classico"] tbody tr:hover{background:#F8FAFC!important;}',
+    ':root[data-tema="classico"] tbody td{border-color:rgba(15,23,42,0.08)!important;}',
+    ':root[data-tema="classico"] .btn-primary,:root[data-tema="classico"] .btn-salvar,:root[data-tema="classico"] .btn-login,:root[data-tema="classico"] button[type="submit"]{background:#2563EB!important;color:#FFFFFF!important;box-shadow:0 10px 22px rgba(37,99,235,0.16)!important;}',
+    ':root[data-tema="classico"] .btn-secondary,:root[data-tema="classico"] .btn-exportar,:root[data-tema="classico"] .btn-ver,:root[data-tema="classico"] .chip,:root[data-tema="classico"] .tab-btn{background:#FFFFFF!important;color:#475569!important;border-color:rgba(15,23,42,0.10)!important;}',
+    ':root[data-tema="classico"] .overlay,:root[data-tema="classico"] .modal-overlay{background:rgba(15,23,42,0.50)!important;}',
 
     /* ── Botão toggle ── */
-    '.btn-tema-toggle{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);cursor:pointer;font-family:inherit;transition:background .15s,color .15s;white-space:nowrap;letter-spacing:.02em;}',
-    '.btn-tema-toggle:hover{background:rgba(255,255,255,0.14);color:#fff;}',
+    '.btn-tema-toggle{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.06);border:1px solid rgba(221,232,240,0.14);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:#BAC4CC;cursor:pointer;font-family:inherit;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;letter-spacing:0;}',
+    '.btn-tema-toggle:hover{background:rgba(255,255,255,0.10);border-color:rgba(221,232,240,0.22);color:#fff;}',
     ':root[data-tema="classico"] .btn-tema-toggle{background:rgba(37,99,235,0.1);border-color:rgba(37,99,235,0.28);color:#2563EB;}',
     ':root[data-tema="classico"] .btn-tema-toggle:hover{background:rgba(37,99,235,0.18);}',
   ].join('');
@@ -220,7 +234,7 @@ function toggleTema() {
   btns.forEach(function(btn) { btn.textContent = novo === 'classico' ? 'Clássico › Legado' : 'Legado › Clássico'; });
 }
 
-function ciclarTema() { /* tema fixo: usar toggleTema() */ }
+function ciclarTema() { toggleTema(); }
 
 window.addEventListener('DOMContentLoaded', function() {
   applyTheme();
@@ -268,11 +282,18 @@ function showToast(mensagem, tipo, duracao) {
   // Errors warrant assertive announcement
   container.setAttribute('aria-live', tipo === 'error' ? 'assertive' : 'polite');
 
-  var paleta = {
-    success: { bg: 'rgba(62,207,142,0.13)',  border: 'rgba(62,207,142,0.4)',  color: '#3ECF8E', icon: '✓' },
-    error:   { bg: 'rgba(239,68,68,0.13)',   border: 'rgba(239,68,68,0.4)',   color: '#F87171', icon: '✕' },
-    warning: { bg: 'rgba(245,158,11,0.13)',  border: 'rgba(245,158,11,0.4)',  color: '#FCD34D', icon: '!' },
-    info:    { bg: 'rgba(255,255,255,0.09)', border: 'rgba(255,255,255,0.18)',color: '#A1A1AA', icon: 'i' },
+  var temaClaro = document.documentElement.dataset.tema === 'classico'
+    || document.documentElement.dataset.theme === 'light';
+  var paleta = temaClaro ? {
+    success: { bg: '#ECFDF3', border: '#BBF7D0', color: '#166534', icon: '✓' },
+    error:   { bg: '#FEF2F2', border: '#FECACA', color: '#B91C1C', icon: '✕' },
+    warning: { bg: '#FFFBEB', border: '#FDE68A', color: '#92400E', icon: '!' },
+    info:    { bg: '#EFF6FF', border: '#BFDBFE', color: '#1D4ED8', icon: 'i' },
+  } : {
+    success: { bg: 'rgba(56,213,143,0.13)', border: 'rgba(56,213,143,0.38)', color: '#38D58F', icon: '✓' },
+    error:   { bg: 'rgba(255,107,107,0.13)', border: 'rgba(255,107,107,0.38)', color: '#FF8A8A', icon: '✕' },
+    warning: { bg: 'rgba(245,184,65,0.13)', border: 'rgba(245,184,65,0.38)', color: '#F5B841', icon: '!' },
+    info:    { bg: 'rgba(124,140,255,0.13)', border: 'rgba(124,140,255,0.30)', color: '#A8B2FF', icon: 'i' },
   };
   var c = paleta[tipo] || paleta.info;
 
@@ -293,7 +314,7 @@ function showToast(mensagem, tipo, duracao) {
     'display:flex',
     'align-items:flex-start',
     'gap:8px',
-    'box-shadow:0 4px 16px rgba(0,0,0,0.4)',
+    'box-shadow:' + (temaClaro ? '0 12px 28px rgba(15,23,42,0.12)' : '0 12px 28px rgba(0,0,0,0.38)'),
     'opacity:0',
     'transform:translateY(8px)',
     'transition:opacity 0.2s,transform 0.2s',
@@ -327,11 +348,18 @@ function showToast(mensagem, tipo, duracao) {
 function alertModal(titulo, mensagem, tipo) {
   tipo = tipo || 'aviso';
   var ICONE = { info:'ℹ️', aviso:'⚠️', erro:'🚫', sucesso:'✅' };
-  var COR   = {
-    info:   { borda:'rgba(99,102,241,.3)',  bg:'rgba(99,102,241,.1)',  txt:'#A5B4FC' },
-    aviso:  { borda:'rgba(245,158,11,.3)', bg:'rgba(245,158,11,.1)', txt:'#FCD34D' },
-    erro:   { borda:'rgba(239,68,68,.3)',  bg:'rgba(239,68,68,.1)',  txt:'#F87171' },
-    sucesso:{ borda:'rgba(62,207,142,.3)', bg:'rgba(62,207,142,.1)', txt:'#3ECF8E' },
+  var temaClaro = document.documentElement.dataset.tema === 'classico'
+    || document.documentElement.dataset.theme === 'light';
+  var COR = temaClaro ? {
+    info:   { borda:'#BFDBFE', bg:'#EFF6FF', txt:'#1D4ED8' },
+    aviso:  { borda:'#FDE68A', bg:'#FFFBEB', txt:'#92400E' },
+    erro:   { borda:'#FECACA', bg:'#FEF2F2', txt:'#B91C1C' },
+    sucesso:{ borda:'#BBF7D0', bg:'#ECFDF3', txt:'#166534' },
+  } : {
+    info:   { borda:'rgba(124,140,255,.3)', bg:'rgba(124,140,255,.1)', txt:'#A8B2FF' },
+    aviso:  { borda:'rgba(245,184,65,.3)', bg:'rgba(245,184,65,.1)', txt:'#F5B841' },
+    erro:   { borda:'rgba(255,107,107,.3)', bg:'rgba(255,107,107,.1)', txt:'#FF8A8A' },
+    sucesso:{ borda:'rgba(56,213,143,.3)', bg:'rgba(56,213,143,.1)', txt:'#38D58F' },
   };
   var c = COR[tipo] || COR.aviso;
   return new Promise(function(resolve) {
@@ -342,18 +370,18 @@ function alertModal(titulo, mensagem, tipo) {
     overlay.setAttribute('role', 'alertdialog');
     overlay.setAttribute('style', [
       'position:fixed','inset:0',
-      'background:rgba(0,0,0,0.72)',
+      'background:var(--overlay-bg,rgba(0,0,0,0.72))',
       'display:flex','align-items:center','justify-content:center',
       'z-index:9999','padding:20px',
       'backdrop-filter:blur(6px)','-webkit-backdrop-filter:blur(6px)',
     ].join(';'));
     overlay.innerHTML =
-      '<div style="background:#161616;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:28px;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.65);">'
+      '<div style="background:var(--surface-1);border:1px solid var(--border-strong);border-radius:14px;padding:28px;max-width:420px;width:100%;box-shadow:var(--shadow-soft,0 24px 64px rgba(0,0,0,0.35));">'
       + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
       + '<span style="font-size:22px;line-height:1">' + (ICONE[tipo]||ICONE.aviso) + '</span>'
-      + '<h3 style="font-size:15px;font-weight:700;color:#fff;margin:0">' + escHtml(titulo) + '</h3>'
+      + '<h3 style="font-size:15px;font-weight:700;color:var(--text-1);margin:0">' + escHtml(titulo) + '</h3>'
       + '</div>'
-      + '<p style="font-size:13px;color:#A1A1AA;margin:0 0 22px;line-height:1.65;white-space:pre-line">' + escHtml(mensagem) + '</p>'
+      + '<p style="font-size:13px;color:var(--text-2);margin:0 0 22px;line-height:1.65;white-space:pre-line">' + escHtml(mensagem) + '</p>'
       + '<div style="display:flex;justify-content:flex-end">'
       + '<button id="am-ok" style="padding:9px 28px;background:'+c.bg+';border:1px solid '+c.borda+';border-radius:7px;color:'+c.txt+';cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;">OK</button>'
       + '</div></div>';
@@ -378,7 +406,7 @@ function confirmModal(mensagem, onConfirm, onCancel) {
   overlay.setAttribute('aria-labelledby', 'cm-msg');
   overlay.setAttribute('style', [
     'position:fixed', 'inset:0',
-    'background:rgba(0,0,0,0.65)',
+    'background:var(--overlay-bg,rgba(0,0,0,0.65))',
     'display:flex', 'align-items:center', 'justify-content:center',
     'z-index:9998', 'padding:20px',
     'backdrop-filter:blur(4px)',
@@ -386,11 +414,11 @@ function confirmModal(mensagem, onConfirm, onCancel) {
   ].join(';'));
 
   overlay.innerHTML =
-    '<div style="background:#161616;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.6);">'
-    + '<p id="cm-msg" style="font-size:14px;color:#FFFFFF;line-height:1.6;margin-bottom:20px;">' + escHtml(mensagem) + '</p>'
+    '<div style="background:var(--surface-1);border:1px solid var(--border-strong);border-radius:12px;padding:24px;max-width:400px;width:100%;box-shadow:var(--shadow-soft,0 20px 60px rgba(0,0,0,0.35));">'
+    + '<p id="cm-msg" style="font-size:14px;color:var(--text-1);line-height:1.6;margin-bottom:20px;">' + escHtml(mensagem) + '</p>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
-    + '<button id="cm-cancelar" style="padding:8px 18px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#A1A1AA;cursor:pointer;font-size:13px;font-weight:500;font-family:Inter,system-ui,sans-serif;">Cancelar</button>'
-    + '<button id="cm-confirmar" style="padding:8px 18px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);border-radius:6px;color:#F87171;cursor:pointer;font-size:13px;font-weight:600;font-family:Inter,system-ui,sans-serif;">Confirmar</button>'
+    + '<button id="cm-cancelar" style="padding:8px 18px;background:transparent;border:1px solid var(--border-strong);border-radius:6px;color:var(--text-2);cursor:pointer;font-size:13px;font-weight:500;font-family:Inter,system-ui,sans-serif;">Cancelar</button>'
+    + '<button id="cm-confirmar" style="padding:8px 18px;background:color-mix(in srgb,var(--danger,#EF4444) 12%,transparent);border:1px solid color-mix(in srgb,var(--danger,#EF4444) 28%,transparent);border-radius:6px;color:var(--danger,#EF4444);cursor:pointer;font-size:13px;font-weight:600;font-family:Inter,system-ui,sans-serif;">Confirmar</button>'
     + '</div></div>';
 
   document.body.appendChild(overlay);
@@ -458,37 +486,37 @@ function _injetarCSSMob() {
     /* Botão hambúrguer — fica à direita na topbar, só aparece no mobile */
     '#nav-ham{display:none;background:none;border:none;color:var(--text-1,#fff);cursor:pointer;' +
     'padding:9px;border-radius:8px;flex-shrink:0;margin-left:auto;transition:background .15s;line-height:0}' +
-    '#nav-ham:hover{background:rgba(255,255,255,.09)}' +
+    '#nav-ham:hover{background:color-mix(in srgb,var(--text-1) 8%,transparent)}' +
 
     /* Overlay escuro atrás do drawer */
-    '.mob-ov{display:none;position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.72);' +
+    '.mob-ov{display:none;position:fixed;inset:0;z-index:9990;background:var(--overlay-bg,rgba(0,0,0,.72));' +
     'backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}' +
     '.mob-ov.open{display:flex;justify-content:flex-end}' +
 
     /* Drawer lateral deslizante da direita */
-    '.mob-drawer{width:min(300px,86vw);height:100%;background:#111;' +
-    'border-left:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;' +
+    '.mob-drawer{width:min(300px,86vw);height:100%;background:var(--surface-1);' +
+    'border-left:1px solid var(--border);display:flex;flex-direction:column;' +
     'overflow-y:auto;overscroll-behavior:contain;animation:_sdIn .22s ease}' +
     '@keyframes _sdIn{from{transform:translateX(100%)}to{transform:translateX(0)}}' +
 
     /* Cabeçalho do drawer */
     '.mob-dhead{display:flex;align-items:center;justify-content:space-between;' +
-    'padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}' +
-    '.mob-dhead span{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.2px}' +
-    '.mob-dclose{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;' +
+    'padding:20px 20px 16px;border-bottom:1px solid var(--border);flex-shrink:0}' +
+    '.mob-dhead span{font-size:15px;font-weight:700;color:var(--text-1);letter-spacing:0}' +
+    '.mob-dclose{background:none;border:none;color:var(--text-3);cursor:pointer;' +
     'padding:6px;border-radius:6px;font-size:22px;line-height:1;transition:background .15s,color .15s}' +
-    '.mob-dclose:hover{color:#fff;background:rgba(255,255,255,.08)}' +
+    '.mob-dclose:hover{color:var(--text-1);background:color-mix(in srgb,var(--text-1) 8%,transparent)}' +
 
     /* Links de navegação dentro do drawer */
     '.mob-dnav{display:flex;flex-direction:column;padding:10px 0 32px;flex:1}' +
-    '.mob-dnav a{display:block;padding:14px 24px;color:rgba(255,255,255,.65);text-decoration:none;' +
+    '.mob-dnav a{display:block;padding:14px 24px;color:var(--text-2);text-decoration:none;' +
     'font-size:15px;font-weight:500;border-left:3px solid transparent;' +
     'transition:background .12s,color .12s,border-color .12s}' +
-    '.mob-dnav a:hover{background:rgba(255,255,255,.05);color:#fff}' +
-    '.mob-dnav a.active{color:#3ECF8E;border-left-color:#3ECF8E;background:rgba(62,207,142,.07);font-weight:600}' +
-    '.mob-dnav a.nav-sair{color:rgba(239,68,68,.8);border-top:1px solid rgba(255,255,255,.06);' +
+    '.mob-dnav a:hover{background:color-mix(in srgb,var(--text-1) 6%,transparent);color:var(--text-1)}' +
+    '.mob-dnav a.active{color:var(--primary);border-left-color:var(--primary);background:var(--primary-muted);font-weight:600}' +
+    '.mob-dnav a.nav-sair{color:var(--danger,#EF4444);border-top:1px solid var(--border);' +
     'margin-top:10px;padding-top:16px}' +
-    '.mob-dnav a.nav-sair:hover{color:#F87171;background:rgba(239,68,68,.07)}' +
+    '.mob-dnav a.nav-sair:hover{color:var(--danger,#EF4444);background:color-mix(in srgb,var(--danger,#EF4444) 9%,transparent)}' +
 
     /* Ativa hambúrguer e esconde a nav no breakpoint do app-shell (860px) */
     '@media(max-width:860px){' +

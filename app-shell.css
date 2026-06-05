@@ -1,53 +1,101 @@
 /* SAOS-AUDIT: build 2026-06-01 pós-auditoria */
 /* Solução shell — redesign global 2026-05-30 */
 
-/* Tema fixo: noturno — botão de troca de tema removido */
+/* Tema global: Legado (escuro) e Classico (claro). */
 .tema-btn { display: none !important; }
 :root {
-  --bg: #0A0A0A !important;
-  --surface-1: rgba(17, 17, 17, 0.88) !important;
-  --surface-2: rgba(22, 22, 22, 0.86) !important;
-  --surface-3: rgba(27, 27, 27, 0.88) !important;
-  --primary: #3ECF8E !important;
-  --primary-hover: #2EBF7E !important;
-  --primary-muted: rgba(62, 207, 142, 0.10) !important;
-  --secondary: #4F46E5 !important;
+  color-scheme: dark;
+  --bg: #090D10 !important;
+  --surface-1: #11181D !important;
+  --surface-2: #162027 !important;
+  --surface-3: #1C2931 !important;
+  --primary: #38D58F !important;
+  --primary-hover: #26BD79 !important;
+  --primary-muted: rgba(56, 213, 143, 0.12) !important;
+  --secondary: #7C8CFF !important;
   --text-1: #FFFFFF !important;
-  --text-2: #A1A1AA !important;
-  --text-3: #52525B !important;
-  --border: rgba(255, 255, 255, 0.08) !important;
-  --border-strong: rgba(255, 255, 255, 0.12) !important;
-  --border-focus: rgba(62, 207, 142, 0.42) !important;
+  --text-2: #BAC4CC !important;
+  --text-3: #7D8B96 !important;
+  --border: rgba(221, 232, 240, 0.10) !important;
+  --border-strong: rgba(221, 232, 240, 0.17) !important;
+  --border-hover: rgba(221, 232, 240, 0.24) !important;
+  --border-focus: rgba(56, 213, 143, 0.44) !important;
+  --field-bg: #0D1418 !important;
+  --field-border: rgba(221, 232, 240, 0.14) !important;
+  --field-placeholder: #687782 !important;
+  --row-bg: rgba(255, 255, 255, 0.035) !important;
+  --row-hover: rgba(255, 255, 255, 0.055) !important;
+  --overlay-bg: rgba(3, 7, 10, 0.70) !important;
+  --success: #38D58F !important;
+  --warning: #F5B841 !important;
+  --danger: #FF6B6B !important;
+  --info: #7C8CFF !important;
   --radius: 10px !important;
   --radius-card: 14px !important;
   --radius-input: 9px !important;
-  --shadow-soft: 0 18px 70px rgba(0, 0, 0, 0.34);
+  --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.30);
   --shell-w: 264px;
 }
 
 :root[data-theme="light"] {
-  --bg: #eef3f6 !important;
-  --surface-1: rgba(255, 255, 255, 0.84) !important;
-  --surface-2: rgba(249, 251, 252, 0.9) !important;
-  --surface-3: rgba(240, 245, 247, 0.92) !important;
-  --text-1: #111827 !important;
-  --text-2: #52606b !important;
-  --text-3: #84919d !important;
-  --border: rgba(15, 23, 42, 0.1) !important;
+  color-scheme: light;
+  --bg: #F3F6FA !important;
+  --surface-1: #FFFFFF !important;
+  --surface-2: #F8FAFC !important;
+  --surface-3: #EEF3F8 !important;
+  --primary: #2563EB !important;
+  --primary-hover: #1D4ED8 !important;
+  --primary-muted: rgba(37, 99, 235, 0.10) !important;
+  --secondary: #64748B !important;
+  --text-1: #0F172A !important;
+  --text-2: #475569 !important;
+  --text-3: #7C8A9A !important;
+  --border: rgba(15, 23, 42, 0.10) !important;
   --border-strong: rgba(15, 23, 42, 0.18) !important;
+  --border-hover: rgba(15, 23, 42, 0.26) !important;
+  --border-focus: rgba(37, 99, 235, 0.42) !important;
+  --field-bg: #FFFFFF !important;
+  --field-border: rgba(15, 23, 42, 0.15) !important;
+  --field-placeholder: #94A3B8 !important;
+  --row-bg: #FFFFFF !important;
+  --row-hover: #F8FAFC !important;
+  --overlay-bg: rgba(15, 23, 42, 0.50) !important;
+  --success: #16A34A !important;
+  --warning: #D97706 !important;
+  --danger: #DC2626 !important;
+  --info: #2563EB !important;
+  --shadow-soft: 0 14px 36px rgba(15, 23, 42, 0.08);
 }
 
 @media (prefers-color-scheme: light) {
   :root[data-theme="auto"] {
-    --bg: #eef3f6 !important;
-    --surface-1: rgba(255, 255, 255, 0.84) !important;
-    --surface-2: rgba(249, 251, 252, 0.9) !important;
-    --surface-3: rgba(240, 245, 247, 0.92) !important;
-    --text-1: #111827 !important;
-    --text-2: #52606b !important;
-    --text-3: #84919d !important;
-    --border: rgba(15, 23, 42, 0.1) !important;
+    color-scheme: light;
+    --bg: #F3F6FA !important;
+    --surface-1: #FFFFFF !important;
+    --surface-2: #F8FAFC !important;
+    --surface-3: #EEF3F8 !important;
+    --primary: #2563EB !important;
+    --primary-hover: #1D4ED8 !important;
+    --primary-muted: rgba(37, 99, 235, 0.10) !important;
+    --secondary: #64748B !important;
+    --text-1: #0F172A !important;
+    --text-2: #475569 !important;
+    --text-3: #7C8A9A !important;
+    --border: rgba(15, 23, 42, 0.10) !important;
     --border-strong: rgba(15, 23, 42, 0.18) !important;
+    --border-hover: rgba(15, 23, 42, 0.26) !important;
+    --border-focus: rgba(37, 99, 235, 0.42) !important;
+    --field-bg: #FFFFFF !important;
+    --field-border: rgba(15, 23, 42, 0.15) !important;
+    --field-placeholder: #94A3B8 !important;
+    --row-bg: #FFFFFF !important;
+    --row-hover: #F8FAFC !important;
+    --overlay-bg: rgba(15, 23, 42, 0.50) !important;
+    --success: #16A34A !important;
+    --warning: #D97706 !important;
+    --danger: #DC2626 !important;
+    --info: #2563EB !important;
+    --shadow-soft: 0 14px 36px rgba(15, 23, 42, 0.08);
   }
 }
 
@@ -61,12 +109,14 @@ html {
 }
 
 body {
-  background:
-    radial-gradient(circle at 8% 8%, rgba(62, 207, 142, 0.10), transparent 30%),
-    radial-gradient(circle at 78% 12%, rgba(79, 70, 229, 0.08), transparent 34%),
-    linear-gradient(135deg, #0A0A0A 0%, #101010 46%, #0A0A0A 100%) !important;
+  background: linear-gradient(180deg, #0B1115 0%, #090D10 100%) !important;
   color: var(--text-1) !important;
   letter-spacing: 0 !important;
+}
+
+:root[data-theme="light"] body,
+:root[data-tema="classico"] body {
+  background: #F3F6FA !important;
 }
 
 body::before {
@@ -76,8 +126,8 @@ body::before {
   pointer-events: none;
   z-index: -1;
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
+    linear-gradient(rgba(148, 163, 184, 0.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.030) 1px, transparent 1px);
   background-size: 34px 34px;
   mask-image: linear-gradient(to bottom, rgba(0,0,0,0.88), transparent 86%);
 }
@@ -252,11 +302,16 @@ main,
 input,
 select,
 textarea {
-  background: rgba(3, 7, 10, 0.62) !important;
-  border: 1px solid var(--border) !important;
+  background: var(--field-bg) !important;
+  border: 1px solid var(--field-border) !important;
   border-radius: var(--radius-input) !important;
   color: var(--text-1) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.03) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--field-placeholder) !important;
 }
 
 input:focus,
@@ -288,10 +343,10 @@ button,
 .btn-login,
 .btn-novo,
 button[type="submit"] {
-  background: linear-gradient(135deg, #3ECF8E, #4F46E5) !important;
-  color: #03110f !important;
+  background: var(--primary) !important;
+  color: #06110D !important;
   border: 0 !important;
-  box-shadow: 0 12px 32px rgba(62, 207, 142, 0.18) !important;
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--primary) 22%, transparent) !important;
 }
 
 .btn-secondary,
@@ -325,7 +380,11 @@ thead th {
 }
 
 tbody tr {
-  background: rgba(255, 255, 255, 0.035) !important;
+  background: var(--row-bg) !important;
+}
+
+tbody tr:hover {
+  background: var(--row-hover) !important;
 }
 
 tbody td {
@@ -349,11 +408,100 @@ tbody td:last-child {
   background: color-mix(in srgb, currentColor 14%, transparent) !important;
 }
 
+.overlay,
+.modal-overlay,
+#alert-modal-overlay,
+#confirm-modal-overlay {
+  background: var(--overlay-bg) !important;
+}
+
+:root[data-theme="light"] input,
+:root[data-theme="light"] select,
+:root[data-theme="light"] textarea,
+:root[data-tema="classico"] input,
+:root[data-tema="classico"] select,
+:root[data-tema="classico"] textarea {
+  background: #FFFFFF !important;
+  border-color: var(--field-border) !important;
+  color: var(--text-1) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+:root[data-theme="light"] input:focus,
+:root[data-theme="light"] select:focus,
+:root[data-theme="light"] textarea:focus,
+:root[data-tema="classico"] input:focus,
+:root[data-tema="classico"] select:focus,
+:root[data-tema="classico"] textarea:focus {
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+:root[data-theme="light"] .btn-primary,
+:root[data-theme="light"] .btn-salvar,
+:root[data-theme="light"] .btn-login,
+:root[data-theme="light"] .btn-novo,
+:root[data-theme="light"] button[type="submit"],
+:root[data-tema="classico"] .btn-primary,
+:root[data-tema="classico"] .btn-salvar,
+:root[data-tema="classico"] .btn-login,
+:root[data-tema="classico"] .btn-novo,
+:root[data-tema="classico"] button[type="submit"] {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.16) !important;
+}
+
+:root[data-theme="light"] .btn-secondary,
+:root[data-theme="light"] .btn-exportar,
+:root[data-theme="light"] .btn-ver,
+:root[data-theme="light"] .filtro-btn,
+:root[data-theme="light"] .tab-btn,
+:root[data-theme="light"] .chip,
+:root[data-tema="classico"] .btn-secondary,
+:root[data-tema="classico"] .btn-exportar,
+:root[data-tema="classico"] .btn-ver,
+:root[data-tema="classico"] .filtro-btn,
+:root[data-tema="classico"] .tab-btn,
+:root[data-tema="classico"] .chip {
+  background: #FFFFFF !important;
+  color: var(--text-2) !important;
+  border-color: var(--border) !important;
+}
+
+:root[data-theme="light"] tbody td,
+:root[data-tema="classico"] tbody td {
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+:root[data-theme="light"] thead th,
+:root[data-tema="classico"] thead th {
+  color: #64748B !important;
+}
+
 /* Login receives a distinct product-style first screen */
 body.login-modernized {
   padding-left: 0 !important;
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+body.login-modernized .tema-btn,
+body.login-modernized .tema-float {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 5;
+  width: 38px;
+  height: 38px;
+  font-size: 17px;
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-1) !important;
+  box-shadow: var(--shadow-soft) !important;
 }
 
 body.login-modernized::before {
@@ -413,6 +561,86 @@ body.login-modernized .login-card {
 
 body.login-modernized .card-header h2 {
   font-size: 24px !important;
+}
+
+:root[data-tema="classico"] body.login-modernized::before,
+:root[data-theme="light"] body.login-modernized::before {
+  background:
+    linear-gradient(90deg, rgba(248, 250, 252, 0.88) 0%, rgba(248, 250, 252, 0.72) 38%, rgba(248, 250, 252, 0.96) 72%, rgba(248, 250, 252, 0.98) 100%),
+    url("bg-login.jpg") center / cover no-repeat !important;
+}
+
+:root[data-tema="classico"] body.login-modernized::after,
+:root[data-theme="light"] body.login-modernized::after {
+  display: none !important;
+}
+
+:root[data-tema="classico"] body.login-modernized .login-card,
+:root[data-theme="light"] body.login-modernized .login-card {
+  background: #FFFFFF !important;
+  border: 1px solid rgba(15, 23, 42, 0.12) !important;
+  box-shadow: 0 22px 54px rgba(15, 23, 42, 0.14) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+:root[data-tema="classico"] body.login-modernized .brand-logo-img,
+:root[data-theme="light"] body.login-modernized .brand-logo-img,
+:root[data-tema="classico"] body.login-modernized .card-logo-img,
+:root[data-theme="light"] body.login-modernized .card-logo-img {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+:root[data-tema="classico"] body.login-modernized .brand-title,
+:root[data-theme="light"] body.login-modernized .brand-title,
+:root[data-tema="classico"] body.login-modernized .feature-text strong,
+:root[data-theme="light"] body.login-modernized .feature-text strong,
+:root[data-tema="classico"] body.login-modernized .card-header h2,
+:root[data-theme="light"] body.login-modernized .card-header h2 {
+  color: #0F172A !important;
+}
+
+:root[data-tema="classico"] body.login-modernized .brand-subtitle,
+:root[data-theme="light"] body.login-modernized .brand-subtitle,
+:root[data-tema="classico"] body.login-modernized .feature-text span,
+:root[data-theme="light"] body.login-modernized .feature-text span,
+:root[data-tema="classico"] body.login-modernized .card-header p,
+:root[data-theme="light"] body.login-modernized .card-header p,
+:root[data-tema="classico"] body.login-modernized .form-group label,
+:root[data-theme="light"] body.login-modernized .form-group label {
+  color: #475569 !important;
+}
+
+#modal-senha {
+  background: var(--overlay-bg) !important;
+}
+
+#modal-senha > div {
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border-strong) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+#modal-senha h3,
+#modal-senha strong {
+  color: var(--text-1) !important;
+}
+
+#modal-senha p,
+#modal-senha label {
+  color: var(--text-2) !important;
+}
+
+#ms-btn {
+  background: var(--primary) !important;
+  color: #06110D !important;
+}
+
+:root[data-tema="classico"] #ms-btn,
+:root[data-theme="light"] #ms-btn {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
 }
 
 @media (max-width: 1180px) {
