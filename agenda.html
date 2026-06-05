@@ -3183,7 +3183,9 @@ async function gerarProgramacaoSemanal() {
           const arquiteto = escHtml(ag.obras?.arquiteto_responsavel || '');
           const osNum     = ag.numero_os ? escHtml(String(ag.numero_os)) : '';
           const tecIds    = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-          const tecStr    = escHtml(tecIds.map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · '));
+          const tecStr    = escHtml(tecIds
+            .filter(id => !tecnicoBloqueadoNaData(id, iso, ag.hora_inicio))
+            .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · '));
           const corEq     = COR_EQ[ag.equipe_id] || '#334155';
           const LBL = `color:${S_T3};font-weight:600;font-size:10px;`;
           const VAL = `color:${S_T2};font-size:10px;`;
