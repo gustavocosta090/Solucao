@@ -2965,103 +2965,79 @@ async function dispararAgendaWhatsapp() {
     (a.hora_inicio || '00:00').localeCompare(b.hora_inicio || '00:00')
   );
 
-  // Carregar logo já pré-processado como branco (html2canvas ignora CSS filter)
-  const logoB64   = await carregarLogoBase64Branco('logosolucao.png');
-  const geradoEm  = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const logoB64  = await carregarLogoBase64Branco('logosolucao.png');
+  const geradoEm = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
 
-  // Paleta profissional — dark minimal
-  const BG     = '#0D1117';
-  const SURF   = '#161B22';
-  const HEADER = '#0A0E15';
-  const GOLD   = '#C4A882';
-  const T1     = '#F0F6FC';
-  const T2     = '#8B949E';
-  const T3     = '#484F58';
-  const BRDR   = '#21262D';
-  const COR_EQ = { 1:'#2563EB', 2:'#D97706', 3:'#7C3AED', 4:'#059669', 5:'#DC2626' };
+  // Tema claro — igual ao Plantão Semanal
+  const BG    = '#F1F5F9';
+  const SURF  = '#FFFFFF';
+  const HDR   = '#1E293B';
+  const T1    = '#0F172A';
+  const T2    = '#334155';
+  const T3    = '#64748B';
+  const BRDR  = '#CBD5E1';
+  const ACCNT = '#4F46E5';
 
-  // Monta card de cada agendamento com inline styles
   const cardsHTML = ordenados.map((ag) => {
     const hora      = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
-    const cliente   = escHtml(ag.obras?.nome_cliente || ag.cliente_outro || '—');
+    const cliente   = escHtml(_abreviarCliente(ag.obras?.nome_cliente || ag.cliente_outro || '—'));
     const end       = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
     const serv      = escHtml(ag.servico || '');
     const veic      = escHtml(ag.veiculo || '');
     const consultor = escHtml(ag.obras?.consultores?.nome || '');
-    const arquiteto = escHtml(ag.obras?.arquiteto_responsavel || '');
     const osNum     = ag.numero_os ? escHtml(String(ag.numero_os)) : '';
-
-    const tecIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-    const tecStr = escHtml(tecIds
+    const tecIds    = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+    const tecStr    = escHtml(tecIds
       .filter(id => !tecnicoBloqueadoNaData(id, hoje, ag.hora_inicio))
-      .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · '));
-
-    const eq  = equipeDoAg(ag);
-    const cor = eq ? (COR_EQ[Object.keys(EQUIPE_INFO).find(k => EQUIPE_INFO[k].nome === eq.nome)] || eq.cor) : '#334155';
-
-    const LBL = `color:${T3};font-weight:700;font-size:13px;min-width:76px;flex-shrink:0;`;
-    const VAL = `color:${T2};font-size:13px;`;
-    const lin = (label, val) => val
-      ? `<div style="display:flex;gap:8px;margin-top:5px;line-height:1.5;align-items:baseline;"><span style="${LBL}">${label}</span><span style="${VAL}">${val}</span></div>`
-      : '';
-
-    return `<div style="background:${SURF};border-radius:8px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${cor};">
-      <!-- Hora + Técnico (maior) -->
-      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;">
-        <span style="font-size:18px;font-weight:900;color:${GOLD};flex-shrink:0;font-variant-numeric:tabular-nums;min-width:54px;">${hora}</span>
-        <span style="font-size:15px;font-weight:700;color:${T1};flex:1;line-height:1.3;">${tecStr||'—'}</span>
+      .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(', '));
+    const lin = (l, v) => v
+      ? `<div style="margin-top:6px;font-size:13px;color:${T2};line-height:1.4;"><span style="font-weight:700;color:${T3};">${l}</span> ${v}</div>` : '';
+    return `<div style="background:${SURF};border-radius:8px;padding:14px 16px;margin-bottom:10px;border:1px solid ${BRDR};box-shadow:0 1px 4px rgba(0,0,0,0.07);">
+      <div style="display:flex;align-items:baseline;gap:10px;">
+        <span style="font-size:20px;font-weight:900;color:${T1};flex-shrink:0;font-variant-numeric:tabular-nums;">${hora}</span>
+        <span style="font-size:16px;font-weight:800;color:${T1};line-height:1.3;">${cliente}</span>
       </div>
-      <!-- Cliente um pouco menor que hora/técnico -->
-      <div style="font-size:14px;font-weight:700;color:${T1};line-height:1.35;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid ${BRDR};"><span style="color:${T3};font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-right:6px;">Cliente:</span>${cliente}</div>
-      <!-- Campos: fonte legível 13px -->
-      <div>
-        ${lin('Endereço:',  end)}
-        ${lin('Arquiteto:', arquiteto)}
-        ${lin('Consultor:', consultor)}
-        ${lin('N.OS:',      osNum)}
-        ${lin('Serviço:',   serv)}
-        ${lin('Veículo:',   veic)}
+      <div style="margin-top:4px;font-size:14px;color:${T2};"><span style="font-weight:700;color:${T3};">Equipe</span> ${tecStr||'—'}</div>
+      <div style="border-top:1px solid ${BRDR};margin-top:8px;padding-top:8px;">
+        ${lin('Endereço:', end)}${lin('Consultor:', consultor)}${lin('N.OS:', osNum)}${lin('Serviço:', serv)}${lin('Veículo:', veic)}
       </div>
     </div>`;
   }).join('');
 
   const card = document.getElementById('agenda-card');
-  card.style.width = '860px';
-  card.innerHTML = `<div style="width:860px;background:${BG};font-family:'Segoe UI',system-ui,Arial,sans-serif;border-radius:12px;overflow:hidden;">
-    <div style="background:${HEADER};padding:20px 26px;display:flex;align-items:center;gap:18px;border-bottom:1px solid ${BRDR};">
-      ${logoB64 ? `<img src="${logoB64}" style="height:26px;opacity:0.92;">` : `<span style="font-size:14px;font-weight:800;color:${T1};">SOLUÇÃO TÉCNICA</span>`}
-      <div style="width:1px;height:32px;background:${BRDR};"></div>
+  card.style.width = '800px';
+  card.innerHTML = `<div style="width:800px;background:${BG};font-family:'Segoe UI',system-ui,Arial,sans-serif;border-radius:14px;overflow:hidden;border:1px solid ${BRDR};">
+    <div style="background:${HDR};padding:22px 28px;display:flex;align-items:center;gap:20px;">
+      ${logoB64 ? `<img src="${logoB64}" style="height:28px;opacity:0.95;">` : `<span style="font-size:15px;font-weight:800;color:#FFFFFF;">SOLUÇÃO TÉCNICA</span>`}
+      <div style="width:1px;height:36px;background:rgba(255,255,255,0.15);"></div>
       <div style="flex:1;">
-        <div style="font-size:10px;font-weight:700;color:${GOLD};letter-spacing:0.09em;text-transform:uppercase;">Agenda do Dia${nomeEquipeAtiva?' — '+escHtml(nomeEquipeAtiva):''}</div>
-        <div style="font-size:16px;font-weight:700;color:${T1};margin-top:3px;">${dataFmt}</div>
+        <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.08em;text-transform:uppercase;">Agenda do Dia${nomeEquipeAtiva?' — '+escHtml(nomeEquipeAtiva):''}</div>
+        <div style="font-size:18px;font-weight:700;color:#FFFFFF;margin-top:3px;">${dataFmt}</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:22px;font-weight:700;color:${T1};line-height:1;">${ordenados.length}</div>
-        <div style="font-size:9px;color:${T2};margin-top:2px;text-transform:uppercase;letter-spacing:0.04em;">serviço${ordenados.length !== 1 ? 's' : ''}</div>
+        <div style="font-size:26px;font-weight:800;color:#FFFFFF;line-height:1;">${ordenados.length}</div>
+        <div style="font-size:10px;color:#94A3B8;margin-top:2px;text-transform:uppercase;letter-spacing:0.04em;">serviço${ordenados.length !== 1 ? 's' : ''}</div>
       </div>
     </div>
-    <div style="height:2px;background:linear-gradient(90deg,${GOLD} 0%,rgba(196,168,130,0.08) 100%);"></div>
-    <div style="padding:14px 18px 4px;">${cardsHTML}</div>
-    <div style="height:1px;background:linear-gradient(90deg,rgba(196,168,130,0.18) 0%,rgba(196,168,130,0.04) 60%,transparent 100%);margin:0 18px;"></div>
-    <div style="background:${HEADER};padding:14px 26px 18px;display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <div style="font-size:10px;font-weight:700;color:${GOLD};letter-spacing:0.08em;text-transform:uppercase;">Solução Técnica</div>
-        <div style="font-size:8px;color:${T3};margin-top:2px;letter-spacing:0.04em;">Sistema de Gestão · ${geradoEm}</div>
-      </div>
-      <div style="text-align:right;">
-        <div style="font-size:9px;color:${T3};letter-spacing:0.04em;">${nomeEquipeAtiva ? escHtml(nomeEquipeAtiva) : 'Todas as equipes'}</div>
-        <div style="font-size:8px;color:${T3};margin-top:2px;opacity:0.6;">solucaotecnica.vercel.app</div>
-      </div>
+    <div style="height:3px;background:${ACCNT};"></div>
+    <div style="padding:16px 18px;">${cardsHTML}</div>
+    <div style="background:#E2E8F0;padding:10px 28px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:11px;color:${T3};">Solução Técnica · Sistema de Gestão de Obras</div>
+      <div style="font-size:11px;color:${T3};">Gerado em ${geradoEm}</div>
     </div>
   </div>`;
 
   try {
     await document.fonts.ready;
+    // Aguarda imagens carregarem — evita createPattern 0×0 no html2canvas
+    await Promise.all(Array.from(card.querySelectorAll('img')).map(img =>
+      img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+    ));
 
     const canvas = await html2canvas(card, {
       scale: 2,
       useCORS: true,
-      backgroundColor: '#0D1117',
+      backgroundColor: '#F1F5F9',
       logging: false,
     });
 
@@ -3197,111 +3173,98 @@ async function gerarProgramacaoSemanal() {
   // Carregar logo pré-processado como branco (sem depender de CSS filter)
   const logoB64 = await carregarLogoBase64Branco('logosolucao.png');
 
-  // Paleta consistente — profissional, mínima
-  const S_BG     = '#0D1117';
-  const S_SURF   = '#161B22';
-  const S_CARD   = '#0D1117';
-  const S_HEADER = '#0A0E15';
-  const S_GOLD   = '#C4A882';
-  const S_T1     = '#F0F6FC';
-  const S_T2     = '#8B949E';
-  const S_T3     = '#484F58';
-  const S_BRDR   = '#21262D';
-  // Cores de equipe (apenas borda esquerda nos cards)
-  const COR_EQ = { 1:'#2563EB', 2:'#D97706', 3:'#7C3AED', 4:'#059669', 5:'#DC2626' };
+  // Tema claro — igual ao Plantão Semanal
+  const S_BG   = '#F1F5F9';
+  const S_SURF = '#FFFFFF';
+  const S_HDR  = '#1E293B';
+  const S_T1   = '#0F172A';
+  const S_T2   = '#334155';
+  const S_T3   = '#64748B';
+  const S_BRDR = '#CBD5E1';
+  const S_ACNT = '#4F46E5';
 
-  // Gera HTML de uma coluna (um dia da semana)
   function colunaHTML(iso, idx) {
-    const d       = diasSemana[idx];
-    const ags     = agSemana.filter(ag => ag.data === iso);
-    const diaN    = DIAS_PT[d.getDay()];
-    const dataL   = `${String(d.getDate()).padStart(2,'0')} ${MESES_PT[d.getMonth()]}`;
+    const d      = diasSemana[idx];
+    const ags    = agSemana.filter(ag => ag.data === iso);
+    const diaN   = DIAS_PT[d.getDay()];
+    const dataL  = `${String(d.getDate()).padStart(2,'0')} ${MESES_PT[d.getMonth()]}`;
     const bloqueio = tecnicoBloqueadoNaData(tecId, iso, null);
-    const temAgs  = ags.length > 0 && !bloqueio;
+    const temAgs = ags.length > 0 && !bloqueio;
 
     const cardsHTML = bloqueio
-      ? `<div style="padding:28px 8px;text-align:center;font-size:11px;color:#F87171;font-weight:600;letter-spacing:0.03em;">BLOQUEADO${bloqueio.motivo ? '<br><span style="font-weight:400;color:#A1A1AA">' + escHtml(bloqueio.motivo) + '</span>' : ''}</div>`
+      ? `<div style="padding:28px 8px;text-align:center;font-size:13px;color:#EF4444;font-weight:700;">Bloqueado${bloqueio.motivo ? '<br><span style="font-size:12px;font-weight:400;color:${S_T3};">' + escHtml(bloqueio.motivo) + '</span>' : ''}</div>`
       : (!temAgs
-          ? `<div style="padding:24px 8px;text-align:center;font-size:11px;color:${S_T3};font-style:italic;">Sem serviços</div>`
+          ? `<div style="padding:24px 8px;text-align:center;font-size:13px;color:${S_T3};font-style:italic;">Sem serviços</div>`
           : ags.map(ag => {
-          const hora      = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
-          const cliente   = escHtml(ag.obras?.nome_cliente || ag.cliente_outro || '—');
-          const serv      = escHtml(ag.servico || '');
-          const end       = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
-          const veic      = escHtml(ag.veiculo || '');
-          const consultor = escHtml(ag.obras?.consultores?.nome || '');
-          const arquiteto = escHtml(ag.obras?.arquiteto_responsavel || '');
-          const osNum     = ag.numero_os ? escHtml(String(ag.numero_os)) : '';
-          const tecIds    = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-          const tecStr    = escHtml(tecIds
-            .filter(id => !tecnicoBloqueadoNaData(id, iso, ag.hora_inicio))
-            .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · '));
-          const corEq     = COR_EQ[ag.equipe_id] || '#334155';
-          const LBL = `color:${S_T3};font-weight:600;font-size:10px;`;
-          const VAL = `color:${S_T2};font-size:10px;`;
-          const lin = (label, val) => val ? `<div style="display:flex;gap:5px;margin-top:2px;line-height:1.4;"><span style="${LBL}">${label}</span><span style="${VAL}">${val}</span></div>` : '';
-          return `<div style="background:${S_BG};border-radius:6px;padding:10px 11px;margin-bottom:7px;border-left:3px solid ${corEq};">
-            <div style="font-size:11px;font-weight:700;color:${S_GOLD};margin-bottom:4px;font-variant-numeric:tabular-nums;">${hora}</div>
-            <div style="font-size:12px;font-weight:700;color:${S_T1};line-height:1.3;margin-bottom:5px;">${cliente}</div>
-            <div style="border-top:1px solid ${S_BRDR};padding-top:5px;">
-              ${lin('Técnico:',   tecStr)}
-              ${lin('Endereço:',  end)}
-              ${lin('N.OS:',      osNum)}
-              ${lin('Consultor:', consultor)}
-              ${lin('Arquiteto:', arquiteto)}
-              ${lin('Serviço:',   serv)}
-              ${lin('Veículo:',   veic)}
-            </div>
-          </div>`;
-        }).join(''));
+              const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
+              const cliente = escHtml(_abreviarCliente(ag.obras?.nome_cliente || ag.cliente_outro || '—'));
+              const end     = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
+              const serv    = escHtml(ag.servico || '');
+              const osNum   = ag.numero_os ? escHtml(String(ag.numero_os)) : '';
+              const consultor = escHtml(ag.obras?.consultores?.nome || '');
+              const tecIds  = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+              const tecStr  = escHtml(tecIds
+                .filter(id => !tecnicoBloqueadoNaData(id, iso, ag.hora_inicio))
+                .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(', '));
+              const lin = (l, v) => v
+                ? `<div style="margin-top:5px;font-size:12px;color:${S_T2};line-height:1.4;"><span style="font-weight:700;color:${S_T3};">${l}</span> ${v}</div>` : '';
+              return `<div style="background:${S_SURF};border-radius:8px;padding:12px 14px;margin-bottom:8px;border:1px solid ${S_BRDR};box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                <div style="font-size:18px;font-weight:900;color:${S_T1};font-variant-numeric:tabular-nums;margin-bottom:4px;">${hora}</div>
+                <div style="font-size:14px;font-weight:800;color:${S_T1};line-height:1.3;margin-bottom:4px;">${cliente}</div>
+                <div style="font-size:13px;color:${S_T2};margin-bottom:6px;"><span style="font-weight:700;color:${S_T3};">Equipe</span> ${tecStr||'—'}</div>
+                <div style="border-top:1px solid ${S_BRDR};padding-top:6px;">
+                  ${lin('Endereço:', end)}${lin('Consultor:', consultor)}${lin('N.OS:', osNum)}${lin('Serviço:', serv)}
+                </div>
+              </div>`;
+            }).join(''));
 
     const subtituloCol = bloqueio ? ' · Bloqueado' : (temAgs ? ` · ${ags.length} serv.` : '');
-    return `<div style="flex:1;min-width:0;display:flex;flex-direction:column;">
-      <div style="background:${bloqueio ? 'rgba(239,68,68,0.08)' : S_SURF};border-radius:7px 7px 0 0;padding:11px 13px;border-bottom:2px solid ${bloqueio ? '#F87171' : S_GOLD};">
-        <div style="font-size:12px;font-weight:700;color:${bloqueio ? '#F87171' : S_T1};text-transform:uppercase;letter-spacing:0.07em;">${diaN}</div>
-        <div style="font-size:10px;color:${S_T2};margin-top:3px;">${dataL}${subtituloCol}</div>
+    return `<div style="flex:1;min-width:0;display:flex;flex-direction:column;border-radius:10px;overflow:hidden;border:1px solid ${S_BRDR};">
+      <div style="background:${bloqueio ? '#FEF2F2' : S_HDR};padding:14px 16px;border-bottom:${bloqueio ? '2px solid #EF4444' : 'none'};">
+        <div style="font-size:16px;font-weight:800;color:${bloqueio ? '#EF4444' : '#FFFFFF'};letter-spacing:-0.2px;">${diaN}</div>
+        <div style="font-size:12px;color:${bloqueio ? '#EF4444' : '#94A3B8'};margin-top:3px;">${dataL}${subtituloCol}</div>
       </div>
-      <div style="background:${S_SURF};border-radius:0 0 7px 7px;padding:9px;flex:1;">${cardsHTML}</div>
+      <div style="background:${S_BG};padding:10px;flex:1;">${cardsHTML}</div>
     </div>`;
   }
 
   const colunasHTML = datasISO.map((iso, i) => colunaHTML(iso, i)).join('');
 
   const card = document.getElementById('agenda-card');
-  card.style.width = '1500px';
-  card.innerHTML = `<div style="width:1500px;background:${S_BG};font-family:'Segoe UI',system-ui,Arial,sans-serif;border-radius:12px;overflow:hidden;">
-    <div style="background:${S_HEADER};padding:20px 26px;display:flex;align-items:center;gap:18px;border-bottom:1px solid ${S_BRDR};">
-      ${logoB64
-        ? `<img src="${logoB64}" style="height:27px;opacity:0.92;">`
-        : `<span style="font-size:15px;font-weight:800;color:${S_T1};">SOLUÇÃO TÉCNICA</span>`}
-      <div style="width:1px;height:34px;background:${S_BRDR};"></div>
+  card.style.width = '1400px';
+  card.innerHTML = `<div style="width:1400px;background:${S_BG};font-family:'Segoe UI',system-ui,Arial,sans-serif;border-radius:14px;overflow:hidden;border:1px solid ${S_BRDR};">
+    <div style="background:${S_HDR};padding:22px 28px;display:flex;align-items:center;gap:20px;">
+      ${logoB64 ? `<img src="${logoB64}" style="height:28px;opacity:0.95;">` : `<span style="font-size:15px;font-weight:800;color:#FFFFFF;">SOLUÇÃO TÉCNICA</span>`}
+      <div style="width:1px;height:36px;background:rgba(255,255,255,0.15);"></div>
       <div style="flex:1;">
-        <div style="font-size:10px;font-weight:700;color:${S_GOLD};letter-spacing:0.09em;text-transform:uppercase;">Programação Semanal</div>
-        <div style="font-size:18px;font-weight:700;color:${S_T1};margin-top:3px;">${escHtml(tec.nome)}</div>
+        <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.08em;text-transform:uppercase;">Programação Semanal</div>
+        <div style="font-size:20px;font-weight:800;color:#FFFFFF;margin-top:3px;">${escHtml(tec.nome)}</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:13px;color:${S_T2};">${periodoFmt}</div>
-        <div style="font-size:9px;color:${S_T3};margin-top:4px;">${agSemana.length} serviço${agSemana.length !== 1 ? 's' : ''} · Gerado em ${geradoEm}</div>
+        <div style="font-size:15px;font-weight:600;color:#FFFFFF;">${periodoFmt}</div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:4px;">${agSemana.length} serviço${agSemana.length !== 1 ? 's' : ''} · Gerado em ${geradoEm}</div>
       </div>
     </div>
-    <div style="height:2px;background:linear-gradient(90deg,${S_GOLD} 0%,rgba(196,168,130,0.08) 100%);"></div>
-    <div style="display:flex;gap:8px;padding:12px;">
-      ${colunasHTML}
-    </div>
-    <div style="background:${S_HEADER};padding:9px 26px;border-top:1px solid ${S_BRDR};display:flex;justify-content:space-between;align-items:center;">
-      <div style="font-size:8px;color:${S_T3};letter-spacing:0.06em;text-transform:uppercase;">Solução Técnica · Sistema de Gestão de Obras</div>
-      <div style="font-size:8px;color:${S_T3};">${geradoEm}</div>
+    <div style="height:3px;background:${S_ACNT};"></div>
+    <div style="display:flex;gap:12px;padding:14px;">${colunasHTML}</div>
+    <div style="background:#E2E8F0;padding:10px 28px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:11px;color:${S_T3};">Solução Técnica · Sistema de Gestão de Obras</div>
+      <div style="font-size:11px;color:${S_T3};">Gerado em ${geradoEm}</div>
     </div>
   </div>`;
 
   try {
     await document.fonts.ready;
+    // Aguarda imagens — evita createPattern 0×0 no html2canvas
+    await Promise.all(Array.from(card.querySelectorAll('img')).map(img =>
+      img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+    ));
     const canvas = await html2canvas(card, {
       scale: 2,
       useCORS: true,
-      backgroundColor: '#0D1117',
+      backgroundColor: '#F1F5F9',
       logging: false,
-      width: 1500,
+      width: 1400,
     });
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
     try {
