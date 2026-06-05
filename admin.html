@@ -935,8 +935,10 @@ async function abrirEditar(tecnicoId) {
   document.getElementById('editSenha').value = '';
   document.getElementById('editCpf').value = usuario.cpf || '';
   document.getElementById('editNomeCompleto').value = usuario.nome_completo || '';
-  const selecionadas = (usuario.tecnico_equipes || [])
-    .map(te => Number(te.equipes?.id || te.equipe_id)).filter(Boolean);
+  // Busca equipes direto do banco — não depende do formato da edge function
+  const { data: teData } = await db.from('tecnico_equipes')
+    .select('equipe_id').eq('tecnico_id', tecnicoId);
+  const selecionadas = (teData || []).map(te => Number(te.equipe_id)).filter(Boolean);
   renderEquipesCheckboxes('equipesEdit', selecionadas);
   document.getElementById('modalEditar').classList.add('open');
 }
