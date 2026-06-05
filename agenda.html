@@ -349,9 +349,9 @@
 
     /* ── Detalhes do card (coluna única compacta) ── */
     .ag-detalhes {
-      border-top: 1px solid rgba(255,255,255,0.05);
-      padding-top: 4px;
-      margin-top: 4px;
+      border-top: 1px solid rgba(255,255,255,0.14);
+      padding-top: 6px;
+      margin-top: 6px;
     }
     .ag-detalhe {
       font-size: 0.7rem;
@@ -1858,16 +1858,21 @@ function cardHTML(ag) {
     ? `onclick="verDetalheAgendamento(${ag.id})" title="Ver detalhes"`
     : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`;
 
+  const DIV = `<div style="border-top:1px solid rgba(255,255,255,0.14);margin:5px 0;"></div>`;
+
   return `
     <div class="card-ag card-${status} clicavel" ${clickAttr}>
-      <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;">
+      <div style="display:flex;align-items:flex-start;gap:6px;">
         ${hora ? `<span class="ag-hora">${escHtml(hora)}</span>` : ''}
-        <div style="min-width:0;flex:1;">
-          <div class="ag-cliente">${escHtml(clienteAbrev)}</div>
-          ${nomes.length ? `<div class="ag-tecs">${escHtml(nomes.join(' · '))}</div>` : ''}
-        </div>
+        <div class="ag-cliente" style="min-width:0;flex:1;">${escHtml(clienteAbrev)}</div>
       </div>
-      <div class="ag-detalhes">
+      ${DIV}
+      <div style="font-size:0.76rem;line-height:1.35;">
+        <span style="color:var(--text-2);font-weight:600;">Equipe&nbsp;</span>
+        <span style="color:var(--text-1);font-weight:700;">${nomes.length ? escHtml(nomes.join(' · ')) : '—'}</span>
+      </div>
+      ${DIV}
+      <div class="ag-detalhes" style="border:none;margin:0;padding:0;">
         ${det('Endereço',  end)}
         ${det('OS',        osNum ? `#${osNum}` : '')}
         ${det('Consultor', consultor)}
@@ -1875,7 +1880,7 @@ function cardHTML(ag) {
         ${det('Serviço',   ag.servico || '')}
         ${det('Veículo',   ag.veiculo || '')}
       </div>
-      <span class="ag-badge badge-${escHtml(status)}" style="margin-top:5px;">${escHtml(STATUS_LABEL[status] || status)}</span>
+      <span class="ag-badge badge-${escHtml(status)}" style="margin-top:6px;">${escHtml(STATUS_LABEL[status] || status)}</span>
     </div>`;
 }
 
@@ -3802,8 +3807,7 @@ function fecharDispPanel() {
 
 function renderDisponibilidades() {
   const dias    = diasDaSemana(semanaOffset);
-  const DIAS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  const MESES   = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const DIAS_FULL = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 
   // Rótulo da semana no subtítulo
   const d0 = dias[0], d6 = dias[6];
@@ -3821,6 +3825,8 @@ function renderDisponibilidades() {
   let html = '';
   tecsVisiveis.forEach(tec => {
     const diasLivres = dias.filter(dia => {
+      const dow = dia.getDay();
+      if (dow === 0 || dow === 6) return false; // ignora Sáb e Dom
       const iso = fmtISO(dia);
       const temAg = agendamentos.some(ag =>
         ag.data === iso &&
@@ -3832,9 +3838,7 @@ function renderDisponibilidades() {
 
     if (!diasLivres.length) return;
 
-    const diasStr = diasLivres
-      .map(d => `${DIAS_PT[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`)
-      .join(', ');
+    const diasStr = diasLivres.map(d => DIAS_FULL[d.getDay()]).join(', ');
 
     html += `<div class="disp-item">
       <div class="disp-nome">${escHtml(tec.nome)}</div>
