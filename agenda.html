@@ -339,9 +339,12 @@
     .disp-close:hover { color:var(--text-1); }
     .disp-subtitulo { font-size:11px;color:var(--text-3);padding:10px 20px 0;letter-spacing:.02em; }
     .disp-lista { flex:1;overflow-y:auto;padding:12px 16px 32px; }
-    .disp-item { background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px; }
-    .disp-nome { font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:4px; }
-    .disp-dias { font-size:12px;color:var(--primary);font-weight:500;line-height:1.5; }
+    .disp-day-card { background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px; }
+    .disp-day-nome { font-size:18px;font-weight:700;color:var(--text-1);margin-bottom:10px;line-height:1.2; }
+    .disp-group { display:flex;gap:8px;margin-bottom:5px;align-items:baseline; }
+    .disp-group:last-child { margin-bottom:0; }
+    .disp-group-label { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);white-space:nowrap;padding-top:1px; }
+    .disp-group-nomes { font-size:14px;color:var(--text-1);line-height:1.4;font-weight:500; }
     .disp-vazio { text-align:center;padding:32px 16px;color:var(--text-3);font-size:13px; }
     .btn-disp { display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.25);border-radius:6px;color:var(--primary);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap; }
     .btn-disp:hover { background:rgba(62,207,142,0.15);border-color:rgba(62,207,142,0.45); }
@@ -1429,6 +1432,7 @@ let equipesSelecionadas = []; // array de IDs (string)
 let equipeDropdownAberto = false;
 let modoVisualizacao  = false;
 let roleAtual         = null;
+let _meuTecId         = null;
 // numero_os agora vem direto do agendamento (campo ag.numero_os)
 const DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -1448,9 +1452,10 @@ async function init() {
   jwtToken    = session.access_token;
   _authUserId = session.user.id;
 
-  const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
+  const { data: eu } = await db.from('tecnicos').select('id, role, nome').eq('auth_user_id', session.user.id).single();
   renderTopbar(eu?.nome, eu?.role, 'agenda');
   roleAtual = eu?.role;
+  _meuTecId = eu?.id || null;
 
   const podeEditar = ['agendamento', 'coordenador', 'supervisor'].includes(roleAtual);
   const podeDisparar = ['agendamento', 'coordenador', 'supervisor'].includes(roleAtual);
@@ -1555,10 +1560,10 @@ async function carregarObras() {
 async function carregarTecnicos() {
   const [t, te, eq] = await Promise.all([
     cachedQuery('agenda-tecnicos', 600, async () => {
-      let { data: d, error: e1 } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
+      let { data: d, error: e1 } = await db.from('tecnicos').select('id, nome, funcao, role').order('nome');
       if (e1 || !d) {
         const { data: d2 } = await db.from('tecnicos').select('id, nome').order('nome');
-        d = (d2 || []).map(x => ({ ...x, funcao: '' }));
+        d = (d2 || []).map(x => ({ ...x, funcao: '', role: '' }));
       }
       return d || [];
     }),
@@ -2559,6 +2564,10 @@ async function salvarAgendamento() {
       }
     }
 
+    if (!agEditandoId && pendenciaOrigemId && savedAgId) {
+      _salvarVinculoPendenciaAgenda(savedAgId, pendenciaOrigemId);
+    }
+
     // Se veio de uma pendência, atualiza data_marcada com a data do agendamento
     if (!agEditandoId && pendenciaOrigemId) {
       await db.from('pendencias')
@@ -2824,6 +2833,77 @@ async function _gerarPDFSolicitacaoAgenda(s) {
 }
 
 // ── Excluir agendamento ──────────────────────────────────────
+const PENDENCIA_AGENDA_MAP_KEY = 'saos-pendencia-agenda-map';
+const EQUIPE_PENDENCIA_SLUGS = {
+  cabeamento: 'cabeamento',
+  eletrica: 'eletrica',
+  'audio e video': 'audio_video',
+  automacao: 'automacao',
+  'regional norte': 'regional_norte',
+};
+const EQUIPE_PENDENCIA_VALIDAS = new Set(Object.values(EQUIPE_PENDENCIA_SLUGS));
+
+function _normalizarTexto(v) {
+  return String(v || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function _slugEquipePendencia(equipe) {
+  const nome = typeof equipe === 'string' ? equipe : equipe?.nome;
+  const norm = _normalizarTexto(nome);
+  return EQUIPE_PENDENCIA_SLUGS[norm] || norm.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function _lerMapaPendenciaAgenda() {
+  try { return JSON.parse(localStorage.getItem(PENDENCIA_AGENDA_MAP_KEY) || '{}'); }
+  catch (_) { return {}; }
+}
+
+function _salvarVinculoPendenciaAgenda(agendamentoId, pendenciaId) {
+  if (!agendamentoId || !pendenciaId) return;
+  const mapa = _lerMapaPendenciaAgenda();
+  mapa[String(agendamentoId)] = Number(pendenciaId);
+  localStorage.setItem(PENDENCIA_AGENDA_MAP_KEY, JSON.stringify(mapa));
+}
+
+function _removerVinculoPendenciaAgenda(agendamentoId) {
+  const mapa = _lerMapaPendenciaAgenda();
+  delete mapa[String(agendamentoId)];
+  localStorage.setItem(PENDENCIA_AGENDA_MAP_KEY, JSON.stringify(mapa));
+}
+
+async function _buscarPendenciaVinculadaAoAgendamento(ag) {
+  if (!ag) return null;
+
+  const pendenciaMapeadaId = _lerMapaPendenciaAgenda()[String(ag.id)];
+  if (pendenciaMapeadaId) {
+    const { data } = await db.from('pendencias')
+      .select('id, descricao, equipe, data_marcada')
+      .eq('id', pendenciaMapeadaId)
+      .maybeSingle();
+    if (data) return data;
+  }
+
+  if (!ag.data) return null;
+  let query = db.from('pendencias')
+    .select('id, descricao, equipe, data_marcada')
+    .eq('data_marcada', ag.data);
+
+  if (ag.obra_id) {
+    query = query.eq('obra_id', ag.obra_id);
+  } else if (ag.cliente_outro) {
+    query = query.is('obra_id', null).eq('obra_outro', ag.cliente_outro);
+  } else {
+    return null;
+  }
+
+  const { data } = await query.order('atualizado_em', { ascending: false }).limit(10);
+  const lista = data || [];
+  const servico = String(ag.servico || '').trim();
+  return lista.find(p => String(p.descricao || '').trim() === servico) || lista[0] || null;
+}
+
 // Modal de seleção de equipe — usa CSS variables para respeitar o tema
 function _modalSelecionarEquipe() {
   return new Promise(resolve => {
@@ -2841,14 +2921,25 @@ function _modalSelecionarEquipe() {
       'backdrop-filter:blur(4px)',
     ].join(';'));
 
-    const opts = equipesDisponiveis.map(e =>
-      `<option value="${e.id}">${escHtml(e.nome)}</option>`
-    ).join('');
+    let opts = equipesDisponiveis
+      .map(e => ({ ...e, slug: _slugEquipePendencia(e) }))
+      .filter(e => EQUIPE_PENDENCIA_VALIDAS.has(e.slug))
+      .map(e => `<option value="${escHtml(e.slug)}">${escHtml(e.nome)}</option>`)
+      .join('');
+    if (!opts) {
+      opts = [
+        ['cabeamento', 'Cabeamento'],
+        ['eletrica', 'Elétrica'],
+        ['audio_video', 'Áudio e Vídeo'],
+        ['automacao', 'Automação'],
+        ['regional_norte', 'Regional Norte'],
+      ].map(([slug, nome]) => `<option value="${slug}">${nome}</option>`).join('');
+    }
 
     overlay.innerHTML = `
       <div style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
         <p style="font-size:14px;color:var(--text-1);margin-bottom:14px;font-weight:600;line-height:1.5;">Qual equipe receberá a pendência?</p>
-        <select id="eq-sel-input" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-size:13px;font-family:inherit;outline:none;appearance:none;">
+        <select id="eq-sel-input" style="width:100%;padding:10px 12px;background:var(--surface-1);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-size:13px;font-family:inherit;outline:none;appearance:none;">
           ${opts}
         </select>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
@@ -2862,7 +2953,7 @@ function _modalSelecionarEquipe() {
     const fechar = (val) => { overlay.remove(); resolve(val); };
     overlay.querySelector('#eq-sel-cancel').addEventListener('click', () => fechar(null));
     overlay.querySelector('#eq-sel-ok').addEventListener('click', () => {
-      const val = parseInt(overlay.querySelector('#eq-sel-input').value);
+      const val = overlay.querySelector('#eq-sel-input').value;
       fechar(val || null);
     });
     overlay.addEventListener('keydown', e => { if (e.key === 'Escape') fechar(null); });
@@ -2894,17 +2985,8 @@ async function excluirAgendamento() {
     }
   }
 
-  // ── Verifica se havia uma pendência vinculada (mesma obra + data_marcada preenchida) ──
-  let pendenciaVinculada = null;
-  if (ag?.obra_id) {
-    const { data: pList } = await db.from('pendencias')
-      .select('id, descricao, equipe, data_marcada')
-      .eq('obra_id', ag.obra_id)
-      .not('data_marcada', 'is', null)
-      .order('data_marcada', { ascending: false })
-      .limit(1);
-    pendenciaVinculada = pList?.[0] || null;
-  }
+  // ── Verifica se havia uma pendência vinculada ─────────────────
+  const pendenciaVinculada = await _buscarPendenciaVinculadaAoAgendamento(ag);
 
   const agParaDeletar = agendamentos.find(a => a.id === agEditandoId);
 
@@ -2918,7 +3000,10 @@ async function excluirAgendamento() {
       .update({ data_marcada: null, status: 'aberta', atualizado_em: new Date().toISOString() })
       .eq('id', pendenciaVinculada.id);
     if (pErr) showToast('Aviso: ' + pErr.message, 'warning');
-    else       showToast('Pendência reaberta — data desmarcada.', 'success');
+    else {
+      _removerVinculoPendenciaAgenda(agEditandoId);
+      showToast('Pendência reaberta — data desmarcada.', 'success');
+    }
   } else {
     // ── Não havia pendência: pergunta se quer criar ───────────
     const criar = await new Promise(r =>
@@ -2927,16 +3012,22 @@ async function excluirAgendamento() {
     );
 
     if (criar) {
-      const equipeId = await _modalSelecionarEquipe();
-      if (equipeId && ag) {
-        const { error: pErr } = await db.from('pendencias').insert({
+      const equipe = await _modalSelecionarEquipe();
+      if (equipe && ag) {
+        const payloadPendencia = {
           obra_id:      ag.obra_id      || null,
           obra_outro:   ag.cliente_outro || null,
-          equipe:       String(equipeId),
+          equipe,
           descricao:    ag.servico || ag.obras?.nome_cliente || 'Agenda devolvida',
           status:       'aberta',
+          data_marcada: null,
           atualizado_em: new Date().toISOString(),
           criado_em:    new Date().toISOString(),
+        };
+        if (_meuTecId) payloadPendencia.criado_por = _meuTecId;
+
+        const { error: pErr } = await db.from('pendencias').insert({
+          ...payloadPendencia
         });
         if (pErr) showToast('Pendência não criada: ' + pErr.message, 'warning');
         else       showToast('Pendência criada.', 'success');
@@ -3871,28 +3962,27 @@ function fecharDispPanel() {
 }
 
 function renderDisponibilidades() {
-  const dias    = diasDaSemana(semanaOffset);
+  const dias = diasDaSemana(semanaOffset);
   const DIAS_FULL = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 
-  // Rótulo da semana no subtítulo
   const d0 = dias[0], d6 = dias[6];
   const fmtD = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
   document.getElementById('disp-semana-label').textContent =
     `Técnicos livres — semana ${fmtD(d0)} a ${fmtD(d6)}`;
 
-  // Técnicos filtrados pela equipe ativa (ou todos)
   let tecsVisiveis = tecnicos;
   if (filtroEquipe !== 'todas') {
     const ids = tecnicosDaEquipe(parseInt(filtroEquipe));
     tecsVisiveis = tecnicos.filter(t => ids.includes(t.id));
   }
 
+  const diasUteis = dias.filter(d => d.getDay() >= 1 && d.getDay() <= 5);
+
   let html = '';
-  tecsVisiveis.forEach(tec => {
-    const diasLivres = dias.filter(dia => {
-      const dow = dia.getDay();
-      if (dow === 0 || dow === 6) return false; // ignora Sáb e Dom
-      const iso = fmtISO(dia);
+  diasUteis.forEach(dia => {
+    const iso = fmtISO(dia);
+
+    const livres = tecsVisiveis.filter(tec => {
       const temAg = agendamentos.some(ag =>
         ag.data === iso &&
         [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].includes(tec.id)
@@ -3901,13 +3991,28 @@ function renderDisponibilidades() {
       return !temAg && !bloqueado;
     });
 
-    if (!diasLivres.length) return;
+    if (!livres.length) return;
 
-    const diasStr = diasLivres.map(d => DIAS_FULL[d.getDay()]).join(', ');
+    const tecs = livres.filter(t => t.role !== 'auxiliar');
+    const auxs = livres.filter(t => t.role === 'auxiliar');
 
-    html += `<div class="disp-item">
-      <div class="disp-nome">${escHtml(tec.nome)}</div>
-      <div class="disp-dias">${escHtml(diasStr)}</div>
+    let gruposHtml = '';
+    if (tecs.length) {
+      gruposHtml += `<div class="disp-group">
+        <span class="disp-group-label">Técnicos</span>
+        <span class="disp-group-nomes">${tecs.map(t => escHtml(t.nome)).join(', ')}</span>
+      </div>`;
+    }
+    if (auxs.length) {
+      gruposHtml += `<div class="disp-group">
+        <span class="disp-group-label">Auxiliar</span>
+        <span class="disp-group-nomes">${auxs.map(t => escHtml(t.nome)).join(', ')}</span>
+      </div>`;
+    }
+
+    html += `<div class="disp-day-card">
+      <div class="disp-day-nome">${DIAS_FULL[dia.getDay()]}</div>
+      ${gruposHtml}
     </div>`;
   });
 
