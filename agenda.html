@@ -1826,12 +1826,13 @@ function renderGrade(dias) {
 
 
 // ── Card de agendamento ──────────────────────────────────────
+// Retorna primeiro + segundo nome (sem abreviação com inicial)
+// Usado só nos cards da grade — disparo usa nome completo
 function _abreviarCliente(nome) {
   if (!nome) return '—';
-  if (nome.length <= 20) return nome;
   const p = nome.trim().split(/\s+/);
-  if (p.length === 1) return nome.slice(0, 18) + '…';
-  return p[0] + ' ' + p[1][0] + '.';
+  if (p.length <= 2) return nome;
+  return p[0] + ' ' + p[1];
 }
 
 function cardHTML(ag) {
@@ -2823,12 +2824,54 @@ async function _gerarPDFSolicitacaoAgenda(s) {
 }
 
 // ── Excluir agendamento ──────────────────────────────────────
+// Mostra um select de equipes em modal — retorna equipe_id (number) ou null se cancelado
+function _modalSelecionarEquipe() {
+  return new Promise(resolve => {
+    const existing = document.getElementById('eq-sel-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'eq-sel-overlay';
+    overlay.setAttribute('style', [
+      'position:fixed','inset:0','background:rgba(0,0,0,0.65)',
+      'display:flex','align-items:center','justify-content:center',
+      'z-index:9999','padding:20px',
+    ].join(';'));
+
+    const opts = equipesDisponiveis.map(e =>
+      `<option value="${e.id}">${escHtml(e.nome)}</option>`
+    ).join('');
+
+    overlay.innerHTML = `
+      <div style="background:#161616;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <p style="font-size:14px;color:#FFFFFF;margin-bottom:16px;font-weight:600;">Qual equipe receberá a pendência?</p>
+        <select id="eq-sel-input" style="width:100%;padding:10px 12px;background:#0A0A0A;border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#FFFFFF;font-size:13px;font-family:inherit;outline:none;appearance:none;">
+          ${opts}
+        </select>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
+          <button id="eq-sel-cancel" style="padding:8px 18px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#A1A1AA;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;">Cancelar</button>
+          <button id="eq-sel-ok" style="padding:8px 18px;background:rgba(62,207,142,0.12);border:1px solid rgba(62,207,142,0.25);border-radius:6px;color:#3ECF8E;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;">Confirmar</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#eq-sel-cancel').addEventListener('click', () => { overlay.remove(); resolve(null); });
+    overlay.querySelector('#eq-sel-ok').addEventListener('click', () => {
+      const val = parseInt(overlay.querySelector('#eq-sel-input').value);
+      overlay.remove();
+      resolve(val || null);
+    });
+  });
+}
+
 async function excluirAgendamento() {
   if (!agEditandoId) return;
   confirmModal('Excluir este agendamento? As OSs pendentes vinculadas serão canceladas.', async () => {
 
-  // Cancela OSs pendentes vinculadas (preserva número para histórico)
   const ag = agendamentos.find(a => a.id === agEditandoId);
+
+  // Cancela OSs pendentes vinculadas (preserva número para histórico)
   if (ag) {
     const porAgendamento = await db
       .from('ordens_de_servico')
@@ -2847,8 +2890,35 @@ async function excluirAgendamento() {
   }
 
   const agParaDeletar = agendamentos.find(a => a.id === agEditandoId);
+
+  // ── Pergunta se deve voltar para Pendências ───────────────
+  const voltarPendencias = await new Promise(resolve =>
+    confirmModal('Deseja voltar este agendamento para as Pendências?',
+      () => resolve(true), () => resolve(false))
+  );
+
+  let equipeIdPendencia = null;
+  if (voltarPendencias) {
+    equipeIdPendencia = await _modalSelecionarEquipe();
+  }
+
+  // ── Exclui o agendamento ──────────────────────────────────
   const { error } = await db.from('agendamentos').delete().eq('id', agEditandoId);
   if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
+
+  // ── Cria pendência se solicitado ──────────────────────────
+  if (voltarPendencias && equipeIdPendencia && ag) {
+    const { error: pErr } = await db.from('pendencias').insert({
+      obra_id:    ag.obra_id    || null,
+      obra_outro: ag.cliente_outro || null,
+      equipe_id:  equipeIdPendencia,
+      descricao:  ag.servico   || ag.obras?.nome_cliente || 'Agenda devolvida',
+      status:     'aberta',
+      criado_em:  new Date().toISOString(),
+    });
+    if (pErr) showToast('Pendência não criada: ' + pErr.message, 'warning');
+    else       showToast('Pendência criada com sucesso.', 'success');
+  }
 
   // Audit log (fire-and-forget)
   db.from('audit_log').insert({
@@ -2857,10 +2927,10 @@ async function excluirAgendamento() {
     operacao:     'DELETE',
     registro_id:  String(agEditandoId),
     dados_antes:  agParaDeletar ? {
-      obra_id:      agParaDeletar.obra_id,
-      data:         agParaDeletar.data,
-      numero_os:    agParaDeletar.numero_os,
-      tecnico_id:   agParaDeletar.tecnico_id,
+      obra_id:    agParaDeletar.obra_id,
+      data:       agParaDeletar.data,
+      numero_os:  agParaDeletar.numero_os,
+      tecnico_id: agParaDeletar.tecnico_id,
     } : null,
     dados_depois: null,
     criado_em:    new Date().toISOString(),
@@ -2981,7 +3051,7 @@ async function dispararAgendaWhatsapp() {
 
   const cardsHTML = ordenados.map((ag) => {
     const hora      = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
-    const cliente   = escHtml(_abreviarCliente(ag.obras?.nome_cliente || ag.cliente_outro || '—'));
+    const cliente   = escHtml(ag.obras?.nome_cliente || ag.cliente_outro || '—');
     const end       = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
     const serv      = escHtml(ag.servico || '');
     const veic      = escHtml(ag.veiculo || '');
