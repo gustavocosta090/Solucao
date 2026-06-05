@@ -1859,17 +1859,18 @@ function cardHTML(ag) {
     : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`;
 
   const DIV = `<div style="border-top:1px solid rgba(255,255,255,0.14);margin:5px 0;"></div>`;
+  const tecsLinha = nomes.length ? escHtml(nomes.join(' · ')) : '—';
 
   return `
     <div class="card-ag card-${status} clicavel" ${clickAttr}>
-      <div style="display:flex;align-items:flex-start;gap:6px;">
-        ${hora ? `<span class="ag-hora">${escHtml(hora)}</span>` : ''}
-        <div class="ag-cliente" style="min-width:0;flex:1;">${escHtml(clienteAbrev)}</div>
+      <div style="display:flex;align-items:baseline;gap:5px;">
+        ${hora ? `<span class="ag-hora">${escHtml(hora)}</span><span style="color:var(--text-3);font-weight:600;font-size:0.82rem;"> - </span>` : ''}
+        <span style="font-size:0.82rem;font-weight:700;color:var(--text-1);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${tecsLinha}</span>
       </div>
       ${DIV}
-      <div style="font-size:0.76rem;line-height:1.35;">
-        <span style="color:var(--text-2);font-weight:600;">Equipe&nbsp;</span>
-        <span style="color:var(--text-1);font-weight:700;">${nomes.length ? escHtml(nomes.join(' · ')) : '—'}</span>
+      <div style="font-size:0.76rem;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        <span style="color:var(--text-2);font-weight:600;">Cliente&nbsp;</span>
+        <span style="color:var(--text-1);font-weight:700;">${escHtml(cliente)}</span>
       </div>
       ${DIV}
       <div class="ag-detalhes" style="border:none;margin:0;padding:0;">
@@ -2990,15 +2991,19 @@ async function dispararAgendaWhatsapp() {
     const tecStr    = escHtml(tecIds
       .filter(id => !tecnicoBloqueadoNaData(id, hoje, ag.hora_inicio))
       .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(', '));
+    const DIV_IMG = `<div style="border-top:1px solid ${BRDR};margin:8px 0;"></div>`;
     const lin = (l, v) => v
       ? `<div style="margin-top:6px;font-size:13px;color:${T2};line-height:1.4;"><span style="font-weight:700;color:${T3};">${l}</span> ${v}</div>` : '';
     return `<div style="background:${SURF};border-radius:8px;padding:14px 16px;margin-bottom:10px;border:1px solid ${BRDR};box-shadow:0 1px 4px rgba(0,0,0,0.07);">
-      <div style="display:flex;align-items:baseline;gap:10px;">
+      <div style="display:flex;align-items:baseline;gap:6px;">
         <span style="font-size:20px;font-weight:900;color:${T1};flex-shrink:0;font-variant-numeric:tabular-nums;">${hora}</span>
-        <span style="font-size:16px;font-weight:800;color:${T1};line-height:1.3;">${cliente}</span>
+        <span style="font-size:16px;font-weight:600;color:${T3};"> - </span>
+        <span style="font-size:16px;font-weight:800;color:${T1};line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${tecStr||'—'}</span>
       </div>
-      <div style="margin-top:4px;font-size:14px;color:${T2};"><span style="font-weight:700;color:${T3};">Equipe</span> ${tecStr||'—'}</div>
-      <div style="border-top:1px solid ${BRDR};margin-top:8px;padding-top:8px;">
+      ${DIV_IMG}
+      <div style="font-size:15px;color:${T2};"><span style="font-weight:700;color:${T3};">Cliente</span> <span style="color:${T1};font-weight:700;">${cliente}</span></div>
+      ${DIV_IMG}
+      <div>
         ${lin('Endereço:', end)}${lin('Consultor:', consultor)}${lin('N.OS:', osNum)}${lin('Serviço:', serv)}${lin('Veículo:', veic)}
       </div>
     </div>`;

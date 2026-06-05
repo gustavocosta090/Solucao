@@ -117,12 +117,67 @@ function iniciarAutoRefresh(callbackFn, intervaloMs) {
   };
 }
 
-// ─── Tema — sempre noturno ───────────────────────────────────────
+// ─── Tema: Legado (dark) ↔ Clássico (light/blue) ────────────────
+(function _injetarCSSClassico() {
+  if (document.getElementById('saos-classico-css')) return;
+  var s = document.createElement('style');
+  s.id = 'saos-classico-css';
+  s.textContent = [
+    ':root[data-tema="classico"]{',
+    '--bg:#F8FAFC;--surface-1:#FFFFFF;--surface-2:#F1F5F9;--surface-3:#E8EEF6;',
+    '--primary:#2563EB;--text-1:#0F172A;--text-2:#475569;--text-3:#94A3B8;',
+    '--border:rgba(0,0,0,0.09);--border-hover:rgba(0,0,0,0.18);',
+    '--radius-card:8px;--radius-input:6px;',
+    '}',
+    /* Topbar claro */
+    ':root[data-tema="classico"] .topbar{background:#1E293B;border-bottom-color:rgba(255,255,255,0.1);}',
+    ':root[data-tema="classico"] .topbar-links a{color:#CBD5E1;}',
+    ':root[data-tema="classico"] .topbar-links a:hover{color:#FFFFFF;background:rgba(255,255,255,0.08);}',
+    ':root[data-tema="classico"] .topbar-links a.active{color:#FFFFFF;background:rgba(255,255,255,0.12);}',
+    /* Cards agenda — clássico */
+    ':root[data-tema="classico"] .card-confirmado{background:rgba(37,99,235,0.06);border-color:#2563EB;}',
+    ':root[data-tema="classico"] .card-nao_confirmado{background:rgba(245,158,11,0.08);border-color:#F59E0B;}',
+    ':root[data-tema="classico"] .card-viagem{background:rgba(34,197,94,0.06);border-color:#16A34A;}',
+    ':root[data-tema="classico"] .ag-hora{color:#2563EB;}',
+    ':root[data-tema="classico"] .ag-cliente{color:#0F172A;}',
+    ':root[data-tema="classico"] .ag-detalhes{border-top-color:rgba(0,0,0,0.1);}',
+    ':root[data-tema="classico"] .ag-label{color:#475569;}',
+    ':root[data-tema="classico"] .ag-val{color:#64748B;}',
+    ':root[data-tema="classico"] .tec-label{color:#2563EB;border-bottom-color:rgba(37,99,235,0.15);}',
+    ':root[data-tema="classico"] .sh{background:#F1F5F9;border-bottom-color:rgba(0,0,0,0.1);}',
+    ':root[data-tema="classico"] .sc{background:#FFFFFF;border-color:rgba(0,0,0,0.06);}',
+    /* Grade swim lanes clássica */
+    ':root[data-tema="classico"] .grade{border-color:rgba(0,0,0,0.1);}',
+    ':root[data-tema="classico"] .dia-nome{color:#0F172A;}',
+    ':root[data-tema="classico"] .dia-data{color:#475569;}',
+    ':root[data-tema="classico"] .dia-data.hoje{color:#2563EB;font-weight:700;}',
+    /* Botao tema */
+    '.btn-tema-toggle{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);cursor:pointer;font-family:inherit;transition:background .15s,color .15s;white-space:nowrap;letter-spacing:.02em;}',
+    '.btn-tema-toggle:hover{background:rgba(255,255,255,0.14);color:#fff;}',
+    ':root[data-tema="classico"] .btn-tema-toggle{background:rgba(37,99,235,0.12);border-color:rgba(37,99,235,0.3);color:#2563EB;}',
+    ':root[data-tema="classico"] .btn-tema-toggle:hover{background:rgba(37,99,235,0.2);}',
+  ].join('');
+  document.head.appendChild(s);
+})();
+
 function applyTheme() {
-  document.documentElement.dataset.theme = 'dark';
+  var tema = localStorage.getItem('saos-tema') || 'legado';
+  document.documentElement.dataset.tema = tema;
+  // mantém data-theme=dark para compatibilidade de variáveis nos HTMLs individuais
+  document.documentElement.dataset.theme = tema === 'classico' ? 'light' : 'dark';
 }
 
-function ciclarTema() { /* tema fixo: noturno */ }
+function toggleTema() {
+  var atual = localStorage.getItem('saos-tema') || 'legado';
+  var novo  = atual === 'legado' ? 'classico' : 'legado';
+  localStorage.setItem('saos-tema', novo);
+  applyTheme();
+  // Atualiza label do botão
+  var btns = document.querySelectorAll('.btn-tema-toggle');
+  btns.forEach(function(btn) { btn.textContent = novo === 'classico' ? 'Clássico › Legado' : 'Legado › Clássico'; });
+}
+
+function ciclarTema() { /* tema fixo: usar toggleTema() */ }
 
 window.addEventListener('DOMContentLoaded', function() {
   applyTheme();
@@ -421,7 +476,13 @@ function renderTopbar(nome, role, paginaAtiva) {
   var h = new Date().getHours();
   var s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
   var greetEl = document.getElementById('topbar-greeting');
-  if (greetEl && nome) greetEl.textContent = s + ', ' + nome;
+  if (greetEl && nome) {
+    var temaAtual = localStorage.getItem('saos-tema') || 'legado';
+    var labelBtn  = temaAtual === 'classico' ? 'Clássico › Legado' : 'Legado › Clássico';
+    greetEl.innerHTML =
+      '<span>' + (s + ', ' + nome) + '</span>' +
+      '<button class="btn-tema-toggle" onclick="toggleTema()" style="margin-left:10px;">' + labelBtn + '</button>';
+  }
 
   // 'agendamento' tem as mesmas permissões que 'coordenador'
   var links = [
