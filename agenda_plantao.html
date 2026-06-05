@@ -2190,7 +2190,7 @@ async function _gerarPlantaoComDatas(dataIni, dataFim) {
   mostrarToast('⏳ Gerando Plantão Semanal...', 'ok');
 
   // Busca agendamentos do período diretamente do banco
-  const { data: agsRaw } = await _db.from('agendamentos')
+  const { data: agsRaw } = await db.from('agendamentos')
     .select('*, obras(nome_cliente, endereco)')
     .gte('data', dataIni)
     .lte('data', dataFim)
