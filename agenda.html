@@ -2467,16 +2467,12 @@ async function salvarAgendamento() {
     if (status === 'viagem') return null;
     const { data: seqData, error: seqErr } = await db.rpc('proximo_numero_os');
     if (seqErr || seqData == null) return null;
-    const [y, m, d] = dataStr.split('-');
-    if (tipoServico === 'assistencia' || tipoServico === 'diaria') {
-      return `${y}-${m}-${d}-${String(seqData).padStart(4, '0')}`;
-    } else {
-      const teId  = id0 ? parseInt(id0) : null;
-      const teRec = teId ? tecnicoEquipes.find(e => e.tecnico_id === teId) : null;
-      const EQ_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
-      const eqCod  = (teRec && EQ_COD[teRec.equipe_id]) || '00';
-      return `${y}-${m}-${eqCod}-${String(seqData).padStart(4, '0')}`;
-    }
+    const [y, m] = dataStr.split('-');
+    const teId  = id0 ? parseInt(id0) : null;
+    const teRec = teId ? tecnicoEquipes.find(e => e.tecnico_id === teId) : null;
+    const EQ_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
+    const eqCod  = (teRec && EQ_COD[teRec.equipe_id]) || '00';
+    return `${y}-${m}-${eqCod}-${String(seqData).padStart(4, '0')}`;
   }
 
   // Se "Mesma N.OS", gera apenas uma vez para o primeiro dia e reutiliza
