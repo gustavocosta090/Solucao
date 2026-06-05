@@ -417,7 +417,7 @@ function _pdfViagem(g){
   const cli=(ag0._ob&&ag0._ob.nome_cliente)||ag0.cliente_outro||'—';
   const tIds=[ag0.tecnico_id,ag0.auxiliar_id,ag0.auxiliar2_id,ag0.auxiliar3_id].filter(Boolean);
   const nPessoas=tIds.length||1,nDias=g.membros.length;
-  const tNm=tIds.map(id=>{const t=_tecs.find(t=>t.id===id);if(!t)return '';return (t.nome_completo||t.nome)+(t.cpf?'\nCPF: '+t.cpf:'');}).filter(Boolean).join('\n')||'—';
+  const tecsInfo=tIds.map(id=>{const t=_tecs.find(t=>t.id===id);return t?{nome:t.nome_completo||t.nome,cpf:t.cpf||null}:null;}).filter(Boolean);
   const fmtD=d=>{const x=new Date(d+'T12:00');return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0');};
   const fmtFull=d=>{const x=new Date(d+'T12:00');return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear();};
   const periodo=ag0.data===agN.data?fmtFull(ag0.data):fmtD(ag0.data)+' a '+fmtFull(agN.data);
@@ -441,18 +441,17 @@ function _pdfViagem(g){
 
   let y=40;
 
-  // Banner cliente
-  doc.setFillColor(240,255,248);doc.rect(M,y,CW,16,'F');
+  // Banner cliente — borda fina + barra verde, sem fundo colorido
+  doc.setDrawColor(210,210,210);doc.setLineWidth(0.25);doc.rect(M,y,CW,16);
   doc.setFillColor(62,207,142);doc.rect(M,y,3,16,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(10,80,40);
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(25,25,25);
   doc.text(cli,M+7,y+10.5);
   y+=22;
 
-  // Grid de informacoes
-  const LBL=40; // largura coluna label
+  // Grid de informacoes (periodo, cidade, endereco)
+  const LBL=40;
   const infoRows=[
     ['Periodo',periodo+(nDias>1?' ('+nDias+' dia'+(nDias>1?'s)':')'):'')],
-    ['Tecnico(s)',tNm],
     ['Cidade',det.cidade||'—'],
   ];
   if(ag0._ob&&ag0._ob.endereco) infoRows.push(['Endereco',ag0._ob.endereco]);
@@ -460,43 +459,66 @@ function _pdfViagem(g){
   doc.autoTable({
     startY:y,body:infoRows,
     margin:{left:M,right:M},
-    styles:{fontSize:10,cellPadding:{top:5,right:6,bottom:5,left:6},textColor:[25,25,25],fillColor:[255,255,255],lineColor:[235,235,235],lineWidth:0.2,valign:'middle'},
+    styles:{fontSize:10,cellPadding:{top:5,right:6,bottom:5,left:6},textColor:[25,25,25],fillColor:[255,255,255],lineColor:[210,210,210],lineWidth:0.2,valign:'middle'},
     columnStyles:{0:{cellWidth:LBL,fontStyle:'bold',textColor:[110,110,110],fontSize:8},1:{cellWidth:CW-LBL}},
-    alternateRowStyles:{fillColor:[249,251,253]},showHead:false,
+    alternateRowStyles:{fillColor:[255,255,255]},showHead:false,
   });
-  y=doc.lastAutoTable.finalY+10;
+  y=doc.lastAutoTable.finalY+8;
 
-  // Hospedagem
+  // Secao Tecnico(s) — cada um com linha separadora
+  const TH=14,TS=5,THEAD=9,TPADB=7;
+  const techSecH=THEAD+tecsInfo.length*TH+Math.max(0,tecsInfo.length-1)*TS+TPADB;
+  doc.setDrawColor(210,210,210);doc.setLineWidth(0.25);doc.rect(M,y,CW,techSecH);
+  doc.setFillColor(62,207,142);doc.rect(M,y,3,techSecH,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(130,130,130);
+  doc.text('TECNICO(S)',M+7,y+6);
+  let ty=y+THEAD;
+  tecsInfo.forEach((tec,idx)=>{
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(25,25,25);
+    doc.text(tec.nome,M+7,ty+5);
+    if(tec.cpf){
+      doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(90,90,90);
+      doc.text('CPF: '+tec.cpf,M+7,ty+10);
+    }
+    if(idx<tecsInfo.length-1){
+      doc.setDrawColor(220,220,220);doc.setLineWidth(0.2);
+      doc.line(M+6,ty+TH,M+CW-3,ty+TH);
+      ty+=TH+TS;
+    }
+  });
+  y+=techSecH+8;
+
+  // Hospedagem — barra lateral colorida + borda fina, sem fundo colorido
   if(isHotel){
-    doc.setFillColor(232,252,240);doc.rect(M,y,CW,15,'F');
+    doc.setDrawColor(210,210,210);doc.setLineWidth(0.25);doc.rect(M,y,CW,15);
     doc.setFillColor(62,207,142);doc.rect(M,y,3,15,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(10,90,40);
-    doc.text('Hotel necessario  —  diaria inclusa',M+7,y+10);y+=23;
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(25,25,25);
+    doc.text('Precisaremos de Hotel, favor realizar a reserva',M+7,y+10);y+=23;
   }else if(hospText){
-    doc.setFillColor(238,238,255);doc.rect(M,y,CW,15,'F');
+    doc.setDrawColor(210,210,210);doc.setLineWidth(0.25);doc.rect(M,y,CW,15);
     doc.setFillColor(100,100,220);doc.rect(M,y,3,15,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(40,40,140);
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(25,25,25);
     doc.text('Hospedagem: '+hospText,M+7,y+10);y+=23;
   }else{
-    doc.setFillColor(245,245,245);doc.rect(M,y,CW,15,'F');
-    doc.setFillColor(180,180,180);doc.rect(M,y,3,15,'F');
+    doc.setDrawColor(210,210,210);doc.setLineWidth(0.25);doc.rect(M,y,CW,15);
+    doc.setFillColor(160,160,160);doc.rect(M,y,3,15,'F');
     doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(130,130,130);
     doc.text('Sem hospedagem',M+7,y+10);y+=23;
   }
 
-  // Alimentacao
+  // Alimentacao — barra lateral + borda fina, sem fundo colorido
   if(saldo){
     const boxH=30;
-    doc.setFillColor(255,252,218);doc.rect(M,y,CW,boxH,'F');
+    doc.setDrawColor(210,210,210);doc.setLineWidth(0.25);doc.rect(M,y,CW,boxH);
     doc.setFillColor(200,150,0);doc.rect(M,y,3,boxH,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(90,65,0);
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(25,25,25);
     doc.text('Alimentacao',M+7,y+8);
-    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(110,85,10);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(80,80,80);
     const calc=_brl(saldo)+' x '+nPessoas+' pessoa'+(nPessoas>1?'s':'')+(nDias>1?' x '+nDias+' dias':'');
     doc.text(calc,M+7,y+17);
-    doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(80,55,0);
+    doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(25,25,25);
     doc.text(_brl(totalAlim),PW-M,y+21,{align:'right'});
-    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(130,100,20);
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(80,80,80);
     doc.text('TOTAL',PW-M,y+27,{align:'right'});
     y+=38;
   }
