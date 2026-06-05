@@ -1490,6 +1490,63 @@ const STATUS_LABEL = {
   viagem:         'Viagem',
 };
 
+// ── Card compartilhado: Disparo do Dia + Prog. Semanal ────────
+function _buildAgCard(ag, dataStr, {
+  hourSize = 20, nameSize = 15, clienteSize = 14, detailSize = 12
+} = {}) {
+  const T1='#0F172A', T2='#334155', T3='#64748B', BRDR='#CBD5E1';
+
+  const hora     = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
+  const cliente  = escHtml(ag.obras?.nome_cliente || ag.cliente_outro || '—');
+  const end      = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
+  const osNum    = ag.numero_os ? '#' + escHtml(String(ag.numero_os)) : '';
+  const consultor = escHtml(ag.obras?.consultores?.nome || '');
+  const tipoServ = ag.tipo_servico === 'assistencia' ? 'Assistência' : 'Execução';
+  const servDesc = escHtml(ag.servico || '');
+  const veic     = escHtml(ag.veiculo || '');
+
+  const tecIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+  const tecStr = escHtml(tecIds
+    .filter(id => !tecnicoBloqueadoNaData(id, dataStr, ag.hora_inicio))
+    .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · '));
+
+  const status = ag.status || 'confirmado';
+  const BADGE = {
+    confirmado:     { bg:'#1D4ED8', txt:'#FFFFFF' },
+    nao_confirmado: { bg:'#D97706', txt:'#FFFFFF' },
+    viagem:         { bg:'#059669', txt:'#FFFFFF' },
+  };
+  const badge = BADGE[status] || { bg:'#64748B', txt:'#FFFFFF' };
+  const badgeLabel = STATUS_LABEL[status] || status;
+
+  const SEP = `<div style="border-top:1px solid ${BRDR};"></div>`;
+  const det  = (lbl, val) => val
+    ? `<div style="display:flex;gap:8px;margin-bottom:3px;align-items:baseline;">
+        <span style="font-size:${detailSize-1}px;font-weight:700;color:${T3};min-width:76px;flex-shrink:0;">${lbl}</span>
+        <span style="font-size:${detailSize}px;color:${T2};line-height:1.4;">${val}</span>
+       </div>` : '';
+
+  return `<div style="background:#FFFFFF;border-radius:8px;margin-bottom:8px;border:1px solid ${BRDR};box-shadow:0 1px 4px rgba(0,0,0,0.07);overflow:hidden;">
+    <div style="padding:10px 14px 8px;">
+      <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
+        <span style="font-size:${hourSize}px;font-weight:900;color:${T1};font-variant-numeric:tabular-nums;">${hora}</span>
+        ${tecStr ? `<span style="font-size:${Math.round(hourSize*0.65)}px;color:${T3};margin:0 1px;">·</span><span style="font-size:${nameSize}px;font-weight:700;color:${T2};line-height:1.3;">${tecStr}</span>` : ''}
+      </div>
+    </div>
+    ${SEP}
+    <div style="padding:8px 14px;">
+      <span style="font-size:${clienteSize}px;font-weight:800;color:${T1};line-height:1.3;">${cliente}</span>
+    </div>
+    ${SEP}
+    <div style="padding:8px 14px 4px;">
+      ${det('Endereço', end)}${det('OS', osNum)}${det('Consultor', consultor)}${det('Tipo', tipoServ)}${det('Serviço', servDesc)}${det('Veículo', veic)}
+    </div>
+    <div style="padding:6px 14px 10px;display:flex;justify-content:flex-end;">
+      <span style="display:inline-block;padding:3px 10px;background:${badge.bg};color:${badge.txt};border-radius:5px;font-size:${detailSize-1}px;font-weight:700;letter-spacing:0.02em;">${badgeLabel}</span>
+    </div>
+  </div>`;
+}
+
 // ── Init ─────────────────────────────────────────────────────
 let _authUserId = null;
 
@@ -3221,35 +3278,9 @@ async function dispararAgendaWhatsapp() {
   const BRDR  = '#CBD5E1';
   const ACCNT = '#4F46E5';
 
-  const cardsHTML = ordenados.map((ag) => {
-    const hora      = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
-    const cliente   = escHtml(ag.obras?.nome_cliente || ag.cliente_outro || '—');
-    const end       = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
-    const serv      = escHtml(ag.servico || '');
-    const veic      = escHtml(ag.veiculo || '');
-    const consultor = escHtml(ag.obras?.consultores?.nome || '');
-    const osNum     = ag.numero_os ? escHtml(String(ag.numero_os)) : '';
-    const tecIds    = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-    const tecStr    = escHtml(tecIds
-      .filter(id => !tecnicoBloqueadoNaData(id, hoje, ag.hora_inicio))
-      .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(', '));
-    const DIV_IMG = `<div style="border-top:1px solid ${BRDR};margin:8px 0;"></div>`;
-    const lin = (l, v) => v
-      ? `<div style="margin-top:6px;font-size:13px;color:${T2};line-height:1.4;"><span style="font-weight:700;color:${T3};">${l}</span> ${v}</div>` : '';
-    return `<div style="background:${SURF};border-radius:8px;padding:14px 16px;margin-bottom:10px;border:1px solid ${BRDR};box-shadow:0 1px 4px rgba(0,0,0,0.07);">
-      <div style="display:flex;align-items:baseline;gap:6px;">
-        <span style="font-size:20px;font-weight:900;color:${T1};flex-shrink:0;font-variant-numeric:tabular-nums;">${hora}</span>
-        <span style="font-size:16px;font-weight:600;color:${T3};"> - </span>
-        <span style="font-size:16px;font-weight:800;color:${T1};line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${tecStr||'—'}</span>
-      </div>
-      ${DIV_IMG}
-      <div style="font-size:15px;color:${T2};"><span style="font-weight:700;color:${T3};">Cliente</span> <span style="color:${T1};font-weight:700;">${cliente}</span></div>
-      ${DIV_IMG}
-      <div>
-        ${lin('Endereço:', end)}${lin('Consultor:', consultor)}${lin('N.OS:', osNum)}${lin('Serviço:', serv)}${lin('Veículo:', veic)}
-      </div>
-    </div>`;
-  }).join('');
+  const cardsHTML = ordenados.map(ag =>
+    _buildAgCard(ag, hoje, { hourSize:20, nameSize:16, clienteSize:15, detailSize:13 })
+  ).join('');
 
   const card = document.getElementById('agenda-card');
   card.style.width = '800px';
@@ -3442,28 +3473,9 @@ async function gerarProgramacaoSemanal() {
       ? `<div style="padding:28px 8px;text-align:center;font-size:13px;color:#EF4444;font-weight:700;">Bloqueado${bloqueio.motivo ? '<br><span style="font-size:12px;font-weight:400;color:${S_T3};">' + escHtml(bloqueio.motivo) + '</span>' : ''}</div>`
       : (!temAgs
           ? `<div style="padding:24px 8px;text-align:center;font-size:13px;color:${S_T3};font-style:italic;">Sem serviços</div>`
-          : ags.map(ag => {
-              const hora    = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
-              const cliente = escHtml(_abreviarCliente(ag.obras?.nome_cliente || ag.cliente_outro || '—'));
-              const end     = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
-              const serv    = escHtml(ag.servico || '');
-              const osNum   = ag.numero_os ? escHtml(String(ag.numero_os)) : '';
-              const consultor = escHtml(ag.obras?.consultores?.nome || '');
-              const tecIds  = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
-              const tecStr  = escHtml(tecIds
-                .filter(id => !tecnicoBloqueadoNaData(id, iso, ag.hora_inicio))
-                .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(', '));
-              const lin = (l, v) => v
-                ? `<div style="margin-top:5px;font-size:12px;color:${S_T2};line-height:1.4;"><span style="font-weight:700;color:${S_T3};">${l}</span> ${v}</div>` : '';
-              return `<div style="background:${S_SURF};border-radius:8px;padding:12px 14px;margin-bottom:8px;border:1px solid ${S_BRDR};box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-                <div style="font-size:18px;font-weight:900;color:${S_T1};font-variant-numeric:tabular-nums;margin-bottom:4px;">${hora}</div>
-                <div style="font-size:14px;font-weight:800;color:${S_T1};line-height:1.3;margin-bottom:4px;">${cliente}</div>
-                <div style="font-size:13px;color:${S_T2};margin-bottom:6px;"><span style="font-weight:700;color:${S_T3};">Equipe</span> ${tecStr||'—'}</div>
-                <div style="border-top:1px solid ${S_BRDR};padding-top:6px;">
-                  ${lin('Endereço:', end)}${lin('Consultor:', consultor)}${lin('N.OS:', osNum)}${lin('Serviço:', serv)}
-                </div>
-              </div>`;
-            }).join(''));
+          : ags.map(ag =>
+              _buildAgCard(ag, iso, { hourSize:17, nameSize:13, clienteSize:13, detailSize:11 })
+            ).join(''));
 
     const subtituloCol = bloqueio ? ' · Bloqueado' : (temAgs ? ` · ${ags.length} serv.` : '');
     return `<div style="flex:1;min-width:0;display:flex;flex-direction:column;border-radius:10px;overflow:hidden;border:1px solid ${S_BRDR};">
