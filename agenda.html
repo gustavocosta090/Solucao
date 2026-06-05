@@ -348,6 +348,19 @@
     .disp-vazio { text-align:center;padding:32px 16px;color:var(--text-3);font-size:13px; }
     .btn-disp { display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.25);border-radius:6px;color:var(--primary);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap; }
     .btn-disp:hover { background:rgba(62,207,142,0.15);border-color:rgba(62,207,142,0.45); }
+    /* ── Modal Solicitação de Refeição ── */
+    .refei-toggle { display:flex;gap:10px;margin-bottom:20px; }
+    .refei-btn { flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-3,var(--surface-2));color:var(--text-2);font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,border-color .15s,color .15s; }
+    .refei-btn.ativo-sim { background:rgba(62,207,142,0.12);border-color:rgba(62,207,142,0.4);color:var(--primary); }
+    .refei-btn.ativo-nao { background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.35);color:#f87171; }
+    .refei-opcoes { border-top:1px solid var(--border);padding-top:18px;margin-top:4px; }
+    .refei-item { display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px; }
+    .refei-item label { display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--text-1);cursor:pointer;min-width:70px;user-select:none; }
+    .refei-item input[type="number"] { flex:1;background:var(--surface-1);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text-1);font-size:14px;font-family:inherit;outline:none; }
+    .refei-item input[type="number"]:focus { border-color:var(--primary); }
+    .refei-total-line { display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:10px 12px;background:rgba(62,207,142,0.08);border-radius:7px;border:1px solid rgba(62,207,142,0.2); }
+    .refei-total-label { font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3); }
+    .refei-total-val { font-size:16px;font-weight:700;color:var(--primary); }
     .btn-disp i { width:14px;height:14px; }
 
     /* ── Detalhes do card (coluna única compacta) ── */
@@ -1137,6 +1150,40 @@
       <button onclick="salvarBloqueio()" style="width:100%;height:40px;background:var(--primary);border:none;border-radius:6px;color:#0A0A0A;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
         <i data-lucide="plus" style="display:inline-block;width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Adicionar bloqueio
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Solicitação de Refeição -->
+<div class="overlay" id="overlay-refei" style="display:none" onclick="if(event.target===this)_refeiRejeitar()" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-header-icon"><i data-lucide="utensils"></i></div>
+      <span class="modal-title">Solicitação de Refeição</span>
+    </div>
+    <p style="font-size:13px;color:var(--text-2);margin-bottom:18px;margin-top:-8px">Deseja solicitar refeição para este agendamento?</p>
+    <div class="refei-toggle">
+      <button class="refei-btn" id="refei-btn-sim" onclick="_refeiToggle(true)">Sim</button>
+      <button class="refei-btn" id="refei-btn-nao" onclick="_refeiToggle(false)">Não</button>
+    </div>
+    <div class="refei-opcoes" id="refei-opcoes" style="display:none">
+      <div class="refei-item" id="refei-item-almoco">
+        <label><input type="checkbox" id="chk-almoco" onchange="_refeiAtualizarTotal()"> Almoço</label>
+        <input type="number" id="val-almoco" placeholder="R$ 0,00" min="0" step="0.01" value="35" disabled oninput="_refeiAtualizarTotal()">
+      </div>
+      <div class="refei-item" id="refei-item-janta">
+        <label><input type="checkbox" id="chk-janta" onchange="_refeiAtualizarTotal()"> Janta</label>
+        <input type="number" id="val-janta" placeholder="R$ 0,00" min="0" step="0.01" value="35" disabled oninput="_refeiAtualizarTotal()">
+      </div>
+      <div class="refei-total-line">
+        <span class="refei-total-label">Total por pessoa</span>
+        <span class="refei-total-val" id="refei-total-val">R$ 0,00</span>
+      </div>
+      <div id="refei-erro" style="display:none;color:#f87171;font-size:12px;margin-top:8px"></div>
+      <div class="modal-footer" style="padding:0;margin-top:18px">
+        <button class="btn-cancelar" onclick="_refeiRejeitar()">Cancelar</button>
+        <button class="btn-salvar" onclick="_refeiConfirmar()">Confirmar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2609,34 +2656,83 @@ function _isApos1730(horaStr) {
   return h > 17 || (h === 17 && m >= 30);
 }
 
+// ── Modal de Solicitação de Refeição ─────────────────────────
+let _refeiResolve = null;
+
+function _modalRefeiAlimentacao() {
+  document.getElementById('refei-btn-sim').className = 'refei-btn';
+  document.getElementById('refei-btn-nao').className = 'refei-btn';
+  document.getElementById('refei-opcoes').style.display = 'none';
+  document.getElementById('chk-almoco').checked = false;
+  document.getElementById('chk-janta').checked  = false;
+  document.getElementById('val-almoco').value   = '35';
+  document.getElementById('val-almoco').disabled = true;
+  document.getElementById('val-janta').value    = '35';
+  document.getElementById('val-janta').disabled  = true;
+  document.getElementById('refei-total-val').textContent = 'R$ 0,00';
+  document.getElementById('refei-erro').style.display = 'none';
+  document.getElementById('overlay-refei').style.display = 'flex';
+  lucide.createIcons();
+  return new Promise(resolve => { _refeiResolve = resolve; });
+}
+
+function _refeiToggle(sim) {
+  document.getElementById('refei-btn-sim').className = 'refei-btn' + (sim ? ' ativo-sim' : '');
+  document.getElementById('refei-btn-nao').className = 'refei-btn' + (!sim ? ' ativo-nao' : '');
+  document.getElementById('refei-opcoes').style.display = sim ? 'block' : 'none';
+  if (!sim) {
+    document.getElementById('overlay-refei').style.display = 'none';
+    if (_refeiResolve) { _refeiResolve(null); _refeiResolve = null; }
+  }
+}
+
+function _refeiAtualizarTotal() {
+  const almoco = document.getElementById('chk-almoco').checked;
+  const janta  = document.getElementById('chk-janta').checked;
+  document.getElementById('val-almoco').disabled = !almoco;
+  document.getElementById('val-janta').disabled  = !janta;
+  const va = almoco ? (parseFloat(document.getElementById('val-almoco').value) || 0) : 0;
+  const vj = janta  ? (parseFloat(document.getElementById('val-janta').value)  || 0) : 0;
+  const brl = v => v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+  document.getElementById('refei-total-val').textContent = brl(va + vj);
+}
+
+function _refeiConfirmar() {
+  const almoco = document.getElementById('chk-almoco').checked;
+  const janta  = document.getElementById('chk-janta').checked;
+  const erroEl = document.getElementById('refei-erro');
+  if (!almoco && !janta) {
+    erroEl.textContent = 'Selecione ao menos uma refeição.';
+    erroEl.style.display = 'block';
+    return;
+  }
+  erroEl.style.display = 'none';
+  const itens = [];
+  if (almoco) itens.push({ label:'Almoço', valor: parseFloat(document.getElementById('val-almoco').value) || 0 });
+  if (janta)  itens.push({ label:'Janta',  valor: parseFloat(document.getElementById('val-janta').value)  || 0 });
+  document.getElementById('overlay-refei').style.display = 'none';
+  if (_refeiResolve) { _refeiResolve(itens); _refeiResolve = null; }
+}
+
+function _refeiRejeitar() {
+  document.getElementById('overlay-refei').style.display = 'none';
+  if (_refeiResolve) { _refeiResolve(null); _refeiResolve = null; }
+}
+
 async function _verificarSolicitacaoAlimentacao(payload, dataStr, horaInicio) {
-  const dow           = new Date(dataStr + 'T12:00:00').getDay(); // 0=Dom 6=Sab
+  const dow           = new Date(dataStr + 'T12:00:00').getDay();
   const isFimDeSemana = dow === 0 || dow === 6;
   const isBloqueado   = !!diasBloqueados[dataStr];
   const isNoturno     = _isApos1730(horaInicio);
 
   if (!isNoturno && !isFimDeSemana && !isBloqueado) return;
 
-  const querSolicitar = await new Promise(resolve => {
-    confirmModal(
-      'Este agendamento é noturno ou em dia diferenciado.\nDeseja gerar a Solicitação de Alimentação?',
-      () => resolve(true),
-      () => resolve(false)
-    );
-  });
-  if (!querSolicitar) return;
+  const itens = await _modalRefeiAlimentacao();
+  if (!itens || !itens.length) return;
 
-  const almocoPlusJanta = await new Promise(resolve => {
-    confirmModal(
-      'Almoço e Janta?\n\nSim → R$ 70,00 por pessoa (almoço + janta)\nNão → R$ 35,00 por pessoa (uma refeição)',
-      () => resolve(true),
-      () => resolve(false)
-    );
-  });
-
-  const valorPorPessoa = almocoPlusJanta ? 70 : 35;
-  const pessoas = [payload.tecnico_id, payload.auxiliar_id,
-                   payload.auxiliar2_id, payload.auxiliar3_id].filter(Boolean);
+  const valorPorPessoa = itens.reduce((s, i) => s + i.valor, 0);
+  const pessoas   = [payload.tecnico_id, payload.auxiliar_id,
+                     payload.auxiliar2_id, payload.auxiliar3_id].filter(Boolean);
   const numPessoas = Math.max(pessoas.length, 1);
   const valorTotal = valorPorPessoa * numPessoas;
 
@@ -2644,28 +2740,27 @@ async function _verificarSolicitacaoAlimentacao(payload, dataStr, horaInicio) {
   const obraLabel = obraObj?.nome_cliente || payload.cliente_outro || '—';
   const criado_em = new Date().toISOString();
 
-  // Busca nome_completo dos técnicos desta equipe (query leve, separada da agenda)
   const tecIds = [payload.tecnico_id, payload.auxiliar_id,
                   payload.auxiliar2_id, payload.auxiliar3_id].filter(Boolean);
   const { data: tecsFull } = await db.from('tecnicos')
-    .select('id, nome, nome_completo')
-    .in('id', tecIds);
+    .select('id, nome, nome_completo').in('id', tecIds);
   const tecMap = {};
   (tecsFull || []).forEach(t => { tecMap[t.id] = t; });
   const tecnicosNomes = tecIds
     .map(id => { const t = tecMap[id]; return t?.nome_completo || t?.nome || ''; })
-    .filter(Boolean)
-    .join(', ');
+    .filter(Boolean).join(', ');
+
+  const brl = v => (parseFloat(v)||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+  const descricaoItens = itens.map(i => i.label + ': ' + brl(i.valor)).join(' + ');
 
   showToast('Gerando PDF da Solicitação...', 'info', 8000);
 
-  // Salva no banco (não bloqueia o PDF se falhar)
   const { data: sol } = await db.from('solicitacoes').insert({
     finalidade:     'alimentacao_noturna',
     obra_id:        payload.obra_id || null,
     cliente_outro:  payload.obra_id ? null : (payload.cliente_outro || null),
     tecnicos_nomes: tecnicosNomes || null,
-    descricao:      payload.servico || null,
+    descricao:      descricaoItens,
     num_pessoas:    numPessoas,
     valor_pessoa:   valorPorPessoa,
     valor_total:    valorTotal,
@@ -2674,15 +2769,14 @@ async function _verificarSolicitacaoAlimentacao(payload, dataStr, horaInicio) {
   }).select('id').single();
 
   await _gerarPDFSolicitacaoAgenda({
-    id:             sol?.id || 0,
+    id:            sol?.id || 0,
     criado_em,
     obraLabel,
-    tecnicosNomes:  tecnicosNomes || '—',
-    descricao:      payload.servico || null,
+    tecnicosNomes: tecnicosNomes || '—',
+    itens,
     numPessoas,
     valorPorPessoa,
     valorTotal,
-    almocoPlusJanta,
   });
 }
 
@@ -2711,125 +2805,88 @@ async function _logoBase64Agenda() {
 
 async function _gerarPDFSolicitacaoAgenda(s) {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const PW = 210, PH = 297, M = 16, W = PW - M * 2;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const PW=210, M=14, CW=PW-M*2;
 
-  const G   = [62, 207, 142];
-  const AMB = [245, 158, 11];
-  const BLK = [26, 26, 26];
-  const GR2 = [100, 100, 100];
-  const GR3 = [150, 150, 150];
-  const BDR = [218, 218, 218];
-  const ALT = [247, 248, 249];
-  const SHD = [233, 248, 242];
-  const WHT = [255, 255, 255];
-
-  const brl  = v => (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const dtBR = iso => { if (!iso) return '—'; return new Date(iso.includes('T') ? iso : iso + 'T12:00').toLocaleDateString('pt-BR'); };
+  const BARRA=[30,30,30], BRD=[165,165,165], BW=0.35;
+  const caixa=(yy,h)=>{
+    doc.setDrawColor(...BRD); doc.setLineWidth(BW); doc.rect(M,yy,CW,h);
+    doc.setFillColor(...BARRA); doc.rect(M,yy,3,h,'F');
+  };
+  const brl = v => (parseFloat(v)||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
   const hoje = new Date().toLocaleDateString('pt-BR');
 
-  // ── Linha de tabela com quebra automática ─────────────────────
-  function row(y, label, value, alt) {
-    const LW = 58, VW = W - LW - 8;
-    const lines = doc.splitTextToSize(String(value || '—'), VW);
-    const rh = Math.max(9.5, lines.length * 5.2 + 4.5);
-    if (alt) { doc.setFillColor(...ALT); doc.rect(M, y, W, rh, 'F'); }
-    doc.setDrawColor(...BDR); doc.setLineWidth(0.2);
-    doc.rect(M, y, W, rh, 'S');
-    doc.line(M + LW, y, M + LW, y + rh);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...GR2);
-    doc.text(label, M + 4, y + 6.5);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...BLK);
-    lines.forEach((ln, i) => doc.text(ln, M + LW + 4, y + 6.5 + i * 5.2));
-    return rh;
-  }
-
-  // ── Cabeçalho de seção ────────────────────────────────────────
-  function secao(y, titulo) {
-    doc.setFillColor(...SHD); doc.rect(M, y, W, 8, 'F');
-    doc.setFillColor(...G);   doc.rect(M, y, 3, 8, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...BLK);
-    doc.text(titulo, M + 8, y + 5.8);
-    return y + 8;
-  }
-
-  // ── Cabeçalho do documento ────────────────────────────────────
-  doc.setFillColor(...G); doc.rect(0, 0, 4, 42, 'F');
+  // Header — logo esquerda, título direita
   const logo = await _logoBase64Agenda();
-  if (logo) doc.addImage(logo, 'JPEG', M, 9, 38, 22);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(...BLK);
-  doc.text('SOLICITAÇÃO DE VERBA', PW - M, 17, { align: 'right' });
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GR2);
-  doc.text('Solução Técnica – Automação Residencial', PW - M, 24, { align: 'right' });
-  const numStr = s.id > 0 ? 'Nº ' + String(s.id).padStart(4, '0') + '   ·   ' : '';
-  doc.text(numStr + hoje, PW - M, 31, { align: 'right' });
-  doc.setDrawColor(...G); doc.setLineWidth(1.2); doc.line(0, 42, PW, 42);
+  const LOGO_W=42, LOGO_H=14;
+  if (logo) doc.addImage(logo,'JPEG',M,7,LOGO_W,LOGO_H);
+  const TX = logo ? M+LOGO_W+7 : M;
+  const TY = logo ? 12 : 23;
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20,20,20);
+  doc.text('Solicitação de Verba',TX,TY);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
+  doc.text('Solicitação de alimentação – agenda noturna / FDS.',TX,TY+7);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(150,150,150);
+  const numStr = s.id > 0 ? 'Nº '+String(s.id).padStart(4,'0')+'   ·   ' : '';
+  doc.text(numStr+'Gerado em '+hoje, PW-M, 9, { align:'right' });
+  doc.setDrawColor(200,200,200); doc.setLineWidth(0.35); doc.line(M,26,PW-M,26);
 
-  let y = 51;
+  let y=32;
 
-  // ── Badge tipo ────────────────────────────────────────────────
-  const tipoRef = s.almocoPlusJanta ? 'Almoço + Janta' : 'Refeição simples';
-  doc.setFillColor(...AMB); doc.rect(M, y, 122, 9, 'F');
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...WHT);
-  doc.text('ALIMENTAÇÃO  –  AGENDA NOTURNA', M + 5, y + 6.3);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...GR2);
-  doc.text(tipoRef, PW - M, y + 6.3, { align: 'right' });
-  y += 16;
+  // Banner cliente/obra
+  caixa(y,16);
+  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(20,20,20);
+  doc.text(s.obraLabel||'—', M+7, y+10.5);
+  y+=22;
 
-  // ── Dados ─────────────────────────────────────────────────────
-  y = secao(y, 'DADOS DA SOLICITAÇÃO');
-  y += row(y, 'Cliente / Obra', s.obraLabel || '—', false);
-  y += row(y, 'Técnicos',       s.tecnicosNomes || '—', true);
-  if (s.descricao) y += row(y, 'Descrição', s.descricao, false);
-  y += 8;
+  // Tabela técnicos
+  doc.autoTable({
+    startY:y, body:[['Técnicos', s.tecnicosNomes||'—']],
+    margin:{left:M,right:M},
+    styles:{fontSize:10,cellPadding:{top:6,right:6,bottom:6,left:6},
+            textColor:[30,30,30],fillColor:[255,255,255],
+            lineColor:[165,165,165],lineWidth:BW,valign:'middle'},
+    columnStyles:{0:{cellWidth:42,fontStyle:'bold',textColor:[100,100,100],fontSize:8.5},
+                  1:{cellWidth:CW-42}},
+    alternateRowStyles:{fillColor:[255,255,255]},showHead:false,
+  });
+  y=doc.lastAutoTable.finalY+8;
 
-  // ── Detalhamento ──────────────────────────────────────────────
-  y = secao(y, 'DETALHAMENTO');
-  y += row(y, 'Tipo de refeição',  tipoRef, false);
-  y += row(y, 'N.º de Pessoas',    String(s.numPessoas), true);
-  y += row(y, 'Valor por Pessoa',
-    brl(s.valorPorPessoa) + (s.almocoPlusJanta ? '  (almoço R$ 35 + janta R$ 35)' : '  (1 refeição × R$ 35,00)'),
-    false);
-  y += row(y, 'Total',
-    s.numPessoas + ' pessoa(s) × ' + brl(s.valorPorPessoa) + ' = ' + brl(s.valorTotal),
-    true);
-  y += 6;
+  // Refeições — uma caixa por item
+  (s.itens||[]).forEach(item => {
+    caixa(y,14);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+    doc.text(item.label, M+7, y+9);
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(20,20,20);
+    doc.text(brl(item.valor)+' / pessoa', PW-M, y+9, { align:'right' });
+    y+=20;
+  });
 
-  // ── Total geral ───────────────────────────────────────────────
-  doc.setFillColor(...G); doc.rect(M, y, W, 13, 'F');
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...WHT);
-  doc.text('TOTAL GERAL', M + 6, y + 9);
-  doc.setFontSize(14); doc.text(brl(s.valorTotal), PW - M - 4, y + 9, { align: 'right' });
-  y += 22;
+  // Caixa total com cálculo
+  caixa(y,30);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(100,100,100);
+  doc.text('ALIMENTAÇÃO', M+7, y+8);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(50,50,50);
+  doc.text(brl(s.valorPorPessoa)+' × '+s.numPessoas+' pessoa'+(s.numPessoas>1?'s':''), M+7, y+17);
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(20,20,20);
+  doc.text(brl(s.valorTotal), PW-M, y+21, { align:'right' });
+  doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(100,100,100);
+  doc.text('TOTAL', PW-M, y+27, { align:'right' });
+  y+=38;
 
-  // ── Autorização ───────────────────────────────────────────────
-  const sigY = Math.max(y + 8, 230);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...BLK);
-  doc.text('AUTORIZAÇÃO', M, sigY);
-  doc.setDrawColor(...BDR); doc.setLineWidth(0.5); doc.line(M, sigY + 2.5, PW - M, sigY + 2.5);
+  // Assinatura
+  y+=10;
+  doc.setDrawColor(155,155,155); doc.setLineWidth(0.4);
+  doc.line(M,y,M+78,y);
+  doc.line(M+96,y,PW-M,y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(110,110,110);
+  doc.text('Gestor / Aprovação', M, y+5);
+  doc.text('Data: ______ / ______ / __________', M+96, y+5);
 
-  // Linha de assinatura
-  doc.setDrawColor(...GR3); doc.setLineWidth(0.6);
-  doc.line(M, sigY + 22, M + 110, sigY + 22);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GR2);
-  doc.text('Assinatura do Gestor Responsável', M, sigY + 27.5);
-
-  // Data preenchida automaticamente
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...BLK);
-  doc.text(hoje, PW - M, sigY + 22, { align: 'right' });
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GR2);
-  doc.text('Data', PW - M, sigY + 27.5, { align: 'right' });
-
-  // ── Rodapé ────────────────────────────────────────────────────
-  doc.setFillColor(...G); doc.rect(0, PH - 9, PW, 9, 'F');
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...WHT);
-  doc.text('Solução Técnica  –  Automação Residencial', PW / 2, PH - 3.5, { align: 'center' });
-
-  // ── Download ──────────────────────────────────────────────────
-  const nomeArq = (s.obraLabel || 'cliente')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9 ]/g, '').trim().slice(0, 28).replace(/ +/g, '_');
-  doc.save('Solicitacao_Alimentacao_' + nomeArq + '_' + hoje.replace(/\//g, '-') + '.pdf');
+  const nomeArq = (s.obraLabel||'cliente')
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-zA-Z0-9 ]/g,'').trim().slice(0,28).replace(/ +/g,'_');
+  doc.save('Solicitacao_Alimentacao_'+nomeArq+'_'+hoje.replace(/\//g,'-')+'.pdf');
 }
 
 // ── Excluir agendamento ──────────────────────────────────────

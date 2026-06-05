@@ -777,117 +777,85 @@ async function gerarPDF(id) {
   if (!s) return;
 
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const PW = 210, PH = 297, M = 16, W = PW - M * 2;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const PW=210, M=14, CW=PW-M*2;
 
-  const G   = [62, 207, 142];
-  const BLK = [26, 26, 26];
-  const GR2 = [100, 100, 100];
-  const GR3 = [150, 150, 150];
-  const BDR = [218, 218, 218];
-  const ALT = [247, 248, 249];
-  const SHD = [233, 248, 242];
-  const WHT = [255, 255, 255];
-
-  const corBadge = s.finalidade === 'alimentacao_noturna' ? [245, 158, 11]
-    : s.finalidade === 'compra_material' ? [99, 102, 241]
-    : [100, 100, 100];
+  const BARRA=[30,30,30], BRD=[165,165,165], BW=0.35;
+  const caixa=(yy,h)=>{
+    doc.setDrawColor(...BRD); doc.setLineWidth(BW); doc.rect(M,yy,CW,h);
+    doc.setFillColor(...BARRA); doc.rect(M,yy,3,h,'F');
+  };
   const finLabel = FINALIDADE_LABEL[s.finalidade] || s.finalidade;
+  const cli = _clienteLabel(s);
+  const np  = s.num_pessoas || 1;
   const hoje = new Date().toLocaleDateString('pt-BR');
 
-  // ── Linha de tabela com quebra automática ─────────────────────
-  function row(y, label, value, alt) {
-    const LW = 58, VW = W - LW - 8;
-    const lines = doc.splitTextToSize(String(value || '—'), VW);
-    const rh = Math.max(9.5, lines.length * 5.2 + 4.5);
-    if (alt) { doc.setFillColor(...ALT); doc.rect(M, y, W, rh, 'F'); }
-    doc.setDrawColor(...BDR); doc.setLineWidth(0.2);
-    doc.rect(M, y, W, rh, 'S');
-    doc.line(M + LW, y, M + LW, y + rh);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...GR2);
-    doc.text(label, M + 4, y + 6.5);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...BLK);
-    lines.forEach((ln, i) => doc.text(ln, M + LW + 4, y + 6.5 + i * 5.2));
-    return rh;
-  }
-
-  // ── Cabeçalho de seção ────────────────────────────────────────
-  function secao(y, titulo) {
-    doc.setFillColor(...SHD); doc.rect(M, y, W, 8, 'F');
-    doc.setFillColor(...G);   doc.rect(M, y, 3, 8, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...BLK);
-    doc.text(titulo, M + 8, y + 5.8);
-    return y + 8;
-  }
-
-  // ── Cabeçalho do documento ────────────────────────────────────
-  doc.setFillColor(...G); doc.rect(0, 0, 4, 42, 'F');
+  // Header — logo esquerda, título direita
   const logoData = await _logoBase64();
-  if (logoData) doc.addImage(logoData, 'JPEG', M, 9, 38, 22);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(...BLK);
-  doc.text('SOLICITAÇÃO DE VERBA', PW - M, 17, { align: 'right' });
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GR2);
-  doc.text('Solução Técnica – Automação Residencial', PW - M, 24, { align: 'right' });
-  doc.text('Nº ' + String(s.id).padStart(4, '0') + '   ·   ' + hoje, PW - M, 31, { align: 'right' });
-  doc.setDrawColor(...G); doc.setLineWidth(1.2); doc.line(0, 42, PW, 42);
+  const LOGO_W=42, LOGO_H=14;
+  if (logoData) doc.addImage(logoData,'JPEG',M,7,LOGO_W,LOGO_H);
+  const TX = logoData ? M+LOGO_W+7 : M;
+  const TY = logoData ? 12 : 23;
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20,20,20);
+  doc.text('Solicitação de Verba',TX,TY);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
+  doc.text('Solução Técnica – Automação Residencial',TX,TY+7);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(150,150,150);
+  doc.text('Nº '+String(s.id).padStart(4,'0')+'   ·   Gerado em '+hoje, PW-M, 9, { align:'right' });
+  doc.setDrawColor(200,200,200); doc.setLineWidth(0.35); doc.line(M,26,PW-M,26);
 
-  let y = 51;
+  let y=32;
 
-  // ── Badge de finalidade ───────────────────────────────────────
-  doc.setFillColor(...corBadge); doc.rect(M, y, W * 0.66, 9, 'F');
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...WHT);
-  doc.text(finLabel.toUpperCase(), M + 5, y + 6.3);
-  y += 16;
+  // Banner finalidade
+  caixa(y,16);
+  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(20,20,20);
+  doc.text(finLabel, M+7, y+10.5);
+  y+=22;
 
-  // ── Dados da Solicitação ──────────────────────────────────────
-  y = secao(y, 'DADOS DA SOLICITAÇÃO');
-  y += row(y, 'Cliente / Obra', _clienteLabel(s), false);
-  if (s.tecnicos_nomes) y += row(y, 'Técnicos', s.tecnicos_nomes, true);
-  if (s.descricao)      y += row(y, 'Descrição', s.descricao, !s.tecnicos_nomes);
-  y += 8;
+  // Tabela info
+  const infoRows=[];
+  if (cli && cli !== '—') infoRows.push(['Cliente / Obra', cli]);
+  if (s.tecnicos_nomes)   infoRows.push(['Técnicos', s.tecnicos_nomes]);
+  if (s.descricao)        infoRows.push(['Descrição', s.descricao]);
+  if (infoRows.length) {
+    doc.autoTable({
+      startY:y, body:infoRows,
+      margin:{left:M,right:M},
+      styles:{fontSize:10,cellPadding:{top:6,right:6,bottom:6,left:6},
+              textColor:[30,30,30],fillColor:[255,255,255],
+              lineColor:[165,165,165],lineWidth:BW,valign:'middle'},
+      columnStyles:{0:{cellWidth:42,fontStyle:'bold',textColor:[100,100,100],fontSize:8.5},
+                    1:{cellWidth:CW-42}},
+      alternateRowStyles:{fillColor:[255,255,255]},showHead:false,
+    });
+    y=doc.lastAutoTable.finalY+8;
+  }
 
-  // ── Valores ───────────────────────────────────────────────────
-  y = secao(y, 'VALORES');
-  y += row(y, 'N.º de Pessoas',   String(s.num_pessoas || 1), false);
-  y += row(y, 'Valor por Pessoa', _brl(s.valor_pessoa), true);
-  y += row(y, 'Total',
-    (s.num_pessoas || 1) + ' pessoa(s) × ' + _brl(s.valor_pessoa) + ' = ' + _brl(s.valor_total),
-    false);
-  y += 6;
+  // Caixa valores — cálculo destacado
+  caixa(y,30);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(100,100,100);
+  doc.text('VALORES', M+7, y+8);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(50,50,50);
+  doc.text(_brl(s.valor_pessoa)+' × '+np+' pessoa'+(np>1?'s':''), M+7, y+17);
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(20,20,20);
+  doc.text(_brl(s.valor_total), PW-M, y+21, { align:'right' });
+  doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(100,100,100);
+  doc.text('TOTAL', PW-M, y+27, { align:'right' });
+  y+=38;
 
-  // ── Total geral ───────────────────────────────────────────────
-  doc.setFillColor(...G); doc.rect(M, y, W, 13, 'F');
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...WHT);
-  doc.text('TOTAL GERAL', M + 6, y + 9);
-  doc.setFontSize(14); doc.text(_brl(s.valor_total), PW - M - 4, y + 9, { align: 'right' });
-  y += 22;
+  // Assinatura
+  y+=10;
+  doc.setDrawColor(155,155,155); doc.setLineWidth(0.4);
+  doc.line(M,y,M+78,y);
+  doc.line(M+96,y,PW-M,y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(110,110,110);
+  doc.text('Gestor / Aprovação', M, y+5);
+  doc.text('Data: ______ / ______ / __________', M+96, y+5);
 
-  // ── Autorização ───────────────────────────────────────────────
-  const sigY = Math.max(y + 8, 230);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...BLK);
-  doc.text('AUTORIZAÇÃO', M, sigY);
-  doc.setDrawColor(...BDR); doc.setLineWidth(0.5); doc.line(M, sigY + 2.5, PW - M, sigY + 2.5);
-
-  doc.setDrawColor(...GR3); doc.setLineWidth(0.6);
-  doc.line(M, sigY + 22, M + 110, sigY + 22);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GR2);
-  doc.text('Assinatura do Gestor Responsável', M, sigY + 27.5);
-
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...BLK);
-  doc.text(hoje, PW - M, sigY + 22, { align: 'right' });
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GR2);
-  doc.text('Data', PW - M, sigY + 27.5, { align: 'right' });
-
-  // ── Rodapé ────────────────────────────────────────────────────
-  doc.setFillColor(...G); doc.rect(0, PH - 9, PW, 9, 'F');
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...WHT);
-  doc.text('Solução Técnica  –  Automação Residencial', PW / 2, PH - 3.5, { align: 'center' });
-
-  // ── Download ──────────────────────────────────────────────────
-  const nomeArquivo = _clienteLabel(s)
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9 ]/g, '').trim().slice(0, 28).replace(/ +/g, '_');
-  doc.save('Solicitacao_' + String(s.id).padStart(4, '0') + '_' + nomeArquivo + '_' + hoje.replace(/\//g, '-') + '.pdf');
+  const nomeArquivo = cli
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-zA-Z0-9 ]/g,'').trim().slice(0,28).replace(/ +/g,'_');
+  doc.save('Solicitacao_'+String(s.id).padStart(4,'0')+'_'+nomeArquivo+'_'+hoje.replace(/\//g,'-')+'.pdf');
 }
 
 // ── Fechar modal com ESC ──────────────────────────────────────
