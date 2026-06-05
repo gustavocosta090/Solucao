@@ -823,7 +823,7 @@
       <span>Relatório do Mês</span>
     </button>
 
-    <button class="btn-semana-tec" id="btn-semana-tec" onclick="abrirModalSemana()" title="Gerar e disparar programação semanal de plantão">
+    <button class="btn-semana-tec" id="btn-semana-tec" onclick="gerarPlantaoSemanal()" title="Gerar imagem semanal dos plantões">
       <i data-lucide="calendar-range"></i>
       <span>Plantão semanal</span>
     </button>
@@ -2120,25 +2120,7 @@ async function exportarAgendaSharePoint() {
     const pasta      = `Agenda Tecnica/${ano}/${mesNomeCap}`;
     const arquivo    = `Plantao ${nomeSemana}.pdf`;
 
-    const initRes = await fetch('/api/upload', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-      body:    JSON.stringify({ path: pasta, filename: arquivo, contentType: 'application/pdf' }),
-    });
-    if (!initRes.ok) {
-      const err = await initRes.json().catch(() => ({}));
-      throw new Error(err.error || `Erro ${initRes.status}`);
-    }
-
-    const { uploadUrl } = await initRes.json();
-    const putRes = await fetch(uploadUrl, {
-      method:  'PUT',
-      headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(pdfBlob.size), 'Content-Range': `bytes 0-${pdfBlob.size-1}/${pdfBlob.size}` },
-      body:    pdfBlob,
-    });
-    if (!putRes.ok && putRes.status !== 201 && putRes.status !== 200)
-      throw new Error(`Upload falhou: ${putRes.status}`);
-
+    await uploadPDFServidor(pdfBlob, pasta, arquivo);
     mostrarToast(`✅ Plantão salvo: "${arquivo}"`, 'ok');
 
   } catch (e) {
@@ -2149,6 +2131,139 @@ async function exportarAgendaSharePoint() {
     btn.innerHTML = '<i data-lucide="cloud-upload"></i><span>Exportar → SharePoint</span>';
     lucide.createIcons();
   }
+}
+
+// ── Plantão Semanal — imagem com apenas os dias que têm plantões ────────
+async function gerarPlantaoSemanal() {
+  const btn = document.getElementById('btn-semana-tec');
+  btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none';
+  mostrarToast('⏳ Gerando Plantão Semanal...', 'ok');
+
+  const semana    = diasDaSemana(semanaOffset);
+  const diasComAg = semana.filter(dia => agendamentos.some(ag => ag.data === fmtISO(dia)));
+
+  if (!diasComAg.length) {
+    mostrarToast('Nenhum plantão agendado nesta semana.', 'err');
+    btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+    return;
+  }
+
+  const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const DIAS_FULL= ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const d0 = semana[0], d6 = semana[6];
+  const fmt2 = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+  const periodoFmt = `${fmt2(d0)} a ${fmt2(d6)} de ${d6.getFullYear()}`;
+  const geradoEm   = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const logoB64    = await carregarLogoBase64Branco('logosolucao.png');
+
+  // Tema claro — legível e limpo
+  const BG    = '#F1F5F9'; // fundo geral cinza muito claro
+  const SURF  = '#FFFFFF'; // cards e colunas: branco
+  const HDR   = '#1E293B'; // header escuro para contraste
+  const T1    = '#0F172A'; // texto principal
+  const T2    = '#334155'; // texto secundário
+  const T3    = '#64748B'; // labels
+  const BRDR  = '#CBD5E1'; // bordas suaves
+  const ACCNT = '#6D28D9'; // roxo plantão (header accent)
+
+  function colunaHTML(dia) {
+    const iso  = fmtISO(dia);
+    const ags  = agendamentos.filter(ag => ag.data === iso);
+    const diaN = DIAS_FULL[dia.getDay()];
+    const dataL= `${String(dia.getDate()).padStart(2,'0')} de ${MESES_FULL[dia.getMonth()]}`;
+    const cardsHTML = ags.map(ag => {
+      const hora   = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
+      const ids    = [ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
+      const tecStr = escHtml(ids.map(id=>tecnicos.find(t=>t.id===id)?.nome||'').filter(Boolean).join(', '));
+      const end    = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
+      const obs    = escHtml(ag.observacao || ag.servico || '');
+      const lin    = (l,v) => v ? `<div style="margin-top:6px;font-size:13px;color:${T2};line-height:1.4;"><span style="font-weight:700;color:${T3};">${l}</span> ${v}</div>` : '';
+      return `<div style="background:${SURF};border-radius:8px;padding:14px 16px;margin-bottom:10px;border:1px solid ${BRDR};box-shadow:0 1px 4px rgba(0,0,0,0.07);">
+        <div style="font-size:22px;font-weight:900;color:${T1};letter-spacing:-0.5px;margin-bottom:6px;">${hora}</div>
+        ${lin('Técnico:',tecStr)}
+        ${lin('Endereço:',end)}
+        ${lin('Obs:',obs)}
+      </div>`;
+    }).join('');
+    return `<div style="flex:1;min-width:260px;display:flex;flex-direction:column;border-radius:10px;overflow:hidden;border:1px solid ${BRDR};">
+      <div style="background:${HDR};padding:14px 16px;">
+        <div style="font-size:18px;font-weight:800;color:#FFFFFF;letter-spacing:-0.3px;">${diaN}</div>
+        <div style="font-size:13px;color:#94A3B8;margin-top:3px;">${dataL} &nbsp;·&nbsp; ${ags.length} plantão${ags.length!==1?'ões':''}</div>
+      </div>
+      <div style="background:${BG};padding:12px;flex:1;">${cardsHTML}</div>
+    </div>`;
+  }
+
+  const MESES_FULL = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const nCols      = diasComAg.length;
+  const colW       = Math.max(280, Math.min(420, Math.floor(1300/nCols)));
+  const totalW     = nCols * colW + (nCols-1)*16 + 48;
+  const colunasHTML= diasComAg.map(colunaHTML).join('');
+
+  const card = document.getElementById('agenda-card');
+  card.style.width = totalW+'px';
+  card.innerHTML = `<div style="width:${totalW}px;background:${BG};font-family:'Segoe UI',system-ui,Arial,sans-serif;border-radius:14px;overflow:hidden;border:1px solid ${BRDR};">
+    <div style="background:${HDR};padding:22px 28px;display:flex;align-items:center;gap:20px;">
+      ${logoB64?`<img src="${logoB64}" style="height:28px;opacity:0.95;">`:`<span style="font-size:15px;font-weight:800;color:#FFFFFF;">SOLUÇÃO TÉCNICA</span>`}
+      <div style="width:1px;height:36px;background:rgba(255,255,255,0.15);"></div>
+      <div style="flex:1;">
+        <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.08em;text-transform:uppercase;">Plantão Semanal</div>
+        <div style="font-size:18px;font-weight:700;color:#FFFFFF;margin-top:3px;">${periodoFmt}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:26px;font-weight:800;color:#FFFFFF;line-height:1;">${nCols}</div>
+        <div style="font-size:10px;color:#94A3B8;margin-top:2px;text-transform:uppercase;letter-spacing:0.04em;">dia${nCols!==1?'s':''}</div>
+      </div>
+    </div>
+    <div style="height:3px;background:${ACCNT};"></div>
+    <div style="display:flex;gap:16px;padding:16px;">${colunasHTML}</div>
+    <div style="background:#E2E8F0;padding:10px 28px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:11px;color:${T3};letter-spacing:0.04em;">Solução Técnica · Sistema de Gestão de Obras</div>
+      <div style="font-size:11px;color:${T3};">Gerado em ${geradoEm}</div>
+    </div>
+  </div>`;
+
+  try {
+    await document.fonts.ready;
+    const canvas = await html2canvas(card,{scale:2,backgroundColor:'#F1F5F9',useCORS:true,allowTaint:false});
+    card.innerHTML=''; card.style.width='';
+    canvas.toBlob(async blob=>{
+      try {
+        await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+        mostrarToast('✅ Plantão Semanal copiado! Cole no WhatsApp (Ctrl+V)','ok',5000);
+      } catch {
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.href=url; a.download=`Plantao-Semanal-${fmtISO(d0)}.png`; a.click();
+        URL.revokeObjectURL(url);
+        mostrarToast('✅ Imagem salva!','ok');
+      }
+    },'image/png');
+  } catch(e) {
+    console.error('[gerarPlantaoSemanal]',e);
+    mostrarToast('Erro ao gerar imagem: '+e.message,'err');
+  } finally {
+    btn.style.opacity='1'; btn.style.pointerEvents='auto';
+  }
+}
+
+// ── Upload PDF server-side (evita CORS do browser com o SharePoint) ─────
+async function uploadPDFServidor(pdfBlob, pasta, arquivo) {
+  const arrayBuf = await pdfBlob.arrayBuffer();
+  const bytes    = new Uint8Array(arrayBuf);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const base64 = btoa(binary);
+  const res = await fetch('/api/upload-pdf', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
+    body:    JSON.stringify({ path: pasta, filename: arquivo, contentBase64: base64 }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Erro ${res.status}`);
+  }
+  return res.json();
 }
 
 // ── Iniciar ──────────────────────────────────────────────────
@@ -2289,24 +2404,11 @@ async function gerarRelatorioMes() {
 
     const pdfBlob = doc.output('blob');
 
-    // 5. Upload para SharePoint
+    // 5. Upload para SharePoint (server-side para evitar CORS)
     btn.textContent = 'Enviando...';
     const pasta   = `Agenda Tecnica/${ano}/Plantão`;
     const arquivo = `Relatorio Plantao ${mesNome} ${ano}.pdf`;
-
-    const initRes = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-      body: JSON.stringify({ path: pasta, filename: arquivo, contentType: 'application/pdf' }),
-    });
-    if (!initRes.ok) throw new Error((await initRes.json().catch(()=>({}))).error || `Erro ${initRes.status}`);
-    const { uploadUrl } = await initRes.json();
-    const putRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(pdfBlob.size), 'Content-Range': `bytes 0-${pdfBlob.size-1}/${pdfBlob.size}` },
-      body: pdfBlob,
-    });
-    if (!putRes.ok && putRes.status !== 201 && putRes.status !== 200) throw new Error(`Upload falhou: ${putRes.status}`);
+    await uploadPDFServidor(pdfBlob, pasta, arquivo);
 
     fecharModalRelatorioMes();
     mostrarToast(`✅ Relatório "${arquivo}" enviado ao SharePoint!`, 'ok');
