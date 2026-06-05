@@ -825,8 +825,8 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label for="f-fase">Fase Atual</label>
-        <select id="f-fase">
+        <label for="modal-fase">Fase Atual</label>
+        <select id="modal-fase">
           <option value="nao_iniciado">Não Iniciado</option>
           <option value="projeto">Projeto</option>
           <option value="cabeamento">Cabeamento</option>
@@ -1242,7 +1242,7 @@
     document.getElementById('f-arquiteto').value      = '';
     document.getElementById('f-consultor').value      = '';
     document.getElementById('f-regional').value       = '';
-    document.getElementById('f-fase').value           = 'nao_iniciado';
+    document.getElementById('modal-fase').value        = 'nao_iniciado';
     document.getElementById('f-status-compra').value  = '';
     document.getElementById('f-shankya').value        = '';
     document.getElementById('f-valor-servico').value  = '';
@@ -1279,7 +1279,7 @@
       arquiteto_responsavel: document.getElementById('f-arquiteto').value.trim()    || null,
       consultor_id:          document.getElementById('f-consultor').value            || null,
       regional:              document.getElementById('f-regional').value             || null,
-      fase_atual:            document.getElementById('f-fase').value,
+      fase_atual:            document.getElementById('modal-fase').value,
       status_compra:         document.getElementById('f-status-compra').value.trim()|| null,
       cod_shankya:           document.getElementById('f-shankya').value.trim()      || null,
       valor_servico:         isNaN(valorServRaw) ? null : valorServRaw,
