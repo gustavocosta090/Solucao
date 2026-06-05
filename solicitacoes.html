@@ -754,16 +754,16 @@ async function _logoBase64() {
   if (_logoCached) return _logoCached;
   return new Promise(resolve => {
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
-        // Limita a 320px — evita PDF de centenas de páginas por imagem enorme
-        const MAX = 320;
+        const MAX = 480;
         const scale = img.width > MAX ? MAX / img.width : 1;
         const c = document.createElement('canvas');
-        c.width  = Math.round(img.width  * scale);
-        c.height = Math.round(img.height * scale);
+        c.width  = Math.max(1, Math.round(img.width  * scale));
+        c.height = Math.max(1, Math.round(img.height * scale));
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        _logoCached = c.toDataURL('image/jpeg', 0.88);
+        _logoCached = c.toDataURL('image/png');
         resolve(_logoCached);
       } catch { resolve(null); }
     };
@@ -793,7 +793,7 @@ async function gerarPDF(id) {
   // Header — logo esquerda, título direita
   const logoData = await _logoBase64();
   const LOGO_W=42, LOGO_H=14;
-  if (logoData) doc.addImage(logoData,'JPEG',M,7,LOGO_W,LOGO_H);
+  if (logoData) doc.addImage(logoData,'PNG',M,7,LOGO_W,LOGO_H);
   const TX = logoData ? M+LOGO_W+7 : M;
   const TY = logoData ? 12 : 23;
   doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20,20,20);

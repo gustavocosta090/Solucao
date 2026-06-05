@@ -1506,6 +1506,10 @@ function _buildAgCard(ag, dataStr, {
   const veic     = escHtml(ag.veiculo || '');
 
   const tecIds = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+  if (filtroEquipe !== 'todas') {
+    const eqIds = tecnicosDaEquipe(parseInt(filtroEquipe));
+    tecIds.sort((a, b) => (eqIds.includes(a) ? 0 : 1) - (eqIds.includes(b) ? 0 : 1));
+  }
   const tecStr = escHtml(tecIds
     .filter(id => !tecnicoBloqueadoNaData(id, dataStr, ag.hora_inicio))
     .map(id => tecnicos.find(t => t.id === id)?.nome || '').filter(Boolean).join(' · '));
@@ -2838,16 +2842,17 @@ async function _logoBase64Agenda() {
   if (_logoSolAgenda) return _logoSolAgenda;
   return new Promise(resolve => {
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
         if (!img.width || !img.height) { resolve(null); return; }
-        const MAX = 320;
+        const MAX = 480;
         const scale = img.width > MAX ? MAX / img.width : 1;
         const c = document.createElement('canvas');
         c.width  = Math.max(1, Math.round(img.width  * scale));
         c.height = Math.max(1, Math.round(img.height * scale));
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        _logoSolAgenda = c.toDataURL('image/jpeg', 0.88);
+        _logoSolAgenda = c.toDataURL('image/png');
         resolve(_logoSolAgenda);
       } catch { resolve(null); }
     };
@@ -2872,13 +2877,13 @@ async function _gerarPDFSolicitacaoAgenda(s) {
   // Header — logo esquerda, título direita
   const logo = await _logoBase64Agenda();
   const LOGO_W=42, LOGO_H=14;
-  if (logo) doc.addImage(logo,'JPEG',M,7,LOGO_W,LOGO_H);
+  if (logo) doc.addImage(logo,'PNG',M,7,LOGO_W,LOGO_H);
   const TX = logo ? M+LOGO_W+7 : M;
   const TY = logo ? 12 : 23;
   doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20,20,20);
   doc.text('Solicitação de Verba',TX,TY);
   doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
-  doc.text('Solicitação de alimentação – agenda noturna / FDS.',TX,TY+7);
+  doc.text('Alimentação',TX,TY+7);
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(150,150,150);
   const numStr = s.id > 0 ? 'Nº '+String(s.id).padStart(4,'0')+'   ·   ' : '';
   doc.text(numStr+'Gerado em '+hoje, PW-M, 9, { align:'right' });
