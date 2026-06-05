@@ -163,11 +163,42 @@ function iniciarAutoRefresh(callbackFn, intervaloMs) {
     ':root[data-tema="classico"] .badge-confirmado{background:rgba(37,99,235,0.12)!important;color:#1D4ED8!important;}',
     /* ── Scrollbar clássico ── */
     ':root[data-tema="classico"] *{scrollbar-color:rgba(37,99,235,0.3) transparent!important;}',
+    /* ── Botões da agenda — paleta unificada azul ── */
+    /* Filtro equipe ativo */
+    ':root[data-tema="classico"] .filtro-btn{color:#475569!important;border-color:rgba(0,0,0,0.12)!important;}',
+    ':root[data-tema="classico"] .filtro-btn:hover{color:#0F172A!important;border-color:rgba(0,0,0,0.2)!important;}',
+    ':root[data-tema="classico"] .filtro-btn.ativo{background:rgba(37,99,235,0.1)!important;border-color:rgba(37,99,235,0.35)!important;color:#1D4ED8!important;}',
+    /* Exportar SharePoint */
+    ':root[data-tema="classico"] .btn-exportar-sp{background:rgba(37,99,235,0.07)!important;border-color:rgba(37,99,235,0.25)!important;color:#2563EB!important;}',
+    ':root[data-tema="classico"] .btn-exportar-sp:hover{background:rgba(37,99,235,0.14)!important;border-color:rgba(37,99,235,0.45)!important;}',
+    /* Disponibilidades */
+    ':root[data-tema="classico"] .btn-disp{background:rgba(37,99,235,0.07)!important;border-color:rgba(37,99,235,0.25)!important;color:#2563EB!important;}',
+    ':root[data-tema="classico"] .btn-disp:hover{background:rgba(37,99,235,0.14)!important;border-color:rgba(37,99,235,0.45)!important;}',
+    /* Prog. Semanal — mantém roxo mas mais suave */
+    ':root[data-tema="classico"] .btn-semana-tec{background:rgba(109,40,217,0.07)!important;border-color:rgba(109,40,217,0.25)!important;color:#6D28D9!important;}',
+    ':root[data-tema="classico"] .btn-semana-tec:hover{background:rgba(109,40,217,0.13)!important;border-color:rgba(109,40,217,0.45)!important;}',
+    /* Disparar dia — WhatsApp verde, mantém */
+    ':root[data-tema="classico"] .btn-whatsapp{background:rgba(37,211,102,0.07)!important;border-color:rgba(37,211,102,0.28)!important;color:#16A34A!important;}',
+    ':root[data-tema="classico"] .btn-whatsapp:hover{background:rgba(37,211,102,0.14)!important;border-color:rgba(37,211,102,0.48)!important;}',
+    /* Prog. Estoque — laranja suave */
+    ':root[data-tema="classico"] #btn-estoque{background:rgba(234,88,12,0.07)!important;border-color:rgba(234,88,12,0.25)!important;color:#C2410C!important;}',
+    ':root[data-tema="classico"] #btn-estoque:hover{background:rgba(234,88,12,0.13)!important;}',
+    /* Bloqueios — vermelho suave */
+    ':root[data-tema="classico"] .btn-bloqueio{background:rgba(220,38,38,0.07)!important;border-color:rgba(220,38,38,0.25)!important;color:#DC2626!important;}',
+    ':root[data-tema="classico"] .btn-bloqueio:hover{background:rgba(220,38,38,0.13)!important;border-color:rgba(220,38,38,0.45)!important;}',
+    /* Novo agendamento — azul sólido (usa --primary já sobrescrito) */
+    ':root[data-tema="classico"] .btn-novo{background:#2563EB!important;color:#FFFFFF!important;}',
+    /* Date picker — claro */
+    ':root[data-tema="classico"] .input-data-dispatch{background:#FFFFFF!important;border-color:rgba(0,0,0,0.15)!important;color:#0F172A!important;}',
+    ':root[data-tema="classico"] .input-data-dispatch::-webkit-calendar-picker-indicator{filter:none!important;}',
+    /* Icones dos headers da grade — escuros */
+    ':root[data-tema="classico"] .btn-lock,.btn-nota,.btn-add,.btn-dispatch-dia{color:#64748B!important;}',
+
     /* ── Botão toggle ── */
     '.btn-tema-toggle{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);cursor:pointer;font-family:inherit;transition:background .15s,color .15s;white-space:nowrap;letter-spacing:.02em;}',
     '.btn-tema-toggle:hover{background:rgba(255,255,255,0.14);color:#fff;}',
-    ':root[data-tema="classico"] .btn-tema-toggle{background:rgba(37,99,235,0.12);border-color:rgba(37,99,235,0.3);color:#60A5FA;}',
-    ':root[data-tema="classico"] .btn-tema-toggle:hover{background:rgba(37,99,235,0.2);}',
+    ':root[data-tema="classico"] .btn-tema-toggle{background:rgba(37,99,235,0.1);border-color:rgba(37,99,235,0.28);color:#2563EB;}',
+    ':root[data-tema="classico"] .btn-tema-toggle:hover{background:rgba(37,99,235,0.18);}',
   ].join('');
   document.head.appendChild(s);
 })();
