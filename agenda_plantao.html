@@ -1529,16 +1529,6 @@ async function salvarAgendamento() {
   // Mapeia equipe → colunas DB (max 4)
   const [id0, id1, id2, id3] = equipesSelecionadas;
 
-  // Gera número de OS antes de salvar (somente para novo agendamento)
-  let numeroOSGerado = null;
-  if (!agEditandoId && status !== 'viagem') {
-    const { data: seqData, error: seqErr } = await db.rpc('proximo_numero_os');
-    if (!seqErr && seqData != null) {
-      const [y, m] = data.split('-');
-      numeroOSGerado = `${y}-${m}-09-${String(seqData).padStart(4, '0')}`;
-    }
-  }
-
   const payload = {
     obra_id:        obraVal !== 'outro' ? parseInt(obraVal) : null,
     cliente_outro:  obraVal === 'outro' ? nomeOutro          : null,
@@ -1552,7 +1542,6 @@ async function salvarAgendamento() {
     hora_fim:     null,
     veiculo:      veiculo          || null,
     servico:      servico          || 'Plantão de automação e rede',
-    numero_os:    numeroOSGerado,
   };
 
   // Retorna { error, id } — id é o agendamento inserido/editado
@@ -1574,30 +1563,6 @@ async function salvarAgendamento() {
     erroEl.textContent   = 'Erro ao salvar: ' + error.message;
     erroEl.style.display = 'block';
   } else {
-    // ── Cria uma OS pendente individual para cada pessoa da equipe ───
-    // A unificação acontece depois, no os.html, quando o técnico marca quem participou.
-    if (!agEditandoId && savedAgId && status !== 'viagem') {
-      const equipeOS = [payload.tecnico_id, payload.auxiliar_id, payload.auxiliar2_id, payload.auxiliar3_id]
-        .filter(Boolean)
-        .filter((id, idx, arr) => arr.indexOf(id) === idx);
-
-      const agora = new Date().toISOString();
-      const osPayloads = equipeOS.map(tecnicoId => ({
-        agendamento_id:    savedAgId,
-        obra_id:           payload.obra_id,
-        tecnico_id:        tecnicoId,
-        data_servico:      data,
-        tipo_servico:      'plantao',
-        servico_planejado: 'Plantão de automação e rede',
-        status_aprovacao:  'pendente',
-        numero_os:         numeroOSGerado,
-        criado_em:         agora,
-      }));
-
-      const { error: osErr } = await db.from('ordens_de_servico').insert(osPayloads);
-      if (osErr) console.warn('[SAOS] OS plantão não criadas:', osErr.message);
-    }
-
     fecharModal();
     await carregarAgenda();
   }
