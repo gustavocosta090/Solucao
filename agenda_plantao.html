@@ -950,6 +950,36 @@
   </div>
 </div>
 
+<!-- Modal: Plantão Semanal — seleção de período -->
+<div class="overlay" id="overlay-ps" onclick="if(event.target===this)fecharModalPS()" style="display:none" role="dialog" aria-modal="true" aria-label="Gerar Plantão Semanal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-header-icon" style="background:rgba(139,92,246,0.12);border-color:rgba(139,92,246,0.25);color:#A78BFA">
+        <i data-lucide="calendar-range" aria-hidden="true"></i>
+      </div>
+      <div class="modal-title">Plantão Semanal — Período</div>
+    </div>
+    <p style="font-size:12px;color:var(--text-3);margin-bottom:16px;line-height:1.5">Selecione o intervalo de datas. Somente os dias com plantões agendados aparecerão na imagem.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label for="ps-inicio">Data início</label>
+        <input type="date" id="ps-inicio" style="width:100%;padding:9px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:0.85rem;outline:none;color-scheme:dark">
+      </div>
+      <div class="form-group">
+        <label for="ps-fim">Data fim</label>
+        <input type="date" id="ps-fim" style="width:100%;padding:9px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:0.85rem;outline:none;color-scheme:dark">
+      </div>
+    </div>
+    <div id="ps-erro" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:12px;color:#f87171;margin-top:10px;"></div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button onclick="fecharModalPS()" style="padding:10px 18px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-family:inherit;font-size:0.82rem;cursor:pointer;">Cancelar</button>
+      <button onclick="_confirmarPlantaoSemanal()" style="flex:1;height:40px;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:6px;color:#A78BFA;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+        <i data-lucide="image" style="display:inline-block;width:13px;height:13px;vertical-align:middle;margin-right:5px"></i>Gerar imagem
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal -->
 <div class="overlay" id="overlay" onclick="fecharModalFora(event)" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
   <div class="modal">
@@ -2133,55 +2163,81 @@ async function exportarAgendaSharePoint() {
   }
 }
 
-// ── Plantão Semanal — imagem com apenas os dias que têm plantões ────────
-async function gerarPlantaoSemanal() {
+// ── Plantão Semanal — abre modal de seleção de período ───────────────────
+function gerarPlantaoSemanal() {
+  const semana = diasDaSemana(semanaOffset);
+  document.getElementById('ps-inicio').value = fmtISO(semana[0]);
+  document.getElementById('ps-fim').value    = fmtISO(semana[6]);
+  document.getElementById('ps-erro').style.display = 'none';
+  document.getElementById('overlay-ps').style.display = 'flex';
+  lucide.createIcons();
+}
+function fecharModalPS() { document.getElementById('overlay-ps').style.display = 'none'; }
+
+async function _confirmarPlantaoSemanal() {
+  const ini  = document.getElementById('ps-inicio').value;
+  const fim  = document.getElementById('ps-fim').value;
+  const erro = document.getElementById('ps-erro');
+  if (!ini || !fim) { erro.textContent='Informe as duas datas.'; erro.style.display='block'; return; }
+  if (ini > fim)    { erro.textContent='Data início deve ser anterior à data fim.'; erro.style.display='block'; return; }
+  fecharModalPS();
+  await _gerarPlantaoComDatas(ini, fim);
+}
+
+async function _gerarPlantaoComDatas(dataIni, dataFim) {
   const btn = document.getElementById('btn-semana-tec');
   btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none';
   mostrarToast('⏳ Gerando Plantão Semanal...', 'ok');
 
-  const semana    = diasDaSemana(semanaOffset);
-  const diasComAg = semana.filter(dia => agendamentos.some(ag => ag.data === fmtISO(dia)));
+  // Busca agendamentos do período diretamente do banco
+  const { data: agsRaw } = await _db.from('agendamentos')
+    .select('*, obras(nome_cliente, endereco)')
+    .gte('data', dataIni)
+    .lte('data', dataFim)
+    .order('data').order('hora_inicio');
+
+  const agsPeriodo = agsRaw || [];
+  const diasUnicos = [...new Set(agsPeriodo.map(ag => ag.data))].sort();
+  const diasComAg  = diasUnicos.map(iso => new Date(iso + 'T12:00'));
 
   if (!diasComAg.length) {
-    mostrarToast('Nenhum plantão agendado nesta semana.', 'err');
+    mostrarToast('Nenhum plantão no período selecionado.', 'err');
     btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
     return;
   }
 
-  const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-  const DIAS_FULL= ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
-  const d0 = semana[0], d6 = semana[6];
+  const MESES_FULL = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const MESES_ABR  = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const DIAS_FULL  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const d0 = diasComAg[0], d6 = diasComAg[diasComAg.length - 1];
   const fmt2 = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
-  const periodoFmt = `${fmt2(d0)} a ${fmt2(d6)} de ${d6.getFullYear()}`;
+  const periodoFmt = d0.getMonth() === d6.getMonth()
+    ? `${fmt2(d0)} a ${fmt2(d6)} de ${MESES_FULL[d6.getMonth()]} ${d6.getFullYear()}`
+    : `${fmt2(d0)} ${MESES_ABR[d0.getMonth()]} a ${fmt2(d6)} ${MESES_ABR[d6.getMonth()]} ${d6.getFullYear()}`;
   const geradoEm   = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
   const logoB64    = await carregarLogoBase64Branco('logosolucao.png');
 
-  // Tema claro — legível e limpo
-  const BG    = '#F1F5F9'; // fundo geral cinza muito claro
-  const SURF  = '#FFFFFF'; // cards e colunas: branco
-  const HDR   = '#1E293B'; // header escuro para contraste
-  const T1    = '#0F172A'; // texto principal
-  const T2    = '#334155'; // texto secundário
-  const T3    = '#64748B'; // labels
-  const BRDR  = '#CBD5E1'; // bordas suaves
-  const ACCNT = '#6D28D9'; // roxo plantão (header accent)
+  const BG    = '#F1F5F9';
+  const SURF  = '#FFFFFF';
+  const HDR   = '#1E293B';
+  const T1    = '#0F172A';
+  const T2    = '#334155';
+  const T3    = '#64748B';
+  const BRDR  = '#CBD5E1';
+  const ACCNT = '#6D28D9';
 
   function colunaHTML(dia) {
     const iso  = fmtISO(dia);
-    const ags  = agendamentos.filter(ag => ag.data === iso);
+    const ags  = agsPeriodo.filter(ag => ag.data === iso);
     const diaN = DIAS_FULL[dia.getDay()];
     const dataL= `${String(dia.getDate()).padStart(2,'0')} de ${MESES_FULL[dia.getMonth()]}`;
     const cardsHTML = ags.map(ag => {
-      const hora   = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '—';
       const ids    = [ag.tecnico_id,ag.auxiliar_id,ag.auxiliar2_id,ag.auxiliar3_id].filter(Boolean);
       const tecStr = escHtml(ids.map(id=>tecnicos.find(t=>t.id===id)?.nome||'').filter(Boolean).join(', '));
-      const end    = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
       const obs    = escHtml(ag.observacao || ag.servico || '');
-      const lin    = (l,v) => v ? `<div style="margin-top:6px;font-size:13px;color:${T2};line-height:1.4;"><span style="font-weight:700;color:${T3};">${l}</span> ${v}</div>` : '';
+      const lin    = (l,v) => v ? `<div style="margin-top:8px;font-size:13px;color:${T2};line-height:1.4;"><span style="font-weight:700;color:${T3};">${l}</span> ${v}</div>` : '';
       return `<div style="background:${SURF};border-radius:8px;padding:14px 16px;margin-bottom:10px;border:1px solid ${BRDR};box-shadow:0 1px 4px rgba(0,0,0,0.07);">
-        <div style="font-size:22px;font-weight:900;color:${T1};letter-spacing:-0.5px;margin-bottom:6px;">${hora}</div>
-        ${lin('Técnico:',tecStr)}
-        ${lin('Endereço:',end)}
+        <div style="font-size:18px;font-weight:800;color:${T1};letter-spacing:-0.3px;line-height:1.3;margin-bottom:4px;">${tecStr||'A definir'}</div>
         ${lin('Obs:',obs)}
       </div>`;
     }).join('');
@@ -2194,7 +2250,6 @@ async function gerarPlantaoSemanal() {
     </div>`;
   }
 
-  const MESES_FULL = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const nCols      = diasComAg.length;
   const colW       = Math.max(280, Math.min(420, Math.floor(1300/nCols)));
   const totalW     = nCols * colW + (nCols-1)*16 + 48;
@@ -2234,7 +2289,7 @@ async function gerarPlantaoSemanal() {
       } catch {
         const url=URL.createObjectURL(blob);
         const a=document.createElement('a');
-        a.href=url; a.download=`Plantao-Semanal-${fmtISO(d0)}.png`; a.click();
+        a.href=url; a.download=`Plantao-${dataIni}_${dataFim}.png`; a.click();
         URL.revokeObjectURL(url);
         mostrarToast('✅ Imagem salva!','ok');
       }
