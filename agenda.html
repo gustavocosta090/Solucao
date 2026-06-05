@@ -326,9 +326,26 @@
     /* viagem = VERDE */
     .card-viagem       { background: rgba(34,197,94,0.07);   border-color: #22c55e; }
 
-    .ag-tecs    { font-weight: 700; color: var(--text-1); margin-bottom: 3px; }
-    .ag-hora    { font-weight: 700; color: var(--primary); font-size: 0.84rem; flex-shrink: 0; }
+    .ag-tecs    { font-weight: 700; color: var(--text-1); font-size: 0.82rem; line-height: 1.3; margin-top: 1px; }
+    .ag-hora    { font-weight: 700; color: var(--primary); font-size: 0.84rem; flex-shrink: 0; margin-top: 1px; }
     .ag-cliente { font-weight: 700; color: var(--text-1); font-size: 0.82rem; line-height: 1.3; }
+
+    /* ── Painel Disponibilidades ── */
+    .disp-panel { position:fixed;top:56px;right:-400px;width:360px;height:calc(100vh - 56px);background:var(--surface-1);border-left:1px solid var(--border);z-index:400;display:flex;flex-direction:column;transition:right .25s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.4); }
+    .disp-panel.aberto { right:0; }
+    .disp-panel-header { display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0; }
+    .disp-panel-header span { font-size:14px;font-weight:700;color:var(--text-1); }
+    .disp-close { background:none;border:none;color:var(--text-3);cursor:pointer;padding:4px;border-radius:5px;font-size:18px;line-height:1;transition:color .15s; }
+    .disp-close:hover { color:var(--text-1); }
+    .disp-subtitulo { font-size:11px;color:var(--text-3);padding:10px 20px 0;letter-spacing:.02em; }
+    .disp-lista { flex:1;overflow-y:auto;padding:12px 16px 32px; }
+    .disp-item { background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px; }
+    .disp-nome { font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:4px; }
+    .disp-dias { font-size:12px;color:var(--primary);font-weight:500;line-height:1.5; }
+    .disp-vazio { text-align:center;padding:32px 16px;color:var(--text-3);font-size:13px; }
+    .btn-disp { display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.25);border-radius:6px;color:var(--primary);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap; }
+    .btn-disp:hover { background:rgba(62,207,142,0.15);border-color:rgba(62,207,142,0.45); }
+    .btn-disp i { width:14px;height:14px; }
 
     /* ── Detalhes do card (coluna única compacta) ── */
     .ag-detalhes {
@@ -1020,6 +1037,12 @@
       <span>Exportar → SharePoint</span>
     </button>
 
+    <!-- Disponibilidades -->
+    <button class="btn-disp" onclick="abrirDispPanel()" title="Ver disponibilidades dos técnicos na semana">
+      <i data-lucide="user-check"></i>
+      <span>Disponibilidades</span>
+    </button>
+
     <!-- Botão programação semanal de técnico (substitui o antigo disparar-dia fixo) -->
     <button class="btn-semana-tec" id="btn-semana-tec" onclick="abrirModalSemana()" title="Gerar e disparar programação semanal de um técnico">
       <i data-lucide="calendar-range"></i>
@@ -1114,6 +1137,17 @@
     </div>
   </div>
 </div>
+
+<!-- Painel de Disponibilidades -->
+<div class="disp-panel" id="disp-panel" role="dialog" aria-modal="false" aria-label="Disponibilidades dos técnicos">
+  <div class="disp-panel-header">
+    <span>Disponibilidades</span>
+    <button class="disp-close" onclick="fecharDispPanel()" aria-label="Fechar">✕</button>
+  </div>
+  <p class="disp-subtitulo" id="disp-semana-label">Técnicos livres nesta semana</p>
+  <div class="disp-lista" id="disp-lista"></div>
+</div>
+<div id="disp-overlay" onclick="fecharDispPanel()" style="display:none;position:fixed;inset:0;z-index:399;background:rgba(0,0,0,.35);backdrop-filter:blur(1px)"></div>
 
 <!-- Painel de Anotações -->
 <div class="nota-panel" id="nota-panel" role="dialog" aria-modal="false" aria-label="Anotações do dia">
@@ -1792,6 +1826,14 @@ function renderGrade(dias) {
 
 
 // ── Card de agendamento ──────────────────────────────────────
+function _abreviarCliente(nome) {
+  if (!nome) return '—';
+  if (nome.length <= 20) return nome;
+  const p = nome.trim().split(/\s+/);
+  if (p.length === 1) return nome.slice(0, 18) + '…';
+  return p[0] + ' ' + p[1][0] + '.';
+}
+
 function cardHTML(ag) {
   const status = ag.status || 'confirmado';
 
@@ -1801,31 +1843,31 @@ function cardHTML(ag) {
     return t ? t.nome : null;
   }).filter(Boolean);
 
-  const tecs      = nomes.join(' · ') || '—';
   const cliente   = ag.obras?.nome_cliente || ag.cliente_outro || '—';
+  const clienteAbrev = _abreviarCliente(cliente);
   const end       = ag.endereco_outro || ag.obras?.endereco || '';
   const hora      = ag.hora_inicio ? ag.hora_inicio.slice(0,5) : '';
   const osNum     = ag.numero_os || null;
   const consultor = ag.obras?.consultores?.nome || '';
   const arquiteto = ag.obras?.arquiteto_responsavel || '';
 
-  // Linha de campo — label fixo + valor truncado em 1 linha (title = tooltip com valor completo)
   const det = (label, val) =>
     val ? `<div class="ag-detalhe"><span class="ag-label">${label}</span><span class="ag-val" title="${escHtml(val)}">${escHtml(val)}</span></div>` : '';
 
-  // Modo visualização (técnico) → abre detalhe; modo edição → abre formulário de edição
   const clickAttr = modoVisualizacao
     ? `onclick="verDetalheAgendamento(${ag.id})" title="Ver detalhes"`
     : `onclick="editarAgendamento(${ag.id})" title="Clique para editar"`;
 
   return `
     <div class="card-ag card-${status} clicavel" ${clickAttr}>
-      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px;">
+      <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;">
         ${hora ? `<span class="ag-hora">${escHtml(hora)}</span>` : ''}
-        <span class="ag-cliente">${escHtml(cliente)}</span>
+        <div style="min-width:0;flex:1;">
+          <div class="ag-cliente">${escHtml(clienteAbrev)}</div>
+          ${nomes.length ? `<div class="ag-tecs">${escHtml(nomes.join(' · '))}</div>` : ''}
+        </div>
       </div>
       <div class="ag-detalhes">
-        ${det('Técnico',   tecs)}
         ${det('Endereço',  end)}
         ${det('OS',        osNum ? `#${osNum}` : '')}
         ${det('Consultor', consultor)}
@@ -3238,20 +3280,6 @@ async function gerarProgramacaoSemanal() {
     <div style="display:flex;gap:8px;padding:12px;">
       ${colunasHTML}
     </div>
-    ${(() => {
-      const ini = datasISO[0], fim = datasISO[datasISO.length-1];
-      const bloqSemana = bloqueios.filter(b => b.data_fim >= ini && b.data_inicio <= fim);
-      if (!bloqSemana.length) return '';
-      const fmt = d => new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-      const itens = bloqSemana.map(b => {
-        const t = tecnicos.find(x => x.id === b.tecnico_id);
-        return `<span style="display:inline-block;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:5px;padding:3px 8px;font-size:10px;color:#F87171;margin:2px;font-weight:600">${escHtml(t?.nome||'—')} — ${escHtml(b.motivo)} (${fmt(b.data_inicio)}→${fmt(b.data_fim)})</span>`;
-      }).join('');
-      return `<div style="background:rgba(239,68,68,.06);border-top:1px solid rgba(239,68,68,.2);padding:10px 18px">
-        <div style="font-size:9px;font-weight:700;color:#F87171;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">🔒 Técnicos bloqueados neste período</div>
-        <div>${itens}</div>
-      </div>`;
-    })()}
     <div style="background:${S_HEADER};padding:9px 26px;border-top:1px solid ${S_BRDR};display:flex;justify-content:space-between;align-items:center;">
       <div style="font-size:8px;color:${S_T3};letter-spacing:0.06em;text-transform:uppercase;">Solução Técnica · Sistema de Gestão de Obras</div>
       <div style="font-size:8px;color:${S_T3};">${geradoEm}</div>
@@ -3758,6 +3786,64 @@ async function carregarAnotacoes() {
   const { data } = await db.from('agenda_anotacoes').select('*').gte('data', ini).lte('data', fim);
   anotacoes = {};
   (data || []).forEach(a => { anotacoes[a.data] = a; });
+}
+
+// ── Painel de Disponibilidades ───────────────────────────────
+function abrirDispPanel() {
+  renderDisponibilidades();
+  document.getElementById('disp-panel').classList.add('aberto');
+  document.getElementById('disp-overlay').style.display = 'block';
+}
+
+function fecharDispPanel() {
+  document.getElementById('disp-panel').classList.remove('aberto');
+  document.getElementById('disp-overlay').style.display = 'none';
+}
+
+function renderDisponibilidades() {
+  const dias    = diasDaSemana(semanaOffset);
+  const DIAS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const MESES   = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+  // Rótulo da semana no subtítulo
+  const d0 = dias[0], d6 = dias[6];
+  const fmtD = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('disp-semana-label').textContent =
+    `Técnicos livres — semana ${fmtD(d0)} a ${fmtD(d6)}`;
+
+  // Técnicos filtrados pela equipe ativa (ou todos)
+  let tecsVisiveis = tecnicos;
+  if (filtroEquipe !== 'todas') {
+    const ids = tecnicosDaEquipe(parseInt(filtroEquipe));
+    tecsVisiveis = tecnicos.filter(t => ids.includes(t.id));
+  }
+
+  let html = '';
+  tecsVisiveis.forEach(tec => {
+    const diasLivres = dias.filter(dia => {
+      const iso = fmtISO(dia);
+      const temAg = agendamentos.some(ag =>
+        ag.data === iso &&
+        [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].includes(tec.id)
+      );
+      const bloqueado = tecnicoBloqueadoNaData(tec.id, iso, null);
+      return !temAg && !bloqueado;
+    });
+
+    if (!diasLivres.length) return;
+
+    const diasStr = diasLivres
+      .map(d => `${DIAS_PT[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`)
+      .join(', ');
+
+    html += `<div class="disp-item">
+      <div class="disp-nome">${escHtml(tec.nome)}</div>
+      <div class="disp-dias">${escHtml(diasStr)}</div>
+    </div>`;
+  });
+
+  document.getElementById('disp-lista').innerHTML = html ||
+    '<div class="disp-vazio">Todos os técnicos têm agendamentos em todos os dias desta semana.</div>';
 }
 
 function abrirNotaPanel(dataStr) {
