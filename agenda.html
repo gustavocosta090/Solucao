@@ -2824,7 +2824,7 @@ async function _gerarPDFSolicitacaoAgenda(s) {
 }
 
 // ── Excluir agendamento ──────────────────────────────────────
-// Mostra um select de equipes em modal — retorna equipe_id (number) ou null se cancelado
+// Modal de seleção de equipe — usa CSS variables para respeitar o tema
 function _modalSelecionarEquipe() {
   return new Promise(resolve => {
     const existing = document.getElementById('eq-sel-overlay');
@@ -2832,10 +2832,13 @@ function _modalSelecionarEquipe() {
 
     const overlay = document.createElement('div');
     overlay.id = 'eq-sel-overlay';
+    overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('style', [
-      'position:fixed','inset:0','background:rgba(0,0,0,0.65)',
+      'position:fixed','inset:0',
+      'background:rgba(0,0,0,0.6)',
       'display:flex','align-items:center','justify-content:center',
       'z-index:9999','padding:20px',
+      'backdrop-filter:blur(4px)',
     ].join(';'));
 
     const opts = equipesDisponiveis.map(e =>
@@ -2843,25 +2846,27 @@ function _modalSelecionarEquipe() {
     ).join('');
 
     overlay.innerHTML = `
-      <div style="background:#161616;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
-        <p style="font-size:14px;color:#FFFFFF;margin-bottom:16px;font-weight:600;">Qual equipe receberá a pendência?</p>
-        <select id="eq-sel-input" style="width:100%;padding:10px 12px;background:#0A0A0A;border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#FFFFFF;font-size:13px;font-family:inherit;outline:none;appearance:none;">
+      <div style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+        <p style="font-size:14px;color:var(--text-1);margin-bottom:14px;font-weight:600;line-height:1.5;">Qual equipe receberá a pendência?</p>
+        <select id="eq-sel-input" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-size:13px;font-family:inherit;outline:none;appearance:none;">
           ${opts}
         </select>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
-          <button id="eq-sel-cancel" style="padding:8px 18px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#A1A1AA;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;">Cancelar</button>
-          <button id="eq-sel-ok" style="padding:8px 18px;background:rgba(62,207,142,0.12);border:1px solid rgba(62,207,142,0.25);border-radius:6px;color:#3ECF8E;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;">Confirmar</button>
+          <button id="eq-sel-cancel" style="padding:8px 18px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-2);cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;">Cancelar</button>
+          <button id="eq-sel-ok" style="padding:8px 18px;background:var(--primary);border:none;border-radius:6px;color:#000;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;">Confirmar</button>
         </div>
       </div>`;
 
     document.body.appendChild(overlay);
 
-    overlay.querySelector('#eq-sel-cancel').addEventListener('click', () => { overlay.remove(); resolve(null); });
+    const fechar = (val) => { overlay.remove(); resolve(val); };
+    overlay.querySelector('#eq-sel-cancel').addEventListener('click', () => fechar(null));
     overlay.querySelector('#eq-sel-ok').addEventListener('click', () => {
       const val = parseInt(overlay.querySelector('#eq-sel-input').value);
-      overlay.remove();
-      resolve(val || null);
+      fechar(val || null);
     });
+    overlay.addEventListener('keydown', e => { if (e.key === 'Escape') fechar(null); });
+    setTimeout(() => overlay.querySelector('#eq-sel-input')?.focus(), 0);
   });
 }
 
@@ -2889,35 +2894,54 @@ async function excluirAgendamento() {
     }
   }
 
-  const agParaDeletar = agendamentos.find(a => a.id === agEditandoId);
-
-  // ── Pergunta se deve voltar para Pendências ───────────────
-  const voltarPendencias = await new Promise(resolve =>
-    confirmModal('Deseja voltar este agendamento para as Pendências?',
-      () => resolve(true), () => resolve(false))
-  );
-
-  let equipeIdPendencia = null;
-  if (voltarPendencias) {
-    equipeIdPendencia = await _modalSelecionarEquipe();
+  // ── Verifica se havia uma pendência vinculada (mesma obra + data_marcada preenchida) ──
+  let pendenciaVinculada = null;
+  if (ag?.obra_id) {
+    const { data: pList } = await db.from('pendencias')
+      .select('id, descricao, equipe, data_marcada')
+      .eq('obra_id', ag.obra_id)
+      .not('data_marcada', 'is', null)
+      .order('data_marcada', { ascending: false })
+      .limit(1);
+    pendenciaVinculada = pList?.[0] || null;
   }
+
+  const agParaDeletar = agendamentos.find(a => a.id === agEditandoId);
 
   // ── Exclui o agendamento ──────────────────────────────────
   const { error } = await db.from('agendamentos').delete().eq('id', agEditandoId);
   if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
 
-  // ── Cria pendência se solicitado ──────────────────────────
-  if (voltarPendencias && equipeIdPendencia && ag) {
-    const { error: pErr } = await db.from('pendencias').insert({
-      obra_id:    ag.obra_id    || null,
-      obra_outro: ag.cliente_outro || null,
-      equipe_id:  equipeIdPendencia,
-      descricao:  ag.servico   || ag.obras?.nome_cliente || 'Agenda devolvida',
-      status:     'aberta',
-      criado_em:  new Date().toISOString(),
-    });
-    if (pErr) showToast('Pendência não criada: ' + pErr.message, 'warning');
-    else       showToast('Pendência criada com sucesso.', 'success');
+  if (pendenciaVinculada) {
+    // ── Veio de pendência: apenas limpa a data e reabre ──────
+    const { error: pErr } = await db.from('pendencias')
+      .update({ data_marcada: null, status: 'aberta', atualizado_em: new Date().toISOString() })
+      .eq('id', pendenciaVinculada.id);
+    if (pErr) showToast('Aviso: ' + pErr.message, 'warning');
+    else       showToast('Pendência reaberta — data desmarcada.', 'success');
+  } else {
+    // ── Não havia pendência: pergunta se quer criar ───────────
+    const criar = await new Promise(r =>
+      confirmModal('Deseja voltar este agendamento para as Pendências?',
+        () => r(true), () => r(false))
+    );
+
+    if (criar) {
+      const equipeId = await _modalSelecionarEquipe();
+      if (equipeId && ag) {
+        const { error: pErr } = await db.from('pendencias').insert({
+          obra_id:      ag.obra_id      || null,
+          obra_outro:   ag.cliente_outro || null,
+          equipe:       String(equipeId),
+          descricao:    ag.servico || ag.obras?.nome_cliente || 'Agenda devolvida',
+          status:       'aberta',
+          atualizado_em: new Date().toISOString(),
+          criado_em:    new Date().toISOString(),
+        });
+        if (pErr) showToast('Pendência não criada: ' + pErr.message, 'warning');
+        else       showToast('Pendência criada.', 'success');
+      }
+    }
   }
 
   // Audit log (fire-and-forget)
@@ -3977,6 +4001,13 @@ function toggleBloqueioHoras() {
   document.getElementById('bl-horas-wrap').style.display = tipo === 'personalizado' ? 'grid' : 'none';
 }
 
+function erroSchemaBloqueioHoras(error) {
+  const msg = (error?.message || '').toLowerCase();
+  return msg.includes('tecnico_bloqueios')
+    && (msg.includes('hora_inicio') || msg.includes('hora_fim'))
+    && msg.includes('schema cache');
+}
+
 function abrirModalBloqueio() {
   const sel = document.getElementById('bl-tecnico');
   sel.innerHTML = '<option value="">Selecione...</option>' +
@@ -4049,12 +4080,23 @@ async function salvarBloqueio() {
   }
   // dia_inteiro: hora_inicio e hora_fim ficam null
 
-  const { data, error } = await db.from('tecnico_bloqueios').insert({
-    tecnico_id: parseInt(tecId), data_inicio: inicio, data_fim: fim,
-    motivo, hora_inicio, hora_fim
-  }).select().single();
+  const payload = { tecnico_id: parseInt(tecId), data_inicio: inicio, data_fim: fim, motivo };
+  if (hora_inicio || hora_fim) {
+    payload.hora_inicio = hora_inicio;
+    payload.hora_fim = hora_fim;
+  }
 
-  if (error) { erroEl.textContent = 'Erro: ' + error.message; erroEl.style.display = 'block'; return; }
+  const { data, error } = await db.from('tecnico_bloqueios').insert(payload).select().single();
+
+  if (error) {
+    if (erroSchemaBloqueioHoras(error)) {
+      erroEl.textContent = 'O banco ainda não tem as colunas hora_inicio/hora_fim. Rode o SQL tecnico_bloqueios_horarios.sql no Supabase para usar bloqueio por horário.';
+    } else {
+      erroEl.textContent = 'Erro: ' + error.message;
+    }
+    erroEl.style.display = 'block';
+    return;
+  }
 
   bloqueios.push(data);
   document.getElementById('bl-tecnico').value = '';
