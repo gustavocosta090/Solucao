@@ -1166,9 +1166,8 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
         const put   = await fetch(uploadUrl, {
           method:  'PUT',
           headers: {
-            'Content-Range':  `bytes ${start}-${end - 1}/${f.file.size}`,
-            'Content-Length': String(end - start),
-            'Content-Type':   f.file.type || 'image/jpeg',
+            'Content-Range': `bytes ${start}-${end - 1}/${f.file.size}`,
+            'Content-Type':  f.file.type || 'image/jpeg',
           },
           body: chunk,
         });
@@ -1271,9 +1270,8 @@ async function uploadArquivosBackup(nomeCliente, numeroOS) {
         const put   = await fetch(uploadUrl, {
           method:  'PUT',
           headers: {
-            'Content-Range':  `bytes ${start}-${end - 1}/${file.size}`,
-            'Content-Length': String(end - start),
-            'Content-Type':   file.type || 'application/octet-stream',
+            'Content-Range': `bytes ${start}-${end - 1}/${file.size}`,
+            'Content-Type':  file.type || 'application/octet-stream',
           },
           body: chunk,
         });
