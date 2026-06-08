@@ -1180,7 +1180,7 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
       atualizarProgresso(`✓ ${concluidas}/${total}`);
     } catch (e) {
       console.warn(`Foto ${i + 1} falhou:`, e.message);
-      atualizarProgresso('✗');
+      atualizarProgresso('✗ ' + e.message);
     }
   };
 
