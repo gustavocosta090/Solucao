@@ -27,7 +27,8 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ||
 
 async function validarSessaoSupabase(req) {
   const auth     = req.headers.authorization || '';
-  const tokenJwt = auth.replace(/^Bearer\s+/i, '').trim();
+  // Aceita token via header (fetch) OU via query ?t= (tags <img>/<video> não enviam header)
+  const tokenJwt = (auth.replace(/^Bearer\s+/i, '').trim()) || String(req.query.t || '').trim();
   if (!tokenJwt) return null;
   const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${tokenJwt}` },
