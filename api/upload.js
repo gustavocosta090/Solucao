@@ -78,6 +78,7 @@ function caminhoSeguro(folderPath, filename) {
     const area   = partes[2] || '';
     if (area === 'Arquivos de Backups')      return EXT_BACKUP.has(ext) || EXT_FOTOS.has(ext);
     if (area === 'Relatórios de Vistoria')   return EXT_AGENDA.has(ext); // apenas PDF
+    if (area === 'Ordens de Serviço')        return EXT_AGENDA.has(ext) || EXT_FOTOS.has(ext); // PDF + fotos
     return EXT_FOTOS.has(ext);
   }
 
