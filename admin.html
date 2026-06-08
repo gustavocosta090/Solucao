@@ -615,6 +615,22 @@
     </button>
   </div>
 
+  <!-- Ferramentas -->
+  <div class="card">
+    <div class="section-header">
+      <i data-lucide="folder-plus"></i>
+      <h2>Ferramentas</h2>
+    </div>
+    <p style="color:var(--text-muted,#9CA3AF);font-size:14px;margin:0 0 12px;">
+      Cria no SharePoint as pastas dos clientes que ainda não possuem (Obras e Clientes / Ordens de Serviço / Fotos / Relatórios de Vistoria / Arquivos de Backups + subpastas por equipe). Clientes e pastas já existentes são ignorados automaticamente.
+    </p>
+    <button id="btn-criar-pastas" class="btn-primario" onclick="criarPastasFaltantes()">
+      <i data-lucide="folder-plus"></i>
+      <span>Criar pastas de clientes faltantes</span>
+    </button>
+    <pre id="log-criar-pastas" style="display:none;margin-top:14px;max-height:320px;overflow:auto;background:rgba(0,0,0,.25);border:1px solid var(--border,#27272A);border-radius:8px;padding:12px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;"></pre>
+  </div>
+
   <!-- Lista de pessoas -->
   <div class="card">
     <div class="section-header">
@@ -778,6 +794,60 @@ function normalizarUsuario(v) {
 function emailParaUsuario(email) {
   const valor = String(email || '');
   return valor.endsWith(`@${LOGIN_DOMAIN}`) ? valor.replace(`@${LOGIN_DOMAIN}`, '') : valor;
+}
+
+async function criarPastasFaltantes() {
+  const btn = document.getElementById('btn-criar-pastas');
+  const logEl = document.getElementById('log-criar-pastas');
+
+  let token = sessionStorage.getItem('criarPastasToken');
+  if (!token) {
+    token = window.prompt('Informe o token administrativo (CRIAR_PASTAS_TOKEN) configurado no servidor:');
+    if (!token) return;
+    sessionStorage.setItem('criarPastasToken', token.trim());
+    token = token.trim();
+  }
+
+  btn.disabled = true;
+  logEl.style.display = 'block';
+  logEl.textContent = 'Iniciando...\n';
+
+  const escrever = (linhas) => {
+    logEl.textContent += linhas.join('\n') + '\n';
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  try {
+    let inicio = 0;
+    let finalizado = false;
+    while (!finalizado) {
+      btn.textContent = `Processando lote a partir do cliente ${inicio + 1}...`;
+      const resp = await fetch(`/api/criar-pastas?inicio=${inicio}&limite=5`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await resp.json().catch(() => ({}));
+
+      if (resp.status === 401) {
+        sessionStorage.removeItem('criarPastasToken');
+        throw new Error('Token inválido. Recarregue e tente novamente.');
+      }
+      if (!resp.ok || !data.ok) throw new Error(data.erro || `Erro HTTP ${resp.status}`);
+
+      escrever(data.log || []);
+      finalizado = data.finalizado;
+      inicio = data.proximoInicio;
+    }
+    escrever(['', '🎉 Concluído! Todas as pastas de clientes foram verificadas/criadas.']);
+    showToast('Pastas criadas/verificadas com sucesso.', 'success');
+  } catch (e) {
+    escrever(['', '❌ ' + e.message]);
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="folder-plus"></i><span>Criar pastas de clientes faltantes</span>';
+    if (window.lucide) lucide.createIcons();
+  }
 }
 
 async function chamarAdminFunction(payload) {
