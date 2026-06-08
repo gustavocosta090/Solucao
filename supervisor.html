@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-01r -->
+<!-- build: 2026-06-08a — fotoSrc() anexa token ?t= às URLs de /api/foto -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1471,11 +1471,18 @@ let lbFotos = [];
 let lbIdx = 0;
 let osSendoVisualizada = null;
 let _authUserId = null;
+let authToken = '';  // JWT da sessão, anexado às URLs de /api/foto (tags <img>/<video>)
+// Anexa o token de sessão à URL do /api/foto para que tags <img>/<video> autentiquem
+function fotoSrc(url) {
+  if (!url || !authToken) return url;
+  return url + (url.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(authToken);
+}
 // Init
 (async () => {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
   _authUserId = session.user.id;
+  authToken = session.access_token || '';
 
   const { data: eu } = await db
     .from('tecnicos')
@@ -2030,10 +2037,10 @@ function verOS(id) {
           return `
           <div class="foto-item" onclick="abrirLightbox(${i}, ${JSON.stringify(os.fotos_urls).replace(/</g,'\\u003c')})">
             ${isVid
-              ? `<video src="${escHtml(url)}" muted preload="metadata" style="width:100%;height:100%;object-fit:cover;pointer-events:none;"></video>
+              ? `<video src="${escHtml(fotoSrc(url))}" muted preload="metadata" style="width:100%;height:100%;object-fit:cover;pointer-events:none;"></video>
                  <span class="video-badge-lb">▶ VÍD</span>`
-              : `<img src="${escHtml(url)}" alt="foto ${i+1}" loading="lazy">`}
-            <a class="foto-link-overlay" href="${escHtml(url)}" target="_blank" rel="noopener" title="Abrir em nova aba" onclick="event.stopPropagation()">
+              : `<img src="${escHtml(fotoSrc(url))}" alt="foto ${i+1}" loading="lazy">`}
+            <a class="foto-link-overlay" href="${escHtml(fotoSrc(url))}" target="_blank" rel="noopener" title="Abrir em nova aba" onclick="event.stopPropagation()">
               <i data-lucide="external-link"></i>
             </a>
           </div>`;
@@ -2217,18 +2224,19 @@ function _lbSincronizar(url, idx, total) {
   const isVid = isVideoUrl(url);
   const imgEl = document.getElementById('lightboxImg');
   const vidEl = document.getElementById('lightboxVideo');
+  const urlT = fotoSrc(url);
   if (isVid) {
     if (imgEl) imgEl.style.display = 'none';
-    if (vidEl) { vidEl.src = url; vidEl.style.display = ''; }
+    if (vidEl) { vidEl.src = urlT; vidEl.style.display = ''; }
   } else {
     if (vidEl) { try { vidEl.pause(); } catch(e){} vidEl.src = ''; vidEl.style.display = 'none'; }
-    if (imgEl) { imgEl.src = url; imgEl.style.display = ''; }
+    if (imgEl) { imgEl.src = urlT; imgEl.style.display = ''; }
   }
   document.getElementById('lbCounter').textContent = `${idx + 1}/${total}`;
   const btnAbrir  = document.getElementById('lbBtnAbrir');
   const btnBaixar = document.getElementById('lbBtnBaixar');
-  if (btnAbrir)  btnAbrir.href  = url;
-  if (btnBaixar) btnBaixar.href = url;
+  if (btnAbrir)  btnAbrir.href  = urlT;
+  if (btnBaixar) btnBaixar.href = urlT;
   lucide.createIcons();
 }
 
@@ -2543,7 +2551,7 @@ function exportarPDF() {
 async function carregarImgBase64(url) {
   // Usa fetch (evita problemas de canvas cross-origin)
   try {
-    const res = await fetch(url);
+    const res = await fetch(fotoSrc(url));
     if (!res.ok) return null;
     const blob = await res.blob();
     return await new Promise((ok, fail) => {
@@ -3149,10 +3157,10 @@ function verVistoria(id) {
           ${midias.map((m, i) => `
             <div class="foto-item" onclick="abrirLightbox(${i}, ${JSON.stringify(todasUrlsMidias).replace(/</g,'\\u003c')})">
               ${m.tipo === 'video'
-                ? `<video src="${escHtml(m.url)}" muted preload="metadata" style="width:100%;height:100%;object-fit:cover;pointer-events:none;"></video>
+                ? `<video src="${escHtml(fotoSrc(m.url))}" muted preload="metadata" style="width:100%;height:100%;object-fit:cover;pointer-events:none;"></video>
                    <span class="video-badge-lb">▶ VÍD</span>`
-                : `<img src="${escHtml(m.url)}" alt="mídia ${i + 1}" loading="lazy">`}
-              <a class="foto-link-overlay" href="${escHtml(m.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+                : `<img src="${escHtml(fotoSrc(m.url))}" alt="mídia ${i + 1}" loading="lazy">`}
+              <a class="foto-link-overlay" href="${escHtml(fotoSrc(m.url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
                 <i data-lucide="external-link"></i>
               </a>
             </div>`).join('')}

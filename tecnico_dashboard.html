@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-01f -->
+<!-- build: 2026-06-08a — fotoSrc() anexa token ?t= às URLs de /api/foto -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -729,9 +729,16 @@ let todasOSs = [];
 let filtroStatus = 'todos';
 let tecnicoAtual = null;
 let tdTecMap = {};  // id → { nome } para exibir equipe completa
+let authToken = '';  // JWT da sessão, anexado às URLs de /api/foto (tags <img>/<video>)
+// Anexa o token de sessão à URL do /api/foto para que tags <img>/<video> autentiquem
+function fotoSrc(url) {
+  if (!url || !authToken) return url;
+  return url + (url.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(authToken);
+}
 (async () => {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
+  authToken = session.access_token || '';
 
   const { data: tec } = await db
     .from('tecnicos').select('id, nome, role')
@@ -945,8 +952,8 @@ function verDetalhe(id) {
       <div class="detail-label">Fotos (${os.fotos_urls.length})</div>
       <div class="fotos-grid">
         ${os.fotos_urls.map(url => isVideoUrl(url)
-            ? `<div class="foto-item"><video src="${escHtml(url)}" controls playsinline style="width:100%;height:100%;object-fit:cover;" onclick="event.stopPropagation()"></video></div>`
-            : `<div class="foto-item" onclick="event.stopPropagation();abrirLightbox('${escHtml(url)}')"><img src="${escHtml(url)}" loading="lazy" alt="foto"></div>`
+            ? `<div class="foto-item"><video src="${escHtml(fotoSrc(url))}" controls playsinline style="width:100%;height:100%;object-fit:cover;" onclick="event.stopPropagation()"></video></div>`
+            : `<div class="foto-item" onclick="event.stopPropagation();abrirLightbox('${escHtml(url)}')"><img src="${escHtml(fotoSrc(url))}" loading="lazy" alt="foto"></div>`
           ).join('')}
       </div>
     </div>`;
@@ -973,12 +980,13 @@ function isVideoUrl(url) {
 function abrirLightbox(url) {
   const img   = document.getElementById('lbImg');
   const video = document.getElementById('lbVideo');
+  const urlT = fotoSrc(url);
   if (isVideoUrl(url)) {
     img.style.display   = 'none';   img.src = '';
-    video.style.display = 'block';  video.src = url;
+    video.style.display = 'block';  video.src = urlT;
   } else {
     video.style.display = 'none';   video.src = ''; video.pause?.();
-    img.style.display   = 'block';  img.src = url;
+    img.style.display   = 'block';  img.src = urlT;
   }
   document.getElementById('lightbox').classList.add('aberto');
 }
