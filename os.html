@@ -622,7 +622,7 @@ async function init() {
     return;
   }
 
-  if (tec.role && !['tecnico','auxiliar'].includes(tec.role)) {
+  if (tec.role && !['tecnico','auxiliar','lider'].includes(tec.role)) {
     window.location.href = 'supervisor.html';
     return;
   }
@@ -1570,7 +1570,6 @@ async function enviarOS() {
       proximas_atividades: document.getElementById('f-proximas').value  || null,
       observacoes:         document.getElementById('f-obs').value       || null,
       fotos_urls:          null,   // atualizado logo após o upload das fotos
-      arquivos_config_urls: null,  // atualizado após upload dos arquivos de backup
       data_servico:        ag?.data || new Date().toISOString().split('T')[0],
       status_aprovacao:    'concluida',
       criado_em:           new Date().toISOString(),

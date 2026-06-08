@@ -1483,7 +1483,7 @@ let _authUserId = null;
     .eq('auth_user_id', session.user.id)
     .single();
 
-  if (!eu || !['supervisor', 'coordenador', 'agendamento'].includes(eu.role)) {
+  if (!eu || !['supervisor', 'coordenador', 'agendamento', 'lider'].includes(eu.role)) {
     showToast('Acesso não autorizado. Você será redirecionado.', 'error');
     window.location.href = 'os.html';
     return;

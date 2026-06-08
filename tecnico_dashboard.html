@@ -738,7 +738,7 @@ let tdTecMap = {};  // id → { nome } para exibir equipe completa
     .eq('auth_user_id', session.user.id).single();
 
   if (!tec) { window.location.href = 'login.html'; return; }
-  if (tec.role !== 'tecnico' && tec.role !== 'auxiliar') { window.location.href = 'supervisor.html'; return; }
+  if (tec.role !== 'tecnico' && tec.role !== 'auxiliar' && tec.role !== 'lider') { window.location.href = 'supervisor.html'; return; }
 
   tecnicoAtual = tec;
   renderTopbar(tec.nome, tec.role, 'minhas-os');
