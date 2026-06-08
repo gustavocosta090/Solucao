@@ -336,6 +336,9 @@
     color: #93C5FD;
   }
 
+  .spin { animation: girar 1s linear infinite; display:inline-block; }
+  @keyframes girar { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
   .badge-estoque {
     background: rgba(234, 179, 8, 0.12);
     color: #FDE047;
@@ -624,10 +627,16 @@
     <p style="color:var(--text-muted,#9CA3AF);font-size:14px;margin:0 0 12px;">
       Cria no SharePoint as pastas dos clientes que ainda não possuem (Obras e Clientes / Ordens de Serviço / Fotos / Relatórios de Vistoria / Arquivos de Backups + subpastas por equipe). Clientes e pastas já existentes são ignorados automaticamente.
     </p>
-    <button id="btn-criar-pastas" class="btn-primario" onclick="criarPastasFaltantes()">
-      <i data-lucide="folder-plus"></i>
-      <span>Criar pastas de clientes faltantes</span>
-    </button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button id="btn-criar-pastas" class="btn-primary" onclick="criarPastasFaltantes()" style="width:auto;">
+        <i data-lucide="folder-plus"></i>
+        Criar pastas de clientes faltantes
+      </button>
+      <button class="btn-secondary" style="width:auto;" onclick="sessionStorage.removeItem('criarPastasToken'); document.getElementById('modalTokenPastas').classList.add('open');">
+        <i data-lucide="key-round"></i>
+        Trocar token salvo
+      </button>
+    </div>
     <pre id="log-criar-pastas" style="display:none;margin-top:14px;max-height:320px;overflow:auto;background:rgba(0,0,0,.25);border:1px solid var(--border,#27272A);border-radius:8px;padding:12px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;"></pre>
   </div>
 
@@ -737,6 +746,24 @@
   </div>
 </div>
 
+<!-- Modal de token administrativo (criar pastas) -->
+<div class="modal-overlay" id="modalTokenPastas">
+  <div class="modal">
+    <div class="modal-header">
+      <i data-lucide="key-round"></i>
+      <h3>Token Administrativo</h3>
+    </div>
+    <div class="form-group">
+      <label>Cole o valor de <code>CRIAR_PASTAS_TOKEN</code> (configurado na Vercel)</label>
+      <input type="password" id="tokenPastasInput" placeholder="Token de acesso" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="fecharModalTokenPastas()">Cancelar</button>
+      <button class="btn-primary" onclick="confirmarTokenPastas()" style="margin-top:0;">Continuar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const ADMIN_USERS_FUNCTION_URL = 'https://kxtjqudpnmdqkzqhyhmz.supabase.co/functions/v1/admin-users';
 const LOGIN_DOMAIN = 'solucaotecnica.local';
@@ -796,17 +823,31 @@ function emailParaUsuario(email) {
   return valor.endsWith(`@${LOGIN_DOMAIN}`) ? valor.replace(`@${LOGIN_DOMAIN}`, '') : valor;
 }
 
+function fecharModalTokenPastas() {
+  document.getElementById('modalTokenPastas').classList.remove('open');
+}
+
+function confirmarTokenPastas() {
+  const valor = document.getElementById('tokenPastasInput').value.trim();
+  if (!valor) { showToast('Informe o token.', 'warning'); return; }
+  sessionStorage.setItem('criarPastasToken', valor);
+  document.getElementById('tokenPastasInput').value = '';
+  fecharModalTokenPastas();
+  _executarCriarPastas(valor);
+}
+
 async function criarPastasFaltantes() {
+  const tokenSalvo = sessionStorage.getItem('criarPastasToken');
+  if (!tokenSalvo) {
+    document.getElementById('modalTokenPastas').classList.add('open');
+    return;
+  }
+  await _executarCriarPastas(tokenSalvo);
+}
+
+async function _executarCriarPastas(token) {
   const btn = document.getElementById('btn-criar-pastas');
   const logEl = document.getElementById('log-criar-pastas');
-
-  let token = sessionStorage.getItem('criarPastasToken');
-  if (!token) {
-    token = window.prompt('Informe o token administrativo (CRIAR_PASTAS_TOKEN) configurado no servidor:');
-    if (!token) return;
-    sessionStorage.setItem('criarPastasToken', token.trim());
-    token = token.trim();
-  }
 
   btn.disabled = true;
   logEl.style.display = 'block';
@@ -821,7 +862,8 @@ async function criarPastasFaltantes() {
     let inicio = 0;
     let finalizado = false;
     while (!finalizado) {
-      btn.textContent = `Processando lote a partir do cliente ${inicio + 1}...`;
+      btn.innerHTML = `<i data-lucide="loader-2" class="spin"></i> Processando lote (cliente ${inicio + 1})...`;
+      if (window.lucide) lucide.createIcons();
       const resp = await fetch(`/api/criar-pastas?inicio=${inicio}&limite=5`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -845,7 +887,7 @@ async function criarPastasFaltantes() {
     showToast('Erro: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="folder-plus"></i><span>Criar pastas de clientes faltantes</span>';
+    btn.innerHTML = '<i data-lucide="folder-plus"></i> Criar pastas de clientes faltantes';
     if (window.lucide) lucide.createIcons();
   }
 }
