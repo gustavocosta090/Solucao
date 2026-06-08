@@ -1542,7 +1542,6 @@ async function enviarOS() {
 
     const payload = {
       obra_id:             obraId,
-      cliente_outro:       ag?.cliente_outro                      || null,
       agendamento_id:      ag?.id                                 || null,
       tecnico_id:          pid0                                   || tecnicoLogado?.id || null,
       auxiliar_id:         pid1                                   || null,
@@ -1683,7 +1682,6 @@ async function enviarOS() {
           const osPendente = {
             agendamento_id:   ag.id,
             obra_id:          obraId,
-            cliente_outro:    ag.cliente_outro || null,
             tecnico_id:       uid,
             data_servico:     ag.data || new Date().toISOString().split('T')[0],
             servico_planejado: ag.servico || null,
@@ -1693,7 +1691,7 @@ async function enviarOS() {
           // Tenta com agendamento_id, fallback sem
           const r = await db.from('ordens_de_servico').insert(osPendente);
           if (r.error) {
-            const { agendamento_id: _a, cliente_outro: _c, ...fallback } = osPendente;
+            const { agendamento_id: _a, ...fallback } = osPendente;
             await db.from('ordens_de_servico').insert(fallback);
           }
         }
