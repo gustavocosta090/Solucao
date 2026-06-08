@@ -1420,9 +1420,8 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, equipeNo
       const putRes = await fetch(uploadUrl, {
         method:  'PUT',
         headers: {
-          'Content-Range':  `bytes ${start}-${end - 1}/${blob.size}`,
-          'Content-Length': String(end - start),
-          'Content-Type':   blob.type || 'application/octet-stream',
+          'Content-Range': `bytes ${start}-${end - 1}/${blob.size}`,
+          'Content-Type':  blob.type || 'application/octet-stream',
         },
         body: chunk,
       });
