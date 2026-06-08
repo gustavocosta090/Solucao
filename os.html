@@ -1394,49 +1394,32 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, equipeNo
   const nomeBase   = nomePastaCliente(nomeCliente);
   const equipe     = equipeNomePasta(numeroOS, equipeNome);
   const ano        = (numeroOS || '').split('-')[0] || new Date().getFullYear();
-  const folderPath = `Obras e Clientes ${ano}/${nomeBase}/Ordens de Serviço/${equipe}`;
-
-  // Pede URL de upload ao proxy Vercel (autenticação com Microsoft fica no servidor)
-  // depois faz PUT direto para o Microsoft com a URL pré-autenticada retornada
-  const uploadArquivo = async (blob, filename) => {
-    const initRes = await fetch('/api/upload', {
-      method:  'POST',
-      headers: await headersUploadProtegido(),
-      body:    JSON.stringify({
-        path:        folderPath,
-        filename,
-        contentType: blob.type || 'application/octet-stream',
-      }),
-    });
-    if (!initRes.ok) throw new Error('Proxy error ' + initRes.status + ': ' + await initRes.text());
-    const { uploadUrl } = await initRes.json();
-
-    // PUT chunked direto pro Microsoft (uploadUrl é pré-autenticada, sem auth header)
-    const CHUNK = 5 * 1024 * 1024;
-    let start = 0;
-    while (start < blob.size) {
-      const end   = Math.min(start + CHUNK, blob.size);
-      const chunk = blob.slice(start, end);
-      const putRes = await fetch(uploadUrl, {
-        method:  'PUT',
-        headers: {
-          'Content-Range': `bytes ${start}-${end - 1}/${blob.size}`,
-          'Content-Type':  blob.type || 'application/octet-stream',
-        },
-        body: chunk,
-      });
-      if (!putRes.ok && putRes.status !== 202) {
-        throw new Error(`Upload erro ${putRes.status}: ${await putRes.text()}`);
-      }
-      start = end;
-    }
-  };
+  const pasta      = `Obras e Clientes ${ano}/${nomeBase}/Ordens de Serviço/${equipe}`;
+  const arquivo    = `${nomeBase} ${numeroOS}.pdf`;
 
   try {
     set('gerando PDF...');
     const pdfBlob = _gerarPDFOS(dadosPDF);
+
+    // Converte blob para base64 e envia via servidor (evita CORS do browser → Microsoft)
     set('enviando PDF...');
-    await uploadArquivo(pdfBlob, `${nomeBase} ${numeroOS}.pdf`);
+    const arrayBuf = await pdfBlob.arrayBuffer();
+    const bytes    = new Uint8Array(arrayBuf);
+    let binary     = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const base64   = btoa(binary);
+
+    const hdrs = await headersUploadProtegido();
+    const res  = await fetch('/api/upload-pdf', {
+      method:  'POST',
+      headers: { ...hdrs, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ path: pasta, filename: arquivo, contentBase64: base64 }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Erro ${res.status}`);
+    }
+
     set('✅ PDF salvo no SharePoint', 'var(--primary)');
   } catch (e) {
     set(`falha no PDF: ${e.message}`, '#f87171');
