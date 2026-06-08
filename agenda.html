@@ -1626,6 +1626,12 @@ async function init() {
     if (btnSem) btnSem.style.display = 'none';
   }
 
+  // Role 'estoque': não edita/dispara, mas pode gerar a Programação de Estoque
+  if (roleAtual === 'estoque') {
+    const btnEst = document.getElementById('btn-estoque');
+    if (btnEst) btnEst.style.display = 'inline-flex';
+  }
+
   await Promise.all([carregarObras(), carregarTecnicos(), carregarBloqueios(), carregarDiasBloqueados(), carregarAnotacoes()]);
   preencherSelects();
   await carregarAgenda();

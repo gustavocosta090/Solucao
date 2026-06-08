@@ -557,8 +557,8 @@ function renderTopbar(nome, role, paginaAtiva) {
 
   // 'agendamento' tem as mesmas permissões que 'coordenador'
   var links = [
-    { href: 'obras.html',                label: 'Obras',                  id: 'obras',                roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador','lider'] },
-    { href: 'agenda.html',               label: 'Agenda Técnica',         id: 'agenda',               roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos','lider'] },
+    { href: 'obras.html',                label: 'Obras',                  id: 'obras',                roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador','lider','estoque'] },
+    { href: 'agenda.html',               label: 'Agenda Técnica',         id: 'agenda',               roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos','lider','estoque'] },
     { href: 'agenda_plantao.html',       label: 'Agenda de Plantão',      id: 'agenda-plantao',       roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos','lider'] },
     { href: 'agenda_vistorias.html',     label: 'Agenda de Vistorias',    id: 'agenda-vistorias',     roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador','lider'] },
     { href: 'assistencia.html',          label: 'Assistências',           id: 'assistencia',          roles: ['agendamento','supervisor','coordenador','lider'] },
@@ -574,7 +574,7 @@ function renderTopbar(nome, role, paginaAtiva) {
     { href: 'gerente_comercial.html',    label: 'Comercial',              id: 'comercial',            roles: ['gerente_comercial'] },
     { href: 'projetista.html',           label: 'Meu Painel',             id: 'projetista',           roles: ['projetista'] },
     { href: 'coordenador_projetos.html', label: 'Projetos',               id: 'coordenador-projetos', roles: ['coordenador_projetos'] },
-    { href: 'dashboard.html',            label: 'Painel Executivo',       id: 'dashboard',            roles: ['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador','lider'] },
+    { href: 'dashboard.html',            label: 'Painel Executivo',       id: 'dashboard',            roles: ['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador','lider','estoque'] },
   ];
 
   // ── Desktop nav ──
