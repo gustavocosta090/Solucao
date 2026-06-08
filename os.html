@@ -1155,7 +1155,10 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
         headers: hdrs,
         body:    JSON.stringify({ path: folderPath, filename, contentType: f.file.type }),
       });
-      if (!initRes.ok) throw new Error(await initRes.text());
+      if (!initRes.ok) {
+        const errTxt = await initRes.text().catch(() => `HTTP ${initRes.status}`);
+        throw new Error(`Proxy ${initRes.status}: ${errTxt}`);
+      }
       const { uploadUrl, filePath } = await initRes.json();
 
       const CHUNK = 5 * 1024 * 1024;
@@ -1609,11 +1612,19 @@ async function enviarOS() {
       btn.textContent = `Enviando ${fotosSelecionadas.length} foto(s)...`;
       const numParaFoto = document.getElementById('os-numero').textContent
                        || String(savedOsId).padStart(3, '0');
-      fotoUrls = await uploadFotoSharePoint(nomeCliente || 'Sem Cliente', numParaFoto, equipeNome);
-      if (fotoUrls.length > 0) {
-        await db.from('ordens_de_servico')
-          .update({ fotos_urls: fotoUrls })
-          .eq('id', savedOsId);
+      try {
+        fotoUrls = await uploadFotoSharePoint(nomeCliente || 'Sem Cliente', numParaFoto, equipeNome);
+        if (fotoUrls.length > 0) {
+          await db.from('ordens_de_servico')
+            .update({ fotos_urls: fotoUrls })
+            .eq('id', savedOsId);
+          showToast(`${fotoUrls.length} foto(s) salvas no SharePoint.`, 'success');
+        } else {
+          showToast('Nenhuma foto foi salva no SharePoint. Verifique o console.', 'warning');
+        }
+      } catch (e) {
+        showToast('Erro no upload de fotos: ' + e.message, 'error');
+        console.error('uploadFotoSharePoint erro:', e);
       }
     }
 
