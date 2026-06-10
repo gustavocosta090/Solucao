@@ -1062,8 +1062,8 @@ function montarResumoPlantao(textoManual) {
 // ── Upload de fotos ──────────────────────────────────────────
 function adicionarFotos(files) {
   Array.from(files).forEach(file => {
-    // 500 MB por arquivo (fotos e vídeos)
-    if (file.size > 500 * 1024 * 1024) { showToast(`${file.name} é maior que 500 MB. Escolha um arquivo menor.`, 'warning'); return; }
+    // 2 GB por arquivo (fotos e vídeos)
+    if (file.size > 2048 * 1024 * 1024) { showToast(`${file.name} é maior que 2 GB. Escolha um arquivo menor.`, 'warning'); return; }
     const isVideo  = file.type.startsWith('video/');
     const preview  = URL.createObjectURL(file);   // rápido, não carrega o arquivo inteiro na memória
     fotosSelecionadas.push({ file, preview, isVideo, id: Date.now() + Math.random() });
@@ -1121,10 +1121,44 @@ async function headersUploadProtegido() {
   };
 }
 
+// Comprime/redimensiona imagem no dispositivo antes do upload (acelera muito o envio).
+// Máx 2048px no maior lado, JPEG qualidade 0.8. Vídeos NÃO passam por aqui.
+// Em caso de falha (ex: HEIC não decodificável), retorna o arquivo original.
+async function _comprimirImagem(file, maxDim = 2048, quality = 0.8) {
+  try {
+    let bitmap = null;
+    if (window.createImageBitmap) {
+      bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => null);
+    }
+    if (!bitmap) {
+      bitmap = await new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => res(img);
+        img.onerror = rej;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+    const w0 = bitmap.width, h0 = bitmap.height;
+    if (!w0 || !h0) return file;
+    const scale = Math.min(1, maxDim / Math.max(w0, h0));
+    const w = Math.round(w0 * scale), h = Math.round(h0 * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+    if (bitmap.close) bitmap.close();
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+    if (!blob || blob.size >= file.size) return file;  // não ajudou → mantém original
+    return blob;
+  } catch (e) {
+    console.warn('Compressão falhou, enviando original:', e.message);
+    return file;
+  }
+}
+
 // Faz upload de todas as fotos para o SharePoint via proxy Vercel
 // Retorna URLs do tipo /api/foto?path=... que funcionam no supervisor/obra_detail
 // Estrutura: Obras e Clientes {ano}/{Cliente}/Fotos/Equipe {cod}/{Cliente} {numeroOS} - foto 01.jpg
-// Paralelo em lotes de 3 para reduzir tempo total sem sobrecarregar o proxy
+// Imagens são comprimidas no dispositivo; envio paralelo em lotes para reduzir tempo total
 async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
   const urls     = new Array(fotosSelecionadas.length).fill(null);
   const nomeBase = nomePastaCliente(nomeCliente);
@@ -1135,8 +1169,6 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
   let concluidas = 0;
 
   const uploadUma = async (f, i) => {
-    const ext      = (f.file.name.split('.').pop() || 'jpg').toLowerCase();
-    const filename = `${nomeBase} ${numeroOS} - foto ${String(i + 1).padStart(2, '0')}.${ext}`;
     const thumb    = document.getElementById(`thumb-${f.id}`);
 
     const atualizarProgresso = (texto) => {
@@ -1149,11 +1181,22 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
     atualizarProgresso(`${i + 1}/${total}`);
 
     try {
+      // Imagens são comprimidas no dispositivo; vídeos sobem como estão
+      const isVideo = f.isVideo || (f.file.type || '').startsWith('video/');
+      let blob = f.file;
+      let ext  = (f.file.name.split('.').pop() || 'jpg').toLowerCase();
+      if (!isVideo) {
+        blob = await _comprimirImagem(f.file, 2048, 0.8);
+        if (blob !== f.file) ext = 'jpg';   // comprimido vira JPEG
+      }
+      const filename = `${nomeBase} ${numeroOS} - foto ${String(i + 1).padStart(2, '0')}.${ext}`;
+      const ctype = blob.type || f.file.type || 'image/jpeg';
+
       const hdrs = await headersUploadProtegido();
       const initRes = await fetch('/api/upload', {
         method:  'POST',
         headers: hdrs,
-        body:    JSON.stringify({ path: folderPath, filename, contentType: f.file.type }),
+        body:    JSON.stringify({ path: folderPath, filename, contentType: ctype }),
       });
       if (!initRes.ok) {
         const errTxt = await initRes.text().catch(() => `HTTP ${initRes.status}`);
@@ -1161,16 +1204,16 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
       }
       const { uploadUrl, filePath } = await initRes.json();
 
-      const CHUNK = 5 * 1024 * 1024;
+      const CHUNK = 10 * 1024 * 1024;
       let start = 0;
-      while (start < f.file.size) {
-        const end   = Math.min(start + CHUNK, f.file.size);
-        const chunk = f.file.slice(start, end);
+      while (start < blob.size) {
+        const end   = Math.min(start + CHUNK, blob.size);
+        const chunk = blob.slice(start, end);
         const put   = await fetch(uploadUrl, {
           method:  'PUT',
           headers: {
-            'Content-Range': `bytes ${start}-${end - 1}/${f.file.size}`,
-            'Content-Type':  f.file.type || 'image/jpeg',
+            'Content-Range': `bytes ${start}-${end - 1}/${blob.size}`,
+            'Content-Type':  ctype,
           },
           body: chunk,
         });
@@ -1187,8 +1230,8 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
     }
   };
 
-  // Processar em lotes de 3 em paralelo
-  const LOTE = 3;
+  // Processar em lotes de 5 em paralelo
+  const LOTE = 5;
   for (let i = 0; i < fotosSelecionadas.length; i += LOTE) {
     const lote = fotosSelecionadas.slice(i, i + LOTE);
     await Promise.all(lote.map((f, j) => uploadUma(f, i + j)));
@@ -1265,7 +1308,7 @@ async function uploadArquivosBackup(nomeCliente, numeroOS) {
       if (!initRes.ok) throw new Error(await initRes.text());
       const { uploadUrl, filePath } = await initRes.json();
 
-      const CHUNK = 5 * 1024 * 1024;
+      const CHUNK = 10 * 1024 * 1024;
       let start = 0;
       while (start < file.size) {
         const end   = Math.min(start + CHUNK, file.size);
