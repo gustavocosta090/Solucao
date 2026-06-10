@@ -185,7 +185,7 @@ async function _carregar(){
 
   // Agendamentos de viagem
   const {data:aList, error:aErr} = await _db.from('agendamentos')
-    .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id,status,serie_id,veiculo,tipo_servico')
+    .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id,status,serie_id,veiculo')
     .eq('status','viagem').gte('data',_iso(d0)).lte('data',_iso(d6))
     .order('data').order('hora_inicio');
 
@@ -212,6 +212,15 @@ async function _carregar(){
       const {data:dList} = await _db.from('viagens_detalhe').select('*').in('agendamento_id',_ags.map(a=>a.id));
       (dList||[]).forEach(d=>{_dets[d.agendamento_id]=d;});
     }catch(e){console.warn('viagens_detalhe não existe ainda',(e.message||''));}
+
+    // tipo_servico vem da OS associada (não existe em agendamentos)
+    try{
+      const {data:osList} = await _db.from('ordens_de_servico')
+        .select('agendamento_id,tipo_servico').in('agendamento_id',_ags.map(a=>a.id));
+      const tipoMap={};
+      (osList||[]).forEach(o=>{if(o.agendamento_id)tipoMap[o.agendamento_id]=o.tipo_servico;});
+      _ags.forEach(a=>{a._tipoServico=tipoMap[a.id]||null;});
+    }catch(e){console.warn('falha ao buscar tipo_servico das OS',(e.message||''));}
   }
 
   _agsFiltrados = [..._ags];
@@ -454,7 +463,7 @@ function _dadosViagem(g){
               : (det.hotel_obs ? 'Hospedagem propria: '+det.hotel_obs : 'NAO');
   return {
     cliente:cli,
-    descricao:(ag0.tipo_servico==='assistencia'?'Assistencia':'Execucao'),
+    descricao:(ag0._tipoServico==='assistencia'?'Assistencia':'Execucao'),
     destino:det.cidade||'—',
     dataInicio:fmtFull(ag0.data),
     dataFinal:fmtFull(agN.data),
