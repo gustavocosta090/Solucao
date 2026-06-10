@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-01n -->
+<!-- build: 2026-06-08b — unificar duplicadas + ignorar obra na contagem -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -704,10 +704,16 @@
       <h2>Obras</h2>
       <p>Gerencie e acompanhe todas as obras em andamento</p>
     </div>
-    <button class="btn-nova-obra" onclick="abrirModal()">
-      <i data-lucide="plus"></i>
-      Nova Obra
-    </button>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button id="btn-unificar" class="btn-nova-obra" style="display:none;background:#3b82f6;" onclick="abrirUnificar()">
+        <i data-lucide="git-merge"></i>
+        Unificar duplicadas
+      </button>
+      <button class="btn-nova-obra" onclick="abrirModal()">
+        <i data-lucide="plus"></i>
+        Nova Obra
+      </button>
+    </div>
   </div>
 
   <!-- Filtros + Busca -->
@@ -777,6 +783,23 @@
   </div>
 
 </main>
+
+<!-- Modal Unificar Obras Duplicadas -->
+<div class="overlay" id="overlay-unificar" onclick="if(event.target===this)fecharUnificar()" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;padding:20px;">
+  <div class="modal" style="max-width:720px;width:100%;max-height:85vh;overflow-y:auto;">
+    <div class="modal-header">
+      <div class="modal-header-icon"><i data-lucide="git-merge"></i></div>
+      <h2>Unificar obras duplicadas</h2>
+    </div>
+    <p style="color:var(--text-muted,#9CA3AF);font-size:13px;margin:0 0 14px;">
+      Obras com o MESMO nome de cliente e MESMO endereço. Ao unificar, as agendas, OSs, solicitações, vistorias e pendências passam para a obra mais antiga, e as duplicadas são arquivadas (reversível).
+    </p>
+    <div id="unificar-conteudo"></div>
+    <div style="margin-top:16px;text-align:right;">
+      <button class="btn-secondary" onclick="fecharUnificar()">Fechar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal Nova Obra -->
 <div class="overlay" id="overlay" onclick="fecharModalFora(event)" role="dialog" aria-modal="true" aria-labelledby="modal-obras-titulo">
@@ -936,6 +959,12 @@
       if (btnNova) btnNova.style.display = 'none';
     }
 
+    // Unificar duplicadas: apenas coordenador
+    if (userRole === 'coordenador') {
+      const btnU = document.getElementById('btn-unificar');
+      if (btnU) btnU.style.display = 'inline-flex';
+    }
+
     await Promise.all([carregarObras(), carregarConsultores()]);
   }
 
@@ -1080,10 +1109,11 @@
     }
 
     const contador = document.getElementById('contador');
+    const totalContagem = obras.filter(o => !o.ignorar_contagem).length; // showrooms/CD não contam
     if (termoBusca) {
       contador.innerHTML = `<strong>${obras.length}</strong> resultado${obras.length !== 1 ? 's' : ''} para "<strong>${escHtml(termoBusca)}</strong>"`;
     } else {
-      contador.innerHTML = `Exibindo <strong>${obras.length}</strong> obra${obras.length !== 1 ? 's' : ''}`;
+      contador.innerHTML = `Exibindo <strong>${totalContagem}</strong> obra${totalContagem !== 1 ? 's' : ''}`;
     }
 
     const conteudo = document.getElementById('conteudo');
@@ -1129,6 +1159,15 @@
          </button>`
       : '';
 
+    const btnContagem = podeApagar
+      ? `<button class="btn-apagar-obra" style="${obra.ignorar_contagem ? 'color:#f59e0b;' : ''}"
+           onclick="toggleContagem(${obra.id}, ${!obra.ignorar_contagem}, event)"
+           title="${obra.ignorar_contagem ? 'Voltar para a contagem de obras' : 'Ignorar na contagem (showroom/CD)'}"
+           aria-label="Ignorar obra na contagem">
+           <i data-lucide="${obra.ignorar_contagem ? 'eye-off' : 'calculator'}"></i>
+         </button>`
+      : '';
+
     return `
       <div class="card" onclick="window.location.href='obra_detail.html?id=${obra.id}'" title="Ver OS e fotos desta obra">
         <div class="card-topo">
@@ -1138,6 +1177,7 @@
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <span class="badge badge-${escHtml(obra.fase_atual)}">${escHtml(fase.label)}</span>
+            ${btnContagem}
             ${btnApagar}
           </div>
         </div>
@@ -1154,8 +1194,99 @@
 
         <div class="card-footer">
           <span class="badge badge-compra">${escHtml(status)}</span>
+          ${obra.ignorar_contagem ? '<span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b;">Fora da contagem</span>' : ''}
         </div>
       </div>`;
+  }
+
+  // ── Unificar obras duplicadas (mesmo nome + endereço) ────────
+  function _normTxt(s) { return (s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+
+  function _gruposDuplicados() {
+    const map = {};
+    todasObras.forEach(o => {
+      const chave = _normTxt(o.nome_cliente) + '||' + _normTxt(o.endereco);
+      (map[chave] = map[chave] || []).push(o);
+    });
+    return Object.values(map)
+      .filter(g => g.length > 1)
+      .map(g => g.slice().sort((a, b) => a.id - b.id)); // mais antiga (menor id) primeiro
+  }
+
+  function abrirUnificar() {
+    const grupos = _gruposDuplicados();
+    const cont = document.getElementById('unificar-conteudo');
+    if (!grupos.length) {
+      cont.innerHTML = '<p style="color:var(--text-2);">Nenhuma obra duplicada encontrada (mesmo nome de cliente e endereço).</p>';
+    } else {
+      cont.innerHTML = grupos.map(g => {
+        const keep = g[0];
+        const dups = g.slice(1);
+        return `<div style="border:1px solid var(--border,#27272A);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+          <div style="font-weight:600;">${escHtml(keep.nome_cliente || '(sem nome)')}</div>
+          <div style="font-size:12px;color:var(--text-2);margin-bottom:6px;">${escHtml(keep.endereco || 'sem endereço')}</div>
+          <div style="font-size:12px;color:var(--text-2);">${g.length} obras · manter a mais antiga (#${keep.id}) · arquivar: ${dups.map(d => '#' + d.id).join(', ')}</div>
+          <button class="btn-nova-obra" style="margin-top:10px;background:#3b82f6;" onclick="unificarGrupo(${keep.id},[${dups.map(d => d.id).join(',')}],this)">
+            <i data-lucide="git-merge"></i> Unificar este grupo
+          </button>
+        </div>`;
+      }).join('');
+    }
+    document.getElementById('overlay-unificar').style.display = 'flex';
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function fecharUnificar() {
+    document.getElementById('overlay-unificar').style.display = 'none';
+  }
+
+  async function unificarGrupo(keepId, dupIds, btn) {
+    if (!dupIds.length) return;
+    if (!confirm(`Unificar ${dupIds.length} obra(s) na obra #${keepId}?\n\nAs duplicadas serão arquivadas (pode reverter depois).`)) return;
+    btn.disabled = true;
+    btn.innerHTML = 'Unificando...';
+    try {
+      // Repontar todas as tabelas que referenciam obra_id para a obra mantida
+      const tabelas = ['agendamentos', 'ordens_de_servico', 'solicitacoes', 'relatorios_vistoria', 'pendencias'];
+      for (const t of tabelas) {
+        const r = await db.from(t).update({ obra_id: keepId }).in('obra_id', dupIds);
+        if (r.error) console.warn(`[unificar] repontar ${t}:`, r.error.message);
+      }
+      // Arquivar as duplicadas (soft delete)
+      const agora = new Date().toISOString();
+      const del = await db.from('obras').update({ excluida_em: agora }).in('id', dupIds);
+      if (del.error) throw new Error(del.error.message);
+
+      // Audit log (fire-and-forget)
+      db.from('audit_log').insert({
+        user_id: _authUserId, tabela: 'obras', operacao: 'MERGE',
+        registro_id: String(keepId),
+        dados_antes: { duplicadas: dupIds }, dados_depois: { mantida: keepId },
+        criado_em: agora,
+      });
+
+      invalidateCache('agenda-obras');
+      showToast(`${dupIds.length} obra(s) unificada(s) na #${keepId}.`, 'success');
+      await carregarObras();
+      abrirUnificar(); // re-renderiza a lista de grupos
+    } catch (e) {
+      showToast('Erro ao unificar: ' + e.message, 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="git-merge"></i> Unificar este grupo';
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  // ── Ignorar/incluir obra na contagem (showrooms, CD etc.) ────
+  async function toggleContagem(id, valor, event) {
+    event.stopPropagation();
+    const { error } = await db.from('obras').update({ ignorar_contagem: valor }).eq('id', id);
+    if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+    const o = todasObras.find(x => x.id === id);
+    if (o) o.ignorar_contagem = valor;
+    invalidateCache('agenda-obras');
+    showToast(valor ? 'Obra fora da contagem.' : 'Obra voltou para a contagem.', 'success');
+    renderizar();
   }
 
   // ── Apagar obra (soft delete) ────────────────────────────────

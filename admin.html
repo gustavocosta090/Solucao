@@ -866,7 +866,6 @@ async function atribuirNumerosFaltantes() {
     const { data: ags, error: agErr } = await db.from('agendamentos')
       .select('id,data,tecnico_id,status,numero_os')
       .is('numero_os', null)
-      .neq('status', 'viagem')
       .order('data', { ascending: true });
     if (agErr) throw new Error(agErr.message);
 

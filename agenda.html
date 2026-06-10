@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-08a — gerarNumeroOS resiliente (retry) na replicação -->
+<!-- build: 2026-06-08b — replicar dias também na edição + preserva N.OS do dia editado -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -2333,6 +2333,12 @@ async function editarAgendamento(id) {
     const motWrap = document.getElementById('motorista-wrap');
     if (motSel && motWrap) { motWrap.style.display = 'block'; motSel.value = String(ag.motorista_id); }
   }
+  // Replicar disponível também na edição (começa desmarcado)
+  const repCbEdit = document.getElementById('f-replicar');
+  if (repCbEdit) { repCbEdit.checked = false; toggleReplicar(false); }
+  const repFimEdit = document.getElementById('f-data-fim-rep');
+  if (repFimEdit) repFimEdit.value = '';
+
   document.getElementById('btn-excluir').style.display = 'flex';
   document.getElementById('overlay').classList.add('aberto');
   lucide.createIcons();
@@ -2485,7 +2491,8 @@ async function salvarAgendamento() {
   const [id0, id1, id2, id3] = isADefinir ? [null, null, null, null] : equipesSelecionadas;
 
   // Lista de datas a salvar (replicar ou só a data principal)
-  const replicar   = !agEditandoId && document.getElementById('f-replicar')?.checked;
+  // Replicar funciona tanto ao criar quanto ao editar (no editar, mantém o dia atual e cria os demais)
+  const replicar   = document.getElementById('f-replicar')?.checked;
   const mesmaOS    = replicar && document.getElementById('f-mesma-os')?.checked;
   let diasSalvar   = replicar ? diasParaReplicar() : [data];
 
@@ -2523,18 +2530,32 @@ async function salvarAgendamento() {
     return null;
   }
 
-  // Se "Mesma N.OS", gera apenas uma vez para o primeiro dia e reutiliza
+  // Número da OS do agendamento sendo editado (preserva ao editar; não regenera)
+  const numeroExistente = agEditandoId
+    ? (agendamentos.find(a => a.id === agEditandoId)?.numero_os ?? null)
+    : null;
+
+  // Se "Mesma N.OS": ao editar usa o número do dia editado; ao criar gera um novo
   let osCompartilhado = null;
   if (mesmaOS && diasSalvar.length > 0) {
-    osCompartilhado = await gerarNumeroOS(diasSalvar[0]);
+    osCompartilhado = agEditandoId
+      ? (numeroExistente ?? await gerarNumeroOS(data))
+      : await gerarNumeroOS(diasSalvar[0]);
   }
 
-  // serie_id: ao editar, preserva o existente; ao criar com replicar, gera novo UUID
-  const serieId = agEditandoId
-    ? (agendamentos.find(a => a.id === agEditandoId)?.serie_id ?? null)
-    : ((replicar && diasSalvar.length > 1)
-        ? (crypto.randomUUID?.() || Math.random().toString(36).slice(2))
-        : null);
+  // serie_id: ao editar preserva o existente (e cria um se for replicar e não houver);
+  // ao criar com replicar, gera novo UUID
+  let serieId;
+  if (agEditandoId) {
+    serieId = agendamentos.find(a => a.id === agEditandoId)?.serie_id ?? null;
+    if (replicar && diasSalvar.length > 1 && !serieId) {
+      serieId = crypto.randomUUID?.() || Math.random().toString(36).slice(2);
+    }
+  } else {
+    serieId = (replicar && diasSalvar.length > 1)
+      ? (crypto.randomUUID?.() || Math.random().toString(36).slice(2))
+      : null;
+  }
 
   const basePayload = {
     obra_id:        obraVal !== 'outro' ? parseInt(obraVal) : null,
@@ -2563,11 +2584,17 @@ async function salvarAgendamento() {
     const diaStr = diasSalvar[diaIdx];
     const isPrimeiroDia = diaIdx === 0;
 
+    // Dia editado: preserva o número existente (não regenera). Se estiver sem número, gera.
     // Quando mesmaOS: só o primeiro dia guarda o numero_os no agendamento
     // (evita violação da constraint UNIQUE idx_agendamentos_numero_os)
-    const numeroOSGerado = mesmaOS
-      ? (isPrimeiroDia ? osCompartilhado : null)
-      : await gerarNumeroOS(diaStr);
+    let numeroOSGerado;
+    if (agEditandoId && diaStr === data) {
+      numeroOSGerado = numeroExistente ?? (mesmaOS ? osCompartilhado : await gerarNumeroOS(diaStr));
+    } else if (mesmaOS) {
+      numeroOSGerado = isPrimeiroDia ? osCompartilhado : null;
+    } else {
+      numeroOSGerado = await gerarNumeroOS(diaStr);
+    }
 
     const payload = { ...basePayload, data: diaStr, numero_os: numeroOSGerado };
 
@@ -2617,8 +2644,13 @@ async function salvarAgendamento() {
     // Cria OS pendentes:
     // - Sem mesmaOS: uma por dia (comportamento padrão)
     // - Com mesmaOS: apenas no primeiro dia, cobrindo toda a semana
-    const devecriarOS = !agEditandoId && result.id && status !== 'viagem'
-      && (!mesmaOS || (mesmaOS && !osCriadaNoFirstDay));
+    // - Ao editar: o dia editado NÃO cria OS (já tem a sua, que é atualizada acima);
+    //   os dias NOVOS replicados criam normalmente. Em edit+mesmaOS, a OS do dia
+    //   editado já cobre todos, então não cria OS extra.
+    const ehDiaEditado = agEditandoId && diaStr === data;
+    const devecriarOS = !ehDiaEditado && !(agEditandoId && mesmaOS)
+      && result.id && status !== 'viagem'
+      && (!mesmaOS || !osCriadaNoFirstDay);
 
     if (devecriarOS) {
       const equipeOS = [payload.tecnico_id, payload.auxiliar_id, payload.auxiliar2_id, payload.auxiliar3_id]
