@@ -1,4 +1,5 @@
 <!-- SAOS: viagens.html -->
+<!-- build: 2026-06-08a — PDFs de viagem reformatados (tabela limpa) + campo hora_saida -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -184,7 +185,7 @@ async function _carregar(){
 
   // Agendamentos de viagem
   const {data:aList, error:aErr} = await _db.from('agendamentos')
-    .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id,status,serie_id')
+    .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,cliente_outro,obra_id,status,serie_id,veiculo,tipo_servico')
     .eq('status','viagem').gte('data',_iso(d0)).lte('data',_iso(d6))
     .order('data').order('hora_inicio');
 
@@ -282,6 +283,8 @@ function _renderLista(dias){
       '<div class="vbody">'+
         '<div class="vf"><label>Cidade de destino</label>'+
           '<input type="text" id="c'+gid+'" value="'+escHtml(det.cidade||'')+'" placeholder="Ex: Cuiabá, MT"></div>'+
+        '<div class="vf"><label>Horário de saída</label>'+
+          '<input type="time" id="hs'+gid+'" value="'+escHtml((det.hora_saida||'').slice(0,5))+'"></div>'+
         '<div class="vf"><label>Saldo refeição / pessoa (R$)</label>'+
           '<input type="number" id="s'+gid+'" value="'+(det.saldo_refeicao||'')+'" placeholder="0,00" step="0.01" min="0"></div>'+
         '<div class="vf"><label>Acomodação</label>'+
@@ -315,6 +318,7 @@ async function _salvarGrupo(chave){
   if(!g) return;
   const gid = 'g'+g.membros[0].id;
   const cidade    = document.getElementById('c'+gid).value.trim()||null;
+  const hora_saida= document.getElementById('hs'+gid).value||null;
   const saldo     = parseFloat(document.getElementById('s'+gid).value)||null;
   const hotel     = document.getElementById('h'+gid).checked;
   const hospChecked = document.getElementById('hosp'+gid)?.checked;
@@ -322,7 +326,7 @@ async function _salvarGrupo(chave){
 
   let erro = null;
   for(const ag of g.membros){
-    const p={agendamento_id:ag.id,cidade,saldo_refeicao:saldo,hotel,hotel_obs,atualizado_em:new Date().toISOString()};
+    const p={agendamento_id:ag.id,cidade,hora_saida,saldo_refeicao:saldo,hotel,hotel_obs,atualizado_em:new Date().toISOString()};
     let res;
     if(_dets[ag.id]?.id){
       res=await _db.from('viagens_detalhe').update(p).eq('id',_dets[ag.id].id).select().single();
@@ -435,145 +439,90 @@ function _stats(){
   document.getElementById('sh').textContent=qtdHotel;
 }
 
-async function _pdfViagem(g){
+// Reúne todos os dados de uma viagem (grupo) já formatados para o PDF
+function _dadosViagem(g){
   const ag0=g.membros[0],agN=g.membros[g.membros.length-1];
   const det=_dets[ag0.id]||{};
   const cli=(ag0._ob&&ag0._ob.nome_cliente)||ag0.cliente_outro||'—';
   const tIds=[ag0.tecnico_id,ag0.auxiliar_id,ag0.auxiliar2_id,ag0.auxiliar3_id].filter(Boolean);
   const nPessoas=tIds.length||1,nDias=g.membros.length;
-  const tecsInfo=tIds.map(id=>{const t=_tecs.find(t=>t.id===id);return t?{nome:t.nome_completo||t.nome,cpf:t.cpf||null}:null;}).filter(Boolean);
-  const fmtD=d=>{const x=new Date(d+'T12:00');return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0');};
+  const nomes=tIds.map(id=>{const t=_tecs.find(t=>t.id===id);return t?(t.nome_completo||t.nome).toUpperCase():null;}).filter(Boolean);
   const fmtFull=d=>{const x=new Date(d+'T12:00');return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear();};
-  const periodo=ag0.data===agN.data?fmtFull(ag0.data):fmtD(ag0.data)+' a '+fmtFull(agN.data);
   const saldo=parseFloat(det.saldo_refeicao)||0;
-  const totalAlim=saldo*nPessoas*nDias;
-  const isHotel=det.hotel===true;
-  const hospText=(!isHotel&&det.hotel_obs)?det.hotel_obs:null;
+  const totalDias=saldo*nDias*nPessoas;
+  const hotelTxt=det.hotel ? 'SIM - favor reservar hotel'
+              : (det.hotel_obs ? 'Hospedagem propria: '+det.hotel_obs : 'NAO');
+  return {
+    cliente:cli,
+    descricao:(ag0.tipo_servico==='assistencia'?'Assistencia':'Execucao'),
+    destino:det.cidade||'—',
+    dataInicio:fmtFull(ag0.data),
+    dataFinal:fmtFull(agN.data),
+    horaSaida:det.hora_saida?det.hora_saida.slice(0,5):'—',
+    veiculo:ag0.veiculo||'—',
+    nomes:nomes.length?nomes.join('\n'):'—',
+    hotel:hotelTxt,
+    alimentacao:saldo>0?'SIM':'NAO',
+    valorLiquido:saldo>0?_brl(saldo):'—',
+    totalDias:saldo>0?_brl(totalDias):'—',
+    _ag0:ag0,
+  };
+}
+
+// Monta as linhas (rótulo / valor) da tabela de uma viagem
+function _linhasViagem(d){
+  return [
+    ['Cliente',d.cliente],
+    ['Descricao',d.descricao],
+    ['Destino',d.destino],
+    ['Data inicio',d.dataInicio],
+    ['Data final',d.dataFinal],
+    ['Horario de saida',d.horaSaida],
+    ['Veiculo',d.veiculo],
+    ['Tecnico(s)',d.nomes],
+    ['Hotel',d.hotel],
+    ['Alimentacao',d.alimentacao],
+    ['Valor liquido (por dia / tecnico)',d.valorLiquido],
+    ['Total dos dias',d.totalDias],
+  ];
+}
+
+function _pdfViagem(g){
+  const d=_dadosViagem(g);
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
-  const PW=210,M=14,CW=PW-M*2; // usable width = 182mm
+  const PW=210,M=16,CW=PW-M*2;
 
-  // Header — logo + título, fundo branco
-  const logoB64 = await _carregarLogoPDF();
-  const LOGO_W=42, LOGO_H=14; // largura e altura do logo em mm
-  if(logoB64){
-    doc.addImage(logoB64,'PNG',M,7,LOGO_W,LOGO_H);
-  } else {
-    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(25,25,25);
-    doc.text('Solucao Tecnica',M,16);
-  }
-  const TX = logoB64 ? M+LOGO_W+7 : M;
-  const TY = logoB64 ? 12 : 23;
-  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(20,20,20);
-  doc.text('Informativo de viagem',TX,TY);
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(90,90,90);
-  doc.text('Solicitacao de verbas e hospedagens.',TX,TY+7);
-  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(150,150,150);
-  doc.text('Gerado em '+new Date().toLocaleString('pt-BR'),PW-M,9,{align:'right'});
-  // Linha separadora
-  doc.setDrawColor(200,200,200);doc.setLineWidth(0.35);
-  doc.line(M,26,PW-M,26);
+  // Cabeçalho simples
+  doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(20,20,20);
+  doc.text('INFORMATIVO DE VIAGEM',M,18);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(120,120,120);
+  doc.text('Gerado em '+new Date().toLocaleString('pt-BR'),PW-M,18,{align:'right'});
+  doc.setDrawColor(150,150,150);doc.setLineWidth(0.4);doc.line(M,22,PW-M,22);
 
-  let y=32;
-
-  // Helper — caixa com barra escura lateral (imprime perfeitamente em qualquer impressora)
-  const BARRA=[30,30,30]; // quase-preto: imprime como cinza escuro confiável
-  const BRD=[165,165,165];
-  const BW=0.35;
-  const caixa=(yy,h)=>{
-    doc.setDrawColor(...BRD);doc.setLineWidth(BW);doc.rect(M,yy,CW,h);
-    doc.setFillColor(...BARRA);doc.rect(M,yy,3,h,'F');
-  };
-
-  // Banner cliente
-  caixa(y,16);
-  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(20,20,20);
-  doc.text(cli,M+7,y+10.5);
-  y+=22;
-
-  // Tabela: Periodo / Cidade / Endereco
-  const LBL=42;
-  const infoRows=[
-    ['Periodo',periodo+(nDias>1?' ('+nDias+' dia'+(nDias>1?'s)':')'):'')],
-    ['Cidade',det.cidade||'—'],
-  ];
-  if(ag0._ob&&ag0._ob.endereco) infoRows.push(['Endereco',ag0._ob.endereco]);
-
+  const LBL=64;
   doc.autoTable({
-    startY:y,body:infoRows,
+    startY:28,
+    body:_linhasViagem(d),
     margin:{left:M,right:M},
-    styles:{fontSize:10,cellPadding:{top:6,right:6,bottom:6,left:6},
-            textColor:[30,30,30],fillColor:[255,255,255],
-            lineColor:[165,165,165],lineWidth:BW,valign:'middle'},
-    columnStyles:{0:{cellWidth:LBL,fontStyle:'bold',textColor:[100,100,100],fontSize:8.5},
+    styles:{font:'helvetica',fontSize:11,cellPadding:{top:4,right:5,bottom:4,left:5},
+            textColor:[20,20,20],fillColor:[255,255,255],
+            lineColor:[120,120,120],lineWidth:0.3,valign:'middle'},
+    columnStyles:{0:{cellWidth:LBL,fontStyle:'bold',fillColor:[238,238,238],textColor:[40,40,40]},
                   1:{cellWidth:CW-LBL}},
-    alternateRowStyles:{fillColor:[255,255,255]},showHead:false,
+    showHead:false,
   });
-  y=doc.lastAutoTable.finalY+8;
-
-  // Tecnico(s) — cada um separado por linha
-  const TH=14,TS=4,THEAD=9,TPADB=7;
-  const techSecH=THEAD+tecsInfo.length*TH+Math.max(0,tecsInfo.length-1)*TS+TPADB;
-  caixa(y,techSecH);
-  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(120,120,120);
-  doc.text('TECNICO(S)',M+7,y+6);
-  let ty=y+THEAD;
-  tecsInfo.forEach((tec,idx)=>{
-    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(20,20,20);
-    doc.text(tec.nome,M+7,ty+5);
-    if(tec.cpf){
-      doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(80,80,80);
-      doc.text('CPF: '+tec.cpf,M+7,ty+10);
-    }
-    if(idx<tecsInfo.length-1){
-      doc.setDrawColor(190,190,190);doc.setLineWidth(0.25);
-      doc.line(M+5,ty+TH,M+CW-3,ty+TH);
-      ty+=TH+TS;
-    }
-  });
-  y+=techSecH+8;
-
-  // Hospedagem
-  if(isHotel){
-    caixa(y,15);
-    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(20,20,20);
-    doc.text('Precisaremos de Hotel, favor realizar a reserva',M+7,y+10);y+=23;
-  }else if(hospText){
-    caixa(y,15);
-    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(20,20,20);
-    doc.text('Hospedagem: '+hospText,M+7,y+10);y+=23;
-  }else{
-    caixa(y,15);
-    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(110,110,110);
-    doc.text('Sem hospedagem definida',M+7,y+10);y+=23;
-  }
-
-  // Alimentacao
-  if(saldo){
-    const boxH=30;
-    caixa(y,boxH);
-    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(100,100,100);
-    doc.text('ALIMENTACAO',M+7,y+8);
-    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(50,50,50);
-    const calc=_brl(saldo)+' x '+nPessoas+' pessoa'+(nPessoas>1?'s':'')+(nDias>1?' x '+nDias+' dias':'');
-    doc.text(calc,M+7,y+17);
-    doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(20,20,20);
-    doc.text(_brl(totalAlim),PW-M,y+21,{align:'right'});
-    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(100,100,100);
-    doc.text('TOTAL',PW-M,y+27,{align:'right'});
-    y+=38;
-  }
 
   // Assinatura
-  y+=10;
-  doc.setDrawColor(155,155,155);doc.setLineWidth(0.4);
-  doc.line(M,y,M+78,y);
-  doc.line(M+96,y,PW-M,y);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110,110,110);
+  let y=doc.lastAutoTable.finalY+22;
+  doc.setDrawColor(140,140,140);doc.setLineWidth(0.4);
+  doc.line(M,y,M+80,y);
+  doc.line(M+98,y,PW-M,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(90,90,90);
   doc.text('Gestor / Aprovacao',M,y+5);
-  doc.text('Data: ______ / ______ / __________',M+96,y+5);
+  doc.text('Data: ______ / ______ / __________',M+98,y+5);
 
-  doc.save('Viagem-'+cli.replace(/[^a-zA-Z0-9]/g,'-').slice(0,25)+'-'+ag0.data+'.pdf');
+  doc.save('Viagem-'+d.cliente.replace(/[^a-zA-Z0-9]/g,'-').slice(0,25)+'-'+d._ag0.data+'.pdf');
 }
 
 function exportarSemana(){
@@ -584,85 +533,52 @@ function exportarSemana(){
   const MESES_PT=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const periodo=d0.getDate()+' a '+d6.getDate()+' de '+MESES_PT[d6.getMonth()]+' de '+d6.getFullYear();
   const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
-  const PW=297,M=12;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const PW=210,M=16,CW=PW-M*2,PH=297,LBL=64;
 
-  // Header escuro com barra verde
-  doc.setFillColor(15,15,15);doc.rect(0,0,PW,32,'F');
-  doc.setFillColor(62,207,142);doc.rect(0,30,PW,3,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(255,255,255);
-  doc.text('Solucao Tecnica',M,14);
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(62,207,142);
-  doc.text('Programacao de Viagens  |  Semana: '+periodo,M,23);
+  // Cabeçalho simples
+  doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(20,20,20);
+  doc.text('VIAGENS DA SEMANA',M,18);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(90,90,90);
+  doc.text(periodo+'  -  '+grupos.length+' viagem'+(grupos.length!==1?'s':''),M,24);
   doc.setFontSize(8);doc.setTextColor(140,140,140);
-  doc.text('Gerado em '+new Date().toLocaleString('pt-BR')+'  |  '+grupos.length+' viagem'+(grupos.length!==1?'s':''),PW-M,23,{align:'right'});
+  doc.text('Gerado em '+new Date().toLocaleString('pt-BR'),PW-M,18,{align:'right'});
+  doc.setDrawColor(150,150,150);doc.setLineWidth(0.4);doc.line(M,28,PW-M,28);
 
-  const fmt=d=>{const x=new Date(d+'T12:00');return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0');};
-  let totalGeral=0;
-  const rows=grupos.map(g=>{
-    const ag0=g.membros[0],agN=g.membros[g.membros.length-1];
-    const det=_dets[ag0.id]||{};
-    const cli=(ag0._ob&&ag0._ob.nome_cliente)||ag0.cliente_outro||'—';
-    const tIds=[ag0.tecnico_id,ag0.auxiliar_id,ag0.auxiliar2_id,ag0.auxiliar3_id].filter(Boolean);
-    const nPessoas=tIds.length||1,nDias=g.membros.length;
-    const tNm=tIds.map(id=>{const t=_tecs.find(t=>t.id===id);if(!t)return '';return (t.nome_completo||t.nome)+(t.cpf?'\nCPF: '+t.cpf:'');}).filter(Boolean).join('\n')||'—';
-    const periodo2=ag0.data===agN.data?fmt(ag0.data):fmt(ag0.data)+' a '+fmt(agN.data);
-    const saldo=parseFloat(det.saldo_refeicao)||0;
-    const total=saldo*nPessoas*nDias;
-    totalGeral+=total;
-    const hospStr=det.hotel?'Hotel (diaria)':det.hotel_obs||'—';
-    const calc=saldo?nPessoas+'p x '+nDias+'d = '+_brl(total):'—';
-    return [
-      periodo2+(nDias>1?'\n'+nDias+' dias':''),
-      cli,
-      tNm,
-      det.cidade||'—',
-      hospStr,
-      saldo?_brl(saldo):'—',
-      calc,
-    ];
+  let y=34;
+  grupos.forEach((g,idx)=>{
+    const d=_dadosViagem(g);
+    // Estima altura do bloco; quebra página se não couber
+    const estimada=10+12*9+24; // título + ~12 linhas + assinatura
+    if(y+estimada>PH-16){doc.addPage();y=20;}
+
+    // Rótulo da viagem (uma por vez, bem separada)
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(20,20,20);
+    doc.text('Viagem '+(idx+1)+' de '+grupos.length+'  -  '+d.cliente,M,y);
+    y+=4;
+
+    doc.autoTable({
+      startY:y,
+      body:_linhasViagem(d),
+      margin:{left:M,right:M},
+      styles:{font:'helvetica',fontSize:10,cellPadding:{top:3,right:5,bottom:3,left:5},
+              textColor:[20,20,20],fillColor:[255,255,255],
+              lineColor:[120,120,120],lineWidth:0.3,valign:'middle'},
+      columnStyles:{0:{cellWidth:LBL,fontStyle:'bold',fillColor:[238,238,238],textColor:[40,40,40]},
+                    1:{cellWidth:CW-LBL}},
+      showHead:false,
+    });
+    y=doc.lastAutoTable.finalY+14;
   });
 
-  doc.autoTable({
-    startY:38,
-    head:[['Periodo','Cliente / Obra','Tecnico(s)','Cidade','Hospedagem','R$/pessoa/dia','Total Alimentacao']],
-    body:rows,
-    margin:{left:M,right:M},
-    styles:{fontSize:8.5,cellPadding:{top:5,right:5,bottom:5,left:5},textColor:[25,25,25],fillColor:[255,255,255],lineColor:[225,225,225],lineWidth:0.2,valign:'middle'},
-    headStyles:{fillColor:[25,25,25],textColor:[255,255,255],fontStyle:'bold',fontSize:8,cellPadding:{top:6,right:5,bottom:6,left:5}},
-    alternateRowStyles:{fillColor:[248,250,252]},
-    columnStyles:{
-      0:{cellWidth:28,fontStyle:'bold',textColor:[40,40,40]},
-      1:{cellWidth:50},
-      2:{cellWidth:52},
-      3:{cellWidth:28},
-      4:{cellWidth:38},
-      5:{cellWidth:32,halign:'center'},
-      6:{cellWidth:40,fontStyle:'bold',textColor:[10,70,35]},
-    },
-    didParseCell:function(data){
-      if(data.section==='head' && data.column.index>=5) data.cell.styles.halign='center';
-    },
-  });
-
-  // Linha de total — largura exata da tabela (soma das colunas = 268mm)
-  const TW=28+50+52+28+38+32+40; // 268
-  const yT=doc.lastAutoTable.finalY;
-  doc.setFillColor(240,253,246);
-  doc.rect(M,yT,TW,10,'F');
-  doc.setDrawColor(62,207,142);doc.setLineWidth(0.4);
-  doc.line(M,yT,M+TW,yT);doc.line(M,yT+10,M+TW,yT+10);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,80,40);
-  doc.text('Total geral de alimentacao: '+_brl(totalGeral),M+TW,yT+6.5,{align:'right'});
-
-  // Assinatura
-  const yS=yT+28;
-  doc.setDrawColor(180,180,180);doc.setLineWidth(0.3);
-  doc.line(M,yS,M+70,yS);
-  doc.line(M+100,yS,M+180,yS);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(120,120,120);
-  doc.text('Gestor / Aprovacao',M,yS+5);
-  doc.text('Data: ______ / ______ / __________',M+100,yS+5);
+  // Assinatura ao final
+  if(y>PH-30){doc.addPage();y=24;}
+  doc.setDrawColor(140,140,140);doc.setLineWidth(0.4);
+  doc.line(M,y,M+80,y);
+  doc.line(M+98,y,PW-M,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(90,90,90);
+  doc.text('Gestor / Aprovacao',M,y+5);
+  doc.text('Data: ______ / ______ / __________',M+98,y+5);
 
   doc.save('Viagens-Semana-'+periodo+'.pdf');
 }
