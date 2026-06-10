@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-08b — fotoSrc() token + onAuthStateChange mantém token fresco -->
+<!-- build: 2026-06-08c — lightbox z-index 2000 (acima do modal da OS) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -395,7 +395,7 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Lightbox ── */
-    .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.94); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; gap: 16px; backdrop-filter: blur(8px); }
+    .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.94); z-index: 2000; align-items: center; justify-content: center; flex-direction: column; gap: 16px; backdrop-filter: blur(8px); }
     .lightbox.aberto { display: flex; }
     .lightbox img { max-width: 90vw; max-height: 78vh; border-radius: 8px; object-fit: contain; border: 1px solid var(--border); }
     .lightbox video { max-width: 90vw; max-height: 78vh; border-radius: 8px; background: #000; cursor: auto; }
