@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-08c — fotoSrc() token + cliente_outro + onAuthStateChange token fresco -->
+<!-- build: 2026-06-08d — agenda noturna a partir de 18:00 + badge "Aguardando decisão" -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1613,7 +1613,7 @@ function agendaNoturnaInfo(o) {
   const fim = minutosDoHorario(o.horario_fim);
   if (fim === null) return null;
 
-  if (fim >= (17 * 60 + 30) && fim <= (21 * 60)) {
+  if (fim >= (18 * 60) && fim <= (21 * 60)) {
     return { tipo: 'meia', label: 'Meia agenda noturna', valor: 75 };
   }
 
@@ -1939,7 +1939,7 @@ function renderTabela() {
       } else if (o.noturna_status === 'banco_horas') {
         noturnaBadge = `<span class="badge badge-banco-horas">🌙 Banco de horas</span>`;
       } else {
-        noturnaBadge = `<span class="badge badge-noturna-pend" title="${escHtml(noturnaInfo.label)}">🌙 Ag. noturna (pend.)</span>`;
+        noturnaBadge = `<span class="badge badge-noturna-pend" title="${escHtml(noturnaInfo.label)}">🌙 Aguardando decisão</span>`;
       }
     }
     const nFotos = o.fotos_urls?.length || 0;
