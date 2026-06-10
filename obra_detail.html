@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-08a — fotoSrc() anexa token ?t= às URLs de /api/foto -->
+<!-- build: 2026-06-08b — fotoSrc() token + onAuthStateChange mantém token fresco -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -569,6 +569,8 @@ async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
   authToken = session.access_token || '';
+  // Mantém o token atualizado quando o Supabase o renova (evita 401 nas fotos após ~1h)
+  db.auth.onAuthStateChange((_e, s) => { if (s?.access_token) authToken = s.access_token; });
 
   const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
   roleAtual = eu?.role || 'tecnico';

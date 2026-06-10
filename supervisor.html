@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-08b — fotoSrc() token + cliente_outro em OSes de assistência -->
+<!-- build: 2026-06-08c — fotoSrc() token + cliente_outro + onAuthStateChange token fresco -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1483,6 +1483,8 @@ function fotoSrc(url) {
   if (!session) { window.location.href = 'login.html'; return; }
   _authUserId = session.user.id;
   authToken = session.access_token || '';
+  // Mantém o token atualizado quando o Supabase o renova (evita 401 nas fotos após ~1h)
+  db.auth.onAuthStateChange((_e, s) => { if (s?.access_token) authToken = s.access_token; });
 
   const { data: eu } = await db
     .from('tecnicos')
