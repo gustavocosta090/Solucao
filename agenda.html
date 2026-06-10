@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-01p -->
+<!-- build: 2026-06-08a — gerarNumeroOS resiliente (retry) na replicação -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -2500,17 +2500,27 @@ async function salvarAgendamento() {
   // Garante que o dia inicial está sempre incluído
   if (!diasSalvar.includes(data)) diasSalvar.unshift(data);
 
-  // Helper: gera número de OS para uma data
+  // Números já gerados nesta gravação — evita repetir entre os dias replicados
+  const _numerosUsados = new Set();
+
+  // Helper: gera número de OS para uma data (resiliente — tenta de novo se a RPC
+  // falhar, devolver nulo ou repetir um número já usado nesta replicação)
   async function gerarNumeroOS(dataStr) {
     if (status === 'viagem') return null;
-    const { data: seqData, error: seqErr } = await db.rpc('proximo_numero_os');
-    if (seqErr || seqData == null) return null;
     const [y, m] = dataStr.split('-');
     const teId  = id0 ? parseInt(id0) : null;
     const teRec = teId ? tecnicoEquipes.find(e => e.tecnico_id === teId) : null;
     const EQ_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
     const eqCod  = (teRec && EQ_COD[teRec.equipe_id]) || '00';
-    return `${y}-${m}-${eqCod}-${String(seqData).padStart(4, '0')}`;
+    for (let tentativa = 0; tentativa < 5; tentativa++) {
+      const { data: seqData, error: seqErr } = await db.rpc('proximo_numero_os');
+      if (!seqErr && seqData != null) {
+        const num = `${y}-${m}-${eqCod}-${String(seqData).padStart(4, '0')}`;
+        if (!_numerosUsados.has(num)) { _numerosUsados.add(num); return num; }
+      }
+      await new Promise(r => setTimeout(r, 150)); // pequeno intervalo antes de tentar de novo
+    }
+    return null;
   }
 
   // Se "Mesma N.OS", gera apenas uma vez para o primeiro dia e reutiliza
@@ -2631,7 +2641,8 @@ async function salvarAgendamento() {
           numero_os:         osCompartilhado ?? numeroOSGerado,
           criado_em:         agora,
         }));
-        await db.from('ordens_de_servico').insert(osPayloads);
+        const osIns = await db.from('ordens_de_servico').insert(osPayloads);
+        if (osIns.error) console.warn('[agenda] criar OS pendente:', osIns.error.message);
         if (mesmaOS) osCriadaNoFirstDay = true;
       }
     }
