@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-05-31h -->
+<!-- build: 2026-06-08a — botão excluir assistência duplicada (coordenador) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -449,6 +449,7 @@ let statusModal = 'pendente';
 let editingOsId = null;
 let editingRelId = null;
 let equipamentos = [];  // [{nome, valor}]
+let _role        = '';  // papel do usuário logado
 
 // ── Formatação ──────────────────────────────────────────────────
 function brl(v) {
@@ -474,6 +475,7 @@ function brlFull(v) {
     return;
   }
 
+  _role = eu.role;
   renderTopbar(eu.nome, eu.role, 'assistencia');
   applyTheme(localStorage.getItem('tema') || 'auto');
   lucide.createIcons();
@@ -607,6 +609,26 @@ function renderStats() {
   }
 }
 
+// ── Excluir assistência duplicada (somente coordenador) ──────────
+async function deletarAssistencia(osId, event) {
+  if (event) event.stopPropagation();
+  const o = todasOS.find(x => x.id === osId);
+  const nome = o?.obras?.nome_cliente || o?._cliente_outro || 'esta assistência';
+  if (!confirm(`Excluir a assistência de "${nome}"?\n\nRemove a OS e o relatório vinculado. Ação irreversível.`)) return;
+  try {
+    await db.from('relatorios_assistencia').delete().eq('os_id', osId);
+    const { error } = await db.from('ordens_de_servico').delete().eq('id', osId);
+    if (error) throw new Error(error.message);
+    todasOS = todasOS.filter(x => x.id !== osId);
+    delete todosRel[osId];
+    showToast('Assistência excluída.', 'success');
+    filtrar();
+    renderStats();
+  } catch (e) {
+    showToast('Erro ao excluir: ' + e.message, 'error');
+  }
+}
+
 // ── Tabela ───────────────────────────────────────────────────────
 function renderTabela() {
   const loading = document.getElementById('loadingEl');
@@ -667,6 +689,11 @@ function renderTabela() {
         ? `<button class="btn-finalizar" onclick="abrirModal(${o.id}, event)"><i data-lucide="pencil" style="width:12px;height:12px"></i> Editar</button>`
         : `<button class="btn-ver" onclick="abrirModal(${o.id}, event)"><i data-lucide="eye" style="width:12px;height:12px"></i> Ver</button>`;
 
+    // Excluir assistência duplicada — somente coordenador
+    const btnDel = _role === 'coordenador'
+      ? ` <button class="btn-ver" style="border-color:rgba(248,113,113,.4);color:#f87171;" title="Excluir esta assistência" onclick="deletarAssistencia(${o.id}, event)"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>`
+      : '';
+
     return `<tr onclick="abrirModal(${o.id})">
       <td class="td-muted">${data}</td>
       <td>${tecnico}</td>
@@ -676,7 +703,7 @@ function renderTabela() {
       <td>${eqStr}</td>
       <td style="font-weight:600">${totStr}</td>
       <td>${stBadge}</td>
-      <td class="td-center">${btnAcao}</td>
+      <td class="td-center" onclick="event.stopPropagation()">${btnAcao}${btnDel}</td>
     </tr>`;
   }).join('');
 
