@@ -638,6 +638,16 @@
       </button>
     </div>
     <pre id="log-criar-pastas" style="display:none;margin-top:14px;max-height:320px;overflow:auto;background:rgba(0,0,0,.25);border:1px solid var(--border,#27272A);border-radius:8px;padding:12px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;"></pre>
+
+    <hr style="border:none;border-top:1px solid var(--border,#27272A);margin:18px 0;">
+    <p style="color:var(--text-muted,#9CA3AF);font-size:14px;margin:0 0 12px;">
+      Atribui N.OS às agendas antigas que estão sem número (ignora viagens). Cada agenda recebe um número novo e as OSs vinculadas recebem o mesmo número. Agendas que já têm número não são tocadas.
+    </p>
+    <button id="btn-numerar-os" class="btn-primary" onclick="atribuirNumerosFaltantes()" style="width:auto;">
+      <i data-lucide="hash"></i>
+      Atribuir N.OS às agendas sem número
+    </button>
+    <pre id="log-numerar-os" style="display:none;margin-top:14px;max-height:320px;overflow:auto;background:rgba(0,0,0,.25);border:1px solid var(--border,#27272A);border-radius:8px;padding:12px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;"></pre>
   </div>
 
   <!-- Lista de pessoas -->
@@ -834,6 +844,79 @@ function confirmarTokenPastas() {
   document.getElementById('tokenPastasInput').value = '';
   fecharModalTokenPastas();
   _executarCriarPastas(valor);
+}
+
+// Atribui N.OS às agendas que estão sem número (e replica nas OSs vinculadas)
+async function atribuirNumerosFaltantes() {
+  const btn = document.getElementById('btn-numerar-os');
+  const logEl = document.getElementById('log-numerar-os');
+  const EQ_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
+  const usados = new Set();
+
+  const escrever = (txt) => { logEl.textContent += txt + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+
+  if (!window.confirm('Atribuir N.OS a todas as agendas sem número (exceto viagens)?')) return;
+
+  btn.disabled = true;
+  logEl.style.display = 'block';
+  logEl.textContent = 'Buscando agendas sem N.OS...\n';
+
+  try {
+    // Agendas sem número (exceto viagens), mais antigas primeiro
+    const { data: ags, error: agErr } = await db.from('agendamentos')
+      .select('id,data,tecnico_id,status,numero_os')
+      .is('numero_os', null)
+      .neq('status', 'viagem')
+      .order('data', { ascending: true });
+    if (agErr) throw new Error(agErr.message);
+
+    if (!ags || !ags.length) { escrever('Nenhuma agenda sem N.OS encontrada.'); return; }
+
+    // Mapa tecnico -> equipe
+    const { data: te } = await db.from('tecnico_equipes').select('tecnico_id,equipe_id');
+    const eqMap = {};
+    (te || []).forEach(r => { eqMap[r.tecnico_id] = r.equipe_id; });
+
+    escrever(`${ags.length} agenda(s) sem N.OS. Iniciando...\n`);
+    let ok = 0, falhas = 0;
+
+    for (const ag of ags) {
+      const [y, m] = String(ag.data || '').split('-');
+      const eqCod = EQ_COD[eqMap[ag.tecnico_id]] || '00';
+
+      // Gera número resiliente (tenta de novo se RPC falhar/repetir)
+      let num = null;
+      for (let t = 0; t < 5; t++) {
+        const { data: seq, error: sErr } = await db.rpc('proximo_numero_os');
+        if (!sErr && seq != null) {
+          const cand = `${y}-${m}-${eqCod}-${String(seq).padStart(4, '0')}`;
+          if (!usados.has(cand)) { usados.add(cand); num = cand; break; }
+        }
+        await new Promise(r => setTimeout(r, 150));
+      }
+      if (!num) { falhas++; escrever(`✗ Agenda ${ag.id} (${ag.data}) — não foi possível gerar número`); continue; }
+
+      const up = await db.from('agendamentos').update({ numero_os: num }).eq('id', ag.id);
+      if (up.error) { falhas++; escrever(`✗ Agenda ${ag.id} — ${up.error.message}`); continue; }
+
+      // Replica nas OSs vinculadas que estão sem número
+      await db.from('ordens_de_servico').update({ numero_os: num })
+        .eq('agendamento_id', ag.id).is('numero_os', null);
+
+      ok++;
+      escrever(`✓ Agenda ${ag.id} (${ag.data}) → ${num}`);
+    }
+
+    escrever(`\nConcluído. Numeradas: ${ok}  |  Falhas: ${falhas}`);
+    showToast(`N.OS atribuído a ${ok} agenda(s).`, ok ? 'success' : 'warning');
+  } catch (e) {
+    escrever('\n❌ Erro: ' + e.message);
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="hash"></i> Atribuir N.OS às agendas sem número';
+    if (window.lucide) lucide.createIcons();
+  }
 }
 
 async function criarPastasFaltantes() {
