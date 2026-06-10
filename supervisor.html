@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-08a — fotoSrc() anexa token ?t= às URLs de /api/foto -->
+<!-- build: 2026-06-08b — fotoSrc() token + cliente_outro em OSes de assistência -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1566,6 +1566,16 @@ async function carregarOSs() {
   _tecMapGlobal = tecMap;
   _tecEquipeMapGlobal = tecEquipeMap;
 
+  // Para OSes sem obra_id (ex.: assistência), busca cliente_outro no agendamento
+  const semObra = (osData || []).filter(o => !o.obra_id && o.agendamento_id).map(o => o.agendamento_id);
+  const agClienteMap = {};
+  if (semObra.length) {
+    const { data: agList } = await db.from('agendamentos')
+      .select('id, cliente_outro')
+      .in('id', semObra);
+    (agList || []).forEach(a => { agClienteMap[a.id] = a.cliente_outro; });
+  }
+
   const finalData = (osData || []).map(o => {
     const equipe = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id]
       .filter(Boolean)
@@ -1575,6 +1585,7 @@ async function carregarOSs() {
     return {
       ...o,
       tecnicos:   o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null,
+      _cliente_outro: agClienteMap[o.agendamento_id] || null,
       equipeNomes: equipe,
       equipeId,
     };
@@ -1767,10 +1778,17 @@ async function filtrar() {
         .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
         .eq('status_aprovacao', 'cancelada')
         .order('criado_em', { ascending: false });
+      const semObraC = (osData || []).filter(o => !o.obra_id && o.agendamento_id).map(o => o.agendamento_id);
+      const agClienteMapC = {};
+      if (semObraC.length) {
+        const { data: agListC } = await db.from('agendamentos').select('id, cliente_outro').in('id', semObraC);
+        (agListC || []).forEach(a => { agClienteMapC[a.id] = a.cliente_outro; });
+      }
       _canceladasCache = (osData || []).map(o => {
         const equipe = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id]
           .filter(Boolean).map(tid => _tecMapGlobal[tid]?.nome).filter(Boolean);
         return { ...o, tecnicos: o.tecnico_id ? (_tecMapGlobal[o.tecnico_id] || null) : null,
+                 _cliente_outro: agClienteMapC[o.agendamento_id] || null,
                  equipeNomes: equipe, equipeId: _tecEquipeMapGlobal[o.tecnico_id] || null };
       });
       document.getElementById('loadingEl').style.display = 'none';
@@ -1782,7 +1800,7 @@ async function filtrar() {
       const matchDi    = !fDi   || !o.data_servico || o.data_servico >= fDi;
       const matchDf    = !fDf   || !o.data_servico || o.data_servico <= fDf;
       const matchBusca = !fBusca ||
-        (o.obras?.nome_cliente || '').toLowerCase().includes(fBusca) ||
+        (o.obras?.nome_cliente || o._cliente_outro || '').toLowerCase().includes(fBusca) ||
         (o.equipeNomes || []).some(n => n.toLowerCase().includes(fBusca)) ||
         formatarNumeroOS(o).includes(fBusca);
       return matchTec && matchTipo && matchDi && matchDf && matchBusca;
@@ -1817,10 +1835,18 @@ async function filtrar() {
     _tecMapGlobal = tecMap;
     _tecEquipeMapGlobal = tecEquipeMap;
 
+    const semObraR = (osData || []).filter(o => !o.obra_id && o.agendamento_id).map(o => o.agendamento_id);
+    const agClienteMapR = {};
+    if (semObraR.length) {
+      const { data: agListR } = await db.from('agendamentos').select('id, cliente_outro').in('id', semObraR);
+      (agListR || []).forEach(a => { agClienteMapR[a.id] = a.cliente_outro; });
+    }
+
     todasOSs = (osData || []).map(o => {
       const equipe = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id]
         .filter(Boolean).map(tid => tecMap[tid]?.nome).filter(Boolean);
       return { ...o, tecnicos: o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null,
+               _cliente_outro: agClienteMapR[o.agendamento_id] || null,
                equipeNomes: equipe, equipeId: tecEquipeMap[o.tecnico_id] || null };
     });
 
@@ -1838,7 +1864,7 @@ async function filtrar() {
     const matchDi    = !fDi   || !o.data_servico || o.data_servico >= fDi;
     const matchDf    = !fDf   || !o.data_servico || o.data_servico <= fDf;
     const matchBusca = !fBusca ||
-      (o.obras?.nome_cliente || '').toLowerCase().includes(fBusca) ||
+      (o.obras?.nome_cliente || o._cliente_outro || '').toLowerCase().includes(fBusca) ||
       (o.equipeNomes || []).some(n => n.toLowerCase().includes(fBusca)) ||
       formatarNumeroOS(o).includes(fBusca);
     return matchTec && matchSt && matchTipo && matchDi && matchDf && matchBusca;
@@ -1849,7 +1875,7 @@ async function filtrar() {
     let va, vb;
     if (sortField === 'data_servico') { va = a.data_servico; vb = b.data_servico; }
     else if (sortField === 'tecnico') { va = a.tecnicos?.nome || ''; vb = b.tecnicos?.nome || ''; }
-    else if (sortField === 'obra') { va = a.obras?.nome_cliente || ''; vb = b.obras?.nome_cliente || ''; }
+    else if (sortField === 'obra') { va = a.obras?.nome_cliente || a._cliente_outro || ''; vb = b.obras?.nome_cliente || b._cliente_outro || ''; }
     else { va = a[sortField] || ''; vb = b[sortField] || ''; }
     return sortDir === 'asc' ? va > vb ? 1 : -1 : va < vb ? 1 : -1;
   });
@@ -1933,7 +1959,7 @@ function renderTabela() {
       </td>
       <td>${data}</td>
       <td>${escHtml(o.equipeNomes?.join(', ') || '—')}</td>
-      <td title="${escHtml(o.obras?.endereco || '')}">${escHtml(o.obras?.nome_cliente || '—')}</td>
+      <td title="${escHtml(o.obras?.endereco || '')}">${escHtml(o.obras?.nome_cliente || o._cliente_outro || '—')}</td>
       <td>${statusBadge} ${noturnaBadge}</td>
       <td class="td-center">${nFotos > 0 ? `<span class="fotos-chip"><i data-lucide="image"></i>${nFotos}</span>` : '<span style="color:var(--text-3);">—</span>'}</td>
       <td style="white-space:nowrap;" onclick="event.stopPropagation()">
@@ -2008,7 +2034,7 @@ function verOS(id) {
     </div>` : ''}
     <div class="detail-item full">
       <label>Obra</label>
-      <span><strong>${escHtml(os.obras?.nome_cliente || '—')}</strong>${os.obras?.endereco ? `<span class="detail-address"><i data-lucide="map-pin"></i>${escHtml(os.obras.endereco)}</span>` : ''}</span>
+      <span><strong>${escHtml(os.obras?.nome_cliente || os._cliente_outro || '—')}</strong>${os.obras?.endereco ? `<span class="detail-address"><i data-lucide="map-pin"></i>${escHtml(os.obras.endereco)}</span>` : ''}</span>
     </div>
     <div class="detail-item">
       <label>Status</label>
@@ -2082,7 +2108,7 @@ function verOS(id) {
 
   const tipoLabel = (os.tipo_servico || 'execucao') === 'assistencia' ? 'Assistência' : 'Execução';
   document.getElementById('modalTitulo').innerHTML =
-    `<span style="font-size:0.75em;font-weight:500;color:var(--text-3);display:block;margin-bottom:2px;">${formatarNumeroOS(os)} · ${tipoLabel}</span>${escHtml(os.obras?.nome_cliente || 'Obra')}`;
+    `<span style="font-size:0.75em;font-weight:500;color:var(--text-3);display:block;margin-bottom:2px;">${formatarNumeroOS(os)} · ${tipoLabel}</span>${escHtml(os.obras?.nome_cliente || os._cliente_outro || 'Obra')}`;
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('modalOS').classList.add('open');
   lucide.createIcons();
@@ -2295,7 +2321,7 @@ function exportarExcel() {
     return {
     'Data': o.data_servico,
     'Equipe': o.equipeNomes?.join(', ') || '',
-    'Obra': o.obras?.nome_cliente || '',
+    'Obra': o.obras?.nome_cliente || o._cliente_outro || '',
     'Endereço': o.obras?.endereco || '',
     'Tipo de serviço': (o.tipo_servico || '').replace(/_/g,' '),
     'Status serviço': o.status_servico || '',
@@ -2467,7 +2493,7 @@ function exportarPDF() {
       return [
       formatarDataBR(o.data_servico || (o.criado_em ? o.criado_em.slice(0,10) : '')),
       o.equipeNomes?.join(', ') || '—',
-      o.obras?.nome_cliente || '—',
+      o.obras?.nome_cliente || o._cliente_outro || '—',
       [o.horario_inicio?.slice(0,5), o.horario_fim?.slice(0,5)].filter(Boolean).join(' - ') || '—',
       statusOSLabel(o),
       noturna ? `${noturna.label} (${formatarMoeda(noturna.valor)} por técnico)` : '',
@@ -2515,7 +2541,7 @@ function exportarPDF() {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(24, 24, 27);
-    doc.text(`${idx + 1}. ${o.obras?.nome_cliente || 'Obra sem nome'}`, margin + 4, y + 3);
+    doc.text(`${idx + 1}. ${o.obras?.nome_cliente || o._cliente_outro || 'Obra sem nome'}`, margin + 4, y + 3);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
@@ -2617,7 +2643,7 @@ async function exportarPDFOS(osId) {
     doc.setFillColor(...DARK);
     doc.rect(0, 35, pageW, 30, 'F');
 
-    const clienteNome = os.obras?.nome_cliente || 'Cliente não informado';
+    const clienteNome = os.obras?.nome_cliente || os._cliente_outro || 'Cliente não informado';
 
     // Número OS — canto direito
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
