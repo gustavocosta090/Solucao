@@ -9,7 +9,7 @@ import { getToken, getSiteId, fetchComRetry } from './_sharepoint.js';
 // ── Rate limiter in-memory (best-effort em serverless) ────────────────────────
 // Janela deslizante de 60s, máx 20 uploads por usuário
 const _uploadRate = new Map(); // userId → { count, windowStart }
-const RATE_MAX    = 20;
+const RATE_MAX    = 50;
 const RATE_WINDOW = 60_000; // 60 s
 
 function checkRateLimit(userId) {
@@ -72,6 +72,9 @@ function caminhoSeguro(folderPath, filename) {
   // Agenda Técnica: aceita apenas PDF
   if (path.startsWith('Agenda Tecnica/')) return EXT_AGENDA.has(ext);
 
+  // Colaboradores (fotos do RH): apenas imagens
+  if (path.startsWith('Colaboradores/')) return EXT_FOTOS.has(ext);
+
   // Obras e Clientes: tipo de arquivo depende da subpasta
   if (path.startsWith('Obras e Clientes ')) {
     const partes = path.split('/').filter(Boolean);
@@ -115,6 +118,26 @@ export default async function handler(req, res) {
     const token    = await getToken();
     const siteId   = await getSiteId(token);
     const filePath = `${folderPath}/${filename}`;
+
+    // Pasta de Colaboradores pode não existir ainda — cria a cadeia de pastas (idempotente)
+    if (folderPath.startsWith('Colaboradores/') || folderPath === 'Colaboradores') {
+      const partes = folderPath.split('/').filter(Boolean);
+      for (let i = 0; i < partes.length; i++) {
+        const parent  = partes.slice(0, i).join('/');
+        const nome    = partes[i];
+        const parentEnc = parent ? parent.split('/').map(encodeURIComponent).join('/') : null;
+        const url = parentEnc
+          ? `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${parentEnc}:/children`
+          : `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root/children`;
+        try {
+          await fetchComRetry(url, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: nome, folder: {}, '@microsoft.graph.conflictBehavior': 'fail' }),
+          }, { timeout: 12000 });
+        } catch (e) { /* já existe → ok */ }
+      }
+    }
 
     const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
 

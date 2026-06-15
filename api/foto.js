@@ -1,7 +1,7 @@
 // SAOS-AUDIT: build 2026-06-01 pós-auditoria
 // api/foto.js — proxy de imagens/arquivos do SharePoint
-// build: 2026-06-01i
-// GET /api/foto?path=Ordens%20de%20Servi%C3%A7o%2Fcliente%2Farquivo.jpg
+// build: 2026-06-08a — aceita token via query ?t= (tags <img>/<video> autenticam)
+// GET /api/foto?path=Ordens%20de%20Servi%C3%A7o%2Fcliente%2Farquivo.jpg&t=<jwt>
 // Busca o arquivo server-side e entrega pro browser. Requer sessão Supabase válida.
 
 import { getToken, getSiteId, fetchComRetry } from './_sharepoint.js';
@@ -50,6 +50,11 @@ function caminhoFotoSeguro(filePath) {
   if (path.startsWith('Agenda Tecnica/')) {
     if (partes.length < 4) return false;
     return ext === 'pdf';
+  }
+
+  // Colaboradores (fotos do RH): Colaboradores/Fotos/[arquivo].jpg — apenas imagens
+  if (path.startsWith('Colaboradores/')) {
+    return ['jpg', 'jpeg', 'png', 'webp', 'heic'].includes(ext);
   }
 
   // Todos os outros caminhos devem estar em Obras e Clientes AAAA/

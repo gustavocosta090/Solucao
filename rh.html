@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-11f — RH: template aniversário tenta jpg/png/jpeg/webp -->
+<!-- build: 2026-06-11g — RH: card aniversário com mensagem + ajuste de posição -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -505,9 +505,16 @@ async function _cardAniversario(ctx, cv){
   else{ ctx.fillStyle='#2e4046'; ctx.fillRect(px,py,pw,ph); ctx.fillStyle='#7d9099'; ctx.font='800 120px Inter'; ctx.textAlign='center'; ctx.fillText(iniciais(c?.nome||'?'),W/2,py+ph/2+42); }
   ctx.restore();
 
-  // Nome (abaixo da moldura) — texto ESCURO porque o fundo da arte é claro
-  ctx.textAlign='center'; ctx.fillStyle='#2B2B2B'; ctx.font='700 ' + Math.round(0.044*W) + 'px Inter, sans-serif';
-  ctx.fillText(c?.nome || 'Nome do colaborador', W/2, 0.752*H);
+  // Nome (logo abaixo da moldura) — texto ESCURO porque o fundo da arte é claro
+  ctx.textAlign='center'; ctx.fillStyle='#2B2B2B'; ctx.font='700 ' + Math.round(0.046*W) + 'px Inter, sans-serif';
+  ctx.fillText(c?.nome || 'Nome do colaborador', W/2, 0.724*H);
+
+  // Mensagem (abaixo do nome, acima da logo da arte)
+  const msg = document.getElementById('card-msg')?.value || '';
+  if (msg) {
+    ctx.fillStyle='#5a5a5a'; ctx.font='400 ' + Math.round(0.028*W) + 'px Inter, sans-serif';
+    _wrap(ctx, msg, W/2, 0.762*H, W*0.72, Math.round(0.038*W));
+  }
   ctx.textAlign='left';
 }
 
