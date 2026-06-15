@@ -897,7 +897,7 @@ const PERFIL_LABELS = {
   tecnico: 'Técnico', auxiliar: 'Auxiliar', supervisor: 'Supervisor', lider: 'Líder',
   coordenador: 'Coordenador', agendamento: 'Agendamento', gerente_comercial: 'Gerente Comercial',
   projetista: 'Projetista', coordenador_projetos: 'Coordenador de Projetos',
-  vistoriador: 'Vistoriador', estoque: 'Estoque', admin_geral: 'Administrador Geral',
+  vistoriador: 'Vistoriador', estoque: 'Estoque', rh: 'RH', admin_geral: 'Administrador Geral',
 };
 
 let _perfis = {};  // role → { label, paginas[], salvo (existe no banco) }
@@ -1183,7 +1183,7 @@ async function carregarDados() {
       ? '<span class="badge badge-ativo">Ativo</span>'
       : '<span class="badge badge-sem-conta">Sem conta</span>';
 
-    const podeDemitir = _meuRole === 'coordenador' || t.role !== 'coordenador';
+    const podeDemitir = ['coordenador','admin_geral'].includes(_meuRole) || t.role !== 'coordenador';
     const acoes = t.auth_user_id
       ? `<div class="btn-actions">
           <button class="btn-sm btn-edit" onclick="abrirEditar(${t.id})" title="Editar usuário"><i data-lucide="pencil"></i> Editar</button>

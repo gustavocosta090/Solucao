@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-05-31h -->
+<!-- build: 2026-06-11 — guard aceita admin_geral -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -21,18 +21,20 @@
   --border:rgba(255,255,255,0.08);--border-strong:rgba(255,255,255,0.12);--border-hover:rgba(255,255,255,0.16);
   --amber:#F59E0B;--amber-text:#FCD34D;--red:#EF4444;--red-text:#F87171;--radius:8px;
 }
-:root[data-theme="light"]{
-  --bg:#F4F4F5;--surface-1:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F1;
-  --text-1:#09090B;--text-2:#71717A;--text-3:#A1A1AA;
-  --border:rgba(0,0,0,0.08);--border-strong:rgba(0,0,0,0.14);--border-hover:rgba(0,0,0,0.16);
-  --amber-text:#B45309;--red-text:#B91C1C;
-}
-@media(prefers-color-scheme:light){:root[data-theme="auto"]{
-  --bg:#F4F4F5;--surface-1:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F1;
-  --text-1:#09090B;--text-2:#71717A;--text-3:#A1A1AA;
-  --border:rgba(0,0,0,0.08);--border-strong:rgba(0,0,0,0.14);--border-hover:rgba(0,0,0,0.16);
-  --amber-text:#B45309;--red-text:#B91C1C;
-}}
+	:root[data-theme="light"]{
+	  --bg:#F4F4F5;--surface-1:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F1;
+	  --text-1:#09090B;--text-2:#71717A;--text-3:#A1A1AA;
+	  --border:rgba(0,0,0,0.08);--border-strong:rgba(0,0,0,0.14);--border-hover:rgba(0,0,0,0.16);
+	  --amber-text:#B45309;--red-text:#B91C1C;
+	  --field-bg:#FFFFFF;--field-border:rgba(15,23,42,0.14);--field-focus:rgba(37,99,235,0.45);
+	}
+	@media(prefers-color-scheme:light){:root[data-theme="auto"]{
+	  --bg:#F4F4F5;--surface-1:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F1;
+	  --text-1:#09090B;--text-2:#71717A;--text-3:#A1A1AA;
+	  --border:rgba(0,0,0,0.08);--border-strong:rgba(0,0,0,0.14);--border-hover:rgba(0,0,0,0.16);
+	  --amber-text:#B45309;--red-text:#B91C1C;
+	  --field-bg:#FFFFFF;--field-border:rgba(15,23,42,0.14);--field-focus:rgba(37,99,235,0.45);
+	}}
 html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh;-webkit-font-smoothing:antialiased}
 
 /* ── Topbar ── */
@@ -142,15 +144,35 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .modal-pend h2 i{width:18px;height:18px;color:var(--primary)}
 .form-group{margin-bottom:14px}
 .form-group label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-2);margin-bottom:6px}
-.form-group select,.form-group input,.form-group textarea{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:0.85rem;outline:none;transition:border-color 150ms;appearance:none}
-.form-group select:focus,.form-group input:focus,.form-group textarea:focus{border-color:rgba(62,207,142,.4)}
-.form-group select option{background:var(--surface-2)}
-.form-group textarea{resize:vertical;min-height:88px;line-height:1.55}
-.toggle-urgente{display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;transition:border-color 150ms}
-.toggle-urgente:hover{border-color:var(--border-hover)}
-.toggle-urgente input{accent-color:var(--red);width:16px;height:16px}
-.toggle-urgente span{font-size:13px;color:var(--text-2);font-weight:500}
-.toggle-urgente strong{color:var(--red-text)}
+	.form-group select,.form-group input,.form-group textarea{width:100%;padding:9px 11px;background:var(--field-bg,var(--bg));border:1px solid var(--field-border,var(--border));border-radius:6px;color:var(--text-1);font-family:inherit;font-size:0.85rem;outline:none;transition:border-color 150ms,box-shadow 150ms;background-clip:padding-box;appearance:none}
+	.form-group select:focus,.form-group input:focus,.form-group textarea:focus{border-color:var(--field-focus,rgba(62,207,142,.4));box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+	.form-group select option{background:var(--surface-2)}
+	.form-group textarea{resize:vertical;min-height:88px;line-height:1.55}
+		.toggle-urgente{display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--field-bg,var(--surface-2));border:1px solid var(--field-border,var(--border));border-radius:6px;transition:border-color 150ms}
+	.toggle-urgente:hover{border-color:var(--border-hover)}
+	.toggle-urgente input{accent-color:var(--red);width:16px;height:16px}
+	.toggle-urgente span{font-size:13px;color:var(--text-2);font-weight:500}
+	.toggle-urgente strong{color:var(--red-text)}
+	:root[data-theme="light"] .modal-pend .form-group select,
+	:root[data-theme="light"] .modal-pend .form-group input,
+	:root[data-theme="light"] .modal-pend .form-group textarea,
+	:root[data-tema="classico"] .modal-pend .form-group select,
+	:root[data-tema="classico"] .modal-pend .form-group input,
+	:root[data-tema="classico"] .modal-pend .form-group textarea{
+	  background:#FFFFFF!important;
+	  border-color:rgba(15,23,42,0.14)!important;
+	  color:#0F172A!important;
+	  box-shadow:0 1px 2px rgba(15,23,42,0.04)!important;
+	}
+	:root[data-theme="light"] .modal-pend .form-group select:focus,
+	:root[data-theme="light"] .modal-pend .form-group input:focus,
+	:root[data-theme="light"] .modal-pend .form-group textarea:focus,
+	:root[data-tema="classico"] .modal-pend .form-group select:focus,
+	:root[data-tema="classico"] .modal-pend .form-group input:focus,
+	:root[data-tema="classico"] .modal-pend .form-group textarea:focus{
+	  border-color:rgba(37,99,235,0.45)!important;
+	  box-shadow:0 0 0 3px rgba(37,99,235,0.10),0 1px 2px rgba(15,23,42,0.04)!important;
+	}
 .modal-footer{display:flex;gap:10px;margin-top:20px}
 .btn-salvar{flex:1;height:42px;background:var(--primary);border:none;border-radius:6px;color:#0A0A0A;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:opacity .15s}
 .btn-salvar:hover{opacity:.88}
@@ -690,7 +712,7 @@ async function init(){
   if(!session){window.location.href='login.html';return;}
 
   const {data:eu}=await db.from('tecnicos').select('id,role,nome').eq('auth_user_id',session.user.id).single();
-  if(!eu||!['supervisor','coordenador','agendamento'].includes(eu.role)){
+  if(!eu||!['supervisor','coordenador','agendamento','lider','admin_geral'].includes(eu.role)){
     window.location.href='supervisor.html';return;
   }
   meuTecId=eu.id;

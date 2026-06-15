@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-08d — agenda noturna a partir de 18:00 + badge "Aguardando decisão" -->
+<!-- build: 2026-06-11 — guard aceita admin_geral -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1239,6 +1239,7 @@
     <option value="pendente">Pendente</option>
     <option value="concluida">Concluída</option>
     <option value="noturna">Agenda noturna</option>
+    <option value="aguardando">Aguardando definição</option>
     <option value="banco_horas">Banco de horas</option>
     <option value="cancelada">Cancelada</option>
   </select>
@@ -1492,7 +1493,7 @@ function fotoSrc(url) {
     .eq('auth_user_id', session.user.id)
     .single();
 
-  if (!eu || !['supervisor', 'coordenador', 'agendamento', 'lider'].includes(eu.role)) {
+  if (!eu || !['supervisor', 'coordenador', 'agendamento', 'lider', 'admin_geral'].includes(eu.role)) {
     showToast('Acesso não autorizado. Você será redirecionado.', 'error');
     window.location.href = 'os.html';
     return;
@@ -1861,7 +1862,7 @@ async function filtrar() {
     const matchTec   = !fTec  || String(o.tecnico_id) === fTec || String(o.auxiliar_id) === fTec || String(o.auxiliar2_id) === fTec || String(o.auxiliar3_id) === fTec;
     const stRaw      = o.status_aprovacao || 'pendente';
     const stOS       = (stRaw === 'aprovada' || stRaw === 'concluida') ? 'concluida' : 'pendente';
-    const matchSt    = !fSt   || (fSt === 'noturna' ? isAgendaNoturna(o) : fSt === 'banco_horas' ? o.noturna_status === 'banco_horas' : stOS === fSt);
+    const matchSt    = !fSt   || (fSt === 'noturna' ? isAgendaNoturna(o) : fSt === 'aguardando' ? (isAgendaNoturna(o) && !o.noturna_status) : fSt === 'banco_horas' ? o.noturna_status === 'banco_horas' : stOS === fSt);
     const matchTipo  = !fTipo || (o.tipo_servico || 'execucao') === fTipo;
     const matchDi    = !fDi   || !o.data_servico || o.data_servico >= fDi;
     const matchDf    = !fDf   || !o.data_servico || o.data_servico <= fDf;

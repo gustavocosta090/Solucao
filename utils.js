@@ -564,6 +564,7 @@ var SAOS_NAV_LINKS = [
   { href: 'projetista.html',           label: 'Meu Painel',             id: 'projetista',           roles: ['projetista'] },
   { href: 'coordenador_projetos.html', label: 'Projetos',               id: 'coordenador-projetos', roles: ['coordenador_projetos'] },
   { href: 'dashboard.html',            label: 'Painel Executivo',       id: 'dashboard',            roles: ['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador','lider','estoque'] },
+  { href: 'rh.html',                   label: 'Colaboradores',          id: 'rh',                   roles: ['rh'] },
 ];
 
 // Lista de páginas disponíveis (para o editor de perfis no Admin)

@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-08a — botão excluir assistência duplicada (coordenador) -->
+<!-- build: 2026-06-11 — guard aceita admin_geral -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -438,7 +438,7 @@
 </div>
 
 <script>
-const ROLES_PERMITIDOS = ['agendamento','supervisor','coordenador'];
+const ROLES_PERMITIDOS = ['agendamento','supervisor','coordenador','lider','admin_geral'];
 const PER_PAGE = 25;
 
 let todasOS     = [];  // OS com tipo_servico='assistencia'
@@ -690,7 +690,7 @@ function renderTabela() {
         : `<button class="btn-ver" onclick="abrirModal(${o.id}, event)"><i data-lucide="eye" style="width:12px;height:12px"></i> Ver</button>`;
 
     // Excluir assistência duplicada — somente coordenador
-    const btnDel = _role === 'coordenador'
+    const btnDel = ['coordenador','admin_geral'].includes(_role)
       ? ` <button class="btn-ver" style="border-color:rgba(248,113,113,.4);color:#f87171;" title="Excluir esta assistência" onclick="deletarAssistencia(${o.id}, event)"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>`
       : '';
 

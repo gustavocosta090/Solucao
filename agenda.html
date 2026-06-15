@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-08b — replicar dias também na edição + preserva N.OS do dia editado -->
+<!-- build: 2026-06-11 — guard aceita admin_geral -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1345,11 +1345,11 @@
     <div class="form-group" id="tipo-servico-group">
       <div class="radio-group">
         <label class="radio-option">
-          <input type="radio" name="tipo-servico" id="tipo-exec" value="execucao" checked>
+          <input type="radio" name="tipo-servico" id="tipo-exec" value="execucao" checked onchange="_atualizarOpcaoRelatorio()">
           Execução de projeto
         </label>
         <label class="radio-option">
-          <input type="radio" name="tipo-servico" id="tipo-assist" value="assistencia">
+          <input type="radio" name="tipo-servico" id="tipo-assist" value="assistencia" onchange="_atualizarOpcaoRelatorio()">
           Assistência técnica
         </label>
       </div>
@@ -1419,6 +1419,10 @@
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--primary);cursor:pointer;padding:7px 10px;background:rgba(62,207,142,.06);border:1px solid rgba(62,207,142,.2);border-radius:6px;margin-bottom:10px">
           <input type="checkbox" id="f-mesma-os" style="accent-color:var(--primary);width:14px;height:14px">
           Mesma N.OS para todos os dias — gera um único número de OS para toda a replicação
+        </label>
+        <label id="wrap-mesmo-relatorio" style="display:none;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#A5B4FC;cursor:pointer;padding:7px 10px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:6px;margin-bottom:10px">
+          <input type="checkbox" id="f-mesmo-relatorio" style="accent-color:#818CF8;width:14px;height:14px">
+          Mesmo relatório de assistência para todos os dias — um único relatório cobre toda a replicação
         </label>
         <div id="rep-preview" style="font-size:11px;color:var(--text-3);line-height:1.8"></div>
       </div>
@@ -1593,8 +1597,8 @@ async function init() {
   roleAtual = eu?.role;
   _meuTecId = eu?.id || null;
 
-  const podeEditar = ['agendamento', 'coordenador', 'supervisor'].includes(roleAtual);
-  const podeDisparar = ['agendamento', 'coordenador', 'supervisor'].includes(roleAtual);
+  const podeEditar = ['agendamento', 'coordenador', 'supervisor', 'admin_geral'].includes(roleAtual);
+  const podeDisparar = ['agendamento', 'coordenador', 'supervisor', 'admin_geral'].includes(roleAtual);
 
   if (!podeEditar) {
     modoVisualizacao = true;
@@ -2251,6 +2255,9 @@ async function abrirModal(data = '') {
   if (repCb) { repCb.checked = false; toggleReplicar(false); }
   const osSharedCb = document.getElementById('f-mesma-os');
   if (osSharedCb) osSharedCb.checked = false;
+  const relCb = document.getElementById('f-mesmo-relatorio');
+  if (relCb) relCb.checked = false;
+  _atualizarOpcaoRelatorio();
   const motWrap = document.getElementById('motorista-wrap');
   if (motWrap) motWrap.style.display = 'none';
   const motSel = document.getElementById('f-motorista');
@@ -2310,6 +2317,7 @@ async function editarAgendamento(id) {
     .then(({ data: osAssoc }) => {
       const tipo = osAssoc?.tipo_servico || 'execucao';
       document.querySelectorAll('input[name="tipo-servico"]').forEach(r => { r.checked = r.value === tipo; });
+      _atualizarOpcaoRelatorio();
     });
 
   const obraVal = ag.obra_id ? String(ag.obra_id) : (ag.cliente_outro ? 'outro' : '');
@@ -2338,6 +2346,8 @@ async function editarAgendamento(id) {
   if (repCbEdit) { repCbEdit.checked = false; toggleReplicar(false); }
   const repFimEdit = document.getElementById('f-data-fim-rep');
   if (repFimEdit) repFimEdit.value = '';
+  const relCbEdit = document.getElementById('f-mesmo-relatorio');
+  if (relCbEdit) relCbEdit.checked = false;
 
   document.getElementById('btn-excluir').style.display = 'flex';
   document.getElementById('overlay').classList.add('aberto');
@@ -2493,7 +2503,9 @@ async function salvarAgendamento() {
   // Lista de datas a salvar (replicar ou só a data principal)
   // Replicar funciona tanto ao criar quanto ao editar (no editar, mantém o dia atual e cria os demais)
   const replicar   = document.getElementById('f-replicar')?.checked;
-  const mesmaOS    = replicar && document.getElementById('f-mesma-os')?.checked;
+  // "Mesma OS" OU (assistência + "mesmo relatório") → um único relatório/OS para todos os dias
+  const mesmoRelatorioAssist = tipoServico === 'assistencia' && document.getElementById('f-mesmo-relatorio')?.checked;
+  const mesmaOS    = replicar && (document.getElementById('f-mesma-os')?.checked || mesmoRelatorioAssist);
   let diasSalvar   = replicar ? diasParaReplicar() : [data];
 
   // Validação: replicar marcado mas sem data fim ou data fim inválida
@@ -4012,7 +4024,18 @@ async function exportarProgramacaoEstoque() {
 // ── REPLICAR AGENDAMENTO ──────────────────────────────────────
 function toggleReplicar(ativo) {
   document.getElementById('replicar-wrap').style.display = ativo ? 'block' : 'none';
-  if (ativo) atualizarPreviewRep();
+  if (ativo) { atualizarPreviewRep(); _atualizarOpcaoRelatorio(); }
+}
+
+// Mostra a opção "mesmo relatório de assistência" só quando tipo = assistência
+function _atualizarOpcaoRelatorio() {
+  const ehAssist = document.getElementById('tipo-assist')?.checked;
+  const wrap = document.getElementById('wrap-mesmo-relatorio');
+  if (wrap) wrap.style.display = ehAssist ? 'flex' : 'none';
+  if (!ehAssist) {
+    const cb = document.getElementById('f-mesmo-relatorio');
+    if (cb) cb.checked = false;
+  }
 }
 
 function diasParaReplicar() {

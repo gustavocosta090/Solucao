@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-01q -->
+<!-- build: 2026-06-11 — guard aceita admin_geral -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -622,7 +622,7 @@ async function init() {
     return;
   }
 
-  if (tec.role && !['tecnico','auxiliar','lider'].includes(tec.role)) {
+  if (tec.role && !['tecnico','auxiliar','lider','admin_geral'].includes(tec.role)) {
     window.location.href = 'supervisor.html';
     return;
   }

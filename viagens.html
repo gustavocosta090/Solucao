@@ -1,5 +1,5 @@
 <!-- SAOS: viagens.html -->
-<!-- build: 2026-06-08b — PDFs viagem: ordem fixa, total=qtd dias, em-dash corrigido -->
+<!-- build: 2026-06-11 — guard aceita admin_geral -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -147,7 +147,7 @@ function _semana(off){
   if(!session){location.href='login.html';return;}
 
   const {data:eu} = await _db.from('tecnicos').select('role,nome').eq('auth_user_id',session.user.id).single();
-  if(!eu||!['supervisor','coordenador','agendamento'].includes(eu.role)){location.href='obras.html';return;}
+  if(!eu||!['supervisor','coordenador','agendamento','lider','admin_geral'].includes(eu.role)){location.href='obras.html';return;}
 
   renderTopbar(eu.nome,eu.role,'viagens');
   lucide.createIcons();

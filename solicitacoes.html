@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- build: 2026-06-11 — guard aceita admin_geral -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -348,7 +349,7 @@ function _clienteLabel(s) {
     .eq('auth_user_id', session.user.id)
     .single();
 
-  if (!eu || !['coordenador', 'agendamento'].includes(eu.role)) {
+  if (!eu || !['coordenador', 'agendamento', 'admin_geral'].includes(eu.role)) {
     location.href = 'obras.html';
     return;
   }
