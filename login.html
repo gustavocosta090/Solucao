@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-05-31h -->
+<!-- build: 2026-06-11 — login do RH cai direto em rh.html -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -698,6 +698,8 @@ async function redirecionarPorRole(userId) {
       window.location.href = 'coordenador_projetos.html';
     } else if (role === 'vistoriador') {
       window.location.href = 'vistoria.html';
+    } else if (role === 'rh') {
+      window.location.href = 'rh.html';
     } else {
       // fallback: envia para obras (roles desconhecidas)
       window.location.href = 'obras.html';

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-11e — RH: card aniversário arte clara (fundo claro, nome escuro, canvas no tamanho da arte) -->
+<!-- build: 2026-06-11f — RH: template aniversário tenta jpg/png/jpeg/webp -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -474,8 +474,17 @@ function _roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcT
 function _desenharFotoCover(ctx,img,x,y,w,h){ const s=Math.max(w/img.width,h/img.height); const dw=img.width*s,dh=img.height*s; ctx.drawImage(img,x+(w-dw)/2,y+(h-dh)/2,dw,dh); }
 
 // Card de aniversário — usa a arte oficial como fundo; só sobrepõe FOTO e NOME
+async function _carregarTemplate(){
+  // Tenta vários nomes/extensões — o arquivo precisa estar na raiz do projeto
+  for (const nome of ['card-aniversario.jpg','card-aniversario.png','card-aniversario.jpeg','card-aniversario.webp']) {
+    const img = await _carregarImg(nome + '?v=' + Date.now());
+    if (img) return img;
+  }
+  return null;
+}
+
 async function _cardAniversario(ctx, cv){
-  const tpl = await _carregarImg('card-aniversario.jpg');
+  const tpl = await _carregarTemplate();
   let W, H;
   if (tpl) {
     cv.width = tpl.naturalWidth || 1080; cv.height = tpl.naturalHeight || 1920;
