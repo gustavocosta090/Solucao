@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-08b — fotoSrc() token + onAuthStateChange mantém token fresco -->
+<!-- build: 2026-06-08c — fotoSrc token + cliente_outro nas assistências -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -747,7 +747,7 @@ function fotoSrc(url) {
     .eq('auth_user_id', session.user.id).single();
 
   if (!tec) { window.location.href = 'login.html'; return; }
-  if (tec.role !== 'tecnico' && tec.role !== 'auxiliar' && tec.role !== 'lider') { window.location.href = 'supervisor.html'; return; }
+  if (!['tecnico','auxiliar','lider','admin_geral'].includes(tec.role)) { window.location.href = 'supervisor.html'; return; }
 
   tecnicoAtual = tec;
   renderTopbar(tec.nome, tec.role, 'minhas-os');
@@ -807,6 +807,15 @@ async function carregarOSs() {
   // Técnico só vê OS do dia atual ou anteriores (agendas futuras não contam como pendente)
   todasOSs = (data || []).filter(o => !o.data_servico || o.data_servico <= hojeISO);
 
+  // Assistências têm obra_id null — cliente vem de agendamentos.cliente_outro
+  const semObra = todasOSs.filter(o => !o.obra_id && o.agendamento_id).map(o => o.agendamento_id);
+  if (semObra.length) {
+    const { data: agList } = await db.from('agendamentos').select('id, cliente_outro').in('id', semObra);
+    const agMap = {};
+    (agList || []).forEach(a => { agMap[a.id] = a.cliente_outro; });
+    todasOSs.forEach(o => { o._cliente_outro = agMap[o.agendamento_id] || null; });
+  }
+
   document.getElementById('statTotal').textContent     = todasOSs.length;
   document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
   document.getElementById('statPendentes').textContent = todasOSs.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
@@ -834,7 +843,7 @@ function filtrar() {
     const matchStatus = filtroStatus === 'todos' || stNorm === filtroStatus;
     const matchInicio = !dataInicio || dataOS >= dataInicio;
     const matchFim    = !dataFim    || dataOS <= dataFim;
-    const matchBusca  = !busca || (o.obras?.nome_cliente || '').toLowerCase().includes(busca)
+    const matchBusca  = !busca || (o.obras?.nome_cliente || o._cliente_outro || '').toLowerCase().includes(busca)
                                || (o.obras?.endereco || '').toLowerCase().includes(busca);
     return matchStatus && matchInicio && matchFim && matchBusca;
   });
@@ -879,7 +888,7 @@ function renderTabela(lista) {
           : `<div class="cell-secondary">${fmtData(os.criado_em)}</div>`}
       </td>
       <td>
-        <div class="cell-primary">${escHtml(os.obras?.nome_cliente || '—')}</div>
+        <div class="cell-primary">${escHtml(os.obras?.nome_cliente || os._cliente_outro || '—')}</div>
         ${os.obras?.endereco ? `<div class="cell-secondary">${escHtml(os.obras.endereco)}</div>` : ''}
       </td>
       <td class="cell-obs">${escHtml((os.observacoes || os.servicos_realizados || '—').slice(0,80))}</td>
@@ -900,7 +909,7 @@ function renderCards(lista) {
   container.innerHTML = lista.map(os => `
     <div class="os-card" onclick="verDetalhe(${os.id})">
       <div class="os-card-header">
-        <div class="os-obra">${escHtml(os.obras?.nome_cliente || '—')}</div>
+        <div class="os-obra">${escHtml(os.obras?.nome_cliente || os._cliente_outro || '—')}</div>
         <div class="os-data">
           ${os.data_servico
             ? `<div style="font-weight:600;color:#FFFFFF">${fmtData(os.data_servico + 'T12:00')}</div><div>env. ${fmtData(os.criado_em)}</div>`
@@ -933,7 +942,7 @@ function verDetalhe(id) {
     ${DR('Equipe', equipeNomes)}
     ${os.data_servico ? DR('Data do serviço', fmtData(os.data_servico + 'T12:00')) : ''}
     ${DR('Horário', horario)}
-    <div class="detail-row"><div class="detail-label">Obra</div><div class="detail-value">${escHtml(os.obras?.nome_cliente || '—')}${os.obras?.endereco ? `<br><span style="color:#52525B;font-size:0.78rem">${escHtml(os.obras.endereco)}</span>` : ''}</div></div>
+    <div class="detail-row"><div class="detail-label">Obra</div><div class="detail-value">${escHtml(os.obras?.nome_cliente || os._cliente_outro || '—')}${os.obras?.endereco ? `<br><span style="color:#52525B;font-size:0.78rem">${escHtml(os.obras.endereco)}</span>` : ''}</div></div>
     <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value">${badgeHTML(os.status_aprovacao)}</div></div>
     ${os.observacao_supervisor ? `<div class="obs-supervisor"><div class="obs-sup-label">Obs. do supervisor</div>${escHtml(os.observacao_supervisor)}</div>` : ''}
     <div class="modal-section-divider"></div>
@@ -961,7 +970,7 @@ function verDetalhe(id) {
     </div>`;
   }
 
-  document.getElementById('modalTitulo').textContent = `OS — ${os.obras?.nome_cliente || 'Obra'}`;
+  document.getElementById('modalTitulo').textContent = `OS — ${os.obras?.nome_cliente || os._cliente_outro || 'Obra'}`;
   document.getElementById('modalConteudo').innerHTML = html;
   document.getElementById('modalOverlay').classList.add('aberto');
   lucide.createIcons();

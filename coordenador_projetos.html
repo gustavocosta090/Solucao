@@ -308,7 +308,7 @@ const PER_PAGE = 25;
   if (!session) { window.location.href = 'login.html'; return; }
 
   const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
-  if (!eu || eu.role !== 'coordenador_projetos') {
+  if (!eu || !['coordenador_projetos','admin_geral'].includes(eu.role)) {
     window.location.href = 'obras.html';
     return;
   }

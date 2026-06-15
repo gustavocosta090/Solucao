@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-08c — lightbox z-index 2000 (acima do modal da OS) -->
+<!-- build: 2026-06-08d — lightbox z-index 2000 + oculta OS canceladas -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -564,7 +564,7 @@ const CHECKLIST_VISTORIA = {
 };
 
 // Roles com permissão de editar campos da obra
-const PODE_EDITAR = ['coordenador', 'supervisor', 'agendamento', 'coordenador_projetos'];
+const PODE_EDITAR = ['coordenador', 'supervisor', 'agendamento', 'coordenador_projetos', 'admin_geral'];
 async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
@@ -794,6 +794,7 @@ async function carregarObra() {
     db.from('ordens_de_servico')
       .select('*')
       .eq('obra_id', obraId)
+      .neq('status_aprovacao', 'cancelada')
       .order('criado_em', { ascending: false }),
     db.from('tecnicos').select('id, nome'),
     db.from('relatorios_vistoria')

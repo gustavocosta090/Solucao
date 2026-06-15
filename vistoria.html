@@ -194,7 +194,7 @@ async function iniciar() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) { location.href = 'login.html'; return; }
   const { data: eu } = await db.from('tecnicos').select('id,nome,role').eq('auth_user_id', session.user.id).single();
-  if (!eu || eu.role !== 'vistoriador') {
+  if (!eu || !['vistoriador','admin_geral'].includes(eu.role)) {
     const dest = eu?.role === 'supervisor' || eu?.role === 'coordenador' ? 'supervisor.html' : 'obras.html';
     showToast('Acesso restrito.', 'error'); location.href = dest; return;
   }

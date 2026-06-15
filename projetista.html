@@ -286,7 +286,7 @@ let allObras = [];
   if (!session) { window.location.href = 'login.html'; return; }
 
   const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
-  if (!eu || eu.role !== 'projetista') {
+  if (!eu || !['projetista','admin_geral'].includes(eu.role)) {
     window.location.href = 'obras.html';
     return;
   }

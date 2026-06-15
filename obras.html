@@ -960,7 +960,7 @@
     }
 
     // Unificar duplicadas: apenas coordenador
-    if (userRole === 'coordenador') {
+    if (['coordenador','admin_geral'].includes(userRole)) {
       const btnU = document.getElementById('btn-unificar');
       if (btnU) btnU.style.display = 'inline-flex';
     }
@@ -1147,7 +1147,7 @@
     const fase = FASES[obra.fase_atual] || { label: obra.fase_atual, prazo: '' };
     const consultor = obra.consultores?.nome ?? '—';
     const status = obra.status_compra ?? fase.prazo;
-    const podeApagar = userRole === 'coordenador' || userRole === 'supervisor';
+    const podeApagar = ['coordenador','supervisor','admin_geral'].includes(userRole);
     const nomeEsc = escHtml(obra.nome_cliente).replace(/'/g, "\\'");
 
     const btnApagar = podeApagar

@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-05-31h -->
+<!-- build: 2026-06-11a — Perfis de Acesso (criar/editar) + role admin_geral -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -344,6 +344,11 @@
     color: #FDE047;
   }
 
+  .badge-admin_geral {
+    background: rgba(239, 68, 68, 0.12);
+    color: #FCA5A5;
+  }
+
   .badge-ativo {
     background: var(--primary-muted);
     color: var(--primary);
@@ -650,6 +655,46 @@
     <pre id="log-numerar-os" style="display:none;margin-top:14px;max-height:320px;overflow:auto;background:rgba(0,0,0,.25);border:1px solid var(--border,#27272A);border-radius:8px;padding:12px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;"></pre>
   </div>
 
+  <!-- Perfis de Acesso -->
+  <div class="card">
+    <div class="section-header">
+      <i data-lucide="shield"></i>
+      <h2>Perfis de Acesso</h2>
+    </div>
+    <p style="color:var(--text-muted,#9CA3AF);font-size:14px;margin:0 0 14px;">
+      Defina quais páginas do menu cada perfil pode acessar. Alterações valem para todos os usuários do perfil (ao recarregarem a página). Perfis sem configuração salva usam o padrão do sistema.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
+      <div class="form-group" style="margin:0;min-width:220px;">
+        <label for="perfil-select">Perfil</label>
+        <select id="perfil-select" onchange="renderPerfilPaginas()"></select>
+      </div>
+      <button class="btn-secondary" style="width:auto;" onclick="document.getElementById('novo-perfil-wrap').style.display='flex'">
+        <i data-lucide="plus"></i> Novo perfil
+      </button>
+    </div>
+    <div id="novo-perfil-wrap" style="display:none;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;padding:12px;border:1px dashed var(--border,#27272A);border-radius:8px;">
+      <div class="form-group" style="margin:0;">
+        <label>Chave (sem espaços, ex: financeiro)</label>
+        <input type="text" id="novo-perfil-key" placeholder="ex: financeiro">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Nome de exibição</label>
+        <input type="text" id="novo-perfil-label" placeholder="ex: Financeiro">
+      </div>
+      <button class="btn-primary" style="width:auto;" onclick="criarNovoPerfil()">Criar</button>
+    </div>
+    <div id="perfil-paginas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:14px;"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button id="btn-salvar-perfil" class="btn-primary" style="width:auto;" onclick="salvarPerfil()">
+        <i data-lucide="save"></i> Salvar perfil
+      </button>
+      <button class="btn-secondary" style="width:auto;border-color:rgba(248,113,113,.4);color:#f87171;" onclick="excluirPerfil()">
+        <i data-lucide="trash-2"></i> Excluir configuração
+      </button>
+    </div>
+  </div>
+
   <!-- Lista de pessoas -->
   <div class="card">
     <div class="section-header">
@@ -846,6 +891,109 @@ function confirmarTokenPastas() {
   _executarCriarPastas(valor);
 }
 
+// ── Perfis de Acesso ─────────────────────────────────────────────
+// Labels padrão dos perfis conhecidos; novos perfis criados aqui também entram
+const PERFIL_LABELS = {
+  tecnico: 'Técnico', auxiliar: 'Auxiliar', supervisor: 'Supervisor', lider: 'Líder',
+  coordenador: 'Coordenador', agendamento: 'Agendamento', gerente_comercial: 'Gerente Comercial',
+  projetista: 'Projetista', coordenador_projetos: 'Coordenador de Projetos',
+  vistoriador: 'Vistoriador', estoque: 'Estoque', admin_geral: 'Administrador Geral',
+};
+
+let _perfis = {};  // role → { label, paginas[], salvo (existe no banco) }
+
+async function carregarPerfis() {
+  const doBanco = {};
+  try {
+    const { data } = await db.from('perfis').select('*');
+    (data || []).forEach(p => { doBanco[p.role] = { label: p.label, paginas: p.paginas || [], salvo: true }; });
+  } catch (e) { console.warn('Tabela perfis indisponível:', e.message); }
+
+  _perfis = {};
+  // Perfis conhecidos: usa o do banco se existir, senão o padrão hardcoded do utils.js
+  Object.keys(PERFIL_LABELS).forEach(r => {
+    _perfis[r] = doBanco[r] || {
+      label: PERFIL_LABELS[r],
+      paginas: (typeof _linksPadraoDoRole === 'function' ? _linksPadraoDoRole(r) : []).map(l => l.id),
+      salvo: false,
+    };
+  });
+  // Perfis extras criados pelo usuário
+  Object.keys(doBanco).forEach(r => { if (!_perfis[r]) _perfis[r] = doBanco[r]; });
+
+  // Popular o select do editor
+  const sel = document.getElementById('perfil-select');
+  if (sel) {
+    sel.innerHTML = Object.keys(_perfis).sort()
+      .map(r => `<option value="${r}">${escHtml(_perfis[r].label)} (${r})${_perfis[r].salvo ? '' : ' — padrão'}</option>`).join('');
+    renderPerfilPaginas();
+  }
+
+  // Repopular os selects de role do cadastro/edição de usuário com todos os perfis
+  ['selectRole', 'editRole'].forEach(idSel => {
+    const s = document.getElementById(idSel);
+    if (!s) return;
+    const atual = s.value;
+    s.innerHTML = Object.keys(_perfis).sort()
+      .map(r => `<option value="${r}">${escHtml(_perfis[r].label)}</option>`).join('');
+    if (atual && _perfis[atual]) s.value = atual;
+  });
+}
+
+function renderPerfilPaginas() {
+  const role = document.getElementById('perfil-select')?.value;
+  const cont = document.getElementById('perfil-paginas');
+  if (!role || !cont) return;
+  const p = _perfis[role];
+  const paginas = (typeof SAOS_PAGINAS !== 'undefined') ? SAOS_PAGINAS : [];
+  cont.innerHTML = paginas.map(pg => `
+    <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text-1);cursor:pointer;padding:8px 10px;border:1px solid var(--border,#27272A);border-radius:6px;">
+      <input type="checkbox" class="perfil-pg" value="${pg.id}" ${p.paginas.includes(pg.id) ? 'checked' : ''} style="accent-color:var(--primary);width:14px;height:14px;">
+      ${escHtml(pg.label)}
+    </label>`).join('');
+}
+
+async function salvarPerfil() {
+  const role = document.getElementById('perfil-select')?.value;
+  if (!role) return;
+  const paginas = [...document.querySelectorAll('.perfil-pg:checked')].map(c => c.value);
+  const { error } = await db.from('perfis')
+    .upsert({ role, label: _perfis[role].label, paginas, atualizado_em: new Date().toISOString() }, { onConflict: 'role' });
+  if (error) { showToast('Erro ao salvar perfil: ' + error.message, 'error'); return; }
+  _perfis[role].paginas = paginas;
+  _perfis[role].salvo = true;
+  sessionStorage.removeItem('saos_perfil_' + role);   // invalida cache do menu
+  showToast(`Perfil "${_perfis[role].label}" salvo. Usuários verão o novo menu ao recarregar.`, 'success');
+  carregarPerfis();
+}
+
+function criarNovoPerfil() {
+  const key = (document.getElementById('novo-perfil-key').value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const label = (document.getElementById('novo-perfil-label').value || '').trim();
+  if (!key || !label) { showToast('Preencha a chave e o nome do perfil.', 'warning'); return; }
+  if (_perfis[key]) { showToast('Já existe um perfil com essa chave.', 'warning'); return; }
+  _perfis[key] = { label, paginas: [], salvo: false };
+  const sel = document.getElementById('perfil-select');
+  sel.innerHTML += `<option value="${key}">${escHtml(label)} (${key})</option>`;
+  sel.value = key;
+  renderPerfilPaginas();
+  document.getElementById('novo-perfil-wrap').style.display = 'none';
+  document.getElementById('novo-perfil-key').value = '';
+  document.getElementById('novo-perfil-label').value = '';
+  showToast('Marque as páginas e clique em "Salvar perfil". Lembre de rodar o SQL que libera novos roles, se ainda não rodou.', 'success');
+}
+
+async function excluirPerfil() {
+  const role = document.getElementById('perfil-select')?.value;
+  if (!role) return;
+  if (!confirm(`Excluir a configuração salva do perfil "${_perfis[role].label}"?\n\nUsuários desse perfil voltam ao padrão do sistema (perfis conhecidos) ou ficam sem menu (perfis novos).`)) return;
+  const { error } = await db.from('perfis').delete().eq('role', role);
+  if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+  sessionStorage.removeItem('saos_perfil_' + role);
+  showToast('Configuração removida.', 'success');
+  carregarPerfis();
+}
+
 // Atribui N.OS às agendas que estão sem número (e replica nas OSs vinculadas)
 async function atribuirNumerosFaltantes() {
   const btn = document.getElementById('btn-numerar-os');
@@ -998,7 +1146,7 @@ async function chamarAdminFunction(payload) {
   if (!session) { window.location.href = 'login.html'; return; }
 
   const { data: eu } = await db.from('tecnicos').select('role, nome').eq('auth_user_id', session.user.id).single();
-  if (!eu || !['coordenador', 'agendamento'].includes(eu.role)) {
+  if (!eu || !['coordenador', 'agendamento', 'admin_geral'].includes(eu.role)) {
     showToast('Acesso restrito.', 'error');
     window.location.href = 'obras.html';
     return;
@@ -1018,6 +1166,7 @@ async function chamarAdminFunction(payload) {
 
   await carregarEquipes();
   await carregarDados();
+  await carregarPerfis();
 })();
 
 async function carregarDados() {

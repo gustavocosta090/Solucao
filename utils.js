@@ -1,5 +1,5 @@
 // SAOS-AUDIT: build 2026-06-01 pós-auditoria
-// utils.js — Solução Técnica, build 2026-06-01j
+// utils.js — Solução Técnica, build 2026-06-11a — perfis dinâmicos (tabela perfis) + admin_geral
 // Utilitários compartilhados. Carregado após @supabase/supabase-js via <script src="utils.js">.
 
 // ─── Supabase client ────────────────────────────────────────────
@@ -542,6 +542,39 @@ function _fecharMobNav() {
   document.body.style.overflow = '';
 }
 
+// ─── Navegação: páginas e permissões padrão por role ────────────
+// 'agendamento' tem as mesmas permissões que 'coordenador'
+// 'admin_geral' é superusuário: vê todas as páginas (fallback no filtro abaixo)
+// A tabela `perfis` no Supabase (role → paginas[]) SOBRESCREVE estes padrões quando existir.
+var SAOS_NAV_LINKS = [
+  { href: 'obras.html',                label: 'Obras',                  id: 'obras',                roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador','lider','estoque'] },
+  { href: 'agenda.html',               label: 'Agenda Técnica',         id: 'agenda',               roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos','lider','estoque'] },
+  { href: 'agenda_plantao.html',       label: 'Agenda de Plantão',      id: 'agenda-plantao',       roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos','lider'] },
+  { href: 'agenda_vistorias.html',     label: 'Agenda de Vistorias',    id: 'agenda-vistorias',     roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador','lider'] },
+  { href: 'assistencia.html',          label: 'Assistências',           id: 'assistencia',          roles: ['agendamento','supervisor','coordenador','lider'] },
+  { href: 'vistoria.html',             label: 'Minhas Vistorias',       id: 'vistoria',             roles: ['vistoriador'] },
+  { href: 'os.html',                   label: 'Fazer OS',               id: 'os',                   roles: ['tecnico','auxiliar','lider'] },
+  { href: 'supervisor.html',           label: 'Supervisor',             id: 'supervisor',           roles: ['supervisor','coordenador','agendamento','coordenador_projetos','lider'] },
+  { href: 'pendencias.html',           label: 'Pendências',             id: 'pendencias',           roles: ['supervisor','coordenador','agendamento','lider'] },
+  { href: 'viagens.html',              label: 'Viagens',                id: 'viagens',              roles: ['supervisor','coordenador','agendamento','lider'] },
+  { href: 'solicitacoes.html',         label: 'Solicitações',           id: 'solicitacoes',         roles: ['coordenador','agendamento'] },
+  { href: 'admin.html',                label: 'Admin',                  id: 'admin',                roles: ['coordenador','agendamento'] },
+  { href: 'tecnico_dashboard.html',    label: 'Minhas OSs',             id: 'minhas-os',            roles: ['tecnico','auxiliar','lider'] },
+  { href: 'gerente_comercial.html',    label: 'Comercial',              id: 'comercial',            roles: ['gerente_comercial'] },
+  { href: 'projetista.html',           label: 'Meu Painel',             id: 'projetista',           roles: ['projetista'] },
+  { href: 'coordenador_projetos.html', label: 'Projetos',               id: 'coordenador-projetos', roles: ['coordenador_projetos'] },
+  { href: 'dashboard.html',            label: 'Painel Executivo',       id: 'dashboard',            roles: ['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador','lider','estoque'] },
+];
+
+// Lista de páginas disponíveis (para o editor de perfis no Admin)
+var SAOS_PAGINAS = SAOS_NAV_LINKS.map(function(l) { return { id: l.id, label: l.label }; });
+
+// Links visíveis pelo PADRÃO hardcoded (fallback quando não há perfil no banco)
+function _linksPadraoDoRole(role) {
+  if (role === 'admin_geral') return SAOS_NAV_LINKS.slice(); // superusuário: tudo
+  return SAOS_NAV_LINKS.filter(function(l) { return l.roles.indexOf(role) !== -1; });
+}
+
 // ─── Topbar universal ───────────────────────────────────────────
 function renderTopbar(nome, role, paginaAtiva) {
   var h = new Date().getHours();
@@ -555,96 +588,94 @@ function renderTopbar(nome, role, paginaAtiva) {
       '<button class="btn-tema-toggle" onclick="toggleTema()" style="margin-left:10px;">' + labelBtn + '</button>';
   }
 
-  // 'agendamento' tem as mesmas permissões que 'coordenador'
-  var links = [
-    { href: 'obras.html',                label: 'Obras',                  id: 'obras',                roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador','lider','estoque'] },
-    { href: 'agenda.html',               label: 'Agenda Técnica',         id: 'agenda',               roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos','lider','estoque'] },
-    { href: 'agenda_plantao.html',       label: 'Agenda de Plantão',      id: 'agenda-plantao',       roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos','lider'] },
-    { href: 'agenda_vistorias.html',     label: 'Agenda de Vistorias',    id: 'agenda-vistorias',     roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador','lider'] },
-    { href: 'assistencia.html',          label: 'Assistências',           id: 'assistencia',          roles: ['agendamento','supervisor','coordenador','lider'] },
-    { href: 'vistoria.html',             label: 'Minhas Vistorias',       id: 'vistoria',             roles: ['vistoriador'] },
-    { href: 'vistoria.html',             label: 'Relatórios de Vistoria', id: 'relatorios-vistoria',  roles: [] },
-    { href: 'os.html',                   label: 'Fazer OS',               id: 'os',                   roles: ['tecnico','auxiliar','lider'] },
-    { href: 'supervisor.html',           label: 'Supervisor',             id: 'supervisor',           roles: ['supervisor','coordenador','agendamento','coordenador_projetos','lider'] },
-    { href: 'pendencias.html',           label: 'Pendências',             id: 'pendencias',           roles: ['supervisor','coordenador','agendamento','lider'] },
-    { href: 'viagens.html',              label: 'Viagens',                id: 'viagens',              roles: ['supervisor','coordenador','agendamento','lider'] },
-    { href: 'solicitacoes.html',         label: 'Solicitações',           id: 'solicitacoes',         roles: ['coordenador','agendamento'] },
-    { href: 'admin.html',                label: 'Admin',                  id: 'admin',                roles: ['coordenador','agendamento'] },
-    { href: 'tecnico_dashboard.html',    label: 'Minhas OSs',             id: 'minhas-os',            roles: ['tecnico','auxiliar','lider'] },
-    { href: 'gerente_comercial.html',    label: 'Comercial',              id: 'comercial',            roles: ['gerente_comercial'] },
-    { href: 'projetista.html',           label: 'Meu Painel',             id: 'projetista',           roles: ['projetista'] },
-    { href: 'coordenador_projetos.html', label: 'Projetos',               id: 'coordenador-projetos', roles: ['coordenador_projetos'] },
-    { href: 'dashboard.html',            label: 'Painel Executivo',       id: 'dashboard',            roles: ['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador','lider','estoque'] },
-  ];
-
-  // ── Desktop nav ──
   var nav = document.getElementById('topbar-nav');
   if (!nav) return;
   nav.setAttribute('aria-label', 'Navegação principal');
 
-  var linksVisiveis = links.filter(function(l) { return l.roles.indexOf(role) !== -1; });
-  var linksHtml = linksVisiveis.map(function(l) {
-    var ativo = l.id === paginaAtiva;
-    return '<a href="' + l.href + '"'
-      + (ativo ? ' class="active" aria-current="page"' : '')
-      + '>' + l.label + '</a>';
-  }).join('') + '<a href="#" class="nav-sair" onclick="logout()" aria-label="Sair da conta">Sair</a>';
+  // Desenha desktop nav + drawer mobile a partir de uma lista de links
+  function desenhar(linksVisiveis) {
+    var linksHtml = linksVisiveis.map(function(l) {
+      var ativo = l.id === paginaAtiva;
+      return '<a href="' + l.href + '"'
+        + (ativo ? ' class="active" aria-current="page"' : '')
+        + '>' + l.label + '</a>';
+    }).join('') + '<a href="#" class="nav-sair" onclick="logout()" aria-label="Sair da conta">Sair</a>';
 
-  nav.innerHTML = linksHtml;
+    nav.innerHTML = linksHtml;
 
-  // ── Mobile: injetar CSS + botão hambúrguer + drawer ──
-  _injetarCSSMob();
+    // ── Mobile: injetar CSS + botão hambúrguer + drawer ──
+    _injetarCSSMob();
 
-  // Botão hambúrguer — adiciona uma vez na topbar
-  if (!document.getElementById('nav-ham')) {
-    var ham = document.createElement('button');
-    ham.id = 'nav-ham';
-    ham.setAttribute('aria-label', 'Abrir menu');
-    ham.setAttribute('aria-expanded', 'false');
-    ham.setAttribute('aria-haspopup', 'dialog');
-    ham.innerHTML =
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-      'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
-      '<line x1="3" y1="6" x2="21" y2="6"/>' +
-      '<line x1="3" y1="12" x2="21" y2="12"/>' +
-      '<line x1="3" y1="18" x2="21" y2="18"/>' +
-      '</svg>';
-    ham.addEventListener('click', _abrirMobNav);
-    var tb = document.querySelector('.topbar');
-    if (tb) tb.appendChild(ham);
+    if (!document.getElementById('nav-ham')) {
+      var ham = document.createElement('button');
+      ham.id = 'nav-ham';
+      ham.setAttribute('aria-label', 'Abrir menu');
+      ham.setAttribute('aria-expanded', 'false');
+      ham.setAttribute('aria-haspopup', 'dialog');
+      ham.innerHTML =
+        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+        'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<line x1="3" y1="6" x2="21" y2="6"/>' +
+        '<line x1="3" y1="12" x2="21" y2="12"/>' +
+        '<line x1="3" y1="18" x2="21" y2="18"/>' +
+        '</svg>';
+      ham.addEventListener('click', _abrirMobNav);
+      var tb = document.querySelector('.topbar');
+      if (tb) tb.appendChild(ham);
+    }
+
+    var existOv = document.getElementById('mob-nav-ov');
+    if (existOv) existOv.parentNode.removeChild(existOv);
+
+    var ov = document.createElement('div');
+    ov.id = 'mob-nav-ov';
+    ov.className = 'mob-ov';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.setAttribute('aria-label', 'Menu de navegação');
+
+    ov.innerHTML =
+      '<div class="mob-drawer">' +
+      '<div class="mob-dhead">' +
+      '<span>Solução Técnica</span>' +
+      '<button class="mob-dclose" onclick="_fecharMobNav()" aria-label="Fechar menu">✕</button>' +
+      '</div>' +
+      '<nav class="mob-dnav" aria-label="Menu principal">' +
+      linksHtml +
+      '</nav>' +
+      '</div>';
+
+    ov.addEventListener('click', function(e) { if (e.target === ov) _fecharMobNav(); });
+    document.body.appendChild(ov);
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') _fecharMobNav(); });
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
-  // Drawer — recria sempre para atualizar os links após login
-  var existOv = document.getElementById('mob-nav-ov');
-  if (existOv) existOv.parentNode.removeChild(existOv);
+  function aplicarPaginas(paginas) {
+    desenhar(SAOS_NAV_LINKS.filter(function(l) { return paginas.indexOf(l.id) !== -1; }));
+  }
 
-  var ov = document.createElement('div');
-  ov.id = 'mob-nav-ov';
-  ov.className = 'mob-ov';
-  ov.setAttribute('role', 'dialog');
-  ov.setAttribute('aria-modal', 'true');
-  ov.setAttribute('aria-label', 'Menu de navegação');
+  // 1. Render imediato: cache do perfil (se houver) ou padrão hardcoded
+  var cacheKey = 'saos_perfil_' + role;
+  var cacheado = null;
+  try { cacheado = JSON.parse(sessionStorage.getItem(cacheKey) || 'null'); } catch (e) {}
+  if (Array.isArray(cacheado) && cacheado.length) aplicarPaginas(cacheado);
+  else desenhar(_linksPadraoDoRole(role));
 
-  ov.innerHTML =
-    '<div class="mob-drawer">' +
-    '<div class="mob-dhead">' +
-    '<span>Solução Técnica</span>' +
-    '<button class="mob-dclose" onclick="_fecharMobNav()" aria-label="Fechar menu">✕</button>' +
-    '</div>' +
-    '<nav class="mob-dnav" aria-label="Menu principal">' +
-    linksHtml.replace(/class="nav-sair"/g, 'class="nav-sair"') +
-    '</nav>' +
-    '</div>';
-
-  // Fecha ao clicar no backdrop
-  ov.addEventListener('click', function(e) { if (e.target === ov) _fecharMobNav(); });
-
-  document.body.appendChild(ov);
-
-  // Fecha com Escape
-  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') _fecharMobNav(); });
-
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  // 2. Busca o perfil dinâmico no banco; se existir, sobrescreve e cacheia
+  try {
+    if (typeof db !== 'undefined' && db && db.from) {
+      db.from('perfis').select('paginas').eq('role', role).maybeSingle().then(function(res) {
+        var pgs = res && res.data && res.data.paginas;
+        if (Array.isArray(pgs) && pgs.length) {
+          var mudou = JSON.stringify(pgs) !== JSON.stringify(cacheado);
+          try { sessionStorage.setItem(cacheKey, JSON.stringify(pgs)); } catch (e) {}
+          if (mudou) aplicarPaginas(pgs);
+        }
+      }, function() { /* tabela perfis pode não existir ainda — mantém padrão */ });
+    }
+  } catch (e) { /* mantém padrão */ }
 }
 
 // ─── Query Cache ────────────────────────────────────────────────
