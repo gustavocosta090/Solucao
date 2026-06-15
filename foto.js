@@ -52,6 +52,11 @@ function caminhoFotoSeguro(filePath) {
     return ext === 'pdf';
   }
 
+  // Colaboradores (fotos do RH): Colaboradores/Fotos/[arquivo].jpg — apenas imagens
+  if (path.startsWith('Colaboradores/')) {
+    return ['jpg', 'jpeg', 'png', 'webp', 'heic'].includes(ext);
+  }
+
   // Todos os outros caminhos devem estar em Obras e Clientes AAAA/
   if (!path.startsWith('Obras e Clientes ')) return false;
   if (partes.length < 4) return false;
