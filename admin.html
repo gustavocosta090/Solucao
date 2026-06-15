@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-11a — Perfis de Acesso (criar/editar) + role admin_geral -->
+<!-- build: 2026-06-11b — Perfis de Acesso + fix appearance dos checkboxes -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -948,7 +948,7 @@ function renderPerfilPaginas() {
   const paginas = (typeof SAOS_PAGINAS !== 'undefined') ? SAOS_PAGINAS : [];
   cont.innerHTML = paginas.map(pg => `
     <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text-1);cursor:pointer;padding:8px 10px;border:1px solid var(--border,#27272A);border-radius:6px;">
-      <input type="checkbox" class="perfil-pg" value="${pg.id}" ${p.paginas.includes(pg.id) ? 'checked' : ''} style="accent-color:var(--primary);width:14px;height:14px;">
+      <input type="checkbox" class="perfil-pg" value="${pg.id}" ${p.paginas.includes(pg.id) ? 'checked' : ''} style="appearance:auto;-webkit-appearance:auto;accent-color:var(--primary);width:16px;height:16px;min-width:16px;padding:0;border:0;background:none;border-radius:0;flex:none;">
       ${escHtml(pg.label)}
     </label>`).join('');
 }
