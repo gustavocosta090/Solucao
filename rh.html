@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-11d — RH: card aniversário usa arte oficial (card-aniversario.jpg) -->
+<!-- build: 2026-06-11e — RH: card aniversário arte clara (fundo claro, nome escuro, canvas no tamanho da arte) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -474,41 +474,42 @@ function _roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcT
 function _desenharFotoCover(ctx,img,x,y,w,h){ const s=Math.max(w/img.width,h/img.height); const dw=img.width*s,dh=img.height*s; ctx.drawImage(img,x+(w-dw)/2,y+(h-dh)/2,dw,dh); }
 
 // Card de aniversário — usa a arte oficial como fundo; só sobrepõe FOTO e NOME
-async function _cardAniversario(ctx,W,H){
+async function _cardAniversario(ctx, cv){
   const tpl = await _carregarImg('card-aniversario.jpg');
+  let W, H;
   if (tpl) {
-    ctx.drawImage(tpl,0,0,W,H);
+    cv.width = tpl.naturalWidth || 1080; cv.height = tpl.naturalHeight || 1920;
+    W = cv.width; H = cv.height; ctx.drawImage(tpl, 0, 0, W, H);
   } else {
-    // Fallback (caso a arte ainda não tenha sido enviada para o servidor)
-    const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#1a1a1a'); g.addColorStop(1,'#000');
-    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-    ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.font='700 70px Inter'; ctx.fillText('Feliz Aniversário!', W/2, 0.27*H);
-    ctx.fillStyle='#888'; ctx.font='400 26px Inter'; ctx.fillText('(envie card-aniversario.jpg p/ a arte oficial)', W/2, 0.27*H+50);
+    cv.width = 1080; cv.height = 1920; W = cv.width; H = cv.height;
+    ctx.fillStyle = '#f2f2f2'; ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center'; ctx.fillStyle='#555'; ctx.font='400 70px Inter'; ctx.fillText('Feliz Aniversário!', W/2, 0.27*H);
+    ctx.fillStyle='#999'; ctx.font='400 24px Inter'; ctx.fillText('(envie card-aniversario.jpg para a arte oficial)', W/2, 0.27*H+45);
   }
   const key=document.getElementById('card-sel-colab')?.value; const c=_colabs.find(x=>x._key===key);
 
-  // Área da foto (proporções medidas na arte 1080x1920) — quadrado arredondado
-  const pw=0.504*W, ph=0.336*H, px=(W-pw)/2, py=0.310*H, pr=0.042*W;
+  // Área da foto = moldura da arte (proporções medidas no modelo enviado)
+  const pw=0.52*W, ph=0.416*H, px=(W-pw)/2, py=0.267*H, pr=0.012*W;
   ctx.save(); _roundRect(ctx,px,py,pw,ph,pr); ctx.clip();
   let img=null; if(c?.foto_url) img=await _carregarImg(fotoSrc(c.foto_url));
   if(img){ _desenharFotoCover(ctx,img,px,py,pw,ph); }
-  else{ ctx.fillStyle='#2a2a2a'; ctx.fillRect(px,py,pw,ph); ctx.fillStyle='#666'; ctx.font='800 130px Inter'; ctx.textAlign='center'; ctx.fillText(iniciais(c?.nome||'?'),W/2,py+ph/2+45); }
+  else{ ctx.fillStyle='#2e4046'; ctx.fillRect(px,py,pw,ph); ctx.fillStyle='#7d9099'; ctx.font='800 120px Inter'; ctx.textAlign='center'; ctx.fillText(iniciais(c?.nome||'?'),W/2,py+ph/2+42); }
   ctx.restore();
 
-  // Nome (logo abaixo da foto, acima da mensagem fixa da arte)
-  ctx.textAlign='center'; ctx.fillStyle='#FFFFFF'; ctx.font='700 56px Inter, sans-serif';
-  ctx.fillText(c?.nome || 'Nome do colaborador', W/2, 0.695*H);
+  // Nome (abaixo da moldura) — texto ESCURO porque o fundo da arte é claro
+  ctx.textAlign='center'; ctx.fillStyle='#2B2B2B'; ctx.font='700 ' + Math.round(0.044*W) + 'px Inter, sans-serif';
+  ctx.fillText(c?.nome || 'Nome do colaborador', W/2, 0.752*H);
   ctx.textAlign='left';
 }
 
 async function gerarCard(){
   const cv=document.getElementById('card-canvas'); const ctx=cv.getContext('2d');
-  // Aniversário usa formato story (9:16) igual à arte; demais ficam em 1080x1350
-  if(_cardTipo==='aniversario'){ cv.width=1080; cv.height=1920; } else { cv.width=1080; cv.height=1350; }
+
+  if(_cardTipo==='aniversario'){ ctx.clearRect(0,0,cv.width,cv.height); await _cardAniversario(ctx, cv); return; }
+
+  cv.width=1080; cv.height=1350;
   const W=cv.width, H=cv.height;
   ctx.clearRect(0,0,W,H);
-
-  if(_cardTipo==='aniversario'){ await _cardAniversario(ctx,W,H); return; }
 
   // Fundo (promoção / contratação)
   const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#0B3D2E'); g.addColorStop(1,'#0A0A0A');
