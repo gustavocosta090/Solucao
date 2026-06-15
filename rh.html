@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-11b — RH: mescla técnicos existentes na lista de colaboradores -->
+<!-- build: 2026-06-11c — RH: abas internas (Colaboradores + Cards) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Colaboradores — Solução Técnica</title>
+<title>RH — Solução Técnica</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>document.documentElement.dataset.theme = localStorage.getItem('tema') || 'dark';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="utils.js"></script>
@@ -33,9 +33,17 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .topbar-links a.nav-sair{border:1px solid rgba(255,255,255,.12);margin-left:8px}
 
 .page{max-width:1100px;margin:0 auto;padding:28px 24px 80px}
-.page-header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.page-header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px}
 .page-title{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px;flex:1;line-height:1}
 .page-title i{width:22px;height:22px;color:var(--primary);flex-shrink:0}
+
+/* Abas internas */
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin-bottom:22px}
+.tab{background:none;border:none;color:var(--text-2);font-family:inherit;font-size:14px;font-weight:600;padding:11px 18px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:inline-flex;align-items:center;gap:7px}
+.tab i{width:15px;height:15px}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
 
 .btn-nova{padding:10px 20px;background:var(--primary);color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px;transition:opacity .15s}
 .btn-nova:hover{opacity:.88}
@@ -51,7 +59,6 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .card h2{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .card h2 i{width:16px;height:16px;color:var(--primary)}
 
-/* Lembretes de aniversário */
 .aniv-list{display:flex;flex-direction:column;gap:8px}
 .aniv-item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px}
 .aniv-item .av{width:38px;height:38px;border-radius:50%;object-fit:cover;background:var(--surface-3);flex-shrink:0}
@@ -61,12 +68,10 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .aniv-hoje{border-color:rgba(62,207,142,.4);background:rgba(62,207,142,.06)}
 .aniv-hoje .dt{color:var(--primary)}
 
-/* Busca */
 .busca-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
 .busca-bar input{flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);color:var(--text-1);border-radius:8px;padding:10px 14px;font-size:14px;font-family:inherit;outline:none}
 .busca-bar input:focus{border-color:var(--border-hover)}
 
-/* Grid de colaboradores */
 .colab-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
 .colab{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:border-color .15s}
 .colab:hover{border-color:var(--border-hover)}
@@ -100,6 +105,19 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .btn-pri:disabled{opacity:.5;cursor:not-allowed}
 .btn-del{background:none;border:1px solid rgba(239,68,68,.4);color:var(--red-text);border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;font-family:inherit;margin-right:auto}
 .empty{text-align:center;color:var(--text-3);padding:40px 20px}
+
+/* Cards */
+.cards-tipos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.ctipo{flex:1;min-width:200px;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:border-color .15s;text-align:left}
+.ctipo:hover{border-color:var(--border-hover)}
+.ctipo.active{border-color:var(--primary);background:rgba(62,207,142,.05)}
+.ctipo .ci{width:26px;height:26px;color:var(--primary);margin-bottom:8px}
+.ctipo .ct{font-weight:700;font-size:14px}
+.ctipo .cd{font-size:12px;color:var(--text-3);margin-top:3px}
+.cards-layout{display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start}
+@media(max-width:880px){.cards-layout{grid-template-columns:1fr}}
+#card-canvas-wrap{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px}
+#card-canvas{width:100%;max-width:420px;border-radius:8px;background:#fff}
 </style>
 </head>
 <body>
@@ -112,35 +130,70 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 
 <div class="page">
   <div class="page-header">
-    <h2 class="page-title"><i data-lucide="users-round"></i> Colaboradores</h2>
-    <button class="btn-nova" onclick="abrirModal()"><i data-lucide="user-plus"></i> Novo colaborador</button>
+    <h2 class="page-title"><i data-lucide="briefcase"></i> Recursos Humanos</h2>
   </div>
 
-  <!-- Dashboard RH -->
-  <div class="stats-row">
-    <div class="sk"><div class="sk-val" id="st-total">0</div><div class="sk-lbl">Colaboradores</div></div>
-    <div class="sk"><div class="sk-val" id="st-mes" style="color:var(--amber-text)">0</div><div class="sk-lbl">Aniversários no mês</div></div>
-    <div class="sk"><div class="sk-val" id="st-hoje" style="color:var(--primary)">0</div><div class="sk-lbl">Aniversários hoje</div></div>
-    <div class="sk"><div class="sk-val" id="st-ferias">0</div><div class="sk-lbl">Dias de férias a vencer</div></div>
+  <div class="tabs">
+    <button class="tab active" id="tab-colab" onclick="trocarTab('colab')"><i data-lucide="users-round"></i> Colaboradores</button>
+    <button class="tab" id="tab-cards" onclick="trocarTab('cards')"><i data-lucide="image"></i> Cards</button>
   </div>
 
-  <div class="card">
-    <h2><i data-lucide="cake"></i> Próximos aniversários (30 dias)</h2>
-    <div class="aniv-list" id="aniv-list"><div class="empty">Carregando...</div></div>
+  <!-- ABA COLABORADORES -->
+  <div class="tab-pane active" id="pane-colab">
+    <div class="page-header">
+      <div style="flex:1"></div>
+      <button class="btn-nova" onclick="abrirModal()"><i data-lucide="user-plus"></i> Novo colaborador</button>
+    </div>
+    <div class="stats-row">
+      <div class="sk"><div class="sk-val" id="st-total">0</div><div class="sk-lbl">Colaboradores</div></div>
+      <div class="sk"><div class="sk-val" id="st-mes" style="color:var(--amber-text)">0</div><div class="sk-lbl">Aniversários no mês</div></div>
+      <div class="sk"><div class="sk-val" id="st-hoje" style="color:var(--primary)">0</div><div class="sk-lbl">Aniversários hoje</div></div>
+      <div class="sk"><div class="sk-val" id="st-ferias">0</div><div class="sk-lbl">Dias de férias a vencer</div></div>
+    </div>
+    <div class="card">
+      <h2><i data-lucide="cake"></i> Próximos aniversários (30 dias)</h2>
+      <div class="aniv-list" id="aniv-list"><div class="empty">Carregando...</div></div>
+    </div>
+    <div class="busca-bar">
+      <input type="text" id="busca" placeholder="Buscar por nome ou cargo..." oninput="renderColabs()">
+    </div>
+    <div class="colab-grid" id="colab-grid"></div>
   </div>
 
-  <div class="busca-bar">
-    <input type="text" id="busca" placeholder="Buscar por nome ou cargo..." oninput="renderColabs()">
-  </div>
+  <!-- ABA CARDS -->
+  <div class="tab-pane" id="pane-cards">
+    <div class="cards-tipos">
+      <button class="ctipo active" data-tipo="aniversario" onclick="selecionarTipo('aniversario')">
+        <i data-lucide="cake" class="ci"></i><div class="ct">Card de Aniversário</div><div class="cd">Foto + mensagem de parabéns</div>
+      </button>
+      <button class="ctipo" data-tipo="promocao" onclick="selecionarTipo('promocao')">
+        <i data-lucide="trending-up" class="ci"></i><div class="ct">Card de Promoção</div><div class="cd">Anúncio de promoção</div>
+      </button>
+      <button class="ctipo" data-tipo="contratacao" onclick="selecionarTipo('contratacao')">
+        <i data-lucide="user-check" class="ci"></i><div class="ct">Card de Contratação</div><div class="cd">Modelo por vaga, editável</div>
+      </button>
+    </div>
 
-  <div class="colab-grid" id="colab-grid"></div>
+    <div class="cards-layout">
+      <div>
+        <div class="card" style="margin:0">
+          <h2><i data-lucide="settings-2"></i> Dados do card</h2>
+          <div id="card-form"></div>
+          <button class="btn-nova" style="width:100%;justify-content:center;margin-top:6px" onclick="gerarCard()"><i data-lucide="image-down"></i> Gerar / Atualizar</button>
+        </div>
+      </div>
+      <div id="card-canvas-wrap">
+        <canvas id="card-canvas" width="1080" height="1350"></canvas>
+        <button class="btn-sec" onclick="baixarCard()"><i data-lucide="download" style="width:13px;height:13px"></i> Baixar imagem (PNG)</button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Modal cadastro/edição -->
+<!-- Modal cadastro/edição colaborador -->
 <div class="overlay" id="overlay" onclick="if(event.target===this)fecharModal()">
   <div class="modal">
     <div class="modal-head"><i data-lucide="user-round"></i><h2 id="modal-titulo">Novo colaborador</h2></div>
-
     <div class="foto-edit">
       <img id="foto-preview" style="display:none" alt="Foto">
       <div class="ph" id="foto-ph"><i data-lucide="image"></i></div>
@@ -150,24 +203,15 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
         <div style="font-size:11px;color:var(--text-3);margin-top:6px">JPG/PNG · usada nos cards</div>
       </div>
     </div>
-
     <div class="fg"><label>Nome completo *</label><input type="text" id="f-nome" placeholder="Nome do colaborador"></div>
     <div class="fg"><label>Cargo</label>
       <select id="f-cargo">
         <option value="">— Selecionar —</option>
-        <option>Consultor Comercial</option>
-        <option>Estoquista</option>
-        <option>Analista de Estoque</option>
-        <option>Técnico de Cabeamento</option>
-        <option>Técnico de Elétrica e Hardware</option>
-        <option>Técnico de Áudio e Vídeo</option>
-        <option>Técnico de Automação</option>
-        <option>Auxiliar Técnico</option>
-        <option>Coordenador</option>
-        <option>Supervisor</option>
-        <option>Administrativo</option>
-        <option>RH</option>
-        <option>Outro</option>
+        <option>Consultor Comercial</option><option>Estoquista</option><option>Analista de Estoque</option>
+        <option>Técnico de Cabeamento</option><option>Técnico de Elétrica e Hardware</option>
+        <option>Técnico de Áudio e Vídeo</option><option>Técnico de Automação</option>
+        <option>Auxiliar Técnico</option><option>Coordenador</option><option>Supervisor</option>
+        <option>Administrativo</option><option>RH</option><option>Outro</option>
       </select>
     </div>
     <div class="fg-row">
@@ -180,10 +224,8 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
     </div>
     <div class="fg"><label>E-mail</label><input type="email" id="f-email" placeholder="email@..."></div>
     <div class="fg"><label>Observações</label><textarea id="f-obs" rows="2" placeholder="Opcional"></textarea></div>
-    <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="f-ativo" checked style="width:auto;accent-color:var(--primary)"> Ativo</label></div>
-
+    <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="f-ativo" checked style="appearance:auto;-webkit-appearance:auto;width:auto;accent-color:var(--primary)"> Ativo</label></div>
     <div id="modal-erro" style="display:none;color:var(--red-text);font-size:13px;margin-bottom:12px"></div>
-
     <div class="modal-actions">
       <button class="btn-del" id="btn-del" style="display:none" onclick="excluirColab()"><i data-lucide="trash-2" style="width:13px;height:13px"></i> Excluir</button>
       <button class="btn-sec" onclick="fecharModal()">Cancelar</button>
@@ -194,10 +236,11 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 
 <script>
 let _authToken = '';
-let _colabs = [];           // mescla: colaboradores reais + técnicos ainda não cadastrados
-let _editColab = null;      // objeto em edição (null = novo)
-let _fotoFile = null;       // arquivo novo selecionado
+let _colabs = [];
+let _editColab = null;
+let _fotoFile = null;
 let _fotoRemovida = false;
+let _cardTipo = 'aniversario';
 
 function fotoSrc(url){ if(!url||!_authToken) return url; return url + (url.includes('?')?'&':'?') + 't=' + encodeURIComponent(_authToken); }
 function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -215,7 +258,16 @@ function iniciais(n){ const p=(n||'').trim().split(/\s+/); return ((p[0]||'')[0]
   renderTopbar(eu.nome, eu.role, 'rh');
   lucide.createIcons();
   await carregar();
+  selecionarTipo('aniversario');
 })();
+
+function trocarTab(t){
+  document.getElementById('tab-colab').classList.toggle('active', t==='colab');
+  document.getElementById('tab-cards').classList.toggle('active', t==='cards');
+  document.getElementById('pane-colab').classList.toggle('active', t==='colab');
+  document.getElementById('pane-cards').classList.toggle('active', t==='cards');
+  lucide.createIcons();
+}
 
 async function carregar() {
   const [colabRes, tecRes] = await Promise.all([
@@ -226,246 +278,254 @@ async function carregar() {
 
   const reais = (colabRes.data || []).map(c => ({ ...c, _key: 'c' + c.id, _virtual: false }));
   const nomesExistentes = new Set(reais.map(c => (c.nome || '').trim().toLowerCase()));
-
-  // Técnicos que ainda não viraram colaboradores → entram como "virtuais" (materializam ao salvar)
   const virtuais = (tecRes.data || []).filter(t => {
     const n = (t.nome_completo || t.nome || '').trim().toLowerCase();
     return n && !nomesExistentes.has(n);
   }).map(t => ({
     id: null, _key: 't' + t.id, _virtual: true, _tecnicoId: t.id,
-    nome: t.nome_completo || t.nome,
-    cargo: t.funcao || null,
+    nome: t.nome_completo || t.nome, cargo: t.funcao || null,
     data_admissao: null, data_aniversario: null, ferias_restantes: null,
     foto_url: null, telefone: null, email: null, observacoes: null, ativo: true,
   }));
-
   _colabs = [...reais, ...virtuais].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
   renderDashboard();
   renderColabs();
+  _popularSelectColab();
 }
 
 // ── Dashboard ────────────────────────────────────────────────
 function _diaMes(d){ if(!d) return null; const [,m,dia]=d.split('-'); return {m:+m,d:+dia}; }
-function _diasAte(d){ // dias até o próximo aniversário
-  const dm=_diaMes(d); if(!dm) return null;
-  const hoje=new Date(); hoje.setHours(0,0,0,0);
-  let prox=new Date(hoje.getFullYear(), dm.m-1, dm.d);
-  if(prox<hoje) prox=new Date(hoje.getFullYear()+1, dm.m-1, dm.d);
-  return Math.round((prox-hoje)/86400000);
-}
+function _diasAte(d){ const dm=_diaMes(d); if(!dm) return null; const hoje=new Date(); hoje.setHours(0,0,0,0); let prox=new Date(hoje.getFullYear(),dm.m-1,dm.d); if(prox<hoje) prox=new Date(hoje.getFullYear()+1,dm.m-1,dm.d); return Math.round((prox-hoje)/86400000); }
 function renderDashboard() {
   const ativos = _colabs.filter(c => c.ativo !== false);
   const mesAtual = new Date().getMonth()+1;
-  const noMes = ativos.filter(c => _diaMes(c.data_aniversario)?.m === mesAtual);
-  const hoje = ativos.filter(c => _diasAte(c.data_aniversario) === 0);
   document.getElementById('st-total').textContent  = ativos.length;
-  document.getElementById('st-mes').textContent    = noMes.length;
-  document.getElementById('st-hoje').textContent   = hoje.length;
+  document.getElementById('st-mes').textContent    = ativos.filter(c=>_diaMes(c.data_aniversario)?.m===mesAtual).length;
+  document.getElementById('st-hoje').textContent   = ativos.filter(c=>_diasAte(c.data_aniversario)===0).length;
   document.getElementById('st-ferias').textContent = ativos.reduce((s,c)=>s+(parseInt(c.ferias_restantes)||0),0);
 
-  // Próximos 30 dias, ordenados por proximidade
-  const prox = ativos
-    .map(c => ({ c, dias: _diasAte(c.data_aniversario) }))
-    .filter(x => x.dias != null && x.dias <= 30)
-    .sort((a,b) => a.dias - b.dias);
-
+  const prox = ativos.map(c=>({c,dias:_diasAte(c.data_aniversario)})).filter(x=>x.dias!=null&&x.dias<=30).sort((a,b)=>a.dias-b.dias);
   const el = document.getElementById('aniv-list');
   if (!prox.length) { el.innerHTML = '<div class="empty">Nenhum aniversário nos próximos 30 dias.</div>'; return; }
   el.innerHTML = prox.map(({c,dias}) => {
-    const dm = _diaMes(c.data_aniversario);
-    const dataTxt = String(dm.d).padStart(2,'0')+'/'+String(dm.m).padStart(2,'0');
-    const quando = dias===0 ? 'HOJE 🎉' : dias===1 ? 'amanhã' : `em ${dias} dias`;
-    const foto = c.foto_url
-      ? `<img class="av" src="${escH(fotoSrc(c.foto_url))}" alt="">`
+    const dm=_diaMes(c.data_aniversario); const dataTxt=String(dm.d).padStart(2,'0')+'/'+String(dm.m).padStart(2,'0');
+    const quando = dias===0?'HOJE 🎉':dias===1?'amanhã':`em ${dias} dias`;
+    const foto = c.foto_url ? `<img class="av" src="${escH(fotoSrc(c.foto_url))}" alt="">`
       : `<div class="av" style="display:flex;align-items:center;justify-content:center;color:var(--text-3);font-weight:700;font-size:13px">${iniciais(c.nome)}</div>`;
-    return `<div class="aniv-item ${dias===0?'aniv-hoje':''}">
-      ${foto}
+    return `<div class="aniv-item ${dias===0?'aniv-hoje':''}">${foto}
       <div><div class="nm">${escH(c.nome)}</div><div class="cg">${escH(c.cargo||'—')}</div></div>
-      <div class="dt">${dataTxt}<br><span style="font-weight:500;color:var(--text-3);font-size:11px">${quando}</span></div>
-    </div>`;
+      <div class="dt">${dataTxt}<br><span style="font-weight:500;color:var(--text-3);font-size:11px">${quando}</span></div></div>`;
   }).join('');
   lucide.createIcons();
 }
 
-// ── Lista de colaboradores ───────────────────────────────────
+// ── Lista ────────────────────────────────────────────────────
 function _fmtData(d){ if(!d) return '—'; const [y,m,dia]=d.split('-'); return `${dia}/${m}/${y}`; }
 function renderColabs() {
   const termo = (document.getElementById('busca').value||'').toLowerCase().trim();
-  const lista = _colabs.filter(c =>
-    !termo || (c.nome||'').toLowerCase().includes(termo) || (c.cargo||'').toLowerCase().includes(termo));
+  const lista = _colabs.filter(c => !termo || (c.nome||'').toLowerCase().includes(termo) || (c.cargo||'').toLowerCase().includes(termo));
   const grid = document.getElementById('colab-grid');
   if (!lista.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Nenhum colaborador encontrado.</div>'; return; }
   grid.innerHTML = lista.map(c => {
-    const foto = c.foto_url
-      ? `<img class="colab-foto" src="${escH(fotoSrc(c.foto_url))}" alt="">`
-      : `<div class="colab-foto-ph">${iniciais(c.nome)}</div>`;
-    const tag = c._virtual
-      ? '<span class="badge-inativo" style="background:rgba(79,70,229,.15);color:#A5B4FC">via Técnicos</span>'
-      : (c.ativo===false ? '<span class="badge-inativo">inativo</span>' : '');
+    const foto = c.foto_url ? `<img class="colab-foto" src="${escH(fotoSrc(c.foto_url))}" alt="">` : `<div class="colab-foto-ph">${iniciais(c.nome)}</div>`;
+    const tag = c._virtual ? '<span class="badge-inativo" style="background:rgba(79,70,229,.15);color:#A5B4FC">via Técnicos</span>' : (c.ativo===false?'<span class="badge-inativo">inativo</span>':'');
     return `<div class="colab" onclick="abrirModal('${c._key}')">
-      <div class="colab-top">
-        ${foto}
-        <div>
-          <div class="colab-nome">${escH(c.nome)} ${tag}</div>
-          <div class="colab-cargo">${escH(c.cargo||'—')}</div>
-        </div>
-      </div>
+      <div class="colab-top">${foto}
+        <div><div class="colab-nome">${escH(c.nome)} ${tag}</div><div class="colab-cargo">${escH(c.cargo||'—')}</div></div></div>
       <div class="colab-info">
         <span><i data-lucide="calendar-plus"></i> Admissão: ${_fmtData(c.data_admissao)}</span>
         <span><i data-lucide="cake"></i> Aniversário: ${_fmtData(c.data_aniversario)}</span>
         <span><i data-lucide="palmtree"></i> Férias restantes: ${c.ferias_restantes!=null?c.ferias_restantes+' dia(s)':'—'}</span>
-      </div>
-    </div>`;
+      </div></div>`;
   }).join('');
   lucide.createIcons();
 }
 
-// ── Modal ────────────────────────────────────────────────────
+// ── Modal colaborador ────────────────────────────────────────
 function abrirModal(key) {
   const c = key ? _colabs.find(x => x._key === key) : null;
-  _editColab = c || null;
-  _fotoFile = null; _fotoRemovida = false;
+  _editColab = c || null; _fotoFile = null; _fotoRemovida = false;
   document.getElementById('modal-erro').style.display = 'none';
   document.getElementById('foto-input').value = '';
-
-  document.getElementById('modal-titulo').textContent = c ? (c._virtual ? 'Cadastrar colaborador' : 'Editar colaborador') : 'Novo colaborador';
-  document.getElementById('f-nome').value        = c?.nome || '';
-  document.getElementById('f-cargo').value       = c?.cargo || '';
-  document.getElementById('f-admissao').value    = c?.data_admissao || '';
-  document.getElementById('f-aniversario').value = c?.data_aniversario || '';
-  document.getElementById('f-ferias').value      = c?.ferias_restantes ?? '';
-  document.getElementById('f-telefone').value    = c?.telefone || '';
-  document.getElementById('f-email').value       = c?.email || '';
-  document.getElementById('f-obs').value         = c?.observacoes || '';
-  document.getElementById('f-ativo').checked     = c ? c.ativo !== false : true;
-  // Só dá pra excluir colaborador real (virtual = técnico ainda não cadastrado aqui)
+  document.getElementById('modal-titulo').textContent = c ? (c._virtual?'Cadastrar colaborador':'Editar colaborador') : 'Novo colaborador';
+  document.getElementById('f-nome').value = c?.nome||''; document.getElementById('f-cargo').value = c?.cargo||'';
+  document.getElementById('f-admissao').value = c?.data_admissao||''; document.getElementById('f-aniversario').value = c?.data_aniversario||'';
+  document.getElementById('f-ferias').value = c?.ferias_restantes??''; document.getElementById('f-telefone').value = c?.telefone||'';
+  document.getElementById('f-email').value = c?.email||''; document.getElementById('f-obs').value = c?.observacoes||'';
+  document.getElementById('f-ativo').checked = c ? c.ativo!==false : true;
   document.getElementById('btn-del').style.display = (c && !c._virtual) ? 'inline-flex' : 'none';
-
   _renderFotoPreview(c?.foto_url ? fotoSrc(c.foto_url) : null);
   document.getElementById('overlay').classList.add('aberto');
   lucide.createIcons();
 }
 function fecharModal(){ document.getElementById('overlay').classList.remove('aberto'); }
+function _renderFotoPreview(src){ const img=document.getElementById('foto-preview'),ph=document.getElementById('foto-ph'); if(src){img.src=src;img.style.display='';ph.style.display='none';}else{img.style.display='none';ph.style.display='flex';} }
+function _selecionarFoto(input){ const f=input.files?.[0]; if(!f) return; _fotoFile=f; _fotoRemovida=false; _renderFotoPreview(URL.createObjectURL(f)); }
 
-function _renderFotoPreview(src) {
-  const img = document.getElementById('foto-preview');
-  const ph  = document.getElementById('foto-ph');
-  if (src) { img.src = src; img.style.display = ''; ph.style.display = 'none'; }
-  else { img.style.display = 'none'; ph.style.display = 'flex'; }
+async function _comprimirImagem(file, maxDim=1024, quality=0.85){
+  try{ let bmp=null; if(window.createImageBitmap) bmp=await createImageBitmap(file,{imageOrientation:'from-image'}).catch(()=>null);
+    if(!bmp) bmp=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(file);});
+    const w0=bmp.width,h0=bmp.height; if(!w0||!h0) return file; const sc=Math.min(1,maxDim/Math.max(w0,h0));
+    const w=Math.round(w0*sc),h=Math.round(h0*sc); const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+    cv.getContext('2d').drawImage(bmp,0,0,w,h); if(bmp.close)bmp.close();
+    const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',quality)); return (blob&&blob.size<file.size)?blob:file;
+  }catch(e){ return file; }
 }
-function _selecionarFoto(input) {
-  const f = input.files?.[0];
-  if (!f) return;
-  _fotoFile = f; _fotoRemovida = false;
-  _renderFotoPreview(URL.createObjectURL(f));
-}
-
-// Compressão (igual os.html) — reduz a foto antes de subir
-async function _comprimirImagem(file, maxDim = 1024, quality = 0.85) {
-  try {
-    let bmp = null;
-    if (window.createImageBitmap) bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => null);
-    if (!bmp) bmp = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
-    const w0 = bmp.width, h0 = bmp.height; if (!w0 || !h0) return file;
-    const sc = Math.min(1, maxDim / Math.max(w0, h0));
-    const w = Math.round(w0*sc), h = Math.round(h0*sc);
-    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-    cv.getContext('2d').drawImage(bmp, 0, 0, w, h);
-    if (bmp.close) bmp.close();
-    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', quality));
-    return (blob && blob.size < file.size) ? blob : file;
-  } catch (e) { return file; }
-}
-
-async function _uploadFoto(colabId, nome) {
-  const blob = await _comprimirImagem(_fotoFile);
-  const nomeSeguro = (nome || 'colaborador').replace(/[\/\\:*?"<>|#%~]/g, '').trim().substring(0, 40) || 'colaborador';
-  const filename = `${nomeSeguro} ${colabId}.jpg`;
-  const folderPath = 'Colaboradores/Fotos';
-
-  const { data: { session } } = await db.auth.getSession();
-  const hdrs = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` };
-  const initRes = await fetch('/api/upload', { method: 'POST', headers: hdrs,
-    body: JSON.stringify({ path: folderPath, filename, contentType: 'image/jpeg' }) });
-  if (!initRes.ok) throw new Error('Upload (proxy): ' + await initRes.text());
-  const { uploadUrl, filePath } = await initRes.json();
-
-  const CHUNK = 10 * 1024 * 1024; let start = 0;
-  while (start < blob.size) {
-    const end = Math.min(start + CHUNK, blob.size);
-    const put = await fetch(uploadUrl, { method: 'PUT',
-      headers: { 'Content-Range': `bytes ${start}-${end-1}/${blob.size}`, 'Content-Type': 'image/jpeg' },
-      body: blob.slice(start, end) });
-    if (!put.ok && put.status !== 202) throw new Error('Upload chunk: ' + put.status);
-    start = end;
-  }
+async function _uploadFoto(colabId, nome){
+  const blob=await _comprimirImagem(_fotoFile);
+  const nomeSeguro=(nome||'colaborador').replace(/[\/\\:*?"<>|#%~]/g,'').trim().substring(0,40)||'colaborador';
+  const filename=`${nomeSeguro} ${colabId}.jpg`; const folderPath='Colaboradores/Fotos';
+  const { data:{session} } = await db.auth.getSession();
+  const hdrs={'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`};
+  const initRes=await fetch('/api/upload',{method:'POST',headers:hdrs,body:JSON.stringify({path:folderPath,filename,contentType:'image/jpeg'})});
+  if(!initRes.ok) throw new Error('Upload (proxy): '+await initRes.text());
+  const {uploadUrl,filePath}=await initRes.json();
+  const CHUNK=10*1024*1024; let start=0;
+  while(start<blob.size){ const end=Math.min(start+CHUNK,blob.size);
+    const put=await fetch(uploadUrl,{method:'PUT',headers:{'Content-Range':`bytes ${start}-${end-1}/${blob.size}`,'Content-Type':'image/jpeg'},body:blob.slice(start,end)});
+    if(!put.ok&&put.status!==202) throw new Error('Upload chunk: '+put.status); start=end; }
   return `/api/foto?path=${encodeURIComponent(filePath)}`;
 }
 
 async function salvarColab() {
-  const nome = document.getElementById('f-nome').value.trim();
-  const erroEl = document.getElementById('modal-erro');
-  if (!nome) { erroEl.textContent = 'Informe o nome.'; erroEl.style.display = 'block'; return; }
-
-  const btn = document.getElementById('btn-salvar');
-  btn.disabled = true; btn.innerHTML = 'Salvando...';
-
-  const payload = {
-    nome,
-    cargo:            document.getElementById('f-cargo').value || null,
-    data_admissao:    document.getElementById('f-admissao').value || null,
-    data_aniversario: document.getElementById('f-aniversario').value || null,
-    ferias_restantes: document.getElementById('f-ferias').value !== '' ? parseInt(document.getElementById('f-ferias').value) : null,
-    telefone:         document.getElementById('f-telefone').value.trim() || null,
-    email:            document.getElementById('f-email').value.trim() || null,
-    observacoes:      document.getElementById('f-obs').value.trim() || null,
-    ativo:            document.getElementById('f-ativo').checked,
-    atualizado_em:    new Date().toISOString(),
+  const nome=document.getElementById('f-nome').value.trim();
+  const erroEl=document.getElementById('modal-erro');
+  if(!nome){ erroEl.textContent='Informe o nome.'; erroEl.style.display='block'; return; }
+  const btn=document.getElementById('btn-salvar'); btn.disabled=true; btn.innerHTML='Salvando...';
+  const payload={
+    nome, cargo:document.getElementById('f-cargo').value||null,
+    data_admissao:document.getElementById('f-admissao').value||null,
+    data_aniversario:document.getElementById('f-aniversario').value||null,
+    ferias_restantes:document.getElementById('f-ferias').value!==''?parseInt(document.getElementById('f-ferias').value):null,
+    telefone:document.getElementById('f-telefone').value.trim()||null,
+    email:document.getElementById('f-email').value.trim()||null,
+    observacoes:document.getElementById('f-obs').value.trim()||null,
+    ativo:document.getElementById('f-ativo').checked, atualizado_em:new Date().toISOString(),
   };
-
-  try {
-    // Tem id real? atualiza. Senão (novo ou vindo de técnicos) → insere
-    const idReal = (_editColab && !_editColab._virtual) ? _editColab.id : null;
-    let colabId = idReal;
-    if (idReal) {
-      const { error } = await db.from('colaboradores').update(payload).eq('id', idReal);
-      if (error) throw new Error(error.message);
-    } else {
-      payload.criado_em = new Date().toISOString();
-      const { data, error } = await db.from('colaboradores').insert(payload).select('id').single();
-      if (error) throw new Error(error.message);
-      colabId = data.id;
-    }
-
-    // Foto: sobe se houver nova, ou limpa se removida
-    if (_fotoFile && colabId) {
-      btn.innerHTML = 'Enviando foto...';
-      try {
-        const url = await _uploadFoto(colabId, nome);
-        await db.from('colaboradores').update({ foto_url: url }).eq('id', colabId);
-      } catch (e) { console.warn('Foto não salva:', e.message); showToast('Salvo, mas a foto falhou: ' + e.message, 'warning'); }
-    } else if (_fotoRemovida && colabId) {
-      await db.from('colaboradores').update({ foto_url: null }).eq('id', colabId);
-    }
-
-    showToast('Colaborador salvo.', 'success');
-    fecharModal();
-    await carregar();
-  } catch (e) {
-    erroEl.textContent = 'Erro: ' + e.message; erroEl.style.display = 'block';
-  } finally {
-    btn.disabled = false; btn.innerHTML = '<i data-lucide="save" style="width:14px;height:14px"></i> Salvar'; lucide.createIcons();
-  }
+  try{
+    const idReal=(_editColab && !_editColab._virtual)?_editColab.id:null; let colabId=idReal;
+    if(idReal){ const {error}=await db.from('colaboradores').update(payload).eq('id',idReal); if(error) throw new Error(error.message); }
+    else{ payload.criado_em=new Date().toISOString(); const {data,error}=await db.from('colaboradores').insert(payload).select('id').single(); if(error) throw new Error(error.message); colabId=data.id; }
+    if(_fotoFile && colabId){ btn.innerHTML='Enviando foto...';
+      try{ const url=await _uploadFoto(colabId,nome); await db.from('colaboradores').update({foto_url:url}).eq('id',colabId); }
+      catch(e){ console.warn('Foto:',e.message); showToast('Salvo, mas a foto falhou: '+e.message,'warning'); } }
+    showToast('Colaborador salvo.','success'); fecharModal(); await carregar();
+  }catch(e){ erroEl.textContent='Erro: '+e.message; erroEl.style.display='block'; }
+  finally{ btn.disabled=false; btn.innerHTML='<i data-lucide="save" style="width:14px;height:14px"></i> Salvar'; lucide.createIcons(); }
+}
+async function excluirColab() {
+  if(!_editColab || _editColab._virtual || !_editColab.id) return;
+  if(!confirm(`Excluir o colaborador "${_editColab.nome||''}"?\n\nAção irreversível.`)) return;
+  const {error}=await db.from('colaboradores').delete().eq('id',_editColab.id);
+  if(error){ showToast('Erro: '+error.message,'error'); return; }
+  showToast('Colaborador excluído.','success'); fecharModal(); await carregar();
 }
 
-async function excluirColab() {
-  if (!_editColab || _editColab._virtual || !_editColab.id) return;
-  if (!confirm(`Excluir o colaborador "${_editColab.nome || ''}"?\n\nAção irreversível.`)) return;
-  const { error } = await db.from('colaboradores').delete().eq('id', _editColab.id);
-  if (error) { showToast('Erro: ' + error.message, 'error'); return; }
-  showToast('Colaborador excluído.', 'success');
-  fecharModal();
-  await carregar();
+// ── CARDS ────────────────────────────────────────────────────
+// Condições padrão por vaga (editáveis no formulário)
+const VAGAS = {
+  'Consultor Comercial':            { salario:'A combinar', beneficios:'VT, VR, comissão sobre vendas', horario:'Seg a Sex, 8h–18h', extra:'Experiência em vendas / atendimento ao cliente' },
+  'Estoquista':                     { salario:'A combinar', beneficios:'VT, VR', horario:'Seg a Sex, 8h–18h', extra:'Organização de estoque e conferência de materiais' },
+  'Analista de Estoque':            { salario:'A combinar', beneficios:'VT, VR', horario:'Seg a Sex, 8h–18h', extra:'Controle e análise de inventário, Excel intermediário' },
+  'Técnico de Cabeamento':          { salario:'A combinar', beneficios:'VT, VR, ajuda de custo em viagens', horario:'Seg a Sex, 8h–18h', extra:'CNH B; experiência em cabeamento estruturado' },
+  'Técnico de Elétrica e Hardware': { salario:'A combinar', beneficios:'VT, VR, ajuda de custo em viagens', horario:'Seg a Sex, 8h–18h', extra:'CNH B; conhecimento em elétrica e hardware' },
+  'Técnico de Áudio e Vídeo':       { salario:'A combinar', beneficios:'VT, VR, ajuda de custo em viagens', horario:'Seg a Sex, 8h–18h', extra:'Experiência em sistemas de A/V' },
+  'Técnico de Automação':           { salario:'A combinar', beneficios:'VT, VR, ajuda de custo em viagens', horario:'Seg a Sex, 8h–18h', extra:'Experiência em automação residencial (Savant, etc.)' },
+};
+
+function _optsColab(){ return _colabs.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR')).map(c=>`<option value="${c._key}">${escH(c.nome)}</option>`).join(''); }
+function _popularSelectColab(){ const s=document.getElementById('card-sel-colab'); if(s){ const v=s.value; s.innerHTML=_optsColab(); if(v) s.value=v; } }
+
+function selecionarTipo(tipo){
+  _cardTipo = tipo;
+  document.querySelectorAll('.ctipo').forEach(b=>b.classList.toggle('active', b.dataset.tipo===tipo));
+  const f = document.getElementById('card-form');
+  if(tipo==='aniversario'){
+    f.innerHTML = `<div class="fg"><label>Colaborador</label><select id="card-sel-colab">${_optsColab()}</select></div>
+      <div class="fg"><label>Mensagem</label><textarea id="card-msg" rows="3">Toda a equipe da Solução Técnica deseja um feliz aniversário! Que seu dia seja repleto de alegrias.</textarea></div>`;
+  } else if(tipo==='promocao'){
+    f.innerHTML = `<div class="fg"><label>Colaborador</label><select id="card-sel-colab">${_optsColab()}</select></div>
+      <div class="fg"><label>Novo cargo</label><input type="text" id="card-novo-cargo" placeholder="Ex: Coordenador Técnico"></div>
+      <div class="fg"><label>Mensagem</label><textarea id="card-msg" rows="3">Parabéns pela merecida promoção! Seu empenho e dedicação fazem a diferença.</textarea></div>`;
+  } else {
+    const opts = Object.keys(VAGAS).map(v=>`<option>${v}</option>`).join('');
+    f.innerHTML = `<div class="fg"><label>Vaga</label><select id="card-vaga" onchange="_preencherVaga()">${opts}</select></div>
+      <div class="fg"><label>Salário</label><input type="text" id="card-salario"></div>
+      <div class="fg"><label>Benefícios</label><input type="text" id="card-beneficios"></div>
+      <div class="fg"><label>Horário</label><input type="text" id="card-horario"></div>
+      <div class="fg"><label>Requisitos / Observações</label><textarea id="card-extra" rows="2"></textarea></div>`;
+  }
+  if(tipo==='contratacao') _preencherVaga();
+  gerarCard();
+  lucide.createIcons();
+}
+function _preencherVaga(){
+  const v = document.getElementById('card-vaga')?.value; const c = VAGAS[v]; if(!c) return;
+  document.getElementById('card-salario').value = c.salario;
+  document.getElementById('card-beneficios').value = c.beneficios;
+  document.getElementById('card-horario').value = c.horario;
+  document.getElementById('card-extra').value = c.extra;
+}
+
+// Desenho do card no canvas
+function _carregarImg(src){ return new Promise(res=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src; }); }
+function _wrap(ctx,texto,x,y,maxW,lh){ const ps=String(texto).split(' '); let linha=''; for(const p of ps){ const t=linha?linha+' '+p:p; if(ctx.measureText(t).width>maxW && linha){ ctx.fillText(linha,x,y); linha=p; y+=lh; } else linha=t; } if(linha) ctx.fillText(linha,x,y); return y; }
+
+async function gerarCard(){
+  const cv=document.getElementById('card-canvas'); const ctx=cv.getContext('2d'); const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  // Fundo
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#0B3D2E'); g.addColorStop(1,'#0A0A0A');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#3ECF8E'; ctx.fillRect(0,0,W,14);
+  ctx.textAlign='center';
+
+  // Marca
+  ctx.fillStyle='#3ECF8E'; ctx.font='700 34px Inter, sans-serif'; ctx.fillText('SOLUÇÃO TÉCNICA', W/2, 80);
+
+  if(_cardTipo==='aniversario' || _cardTipo==='promocao'){
+    const key=document.getElementById('card-sel-colab')?.value; const c=_colabs.find(x=>x._key===key);
+    const titulo = _cardTipo==='aniversario' ? 'FELIZ ANIVERSÁRIO!' : 'PARABÉNS PELA PROMOÇÃO!';
+    ctx.fillStyle='#FFFFFF'; ctx.font='800 64px Inter, sans-serif'; _wrap(ctx,titulo,W/2,200,W-120,72);
+    // Foto circular
+    const cx=W/2, cy=540, r=210;
+    ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.closePath(); ctx.clip();
+    let img=null; if(c?.foto_url) img=await _carregarImg(fotoSrc(c.foto_url));
+    if(img){ const s=Math.max((2*r)/img.width,(2*r)/img.height); const dw=img.width*s,dh=img.height*s; ctx.drawImage(img,cx-dw/2,cy-dh/2,dw,dh); }
+    else{ ctx.fillStyle='#1B1B1B'; ctx.fillRect(cx-r,cy-r,2*r,2*r); ctx.fillStyle='#3ECF8E'; ctx.font='800 120px Inter'; ctx.fillText(iniciais(c?.nome||'?'),cx,cy+44); }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.lineWidth=10; ctx.strokeStyle='#3ECF8E'; ctx.stroke();
+    // Nome
+    ctx.fillStyle='#FFFFFF'; ctx.font='800 56px Inter'; ctx.fillText((c?.nome||'Colaborador').toUpperCase(), W/2, 860);
+    if(_cardTipo==='promocao'){ const nc=document.getElementById('card-novo-cargo')?.value; if(nc){ ctx.fillStyle='#3ECF8E'; ctx.font='700 38px Inter'; ctx.fillText(nc, W/2, 918); } }
+    // Mensagem
+    ctx.fillStyle='#D4D4D8'; ctx.font='400 34px Inter'; _wrap(ctx, document.getElementById('card-msg')?.value||'', W/2, 1010, W-160, 46);
+  } else {
+    // Contratação
+    const vaga=document.getElementById('card-vaga')?.value||'';
+    ctx.fillStyle='#3ECF8E'; ctx.font='700 36px Inter'; ctx.fillText('VAGA ABERTA', W/2, 200);
+    ctx.fillStyle='#FFFFFF'; ctx.font='800 60px Inter'; _wrap(ctx, vaga, W/2, 300, W-120, 70);
+    const linhas=[
+      ['Salário', document.getElementById('card-salario')?.value],
+      ['Benefícios', document.getElementById('card-beneficios')?.value],
+      ['Horário', document.getElementById('card-horario')?.value],
+      ['Requisitos', document.getElementById('card-extra')?.value],
+    ];
+    ctx.textAlign='left'; let y=480; const x=140;
+    linhas.forEach(([lbl,val])=>{ if(!val) return;
+      ctx.fillStyle='#3ECF8E'; ctx.font='700 30px Inter'; ctx.fillText(lbl.toUpperCase(), x, y);
+      ctx.fillStyle='#FFFFFF'; ctx.font='400 34px Inter'; y=_wrap(ctx, val, x, y+44, W-2*x, 44)+70;
+    });
+    ctx.textAlign='center'; ctx.fillStyle='#A1A1AA'; ctx.font='400 30px Inter'; ctx.fillText('Envie seu currículo para o RH', W/2, H-90);
+  }
+  ctx.textAlign='left';
+}
+
+function baixarCard(){
+  const cv=document.getElementById('card-canvas');
+  const nome = (_cardTipo==='contratacao') ? (document.getElementById('card-vaga')?.value||'vaga')
+    : (_colabs.find(x=>x._key===document.getElementById('card-sel-colab')?.value)?.nome || 'card');
+  const a=document.createElement('a'); a.download=`card-${_cardTipo}-${nome}.png`.replace(/[^a-zA-Z0-9.\-]/g,'_'); a.href=cv.toDataURL('image/png'); a.click();
 }
 </script>
 </body>
