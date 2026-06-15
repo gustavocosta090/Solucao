@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-11g — RH: card aniversário com mensagem + ajuste de posição -->
+<!-- build: 2026-06-11h — RH: foto do card recuada para dentro da moldura -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -497,8 +497,8 @@ async function _cardAniversario(ctx, cv){
   }
   const key=document.getElementById('card-sel-colab')?.value; const c=_colabs.find(x=>x._key===key);
 
-  // Área da foto = moldura da arte (proporções medidas no modelo enviado)
-  const pw=0.52*W, ph=0.416*H, px=(W-pw)/2, py=0.267*H, pr=0.012*W;
+  // Área da foto = dentro da moldura da arte (proporções calibradas no modelo)
+  const pw=0.503*W, ph=0.398*H, px=(W-pw)/2, py=0.279*H, pr=0.008*W;
   ctx.save(); _roundRect(ctx,px,py,pw,ph,pr); ctx.clip();
   let img=null; if(c?.foto_url) img=await _carregarImg(fotoSrc(c.foto_url));
   if(img){ _desenharFotoCover(ctx,img,px,py,pw,ph); }
