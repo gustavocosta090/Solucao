@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-11a — RH: Colaboradores + Dashboard de aniversários (Fase 1) -->
+<!-- build: 2026-06-11b — RH: mescla técnicos existentes na lista de colaboradores -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -194,8 +194,8 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 
 <script>
 let _authToken = '';
-let _colabs = [];
-let _editId = null;
+let _colabs = [];           // mescla: colaboradores reais + técnicos ainda não cadastrados
+let _editColab = null;      // objeto em edição (null = novo)
 let _fotoFile = null;       // arquivo novo selecionado
 let _fotoRemovida = false;
 
@@ -218,9 +218,28 @@ function iniciais(n){ const p=(n||'').trim().split(/\s+/); return ((p[0]||'')[0]
 })();
 
 async function carregar() {
-  const { data, error } = await db.from('colaboradores').select('*').order('nome');
-  if (error) { document.getElementById('aniv-list').innerHTML = `<div class="empty">Erro: ${escH(error.message)}</div>`; return; }
-  _colabs = data || [];
+  const [colabRes, tecRes] = await Promise.all([
+    db.from('colaboradores').select('*').order('nome'),
+    db.from('tecnicos').select('id, nome, nome_completo, funcao, role').order('nome'),
+  ]);
+  if (colabRes.error) { document.getElementById('aniv-list').innerHTML = `<div class="empty">Erro: ${escH(colabRes.error.message)}</div>`; return; }
+
+  const reais = (colabRes.data || []).map(c => ({ ...c, _key: 'c' + c.id, _virtual: false }));
+  const nomesExistentes = new Set(reais.map(c => (c.nome || '').trim().toLowerCase()));
+
+  // Técnicos que ainda não viraram colaboradores → entram como "virtuais" (materializam ao salvar)
+  const virtuais = (tecRes.data || []).filter(t => {
+    const n = (t.nome_completo || t.nome || '').trim().toLowerCase();
+    return n && !nomesExistentes.has(n);
+  }).map(t => ({
+    id: null, _key: 't' + t.id, _virtual: true, _tecnicoId: t.id,
+    nome: t.nome_completo || t.nome,
+    cargo: t.funcao || null,
+    data_admissao: null, data_aniversario: null, ferias_restantes: null,
+    foto_url: null, telefone: null, email: null, observacoes: null, ativo: true,
+  }));
+
+  _colabs = [...reais, ...virtuais].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
   renderDashboard();
   renderColabs();
 }
@@ -280,11 +299,14 @@ function renderColabs() {
     const foto = c.foto_url
       ? `<img class="colab-foto" src="${escH(fotoSrc(c.foto_url))}" alt="">`
       : `<div class="colab-foto-ph">${iniciais(c.nome)}</div>`;
-    return `<div class="colab" onclick="abrirModal(${c.id})">
+    const tag = c._virtual
+      ? '<span class="badge-inativo" style="background:rgba(79,70,229,.15);color:#A5B4FC">via Técnicos</span>'
+      : (c.ativo===false ? '<span class="badge-inativo">inativo</span>' : '');
+    return `<div class="colab" onclick="abrirModal('${c._key}')">
       <div class="colab-top">
         ${foto}
         <div>
-          <div class="colab-nome">${escH(c.nome)} ${c.ativo===false?'<span class="badge-inativo">inativo</span>':''}</div>
+          <div class="colab-nome">${escH(c.nome)} ${tag}</div>
           <div class="colab-cargo">${escH(c.cargo||'—')}</div>
         </div>
       </div>
@@ -299,14 +321,14 @@ function renderColabs() {
 }
 
 // ── Modal ────────────────────────────────────────────────────
-function abrirModal(id) {
-  _editId = id || null;
+function abrirModal(key) {
+  const c = key ? _colabs.find(x => x._key === key) : null;
+  _editColab = c || null;
   _fotoFile = null; _fotoRemovida = false;
   document.getElementById('modal-erro').style.display = 'none';
   document.getElementById('foto-input').value = '';
-  const c = id ? _colabs.find(x => x.id === id) : null;
 
-  document.getElementById('modal-titulo').textContent = c ? 'Editar colaborador' : 'Novo colaborador';
+  document.getElementById('modal-titulo').textContent = c ? (c._virtual ? 'Cadastrar colaborador' : 'Editar colaborador') : 'Novo colaborador';
   document.getElementById('f-nome').value        = c?.nome || '';
   document.getElementById('f-cargo').value       = c?.cargo || '';
   document.getElementById('f-admissao').value    = c?.data_admissao || '';
@@ -316,7 +338,8 @@ function abrirModal(id) {
   document.getElementById('f-email').value       = c?.email || '';
   document.getElementById('f-obs').value         = c?.observacoes || '';
   document.getElementById('f-ativo').checked     = c ? c.ativo !== false : true;
-  document.getElementById('btn-del').style.display = c ? 'inline-flex' : 'none';
+  // Só dá pra excluir colaborador real (virtual = técnico ainda não cadastrado aqui)
+  document.getElementById('btn-del').style.display = (c && !c._virtual) ? 'inline-flex' : 'none';
 
   _renderFotoPreview(c?.foto_url ? fotoSrc(c.foto_url) : null);
   document.getElementById('overlay').classList.add('aberto');
@@ -401,9 +424,11 @@ async function salvarColab() {
   };
 
   try {
-    let colabId = _editId;
-    if (_editId) {
-      const { error } = await db.from('colaboradores').update(payload).eq('id', _editId);
+    // Tem id real? atualiza. Senão (novo ou vindo de técnicos) → insere
+    const idReal = (_editColab && !_editColab._virtual) ? _editColab.id : null;
+    let colabId = idReal;
+    if (idReal) {
+      const { error } = await db.from('colaboradores').update(payload).eq('id', idReal);
       if (error) throw new Error(error.message);
     } else {
       payload.criado_em = new Date().toISOString();
@@ -434,10 +459,9 @@ async function salvarColab() {
 }
 
 async function excluirColab() {
-  if (!_editId) return;
-  const c = _colabs.find(x => x.id === _editId);
-  if (!confirm(`Excluir o colaborador "${c?.nome || ''}"?\n\nAção irreversível.`)) return;
-  const { error } = await db.from('colaboradores').delete().eq('id', _editId);
+  if (!_editColab || _editColab._virtual || !_editColab.id) return;
+  if (!confirm(`Excluir o colaborador "${_editColab.nome || ''}"?\n\nAção irreversível.`)) return;
+  const { error } = await db.from('colaboradores').delete().eq('id', _editColab.id);
   if (error) { showToast('Erro: ' + error.message, 'error'); return; }
   showToast('Colaborador excluído.', 'success');
   fecharModal();
