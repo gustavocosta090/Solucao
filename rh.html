@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-12c — RH: moldura reposicionada (abaixo do texto, com respiro até o nome) -->
+<!-- build: 2026-06-12e — RH: nome curto = primeiro + último nome -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -204,14 +204,16 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
     </div>
     <div class="fg"><label>Nome completo *</label><input type="text" id="f-nome" placeholder="Nome do colaborador"></div>
     <div class="fg"><label>Cargo</label>
-      <select id="f-cargo">
-        <option value="">— Selecionar —</option>
-        <option>Consultor Comercial</option><option>Estoquista</option><option>Analista de Estoque</option>
+      <input type="text" id="f-cargo" list="cargos-list" placeholder="Digite o cargo">
+      <datalist id="cargos-list">
+        <option>Coordenador de Serviço Solução</option><option>Consultor Comercial</option>
+        <option>Estoquista</option><option>Analista de Estoque</option>
         <option>Técnico de Cabeamento</option><option>Técnico de Elétrica e Hardware</option>
         <option>Técnico de Áudio e Vídeo</option><option>Técnico de Automação</option>
         <option>Auxiliar Técnico</option><option>Coordenador</option><option>Supervisor</option>
-        <option>Administrativo</option><option>RH</option><option>Outro</option>
-      </select>
+        <option>Vistoriador Técnico</option><option>Eletricista Predial</option>
+        <option>Motorista</option><option>Serviços Gerais</option><option>Administrativo</option><option>RH</option>
+      </datalist>
     </div>
     <div class="fg-row">
       <div class="fg"><label>Data de admissão</label><input type="date" id="f-admissao"></div>
@@ -247,7 +249,7 @@ let _cardTipo = 'aniversario';
 function fotoSrc(url){ if(!url||!_authToken) return url; return url + (url.includes('?')?'&':'?') + 't=' + encodeURIComponent(_authToken); }
 function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function iniciais(n){ const p=(n||'').trim().split(/\s+/); return ((p[0]||'')[0]||'?').toUpperCase() + ((p[1]||'')[0]||'').toUpperCase(); }
-function nomeCurto(n){ const p=(n||'').trim().split(/\s+/).filter(Boolean); return p.slice(0,2).join(' '); }
+function nomeCurto(n){ const p=(n||'').trim().split(/\s+/).filter(Boolean); if(p.length<=1) return p.join(' '); return p[0]+' '+p[p.length-1]; }
 
 (async () => {
   const { data: { session } } = await db.auth.getSession();
