@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-12b — RH: foto subiu no card, nome+1 sobrenome, excluir colaborador -->
+<!-- build: 2026-06-12c — RH: moldura reposicionada (abaixo do texto, com respiro até o nome) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -448,7 +448,7 @@ function selecionarTipo(tipo){
   const f = document.getElementById('card-form');
   if(tipo==='aniversario'){
     f.innerHTML = `<div class="fg"><label>Colaborador</label><select id="card-sel-colab">${_optsColab()}</select></div>
-      <div class="fg"><label>Mensagem</label><textarea id="card-msg" rows="3">Toda a equipe da Solução Técnica deseja um feliz aniversário! Que seu dia seja repleto de alegrias.</textarea></div>`;
+      <div class="fg"><label>Mensagem</label><textarea id="card-msg" rows="3">Nós do Grupo Solução te desejamos um feliz aniversário! Que seu dia seja repleto de alegrias.</textarea></div>`;
   } else if(tipo==='promocao'){
     f.innerHTML = `<div class="fg"><label>Colaborador</label><select id="card-sel-colab">${_optsColab()}</select></div>
       <div class="fg"><label>Novo cargo</label><input type="text" id="card-novo-cargo" placeholder="Ex: Coordenador Técnico"></div>
@@ -504,7 +504,7 @@ async function _cardAniversario(ctx, cv){
   const key=document.getElementById('card-sel-colab')?.value; const c=_colabs.find(x=>x._key===key);
 
   // MOLDURA desenhada pelo sistema (ideal: arte SEM moldura). Foto + moldura juntas = sempre alinhadas.
-  const fw=0.555*W, fh=0.412*H, fx=(W-fw)/2, fy=0.222*H, frad=0.010*W;
+  const fw=0.545*W, fh=0.392*H, fx=(W-fw)/2, fy=0.242*H, frad=0.010*W;
   const borda=0.018*W; // espessura da moldura
   // Sombra + moldura branca
   ctx.save();
