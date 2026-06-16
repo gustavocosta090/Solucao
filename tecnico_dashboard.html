@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-11 — guard aceita admin_geral -->
+<!-- build: 2026-06-12 — banner de OS atrasadas do técnico -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -628,6 +628,12 @@
 </header>
 
 <main>
+  <!-- Alerta de OS atrasadas do técnico -->
+  <div id="alerta-atrasadas" style="display:none;align-items:center;gap:10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);color:#FCD34D;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:14px;font-weight:600;">
+    <i data-lucide="alert-triangle" style="width:18px;height:18px"></i>
+    <span id="alerta-atrasadas-txt"></span>
+  </div>
+
   <!-- Stats -->
   <div class="stats">
     <div class="stat-card">
@@ -819,6 +825,20 @@ async function carregarOSs() {
   document.getElementById('statTotal').textContent     = todasOSs.length;
   document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
   document.getElementById('statPendentes').textContent = todasOSs.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
+
+  // Alerta de OS atrasadas (pendente + data_servico < hoje)
+  const atrasadas = todasOSs.filter(o =>
+    (!o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada')
+    && o.data_servico && o.data_servico < hojeISO).length;
+  const alerta = document.getElementById('alerta-atrasadas');
+  if (alerta) {
+    if (atrasadas > 0) {
+      document.getElementById('alerta-atrasadas-txt').textContent =
+        `Você tem ${atrasadas} OS atrasada(s) para preencher.`;
+      alerta.style.display = 'flex';
+      if (window.lucide) lucide.createIcons();
+    } else { alerta.style.display = 'none'; }
+  }
 
   filtrar();
 }

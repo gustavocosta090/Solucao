@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-11 — guard aceita admin_geral -->
+<!-- build: 2026-06-13 — e-mail automático da OS finalizada (PDF + link mídias) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1465,6 +1465,23 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, equipeNo
     }
 
     set('✅ PDF salvo no SharePoint', 'var(--primary)');
+
+    // ── E-mail da OS finalizada (PDF anexado + link das mídias) → ordens@ ──
+    try {
+      const qtdFotos = (typeof fotosSelecionadas !== 'undefined') ? fotosSelecionadas.length : 0;
+      const fotosFolder = qtdFotos > 0 ? `Obras e Clientes ${ano}/${nomeBase}/Fotos/${equipe}` : null;
+      const mailRes = await fetch('/api/enviar-os-email', {
+        method:  'POST',
+        headers: { ...hdrs, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          numeroOS, cliente: dadosPDF.cliente, tecnico: dadosPDF.equipe, data: dadosPDF.data,
+          tipoServico: dadosPDF.tipoServico, planejado: dadosPDF.planejado, realizado: dadosPDF.realizado,
+          pdfBase64: base64, fotosFolder, qtdFotos,
+        }),
+      });
+      if (mailRes.ok) set('✅ PDF salvo e e-mail enviado', 'var(--primary)');
+      else console.warn('e-mail OS:', await mailRes.text().catch(() => mailRes.status));
+    } catch (e) { console.warn('e-mail OS falhou:', e.message); }
   } catch (e) {
     set(`falha no PDF: ${e.message}`, '#f87171');
     console.error('SharePoint PDF error:', e);
