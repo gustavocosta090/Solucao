@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-11 — guard aceita admin_geral -->
+<!-- build: 2026-06-17 — bloqueios: lista so ativos + Ver antigos -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -4279,6 +4279,15 @@ async function excluirNota() {
 
 // ── BLOQUEIOS DE TÉCNICOS ─────────────────────────────────────
 let bloqueios = [];
+let mostrarBloqueiosAntigos = false;
+
+// Data local de hoje em YYYY-MM-DD (não usar toISOString — desloca por fuso)
+function hojeLocalISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+// Bloqueio ainda ativo = termina hoje ou no futuro
+function bloqueioAtivo(b) { return b.data_fim >= hojeLocalISO(); }
 
 async function carregarBloqueios() {
   const { data } = await db.from('tecnico_bloqueios').select('*').order('data_inicio');
@@ -4323,6 +4332,7 @@ function abrirModalBloqueio() {
     tecnicos.map(t => `<option value="${t.id}">${escHtml(t.nome)}</option>`).join('');
   document.getElementById('bl-tipo').value = 'dia_inteiro';
   document.getElementById('bl-horas-wrap').style.display = 'none';
+  mostrarBloqueiosAntigos = false;
   renderBloqueiosLista();
   document.getElementById('overlay-bloqueio').style.display = 'flex';
   lucide.createIcons();
@@ -4332,20 +4342,30 @@ function fecharModalBloqueio() {
   document.getElementById('overlay-bloqueio').style.display = 'none';
 }
 
+function toggleBloqueiosAntigos() {
+  mostrarBloqueiosAntigos = !mostrarBloqueiosAntigos;
+  renderBloqueiosLista();
+}
+
 function renderBloqueiosLista() {
   const el = document.getElementById('bloqueios-lista');
   if (!bloqueios.length) {
     el.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:8px 0">Nenhum bloqueio cadastrado.</div>';
     return;
   }
+  const ativos   = bloqueios.filter(bloqueioAtivo);
+  const antigos  = bloqueios.filter(b => !bloqueioAtivo(b));
+  const visiveis = mostrarBloqueiosAntigos ? bloqueios : ativos;
+
   const fmt = d => new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
-  el.innerHTML = bloqueios.map(b => {
+  const item = b => {
     const tec    = tecnicos.find(t => t.id === b.tecnico_id);
     const periodo = descricaoPeriodoBloqueio(b);
     const datas  = b.data_inicio === b.data_fim ? fmt(b.data_inicio) : `${fmt(b.data_inicio)} → ${fmt(b.data_fim)}`;
-    return `<div class="bloqueio-item">
+    const venc   = !bloqueioAtivo(b);
+    return `<div class="bloqueio-item"${venc?' style="opacity:.55"':''}>
       <div style="flex:1;min-width:0">
-        <div class="bloqueio-nome">${escHtml(tec?.nome || '—')}</div>
+        <div class="bloqueio-nome">${escHtml(tec?.nome || '—')}${venc?' <span style="font-size:10px;font-weight:600;color:var(--text-3)">(encerrado)</span>':''}</div>
         <div class="bloqueio-info">${datas} · <strong style="color:var(--text-2)">${periodo}</strong></div>
         <div class="bloqueio-motivo">${escHtml(b.motivo)}</div>
       </div>
@@ -4353,7 +4373,19 @@ function renderBloqueiosLista() {
         <i data-lucide="trash-2" style="width:14px;height:14px"></i>
       </button>
     </div>`;
-  }).join('');
+  };
+
+  let html = visiveis.length
+    ? visiveis.map(item).join('')
+    : '<div style="color:var(--text-3);font-size:13px;padding:8px 0">Nenhum bloqueio ativo.</div>';
+
+  if (antigos.length) {
+    html += `<button onclick="toggleBloqueiosAntigos()" style="background:none;border:none;color:var(--text-3);font-size:12px;font-weight:600;cursor:pointer;padding:8px 0 0;font-family:inherit">
+      ${mostrarBloqueiosAntigos ? 'Ocultar antigos' : `Ver antigos (${antigos.length})`}
+    </button>`;
+  }
+
+  el.innerHTML = html;
   lucide.createIcons();
 }
 

@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-13 — botões enviar OS por e-mail (uma / todas) -->
+<!-- build: 2026-06-17 — lista agrupada por N.OS (uma linha por servico) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1939,11 +1939,13 @@ function ordenar(field) {
   filtrar();
 }
 
+let _gruposAtuais = [];
 function renderTabela() {
+  _gruposAtuais = agruparOSsPorNumero(filtradas);
   const start = (currentPage - 1) * PER_PAGE;
-  const pagina = filtradas.slice(start, start + PER_PAGE);
+  const pagina = _gruposAtuais.slice(start, start + PER_PAGE);
 
-  if (filtradas.length === 0) {
+  if (_gruposAtuais.length === 0) {
     document.getElementById('tabelaEl').style.display = 'none';
     document.getElementById('emptyEl').style.display = 'block';
     lucide.createIcons();
@@ -1956,13 +1958,17 @@ function renderTabela() {
   tbody.innerHTML = pagina.map(o => {
     const dataRef = o.data_servico || (o.criado_em ? o.criado_em.slice(0,10) : null);
     const data = dataRef ? new Date(dataRef + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—';
+    const idsJson = JSON.stringify(o._ids);
     const isCancelada = o.status_aprovacao === 'cancelada';
-    const _stNorm = (o.status_aprovacao === 'aprovada' || o.status_aprovacao === 'concluida') ? 'concluida' : 'pendente';
+    // Grupo concluído só quando TODOS os técnicos concluíram
+    const _stNorm = (!isCancelada && o._total > 0 && o._concluidas === o._total) ? 'concluida' : 'pendente';
+    const _contador = (!isCancelada && o._total > 1 && _stNorm === 'pendente')
+      ? ` <span style="font-size:9px;color:var(--text-3);font-variant-numeric:tabular-nums;">${o._concluidas}/${o._total}</span>` : '';
     const statusBadge = isCancelada
       ? '<span class="badge badge-cancelada">Cancelada</span>'
       : (_stNorm === 'concluida'
           ? '<span class="badge badge-aprovada">Concluída</span>'
-          : '<span class="badge badge-pendente">Pendente</span>');
+          : `<span class="badge badge-pendente">Pendente</span>${_contador}`);
     const noturnaInfo = agendaNoturnaInfo(o);
     let noturnaBadge = '';
     if (noturnaInfo) {
@@ -1974,11 +1980,11 @@ function renderTabela() {
         noturnaBadge = `<span class="badge badge-noturna-pend" title="${escHtml(noturnaInfo.label)}">🌙 Aguardando decisão</span>`;
       }
     }
-    const nFotos = o.fotos_urls?.length || 0;
+    const nFotos = o._fotosTotal || 0;
 
     const btnAcao = isCancelada ? '' : (_stNorm === 'concluida'
-      ? `<button class="btn-reprovar" onclick="event.stopPropagation();reabrirOS(${o.id})">Reabrir</button>`
-      : `<button class="btn-aprovar" onclick="event.stopPropagation();concluirOS(${o.id})">Concluir</button>`);
+      ? `<button class="btn-reprovar" onclick="event.stopPropagation();reabrirGrupo(${idsJson})">Reabrir</button>`
+      : `<button class="btn-aprovar" onclick="event.stopPropagation();concluirGrupo(${idsJson})">Concluir</button>`);
 
     const tipoTxt  = (o.tipo_servico || 'execucao') === 'assistencia' ? 'Assistência' : 'Execução';
     const tipoColor= (o.tipo_servico || 'execucao') === 'assistencia'
@@ -2000,17 +2006,17 @@ function renderTabela() {
         ${btnAcao}
         <button class="btn-ver" onclick="verOS(${o.id})">Ver</button>
         <button class="btn-ver" style="border-color:rgba(79,70,229,.35);color:#A5B4FC;" onclick="event.stopPropagation();enviarEmailOSRow(${o.id}, this)" title="Enviar esta OS por e-mail">E-mail</button>
-        ${!isCancelada ? `<button class="btn-reprovar" style="background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3);color:#f87171;" onclick="event.stopPropagation();deletarOS(${o.id})" title="Cancelar OS">Cancelar</button>` : ''}
+        ${!isCancelada ? `<button class="btn-reprovar" style="background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3);color:#f87171;" onclick="event.stopPropagation();deletarGrupo(${idsJson}, '${formatarNumeroOS(o)}')" title="Cancelar OS">Cancelar</button>` : ''}
       </td>
     </tr>`;
   }).join('');
 
   lucide.createIcons();
 
-  // Paginação
-  const totalPages = Math.ceil(filtradas.length / PER_PAGE);
+  // Paginação (por grupo de N.OS)
+  const totalPages = Math.ceil(_gruposAtuais.length / PER_PAGE);
   const pag = document.getElementById('paginacao');
-  if (totalPages <= 1) { pag.innerHTML = `<span class="pag-info">${filtradas.length} OS encontradas</span>`; return; }
+  if (totalPages <= 1) { pag.innerHTML = `<span class="pag-info">${_gruposAtuais.length} OS encontradas</span>`; return; }
 
   let html = `<button class="btn-pag" onclick="irPagina(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
   for (let i = 1; i <= totalPages; i++) {
@@ -2021,12 +2027,12 @@ function renderTabela() {
     }
   }
   html += `<button class="btn-pag" onclick="irPagina(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
-  html += `<span class="pag-info">${filtradas.length} OS</span>`;
+  html += `<span class="pag-info">${_gruposAtuais.length} OS</span>`;
   pag.innerHTML = html;
 }
 
 function irPagina(p) {
-  const total = Math.ceil(filtradas.length / PER_PAGE);
+  const total = Math.ceil(_gruposAtuais.length / PER_PAGE);
   if (p < 1 || p > total) return;
   currentPage = p;
   renderTabela();
@@ -2215,6 +2221,58 @@ async function deletarOS(id) {
       if (error) { showToast('Erro ao cancelar OS: ' + error.message, 'error'); return; }
       _canceladasCache = null;
       todasOSs = todasOSs.filter(o => o.id !== id);
+      filtrar();
+      showToast('OS cancelada. Use o filtro "Cancelada" para visualizá-la.', 'success');
+    }
+  );
+}
+
+// ── Agrupamento por N.OS: uma linha por serviço, reunindo as OS de cada técnico ──
+// OS sem número (ex.: cancelada com número liberado) fica em linha própria.
+function agruparOSsPorNumero(oss) {
+  const grupos = [];
+  const idx = {};
+  oss.forEach(o => {
+    const chave = o.numero_os ? `n_${o.numero_os}` : `i_${o.id}`;
+    if (idx[chave] == null) { idx[chave] = grupos.length; grupos.push([o]); }
+    else grupos[idx[chave]].push(o);
+  });
+  return grupos.map(lista => {
+    const base = lista[0];
+    const equipeNomes = [...new Set(lista.flatMap(o => o.equipeNomes || []))];
+    const concluidas  = lista.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
+    const fotosTotal  = lista.reduce((s, o) => s + (o.fotos_urls?.length || 0), 0);
+    return { ...base, _ids: lista.map(o => o.id), _total: lista.length,
+             _concluidas: concluidas, equipeNomes, _fotosTotal: fotosTotal };
+  });
+}
+
+// Ações que agem em TODAS as OS de uma mesma N.OS
+async function concluirGrupo(ids) {
+  for (const id of ids) {
+    const o = todasOSs.find(x => x.id === id);
+    if (o && o.status_aprovacao !== 'concluida' && o.status_aprovacao !== 'aprovada' && o.status_aprovacao !== 'cancelada')
+      await mudarStatusOS(id, 'concluida', '');
+  }
+}
+async function reabrirGrupo(ids) {
+  for (const id of ids) {
+    const o = todasOSs.find(x => x.id === id);
+    if (o && (o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada'))
+      await mudarStatusOS(id, 'pendente', '');
+  }
+}
+async function deletarGrupo(ids, label) {
+  const plural = ids.length > 1 ? ` (${ids.length} OS — todos os técnicos)` : '';
+  confirmModal(
+    `Cancelar ${label}${plural}?\n\nFica oculta da lista e o número é liberado. Use o filtro "Cancelada" para vê-la.`,
+    async () => {
+      const { error } = await db.from('ordens_de_servico')
+        .update({ status_aprovacao: 'cancelada', numero_os: null })
+        .in('id', ids);
+      if (error) { showToast('Erro ao cancelar OS: ' + error.message, 'error'); return; }
+      _canceladasCache = null;
+      todasOSs = todasOSs.filter(o => !ids.includes(o.id));
       filtrar();
       showToast('OS cancelada. Use o filtro "Cancelada" para visualizá-la.', 'success');
     }
