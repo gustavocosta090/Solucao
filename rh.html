@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-12e — RH: nome curto = primeiro + último nome -->
+<!-- build: 2026-06-17 — card de vaga: empresa (Solucao/Breton), fundo desfocado + Poppins -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -7,7 +7,7 @@
 <title>RH — Solução Técnica</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;700;900&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script>document.documentElement.dataset.theme = localStorage.getItem('tema') || 'dark';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="utils.js"></script>
@@ -441,6 +441,30 @@ const VAGAS = {
   'Técnico de Automação':           { salario:'A combinar', beneficios:'VT, VR, ajuda de custo em viagens', horario:'Seg a Sex, 8h–18h', extra:'Experiência em automação residencial (Savant, etc.)' },
 };
 
+// Empresas (cards de vaga) — cada uma tem fundo (foto de produto desfocada), logo e cor de destaque.
+// Arquivos na RAIZ do projeto. Cores da Breton: placeholder dourado — AJUSTAR com a marca oficial.
+const EMPRESAS = {
+  solucao: { nome:'Solução',  bg:'card-vaga-solucao.jpg', logo:'logosolucao.png', logoBranca:true, cor:'#3ECF8E', contato:'Envie seu currículo para o RH' },
+  // Breton: wordmark desenhado como TEXTO (logos enviados tinham fundo sólido). Cor bordô oficial — CONFIRMAR hex.
+  breton:  { nome:'Breton',   bg:'card-vaga-breton.jpg',  logoTexto:'BRETON', cor:'#7A2A40', contato:'Envie seu currículo para o RH' },
+};
+
+// Cor de texto (preto/branco) com melhor contraste sobre uma cor de fundo hex.
+function _corContraste(hex){
+  const h=String(hex).replace('#',''); const r=parseInt(h.substr(0,2),16), g=parseInt(h.substr(2,2),16), b=parseInt(h.substr(4,2),16);
+  return (0.299*r+0.587*g+0.114*b) > 150 ? '#0A0A0A' : '#FFFFFF';
+}
+
+// Clareia uma cor hex misturando com branco (amt 0..1).
+function _clarear(hex,amt){ const h=String(hex).replace('#',''); let r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16); r=Math.round(r+(255-r)*amt); g=Math.round(g+(255-g)*amt); b=Math.round(b+(255-b)*amt); return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+
+// Tinge uma imagem (logo preta/transparente) com uma cor sólida, preservando o alfa.
+function _tingir(img, cor){
+  const c=document.createElement('canvas'); c.width=img.naturalWidth||img.width; c.height=img.naturalHeight||img.height;
+  const x=c.getContext('2d'); x.drawImage(img,0,0); x.globalCompositeOperation='source-in'; x.fillStyle=cor; x.fillRect(0,0,c.width,c.height);
+  return c;
+}
+
 function _optsColab(){ return _colabs.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR')).map(c=>`<option value="${c._key}">${escH(c.nome)}</option>`).join(''); }
 function _popularSelectColab(){ const s=document.getElementById('card-sel-colab'); if(s){ const v=s.value; s.innerHTML=_optsColab(); if(v) s.value=v; } }
 
@@ -457,7 +481,9 @@ function selecionarTipo(tipo){
       <div class="fg"><label>Mensagem</label><textarea id="card-msg" rows="3">Parabéns pela merecida promoção! Seu empenho e dedicação fazem a diferença.</textarea></div>`;
   } else {
     const opts = Object.keys(VAGAS).map(v=>`<option>${v}</option>`).join('');
-    f.innerHTML = `<div class="fg"><label>Vaga</label><select id="card-vaga" onchange="_preencherVaga()">${opts}</select></div>
+    const empOpts = Object.entries(EMPRESAS).map(([k,e])=>`<option value="${k}">${e.nome}</option>`).join('');
+    f.innerHTML = `<div class="fg"><label>Empresa</label><select id="card-empresa" onchange="gerarCard()">${empOpts}</select></div>
+      <div class="fg"><label>Vaga</label><select id="card-vaga" onchange="_preencherVaga()">${opts}</select></div>
       <div class="fg"><label>Salário</label><input type="text" id="card-salario"></div>
       <div class="fg"><label>Benefícios</label><input type="text" id="card-beneficios"></div>
       <div class="fg"><label>Horário</label><input type="text" id="card-horario"></div>
@@ -478,6 +504,8 @@ function _preencherVaga(){
 // Desenho do card no canvas
 function _carregarImg(src){ return new Promise(res=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src; }); }
 function _wrap(ctx,texto,x,y,maxW,lh){ const ps=String(texto).split(' '); let linha=''; for(const p of ps){ const t=linha?linha+' '+p:p; if(ctx.measureText(t).width>maxW && linha){ ctx.fillText(linha,x,y); linha=p; y+=lh; } else linha=t; } if(linha) ctx.fillText(linha,x,y); return y; }
+// Igual ao _wrap mas só MEDE (não desenha) — retorna o array de linhas. Use a fonte já setada no ctx.
+function _medirLinhas(ctx,texto,maxW){ const ps=String(texto).split(' '); const out=[]; let linha=''; for(const p of ps){ const t=linha?linha+' '+p:p; if(ctx.measureText(t).width>maxW && linha){ out.push(linha); linha=p; } else linha=t; } if(linha) out.push(linha); return out; }
 function _roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 function _desenharFotoCover(ctx,img,x,y,w,h){ const s=Math.max(w/img.width,h/img.height); const dw=img.width*s,dh=img.height*s; ctx.drawImage(img,x+(w-dw)/2,y+(h-dh)/2,dw,dh); }
 
@@ -541,17 +569,123 @@ async function _cardAniversario(ctx, cv){
   ctx.textAlign='left';
 }
 
+// Card de Contratação — foto de produto da empresa desfocada + textos por cima (story 1080x1920)
+async function _cardContratacao(ctx, cv){
+  cv.width=1080; cv.height=1920;
+  const W=cv.width, H=cv.height;
+  const empKey=document.getElementById('card-empresa')?.value || 'solucao';
+  const emp=EMPRESAS[empKey] || EMPRESAS.solucao;
+  const accent=emp.cor;
+  // Variante clara da cor da marca para texto/linhas sobre o fundo escuro (bordô puro fica apagado)
+  const accentTxt = _corContraste(accent)==='#FFFFFF' ? _clarear(accent,0.6) : accent;
+
+  // Fundo: foto do produto em COVER + desfoque (desenha maior pra o blur não vazar bordas)
+  const bg = await _carregarImg(emp.bg + '?v=' + Date.now());
+  if(bg){
+    ctx.save(); ctx.filter='blur(18px)';
+    const m=70; _desenharFotoCover(ctx, bg, -m, -m, W+2*m, H+2*m);
+    ctx.restore();
+  } else {
+    const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#1b1b1b'); g.addColorStop(1,'#000');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  }
+
+  // Escurecimento para legibilidade
+  const ov=ctx.createLinearGradient(0,0,0,H);
+  ov.addColorStop(0,'rgba(0,0,0,0.58)'); ov.addColorStop(0.45,'rgba(0,0,0,0.46)'); ov.addColorStop(1,'rgba(0,0,0,0.84)');
+  ctx.fillStyle=ov; ctx.fillRect(0,0,W,H);
+
+  // Faixas de destaque (topo e base)
+  ctx.fillStyle=accent; ctx.fillRect(0,0,W,16); ctx.fillRect(0,H-16,W,16);
+
+  ctx.textAlign='center';
+
+  // Logo no topo — wordmark de texto (Breton) ou imagem tingida de branco (Solução)
+  let topY=160;
+  if(emp.logoTexto){
+    ctx.fillStyle='#FFFFFF'; ctx.font='800 86px Poppins, sans-serif';
+    const prevLS = ctx.letterSpacing; try{ ctx.letterSpacing='18px'; }catch(e){}
+    ctx.fillText(emp.logoTexto, W/2, topY+80);
+    try{ ctx.letterSpacing=prevLS||'0px'; }catch(e){}
+    topY += 160;
+  } else {
+    const logo = await _carregarImg((emp.logo||'') + '?v=' + Date.now());
+    if(logo){
+      const lw=Math.min(420, logo.naturalWidth||logo.width); const dh=lw*((logo.naturalHeight||logo.height)/(logo.naturalWidth||logo.width));
+      const src = emp.logoBranca ? _tingir(logo,'#FFFFFF') : logo;
+      ctx.drawImage(src, (W-lw)/2, topY, lw, dh);
+      topY += dh + 48;
+    } else {
+      ctx.fillStyle='#FFFFFF'; ctx.font='800 64px Poppins, sans-serif'; ctx.fillText(emp.nome.toUpperCase(), W/2, topY+50);
+      topY += 120;
+    }
+  }
+
+  // Selo "ESTAMOS CONTRATANDO"
+  const selo='ESTAMOS CONTRATANDO';
+  ctx.font='700 38px Poppins, sans-serif';
+  const sw=ctx.measureText(selo).width+72, sh=72, sx=(W-sw)/2;
+  ctx.fillStyle=accent; _roundRect(ctx,sx,topY,sw,sh,sh/2); ctx.fill();
+  ctx.fillStyle=_corContraste(accent); ctx.textBaseline='middle'; ctx.fillText(selo, W/2, topY+sh/2+2); ctx.textBaseline='alphabetic';
+  let y=topY+sh+96;
+
+  // Título da vaga
+  const vaga=document.getElementById('card-vaga')?.value||'';
+  ctx.fillStyle='#FFFFFF'; ctx.font='900 80px Poppins, sans-serif';
+  y=_wrap(ctx, vaga.toUpperCase(), W/2, y, W-150, 88)+34;
+
+  // Linha decorativa
+  ctx.strokeStyle=accentTxt; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(W/2-80,y); ctx.lineTo(W/2+80,y); ctx.stroke();
+  y+=80;
+
+  // Painel translúcido com os detalhes
+  const padX=72, panelX=80, panelW=W-160;
+  ctx.textAlign='left';
+  const blocks=[
+    ['Salário', document.getElementById('card-salario')?.value],
+    ['Benefícios', document.getElementById('card-beneficios')?.value],
+    ['Horário', document.getElementById('card-horario')?.value],
+    ['Requisitos', document.getElementById('card-extra')?.value],
+  ].filter(l=>l[1]).map(([lbl,val])=>{
+    ctx.font='400 34px Poppins, sans-serif';
+    return {lbl, linhas:_medirLinhas(ctx, val, panelW-2*padX)};
+  });
+  let panelH=58; blocks.forEach(b=>{ panelH += 46 + b.linhas.length*46 + 30; });
+  ctx.fillStyle='rgba(255,255,255,0.09)'; _roundRect(ctx, panelX, y, panelW, panelH, 30); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.16)'; ctx.lineWidth=2; _roundRect(ctx, panelX, y, panelW, panelH, 30); ctx.stroke();
+
+  let ty=y+62;
+  blocks.forEach(b=>{
+    ctx.fillStyle=accentTxt; ctx.font='700 28px Poppins, sans-serif'; ctx.fillText(b.lbl.toUpperCase(), panelX+padX, ty); ty+=46;
+    ctx.fillStyle='#F4F4F5'; ctx.font='400 34px Poppins, sans-serif';
+    b.linhas.forEach(l=>{ ctx.fillText(l, panelX+padX, ty); ty+=46; });
+    ty+=30;
+  });
+
+  // Rodapé
+  ctx.textAlign='center';
+  ctx.fillStyle='#FFFFFF'; ctx.font='700 38px Poppins, sans-serif'; ctx.fillText(emp.contato, W/2, H-130);
+  ctx.fillStyle=accentTxt; ctx.font='600 30px Poppins, sans-serif'; ctx.fillText('TRABALHE CONOSCO', W/2, H-80);
+  ctx.textAlign='left';
+}
+
 async function gerarCard(){
   const cv=document.getElementById('card-canvas'); const ctx=cv.getContext('2d');
 
-  // Garante que a fonte Roboto esteja carregada antes de desenhar no canvas
+  // Garante que as fontes estejam carregadas antes de desenhar no canvas
   try { if (document.fonts) { await Promise.all([
     document.fonts.load('700 48px Roboto'),
     document.fonts.load('500 32px Roboto'),
     document.fonts.load('400 28px Roboto'),
+    document.fonts.load('900 96px Poppins'),
+    document.fonts.load('800 72px Poppins'),
+    document.fonts.load('600 36px Poppins'),
+    document.fonts.load('500 32px Poppins'),
+    document.fonts.load('400 30px Poppins'),
   ]); await document.fonts.ready; } } catch(e){}
 
   if(_cardTipo==='aniversario'){ ctx.clearRect(0,0,cv.width,cv.height); await _cardAniversario(ctx, cv); return; }
+  if(_cardTipo==='contratacao'){ ctx.clearRect(0,0,cv.width,cv.height); await _cardContratacao(ctx, cv); return; }
 
   cv.width=1080; cv.height=1350;
   const W=cv.width, H=cv.height;
@@ -577,29 +711,14 @@ async function gerarCard(){
     ctx.fillStyle='#FFFFFF'; ctx.font='800 56px Inter'; ctx.fillText((c?.nome||'Colaborador').toUpperCase(), W/2, 860);
     const nc=document.getElementById('card-novo-cargo')?.value; if(nc){ ctx.fillStyle='#3ECF8E'; ctx.font='700 38px Inter'; ctx.fillText(nc, W/2, 918); }
     ctx.fillStyle='#D4D4D8'; ctx.font='400 34px Inter'; _wrap(ctx, document.getElementById('card-msg')?.value||'', W/2, 1010, W-160, 46);
-  } else {
-    const vaga=document.getElementById('card-vaga')?.value||'';
-    ctx.fillStyle='#3ECF8E'; ctx.font='700 36px Inter'; ctx.fillText('VAGA ABERTA', W/2, 200);
-    ctx.fillStyle='#FFFFFF'; ctx.font='800 60px Inter'; _wrap(ctx, vaga, W/2, 300, W-120, 70);
-    const linhas=[
-      ['Salário', document.getElementById('card-salario')?.value],
-      ['Benefícios', document.getElementById('card-beneficios')?.value],
-      ['Horário', document.getElementById('card-horario')?.value],
-      ['Requisitos', document.getElementById('card-extra')?.value],
-    ];
-    ctx.textAlign='left'; let y=480; const x=140;
-    linhas.forEach(([lbl,val])=>{ if(!val) return;
-      ctx.fillStyle='#3ECF8E'; ctx.font='700 30px Inter'; ctx.fillText(lbl.toUpperCase(), x, y);
-      ctx.fillStyle='#FFFFFF'; ctx.font='400 34px Inter'; y=_wrap(ctx, val, x, y+44, W-2*x, 44)+70;
-    });
-    ctx.textAlign='center'; ctx.fillStyle='#A1A1AA'; ctx.font='400 30px Inter'; ctx.fillText('Envie seu currículo para o RH', W/2, H-90);
   }
   ctx.textAlign='left';
 }
 
 function baixarCard(){
   const cv=document.getElementById('card-canvas');
-  const nome = (_cardTipo==='contratacao') ? (document.getElementById('card-vaga')?.value||'vaga')
+  const nome = (_cardTipo==='contratacao')
+    ? ((EMPRESAS[document.getElementById('card-empresa')?.value]?.nome||'') + '-' + (document.getElementById('card-vaga')?.value||'vaga'))
     : (_colabs.find(x=>x._key===document.getElementById('card-sel-colab')?.value)?.nome || 'card');
   const a=document.createElement('a'); a.download=`card-${_cardTipo}-${nome}.png`.replace(/[^a-zA-Z0-9.\-]/g,'_'); a.href=cv.toDataURL('image/png'); a.click();
 }
