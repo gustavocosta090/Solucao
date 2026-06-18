@@ -443,10 +443,11 @@ const VAGAS = {
 
 // Empresas (cards de vaga) — cada uma tem fundo (foto de produto desfocada), logo e cor de destaque.
 // Arquivos na RAIZ do projeto. Cores da Breton: placeholder dourado — AJUSTAR com a marca oficial.
+const EMAIL_VAGAS = 'bancodetalentos@solucaotecnica.com.br';
 const EMPRESAS = {
-  solucao: { nome:'Solução',  bg:'card-vaga-solucao.jpg', logo:'logosolucao.png', logoBranca:true, cor:'#3ECF8E', contato:'Envie seu currículo para o RH' },
+  solucao: { nome:'Solução',  bg:'card-vaga-solucao.jpg', logo:'logosolucao.png', logoBranca:true, cor:'#C9A24B', email:EMAIL_VAGAS },
   // Breton: wordmark desenhado como TEXTO (logos enviados tinham fundo sólido). Cor bordô oficial — CONFIRMAR hex.
-  breton:  { nome:'Breton',   bg:'card-vaga-breton.jpg',  logoTexto:'BRETON', cor:'#7A2A40', contato:'Envie seu currículo para o RH' },
+  breton:  { nome:'Breton',   bg:'card-vaga-breton.jpg',  logoTexto:'BRETON', cor:'#7A2A40', email:EMAIL_VAGAS },
 };
 
 // Cor de texto (preto/branco) com melhor contraste sobre uma cor de fundo hex.
@@ -582,8 +583,8 @@ async function _cardContratacao(ctx, cv){
   // Fundo: foto do produto em COVER + desfoque (desenha maior pra o blur não vazar bordas)
   const bg = await _carregarImg(emp.bg + '?v=' + Date.now());
   if(bg){
-    ctx.save(); ctx.filter='blur(18px)';
-    const m=70; _desenharFotoCover(ctx, bg, -m, -m, W+2*m, H+2*m);
+    ctx.save(); ctx.filter='blur(10px)';
+    const m=50; _desenharFotoCover(ctx, bg, -m, -m, W+2*m, H+2*m);
     ctx.restore();
   } else {
     const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#1b1b1b'); g.addColorStop(1,'#000');
@@ -664,8 +665,13 @@ async function _cardContratacao(ctx, cv){
 
   // Rodapé
   ctx.textAlign='center';
-  ctx.fillStyle='#FFFFFF'; ctx.font='700 38px Poppins, sans-serif'; ctx.fillText(emp.contato, W/2, H-130);
-  ctx.fillStyle=accentTxt; ctx.font='600 30px Poppins, sans-serif'; ctx.fillText('TRABALHE CONOSCO', W/2, H-80);
+  ctx.fillStyle=accentTxt; ctx.font='600 30px Poppins, sans-serif'; ctx.fillText('TRABALHE CONOSCO', W/2, H-185);
+  ctx.fillStyle='#FFFFFF'; ctx.font='500 32px Poppins, sans-serif'; ctx.fillText('Envie seu currículo para o e-mail:', W/2, H-130);
+  // E-mail — reduz a fonte se necessário para caber na largura
+  const emailTxt = emp.email || EMAIL_VAGAS;
+  let efs=38; ctx.font='700 '+efs+'px Poppins, sans-serif';
+  while(ctx.measureText(emailTxt).width > W-120 && efs>22){ efs-=2; ctx.font='700 '+efs+'px Poppins, sans-serif'; }
+  ctx.fillStyle='#FFFFFF'; ctx.fillText(emailTxt, W/2, H-78);
   ctx.textAlign='left';
 }
 
