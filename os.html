@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-13 — e-mail automático da OS finalizada (PDF + link mídias) -->
+<!-- build: 2026-06-17 — PDF da OS redesenhado (logo + layout claro) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1338,68 +1338,107 @@ async function uploadArquivosBackup(nomeCliente, numeroOS) {
 
 // ── SharePoint via proxy Vercel / PDF ────────────────────────
 
+// Logo da Solução (preto, fundo transparente) em dataURL, para embutir no PDF
+let _logoPDF = null;
+async function _garantirLogoPDF() {
+  if (_logoPDF !== null) return _logoPDF;
+  try {
+    const resp = await fetch('logosolucao.png');
+    if (!resp.ok) { _logoPDF = ''; return _logoPDF; }
+    const blob = await resp.blob();
+    _logoPDF = await new Promise((ok, fail) => {
+      const fr = new FileReader();
+      fr.onloadend = () => ok(String(fr.result));
+      fr.onerror   = () => ok('');
+      fr.readAsDataURL(blob);
+    });
+  } catch (e) { _logoPDF = ''; }
+  return _logoPDF;
+}
+
 function _gerarPDFOS(dados) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
-  const M = 14;
+  const M = 16;
+  const GREEN = [62, 207, 142];
+  const DARK  = [26, 26, 30];
+  const GRAY  = [120, 120, 132];
   let y = 0;
 
-  // Cabeçalho escuro
-  doc.setFillColor(10, 10, 10);
-  doc.rect(0, 0, W, 32, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(62, 207, 142);
-  doc.text('SOLUÇÃO TÉCNICA', M, 11);
-  doc.setFontSize(17);
-  doc.setTextColor(255, 255, 255);
-  doc.text('Ordem de Serviço', M, 23);
-  if (dados.numeroOS) {
-    doc.setFontSize(10); doc.setTextColor(180, 180, 190);
-    doc.text(dados.numeroOS, W - M, 23, { align: 'right' });
+  // ── Cabeçalho claro com logo ──
+  if (_logoPDF) {
+    try {
+      const p = doc.getImageProperties(_logoPDF);
+      const lw = 44, lh = lw * (p.height / p.width);
+      doc.addImage(_logoPDF, 'PNG', M, 14, lw, lh);
+    } catch (e) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...DARK);
+      doc.text('solução', M, 22);
+    }
+  } else {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...DARK);
+    doc.text('solução', M, 22);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GRAY);
+    doc.text('AUTOMAÇÃO', M, 27);
   }
-  y = 42;
 
-  const novaLinhaSePreciso = (h = 25) => {
-    if (y + h > H - 16) { doc.addPage(); cabRodape(); y = 22; }
-  };
-  const cabRodape = () => {
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(140, 140, 150);
-    doc.text('Solução Técnica · Sistema de Gestão de Obras', M, H - 6);
-    doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, W - M, H - 6, { align: 'right' });
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...GRAY);
+  doc.text('ORDEM DE SERVIÇO', W - M, 16, { align: 'right' });
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(...DARK);
+  doc.text(dados.numeroOS || '—', W - M, 24, { align: 'right' });
+  if (dados.data) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GRAY);
+    doc.text(dados.data, W - M, 30, { align: 'right' });
+  }
+
+  // Faixa de destaque verde
+  doc.setFillColor(...GREEN); doc.rect(0, 36, W, 1.6, 'F');
+  y = 48;
+
+  const novaLinhaSePreciso = (h = 18) => {
+    if (y + h > H - 18) { doc.addPage(); y = 20; }
   };
   const secao = (titulo) => {
-    novaLinhaSePreciso(10);
-    doc.setDrawColor(220, 220, 225); doc.line(M, y, W - M, y); y += 4;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(100, 100, 110);
-    doc.text(titulo.toUpperCase(), M, y); y += 5;
+    novaLinhaSePreciso(14);
+    y += 2;
+    doc.setFillColor(...GREEN); doc.rect(M, y - 3.4, 2.4, 4.2, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...DARK);
+    doc.text(titulo.toUpperCase(), M + 5, y);
+    y += 3;
+    doc.setDrawColor(230, 230, 236); doc.line(M, y, W - M, y);
+    y += 6;
   };
   const campo = (label, valor) => {
     if (!valor) return;
-    novaLinhaSePreciso(14);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(130, 130, 140);
-    doc.text(label.toUpperCase(), M, y);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(25, 25, 30);
+    novaLinhaSePreciso(12);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+    doc.text(label.toUpperCase(), M, y); y += 4.4;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
     const linhas = doc.splitTextToSize(String(valor), W - M * 2);
-    y += 4;
-    linhas.forEach(l => { novaLinhaSePreciso(5); doc.text(l, M, y); y += 4.5; });
-    y += 2;
+    linhas.forEach(l => { novaLinhaSePreciso(5); doc.text(l, M, y); y += 4.8; });
+    y += 3;
   };
 
-  // Cliente + data
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(130, 130, 140);
-  doc.text('CLIENTE', M, y); doc.text('DATA', W / 2, y);
-  y += 4;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(20, 20, 25);
-  doc.text(dados.cliente || '—', M, y);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-  doc.text(dados.data || '—', W / 2, y); y += 7;
+  // ── Card do cliente ──
+  const tipoTxt = dados.tipoServico === 'assistencia' ? 'Assistência'
+    : (dados.tipoServico === 'plantao' ? 'Plantão' : 'Execução');
+  doc.setFillColor(247, 247, 249); doc.roundedRect(M, y, W - M * 2, 21, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+  doc.text('CLIENTE', M + 5, y + 7);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...DARK);
+  doc.text(doc.splitTextToSize(dados.cliente || '—', W - M * 2 - 45)[0], M + 5, y + 15);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...GREEN);
+  doc.text(tipoTxt, W - M - 5, y + 8, { align: 'right' });
+  if (dados.data) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GRAY);
+    doc.text(dados.data, W - M - 5, y + 15, { align: 'right' });
+  }
+  y += 29;
 
   campo('Endereço',               dados.endereco);
   campo('Equipe',                  dados.equipe);
-  campo('Tipo de atendimento',     dados.tipoServico === 'assistencia' ? 'Assistência' : 'Execução');
   campo('Sistema de automação',    dados.automacao);
   campo('Horário',                 dados.horario);
   secao('Serviços');
@@ -1420,10 +1459,11 @@ function _gerarPDFOS(dados) {
   const total = doc.internal.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
-    doc.setDrawColor(220, 220, 225); doc.line(M, H - 12, W - M, H - 12);
-    cabRodape();
-    doc.setTextColor(160, 160, 170);
-    doc.text(`${p}/${total}`, W / 2, H - 6, { align: 'center' });
+    doc.setDrawColor(230, 230, 236); doc.line(M, H - 13, W - M, H - 13);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150, 150, 162);
+    doc.text('Solução Automação · Sistema de Gestão de Obras', M, H - 7);
+    doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, W - M, H - 7, { align: 'right' });
+    doc.text(`${p}/${total}`, W / 2, H - 7, { align: 'center' });
   }
   return doc.output('blob');
 }
@@ -1443,6 +1483,7 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, equipeNo
 
   try {
     set('gerando PDF...');
+    await _garantirLogoPDF();
     const pdfBlob = _gerarPDFOS(dadosPDF);
 
     // Converte blob para base64 e envia via servidor (evita CORS do browser → Microsoft)

@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-17 — bloqueios: lista so ativos + Ver antigos -->
+<!-- build: 2026-06-17b — bloqueios ativos + disparo c/ nome da equipe + lider edita agenda -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1597,8 +1597,8 @@ async function init() {
   roleAtual = eu?.role;
   _meuTecId = eu?.id || null;
 
-  const podeEditar = ['agendamento', 'coordenador', 'supervisor', 'admin_geral'].includes(roleAtual);
-  const podeDisparar = ['agendamento', 'coordenador', 'supervisor', 'admin_geral'].includes(roleAtual);
+  const podeEditar = ['agendamento', 'coordenador', 'supervisor', 'lider', 'admin_geral'].includes(roleAtual);
+  const podeDisparar = ['agendamento', 'coordenador', 'supervisor', 'lider', 'admin_geral'].includes(roleAtual);
 
   if (!podeEditar) {
     modoVisualizacao = true;
@@ -1838,7 +1838,7 @@ function chaveCliente(ag) {
 function renderGrade(dias) {
   const visiveis   = agendamentosVisiveis();
   const grade      = document.getElementById('grade');
-  const podeEditar = ['agendamento','coordenador','supervisor'].includes(roleAtual);
+  const podeEditar = ['agendamento','coordenador','supervisor','lider','admin_geral'].includes(roleAtual);
 
   // 1. Ordem de técnicos primários na semana (respeitando filtro de equipe)
   const ordemTecs = [];
@@ -3439,7 +3439,10 @@ const WPP_GROUP_LINK = 'https://chat.whatsapp.com/Ebi6sgambBaF0laG0lPUuI?mode=gi
 
 function _wppMensagem(dataISO) {
   const [y, m, d] = dataISO.split('-');
-  return `Boa tarde, equipe!\n\nSegue agenda para o dia ${d}/${m}/${y}\n\nAtt, Office Equipe Técnica.`;
+  const nomeEquipe = filtroEquipe === 'todas' ? ''
+    : (equipesDisponiveis.find(e => String(e.id) === String(filtroEquipe))?.nome || '');
+  const deEquipe = nomeEquipe ? ` de "${nomeEquipe}"` : '';
+  return `Boa tarde, equipe!\n\nSegue agenda${deEquipe} para o dia ${d}/${m}/${y}\n\nAtt, Office Equipe Técnica.`;
 }
 
 function _wppMostrarOverlay(dataISO, imagemCopiada) {

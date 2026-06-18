@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-17 — lista agrupada por N.OS (uma linha por servico) -->
+<!-- build: 2026-06-17b — lista agrupada por N.OS + PDF leve redesenhado (logo) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -2687,25 +2687,79 @@ async function carregarImgBase64(url) {
 // ── Reenvio de OS por e-mail (ordens@) ───────────────────────────
 function _blobBase64(blob){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onloadend=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(blob); }); }
 function _folderDasFotos(os){ const u=os.fotos_urls?.[0]; if(!u) return null; const m=/[?&]path=([^&]+)/.exec(u); if(!m) return null; const parts=decodeURIComponent(m[1]).split('/'); parts.pop(); return parts.join('/'); }
+// Logo da Solução (dataURL) para embutir nos PDFs leves de reenvio
+let _logoSup = null;
+async function _garantirLogoSup() {
+  if (_logoSup !== null) return _logoSup;
+  try {
+    const resp = await fetch('logosolucao.png');
+    if (!resp.ok) { _logoSup = ''; return _logoSup; }
+    const blob = await resp.blob();
+    _logoSup = await new Promise(ok => {
+      const fr = new FileReader();
+      fr.onloadend = () => ok(String(fr.result));
+      fr.onerror   = () => ok('');
+      fr.readAsDataURL(blob);
+    });
+  } catch (e) { _logoSup = ''; }
+  return _logoSup;
+}
+
 function _pdfLeveOS(os){
-  const { jsPDF } = window.jspdf; const doc=new jsPDF('p','mm','a4');
-  const cli=os.obras?.nome_cliente||os._cliente_outro||'—';
-  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,20,20); doc.text('ORDEM DE SERVIÇO', 14, 18);
-  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text('Nº '+(os.numero_os||'—'), 14, 25);
+  const { jsPDF } = window.jspdf; const doc = new jsPDF('p','mm','a4');
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 16;
+  const GREEN = [62,207,142], DARK = [26,26,30], GRAY = [120,120,132];
+  const cli = os.obras?.nome_cliente || os._cliente_outro || '—';
+  const tipoTxt = os.tipo_servico==='assistencia' ? 'Assistência'
+    : (os.tipo_servico==='plantao' ? 'Plantão' : 'Execução');
+
+  // Cabeçalho claro com logo
+  if (_logoSup) {
+    try { const p = doc.getImageProperties(_logoSup); const lw=44, lh=lw*(p.height/p.width); doc.addImage(_logoSup,'PNG',M,14,lw,lh); }
+    catch(e){ doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(...DARK); doc.text('solução', M, 22); }
+  } else {
+    doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(...DARK); doc.text('solução', M, 22);
+  }
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...GRAY);
+  doc.text('ORDEM DE SERVIÇO', W-M, 16, {align:'right'});
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(...DARK);
+  doc.text(os.numero_os||'—', W-M, 24, {align:'right'});
+  doc.setFillColor(...GREEN); doc.rect(0,36,W,1.6,'F');
+
+  // Card do cliente
+  let y = 48;
+  doc.setFillColor(247,247,249); doc.roundedRect(M,y,W-M*2,21,2,2,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...GRAY); doc.text('CLIENTE', M+5, y+7);
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...DARK);
+  doc.text(doc.splitTextToSize(cli, W-M*2-45)[0], M+5, y+15);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...GREEN); doc.text(tipoTxt, W-M-5, y+8, {align:'right'});
+  y += 29;
+
   const rows=[
-    ['Cliente', cli], ['Técnico', os.tecnicos?.nome||'—'],
+    ['Técnico', os.tecnicos?.nome||'—'],
     ['Data', os.data_servico ? new Date(os.data_servico+'T12:00').toLocaleDateString('pt-BR') : '—'],
-    ['Tipo', os.tipo_servico==='assistencia'?'Assistência':(os.tipo_servico==='plantao'?'Plantão':'Execução')],
-    ['Serviço planejado', os.servico_planejado||'—'], ['Serviços realizados', os.servicos_realizados||'—'],
+    ['Serviço planejado', os.servico_planejado||'—'],
+    ['Serviços realizados', os.servicos_realizados||'—'],
     ['Observações', os.observacoes||'—'],
   ];
-  doc.autoTable({ startY:30, body:rows, styles:{fontSize:10,cellPadding:4,valign:'top'},
-    columnStyles:{0:{cellWidth:48,fontStyle:'bold',textColor:[90,90,90]},1:{cellWidth:126}}, theme:'grid' });
+  doc.autoTable({
+    startY:y, body:rows, theme:'grid', margin:{left:M,right:M},
+    styles:{ fontSize:10, cellPadding:{top:3.5,bottom:3.5,left:4,right:4}, valign:'top', textColor:DARK, fillColor:[255,255,255], lineColor:[235,237,240], lineWidth:0.1 },
+    columnStyles:{ 0:{cellWidth:46, fontStyle:'bold', textColor:GRAY}, 1:{cellWidth:W-M*2-46} },
+  });
+
+  doc.setDrawColor(230,230,236); doc.line(M,H-13,W-M,H-13);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,150,162);
+  doc.text('Solução Automação · Sistema de Gestão de Obras', M, H-7);
+  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, W-M, H-7, {align:'right'});
   return doc.output('blob');
 }
 async function _emailOS(os){
   const { data: full } = await db.from('ordens_de_servico').select('*').eq('id', os.id).maybeSingle();
   const merged = { ...(full||{}), obras: os.obras, tecnicos: os.tecnicos, _cliente_outro: os._cliente_outro };
+  await _garantirLogoSup();
   const base64 = await _blobBase64(_pdfLeveOS(merged));
   const { data:{ session } } = await db.auth.getSession();
   const r = await fetch('/api/enviar-os-email', {
