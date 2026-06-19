@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-17 — card de vaga: empresa (Solucao/Breton), fundo desfocado + Poppins -->
+<!-- build: 2026-06-17b — cards: promocao/bem-vindo c/ arte (jornada/bemvindo.jpg) + contratacao campos personalizaveis -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -97,6 +97,14 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .fg input,.fg select,.fg textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text-1);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s}
 .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--border-hover)}
 .fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.campo-row{display:grid;grid-template-columns:34% 1fr auto;gap:8px;margin-bottom:8px;align-items:center}
+.campo-row input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text-1);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;outline:none}
+.campo-row input:focus{border-color:var(--border-hover)}
+.campo-label{font-weight:600}
+.campo-del{background:var(--bg);border:1px solid var(--border);color:var(--text-3);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.campo-del:hover{color:#f87171;border-color:rgba(239,68,68,.4)}
+.btn-add-campo{margin-top:4px;background:transparent;border:1px dashed var(--border-hover);color:var(--text-2);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn-add-campo:hover{color:var(--text-1);border-color:var(--primary)}
 .foto-edit{display:flex;align-items:center;gap:14px;margin-bottom:14px}
 .foto-edit img,.foto-edit .ph{width:72px;height:72px;border-radius:50%;object-fit:cover;background:var(--surface-3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-3)}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
@@ -166,7 +174,10 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
         <i data-lucide="cake" class="ci"></i><div class="ct">Card de Aniversário</div><div class="cd">Foto + mensagem de parabéns</div>
       </button>
       <button class="ctipo" data-tipo="promocao" onclick="selecionarTipo('promocao')">
-        <i data-lucide="trending-up" class="ci"></i><div class="ct">Card de Promoção</div><div class="cd">Anúncio de promoção</div>
+        <i data-lucide="trending-up" class="ci"></i><div class="ct">Card de Promoção</div><div class="cd">Início de uma nova jornada</div>
+      </button>
+      <button class="ctipo" data-tipo="bemvindo" onclick="selecionarTipo('bemvindo')">
+        <i data-lucide="hand" class="ci"></i><div class="ct">Card de Boas-vindas</div><div class="cd">Seja bem-vindo</div>
       </button>
       <button class="ctipo" data-tipo="contratacao" onclick="selecionarTipo('contratacao')">
         <i data-lucide="user-check" class="ci"></i><div class="ct">Card de Contratação</div><div class="cd">Modelo por vaga, editável</div>
@@ -474,36 +485,76 @@ function selecionarTipo(tipo){
   document.querySelectorAll('.ctipo').forEach(b=>b.classList.toggle('active', b.dataset.tipo===tipo));
   const f = document.getElementById('card-form');
   if(tipo==='aniversario'){
-    f.innerHTML = `<div class="fg"><label>Colaborador</label><select id="card-sel-colab">${_optsColab()}</select></div>
+    f.innerHTML = `<div class="fg"><label>Colaborador</label><select id="card-sel-colab" onchange="gerarCard()">${_optsColab()}</select></div>
       <div class="fg"><label>Mensagem</label><textarea id="card-msg" rows="3">Nós do Grupo Solução te desejamos um feliz aniversário! Que seu dia seja repleto de alegrias.</textarea></div>`;
   } else if(tipo==='promocao'){
-    f.innerHTML = `<div class="fg"><label>Colaborador</label><select id="card-sel-colab">${_optsColab()}</select></div>
-      <div class="fg"><label>Novo cargo</label><input type="text" id="card-novo-cargo" placeholder="Ex: Coordenador Técnico"></div>
-      <div class="fg"><label>Mensagem</label><textarea id="card-msg" rows="3">Parabéns pela merecida promoção! Seu empenho e dedicação fazem a diferença.</textarea></div>`;
+    f.innerHTML = `<div class="fg"><label>Colaborador</label><select id="card-sel-colab" onchange="gerarCard()">${_optsColab()}</select></div>
+      <div class="fg"><label>Novo cargo</label><input type="text" id="card-novo-cargo" placeholder="Ex: Coordenador Técnico" oninput="gerarCard()"></div>`;
+  } else if(tipo==='bemvindo'){
+    f.innerHTML = `<div class="fg"><label>Colaborador</label><select id="card-sel-colab" onchange="_preencherCargoColab();gerarCard()">${_optsColab()}</select></div>
+      <div class="fg"><label>Cargo</label><input type="text" id="card-cargo" placeholder="Ex: Técnico de Automação" oninput="gerarCard()"></div>`;
+    _preencherCargoColab();
   } else {
     const opts = Object.keys(VAGAS).map(v=>`<option>${v}</option>`).join('');
     const empOpts = Object.entries(EMPRESAS).map(([k,e])=>`<option value="${k}">${e.nome}</option>`).join('');
     f.innerHTML = `<div class="fg"><label>Empresa</label><select id="card-empresa" onchange="gerarCard()">${empOpts}</select></div>
       <div class="fg"><label>Vaga</label><select id="card-vaga" onchange="_preencherVaga()">${opts}</select></div>
-      <div class="fg"><label>Salário</label><input type="text" id="card-salario"></div>
-      <div class="fg"><label>Benefícios</label><input type="text" id="card-beneficios"></div>
-      <div class="fg"><label>Horário</label><input type="text" id="card-horario"></div>
-      <div class="fg"><label>Requisitos / Observações</label><textarea id="card-extra" rows="2"></textarea></div>`;
+      <div class="fg"><label>Campos do card <span style="color:var(--text-3);font-weight:400">(personalizável)</span></label>
+        <div id="card-campos"></div>
+        <button type="button" class="btn-add-campo" onclick="_addCampo()"><i data-lucide="plus" style="width:13px;height:13px"></i> Adicionar campo</button>
+      </div>`;
   }
   if(tipo==='contratacao') _preencherVaga();
   gerarCard();
   lucide.createIcons();
 }
+
+function _preencherCargoColab(){
+  const key=document.getElementById('card-sel-colab')?.value; const c=_colabs.find(x=>x._key===key);
+  const inp=document.getElementById('card-cargo'); if(inp) inp.value = c?.cargo || '';
+}
+
+// ── Campos personalizáveis do card de contratação ──
+function _campoRowHTML(label, valor){
+  return `<div class="campo-row">
+    <input type="text" class="campo-label" value="${escH(label||'')}" placeholder="Título" oninput="gerarCard()">
+    <input type="text" class="campo-valor" value="${escH(valor||'')}" placeholder="Conteúdo" oninput="gerarCard()">
+    <button type="button" class="campo-del" onclick="this.parentElement.remove();gerarCard()" title="Remover"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+  </div>`;
+}
+function _setCampos(campos){
+  const box=document.getElementById('card-campos'); if(!box) return;
+  box.innerHTML = (campos||[]).map(c=>_campoRowHTML(c.label, c.valor)).join('');
+  lucide.createIcons();
+}
+function _addCampo(){
+  const box=document.getElementById('card-campos'); if(!box) return;
+  box.insertAdjacentHTML('beforeend', _campoRowHTML('', ''));
+  lucide.createIcons();
+}
+function _lerCampos(){
+  return [...document.querySelectorAll('#card-campos .campo-row')].map(r=>({
+    label: r.querySelector('.campo-label')?.value.trim() || '',
+    valor: r.querySelector('.campo-valor')?.value.trim() || '',
+  })).filter(c=>c.label || c.valor);
+}
+
 function _preencherVaga(){
   const v = document.getElementById('card-vaga')?.value; const c = VAGAS[v]; if(!c) return;
-  document.getElementById('card-salario').value = c.salario;
-  document.getElementById('card-beneficios').value = c.beneficios;
-  document.getElementById('card-horario').value = c.horario;
-  document.getElementById('card-extra').value = c.extra;
+  _setCampos([
+    {label:'Salário',    valor:c.salario},
+    {label:'Benefícios', valor:c.beneficios},
+    {label:'Horário',    valor:c.horario},
+    {label:'Requisitos', valor:c.extra},
+  ]);
+  gerarCard();
 }
 
 // Desenho do card no canvas
 function _carregarImg(src){ return new Promise(res=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src; }); }
+// Carrega arte de fundo (raiz) com cache na sessão — evita re-baixar a cada "Gerar / Atualizar".
+const _tplCache = {};
+async function _carregarArte(nome){ if(_tplCache[nome]!==undefined) return _tplCache[nome]; const img=await _carregarImg(nome); _tplCache[nome]=img; return img; }
 function _wrap(ctx,texto,x,y,maxW,lh){ const ps=String(texto).split(' '); let linha=''; for(const p of ps){ const t=linha?linha+' '+p:p; if(ctx.measureText(t).width>maxW && linha){ ctx.fillText(linha,x,y); linha=p; y+=lh; } else linha=t; } if(linha) ctx.fillText(linha,x,y); return y; }
 // Igual ao _wrap mas só MEDE (não desenha) — retorna o array de linhas. Use a fonte já setada no ctx.
 function _medirLinhas(ctx,texto,maxW){ const ps=String(texto).split(' '); const out=[]; let linha=''; for(const p of ps){ const t=linha?linha+' '+p:p; if(ctx.measureText(t).width>maxW && linha){ out.push(linha); linha=p; } else linha=t; } if(linha) out.push(linha); return out; }
@@ -642,14 +693,9 @@ async function _cardContratacao(ctx, cv){
   // Painel translúcido com os detalhes
   const padX=72, panelX=80, panelW=W-160;
   ctx.textAlign='left';
-  const blocks=[
-    ['Salário', document.getElementById('card-salario')?.value],
-    ['Benefícios', document.getElementById('card-beneficios')?.value],
-    ['Horário', document.getElementById('card-horario')?.value],
-    ['Requisitos', document.getElementById('card-extra')?.value],
-  ].filter(l=>l[1]).map(([lbl,val])=>{
+  const blocks=_lerCampos().map(cp=>{
     ctx.font='400 34px Poppins, sans-serif';
-    return {lbl, linhas:_medirLinhas(ctx, val, panelW-2*padX)};
+    return {lbl:cp.label||'', linhas:_medirLinhas(ctx, cp.valor||'', panelW-2*padX)};
   });
   let panelH=58; blocks.forEach(b=>{ panelH += 46 + b.linhas.length*46 + 30; });
   ctx.fillStyle='rgba(255,255,255,0.09)'; _roundRect(ctx, panelX, y, panelW, panelH, 30); ctx.fill();
@@ -675,6 +721,42 @@ async function _cardContratacao(ctx, cv){
   ctx.textAlign='left';
 }
 
+// Templates com FOTO no círculo central — fundo é arte pronta (título e logo embutidos).
+// AJUSTAR posições (cy/r/nomeY/cargoY) conforme a arte real.
+const TEMPLATES = {
+  promocao: { bg:'jornada.jpg',  corNome:'#2B2B2B', corCargo:'#9A7B2E', cargoId:'card-novo-cargo' },
+  bemvindo: { bg:'bemvindo.jpg', corNome:'#FFFFFF', corCargo:'#CBD6E8', cargoId:'card-cargo' },
+};
+
+async function _cardTemplateFoto(ctx, cv, cfg){
+  const tpl = await _carregarArte(cfg.bg);
+  let W,H;
+  if(tpl){ cv.width=tpl.naturalWidth||1080; cv.height=tpl.naturalHeight||1920; W=cv.width; H=cv.height; ctx.drawImage(tpl,0,0,W,H); }
+  else { cv.width=1080; cv.height=1920; W=cv.width; H=cv.height; ctx.fillStyle='#1b1b1b'; ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center'; ctx.fillStyle='#888'; ctx.font='400 30px Poppins, sans-serif'; ctx.fillText('(envie '+cfg.bg+' para a raiz do projeto)', W/2, 0.5*H); ctx.textAlign='left'; }
+
+  const key=document.getElementById('card-sel-colab')?.value; const c=_colabs.find(x=>x._key===key);
+
+  // Foto no círculo central
+  const cx=0.5*W, cy=0.455*H, r=0.255*W;
+  ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.closePath(); ctx.clip();
+  let img=null; if(c?.foto_url) img=await _carregarImg(fotoSrc(c.foto_url));
+  if(img){ _desenharFotoCover(ctx,img,cx-r,cy-r,2*r,2*r); }
+  else { ctx.fillStyle='#2e4046'; ctx.fillRect(cx-r,cy-r,2*r,2*r); ctx.fillStyle='#7d9099'; ctx.textAlign='center'; ctx.font='800 120px Poppins, sans-serif'; ctx.fillText(iniciais(c?.nome||'?'),cx,cy+42); ctx.textAlign='left'; }
+  ctx.restore();
+  // Anel sutil ao redor da foto
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.lineWidth=Math.max(3,0.006*W);
+  ctx.strokeStyle = cfg.corNome==='#FFFFFF' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.18)'; ctx.stroke();
+
+  // Nome + cargo abaixo da foto
+  ctx.textAlign='center';
+  ctx.fillStyle=cfg.corNome; ctx.font='700 '+Math.round(0.050*W)+'px Poppins, sans-serif';
+  ctx.fillText(nomeCurto(c?.nome) || 'Nome do colaborador', W/2, 0.73*H);
+  const cargo=document.getElementById(cfg.cargoId)?.value || '';
+  if(cargo){ ctx.fillStyle=cfg.corCargo; ctx.font='500 '+Math.round(0.032*W)+'px Poppins, sans-serif'; ctx.fillText(cargo, W/2, 0.768*H); }
+  ctx.textAlign='left';
+}
+
 async function gerarCard(){
   const cv=document.getElementById('card-canvas'); const ctx=cv.getContext('2d');
 
@@ -692,33 +774,8 @@ async function gerarCard(){
 
   if(_cardTipo==='aniversario'){ ctx.clearRect(0,0,cv.width,cv.height); await _cardAniversario(ctx, cv); return; }
   if(_cardTipo==='contratacao'){ ctx.clearRect(0,0,cv.width,cv.height); await _cardContratacao(ctx, cv); return; }
-
-  cv.width=1080; cv.height=1350;
-  const W=cv.width, H=cv.height;
-  ctx.clearRect(0,0,W,H);
-
-  // Fundo (promoção / contratação)
-  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#0B3D2E'); g.addColorStop(1,'#0A0A0A');
-  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='#3ECF8E'; ctx.fillRect(0,0,W,14);
-  ctx.textAlign='center';
-  ctx.fillStyle='#3ECF8E'; ctx.font='700 34px Inter, sans-serif'; ctx.fillText('SOLUÇÃO TÉCNICA', W/2, 80);
-
-  if(_cardTipo==='promocao'){
-    const key=document.getElementById('card-sel-colab')?.value; const c=_colabs.find(x=>x._key===key);
-    ctx.fillStyle='#FFFFFF'; ctx.font='800 64px Inter, sans-serif'; _wrap(ctx,'PARABÉNS PELA PROMOÇÃO!',W/2,200,W-120,72);
-    const cx=W/2, cy=540, r=210;
-    ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.closePath(); ctx.clip();
-    let img=null; if(c?.foto_url) img=await _carregarImg(fotoSrc(c.foto_url));
-    if(img){ _desenharFotoCover(ctx,img,cx-r,cy-r,2*r,2*r); }
-    else{ ctx.fillStyle='#1B1B1B'; ctx.fillRect(cx-r,cy-r,2*r,2*r); ctx.fillStyle='#3ECF8E'; ctx.font='800 120px Inter'; ctx.fillText(iniciais(c?.nome||'?'),cx,cy+44); }
-    ctx.restore();
-    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.lineWidth=10; ctx.strokeStyle='#3ECF8E'; ctx.stroke();
-    ctx.fillStyle='#FFFFFF'; ctx.font='800 56px Inter'; ctx.fillText((c?.nome||'Colaborador').toUpperCase(), W/2, 860);
-    const nc=document.getElementById('card-novo-cargo')?.value; if(nc){ ctx.fillStyle='#3ECF8E'; ctx.font='700 38px Inter'; ctx.fillText(nc, W/2, 918); }
-    ctx.fillStyle='#D4D4D8'; ctx.font='400 34px Inter'; _wrap(ctx, document.getElementById('card-msg')?.value||'', W/2, 1010, W-160, 46);
-  }
-  ctx.textAlign='left';
+  if(_cardTipo==='promocao'){ ctx.clearRect(0,0,cv.width,cv.height); await _cardTemplateFoto(ctx, cv, TEMPLATES.promocao); return; }
+  if(_cardTipo==='bemvindo'){ ctx.clearRect(0,0,cv.width,cv.height); await _cardTemplateFoto(ctx, cv, TEMPLATES.bemvindo); return; }
 }
 
 function baixarCard(){
