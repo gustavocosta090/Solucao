@@ -737,23 +737,26 @@ async function _cardTemplateFoto(ctx, cv, cfg){
 
   const key=document.getElementById('card-sel-colab')?.value; const c=_colabs.find(x=>x._key===key);
 
-  // Foto no círculo central
-  const cx=0.5*W, cy=0.455*H, r=0.255*W;
-  ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.closePath(); ctx.clip();
-  let img=null; if(c?.foto_url) img=await _carregarImg(fotoSrc(c.foto_url));
-  if(img){ _desenharFotoCover(ctx,img,cx-r,cy-r,2*r,2*r); }
-  else { ctx.fillStyle='#2e4046'; ctx.fillRect(cx-r,cy-r,2*r,2*r); ctx.fillStyle='#7d9099'; ctx.textAlign='center'; ctx.font='800 120px Poppins, sans-serif'; ctx.fillText(iniciais(c?.nome||'?'),cx,cy+42); ctx.textAlign='left'; }
+  // Foto — MESMA moldura/tamanho do card de aniversário (retângulo arredondado + borda branca)
+  const fw=0.545*W, fh=0.392*H, fx=(W-fw)/2, fy=0.242*H, frad=0.010*W;
+  const borda=0.018*W;
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.22)'; ctx.shadowBlur=0.035*W; ctx.shadowOffsetY=0.012*W;
+  ctx.fillStyle='#FFFFFF'; _roundRect(ctx,fx,fy,fw,fh,frad); ctx.fill();
   ctx.restore();
-  // Anel sutil ao redor da foto
-  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.lineWidth=Math.max(3,0.006*W);
-  ctx.strokeStyle = cfg.corNome==='#FFFFFF' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.18)'; ctx.stroke();
+  const px=fx+borda, py=fy+borda, pw=fw-2*borda, ph=fh-2*borda, pr=Math.max(0,frad-borda*0.5);
+  ctx.save(); _roundRect(ctx,px,py,pw,ph,pr); ctx.clip();
+  let img=null; if(c?.foto_url) img=await _carregarImg(fotoSrc(c.foto_url));
+  if(img){ _desenharFotoCover(ctx,img,px,py,pw,ph); }
+  else{ ctx.fillStyle='#2e4046'; ctx.fillRect(px,py,pw,ph); ctx.fillStyle='#7d9099'; ctx.font='800 120px Poppins, sans-serif'; ctx.textAlign='center'; ctx.fillText(iniciais(c?.nome||'?'),W/2,py+ph/2+42); }
+  ctx.restore();
 
-  // Nome + cargo abaixo da foto
+  // Nome + cargo abaixo da moldura (mesmas posições do aniversário)
   ctx.textAlign='center';
-  ctx.fillStyle=cfg.corNome; ctx.font='700 '+Math.round(0.050*W)+'px Poppins, sans-serif';
-  ctx.fillText(nomeCurto(c?.nome) || 'Nome do colaborador', W/2, 0.73*H);
+  ctx.fillStyle=cfg.corNome; ctx.font='700 '+Math.round(0.046*W)+'px Poppins, sans-serif';
+  ctx.fillText(nomeCurto(c?.nome) || 'Nome do colaborador', W/2, 0.695*H);
   const cargo=document.getElementById(cfg.cargoId)?.value || '';
-  if(cargo){ ctx.fillStyle=cfg.corCargo; ctx.font='500 '+Math.round(0.032*W)+'px Poppins, sans-serif'; ctx.fillText(cargo, W/2, 0.768*H); }
+  if(cargo){ ctx.fillStyle=cfg.corCargo; ctx.font='500 '+Math.round(0.030*W)+'px Poppins, sans-serif'; ctx.fillText(cargo, W/2, 0.726*H); }
   ctx.textAlign='left';
 }
 
