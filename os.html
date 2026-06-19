@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-17 — PDF da OS redesenhado (logo + layout claro) -->
+<!-- build: 2026-06-19 — upload foto/video com retry + reenvio (corrige falhas em rede movel) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -601,6 +601,7 @@ let agendamentoSelecionado = null;
 let osSelecionadaId        = null;  // ID da OS pendente existente (para UPDATE)
 let tecnicos               = [];
 let fotosSelecionadas      = [];
+let _midiaCtx              = null; // contexto da última OS para reenviar mídias que falharam
 let arquivosBackup         = []; // arquivos de configuração/backup
 let equipeFull             = []; // todos os IDs da equipe do agendamento
 let osEhPlantao            = false;
@@ -1121,6 +1122,28 @@ async function headersUploadProtegido() {
   };
 }
 
+// fetch com retry (rede instável / 429 / 5xx) + timeout por tentativa.
+// Não retenta erros definitivos 4xx (exceto 429) — devolve a resposta pro chamador tratar.
+async function _fetchComRetry(url, options, { tentativas = 4, baseDelay = 800, timeout = 90000 } = {}) {
+  let ultimoErro;
+  for (let t = 0; t < tentativas; t++) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeout);
+      let resp;
+      try { resp = await fetch(url, { ...options, signal: ctrl.signal }); }
+      finally { clearTimeout(timer); }
+      if (resp.ok || resp.status === 202) return resp;          // sucesso (ou chunk intermediário)
+      if (resp.status < 500 && resp.status !== 429) return resp; // 4xx definitivo → chamador trata
+      ultimoErro = new Error('HTTP ' + resp.status);             // 429/5xx → retenta
+    } catch (e) {
+      ultimoErro = e; // erro de rede ou timeout (abort) → retenta
+    }
+    if (t < tentativas - 1) await new Promise(r => setTimeout(r, baseDelay * 2 ** t + Math.random() * 400));
+  }
+  throw ultimoErro || new Error('Falha após várias tentativas');
+}
+
 // Comprime/redimensiona imagem no dispositivo antes do upload (acelera muito o envio).
 // Máx 2048px no maior lado, JPEG qualidade 0.8. Vídeos NÃO passam por aqui.
 // Em caso de falha (ex: HEIC não decodificável), retorna o arquivo original.
@@ -1180,6 +1203,9 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
 
     atualizarProgresso(`${i + 1}/${total}`);
 
+    // Já enviada (ex.: num reenvio) → não sobe de novo
+    if (f._enviada && f._url) { urls[i] = f._url; concluidas++; atualizarProgresso(`✓ ${concluidas}/${total}`); return; }
+
     try {
       // Imagens são comprimidas no dispositivo; vídeos sobem como estão
       const isVideo = f.isVideo || (f.file.type || '').startsWith('video/');
@@ -1192,52 +1218,97 @@ async function uploadFotoSharePoint(nomeCliente, numeroOS, equipeNome = '') {
       const filename = `${nomeBase} ${numeroOS} - foto ${String(i + 1).padStart(2, '0')}.${ext}`;
       const ctype = blob.type || f.file.type || 'image/jpeg';
 
+      // Sessão de upload — com retry (429/5xx/rede)
       const hdrs = await headersUploadProtegido();
-      const initRes = await fetch('/api/upload', {
+      const initRes = await _fetchComRetry('/api/upload', {
         method:  'POST',
         headers: hdrs,
         body:    JSON.stringify({ path: folderPath, filename, contentType: ctype }),
-      });
+      }, { tentativas: 4, timeout: 30000 });
       if (!initRes.ok) {
         const errTxt = await initRes.text().catch(() => `HTTP ${initRes.status}`);
-        throw new Error(`Proxy ${initRes.status}: ${errTxt}`);
+        throw new Error(`sessão ${initRes.status}: ${errTxt}`);
       }
       const { uploadUrl, filePath } = await initRes.json();
 
+      // Envio em pedaços — CADA pedaço com retry (resolve queda de sinal / throttling)
       const CHUNK = 10 * 1024 * 1024;
       let start = 0;
       while (start < blob.size) {
         const end   = Math.min(start + CHUNK, blob.size);
         const chunk = blob.slice(start, end);
-        const put   = await fetch(uploadUrl, {
+        atualizarProgresso(`${i + 1}/${total} · ${Math.round(end / blob.size * 100)}%`);
+        const put = await _fetchComRetry(uploadUrl, {
           method:  'PUT',
-          headers: {
-            'Content-Range': `bytes ${start}-${end - 1}/${blob.size}`,
-            'Content-Type':  ctype,
-          },
+          headers: { 'Content-Range': `bytes ${start}-${end - 1}/${blob.size}`, 'Content-Type': ctype },
           body: chunk,
-        });
-        if (!put.ok && put.status !== 202) throw new Error(`Chunk erro ${put.status}`);
+        }, { tentativas: 5, baseDelay: 1000, timeout: 120000 });
+        if (!put.ok && put.status !== 202) throw new Error(`pedaço ${put.status}`);
         start = end;
       }
 
       urls[i] = `/api/foto?path=${encodeURIComponent(filePath)}`;
+      f._enviada = true; f._erro = null; f._url = urls[i];
       concluidas++;
       atualizarProgresso(`✓ ${concluidas}/${total}`);
     } catch (e) {
-      console.warn(`Foto ${i + 1} falhou:`, e.message);
-      atualizarProgresso('✗ ' + e.message);
+      console.warn(`Mídia ${i + 1} falhou:`, e.message);
+      f._enviada = false; f._erro = e.message;
+      atualizarProgresso('✗ falhou');
     }
   };
 
-  // Processar em lotes de 5 em paralelo
-  const LOTE = 5;
-  for (let i = 0; i < fotosSelecionadas.length; i += LOTE) {
-    const lote = fotosSelecionadas.slice(i, i + LOTE);
-    await Promise.all(lote.map((f, j) => uploadUma(f, i + j)));
+  // Fotos: 5 em paralelo (são leves). Vídeos: em SEQUÊNCIA (não saturam o upload do celular).
+  const idxFotos = [], idxVideos = [];
+  fotosSelecionadas.forEach((f, i) => {
+    ((f.isVideo || (f.file.type || '').startsWith('video/')) ? idxVideos : idxFotos).push(i);
+  });
+  for (let k = 0; k < idxFotos.length; k += 5) {
+    await Promise.all(idxFotos.slice(k, k + 5).map(i => uploadUma(fotosSelecionadas[i], i)));
   }
+  for (const i of idxVideos) { await uploadUma(fotosSelecionadas[i], i); }
 
-  return urls.filter(Boolean);
+  const falhas = fotosSelecionadas.filter(f => !f._enviada);
+  return { urls: urls.filter(Boolean), falhas };
+}
+
+// Aviso persistente quando alguma mídia não subiu (não some silenciosamente)
+function avisarMidiaFalhou(qtdFalhas, qtdOk){
+  let el = document.getElementById('midia-alerta');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'midia-alerta';
+    el.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9999;max-width:94%;background:#2a1212;border:1px solid #f87171;border-radius:12px;padding:14px 16px;box-shadow:0 12px 34px rgba(0,0,0,.55);color:#fff;font-size:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `<span style="font-size:20px">⚠️</span>
+    <div style="flex:1;min-width:190px"><strong>${qtdFalhas} foto(s)/vídeo(s) não subiram.</strong><br>
+    <span style="color:#fca5a5;font-size:12.5px">${qtdOk} já salva(s). Toque em <b>Reenviar</b> para tentar de novo — não feche esta tela.</span></div>
+    <button id="btn-reenviar-midia" onclick="reenviarMidias(this)" style="background:#f87171;border:none;color:#000;font-weight:700;padding:9px 16px;border-radius:8px;cursor:pointer;font-family:inherit">Reenviar</button>`;
+  el.style.display = 'flex';
+}
+function esconderMidiaAlerta(){ const el=document.getElementById('midia-alerta'); if(el) el.style.display='none'; }
+
+// Reenvia apenas as mídias que falharam (as já enviadas são puladas) e atualiza a OS
+async function reenviarMidias(btn){
+  if(!_midiaCtx){ esconderMidiaAlerta(); return; }
+  if(btn){ btn.disabled=true; btn.textContent='Reenviando...'; }
+  try{
+    const resUp = await uploadFotoSharePoint(_midiaCtx.nomeCliente, _midiaCtx.numeroOS, _midiaCtx.equipeNome);
+    if(resUp.urls.length){
+      await db.from('ordens_de_servico').update({ fotos_urls: resUp.urls }).eq('id', _midiaCtx.osId);
+    }
+    if(resUp.falhas.length){
+      avisarMidiaFalhou(resUp.falhas.length, resUp.urls.length);
+      if(btn){ btn.disabled=false; btn.textContent='Reenviar'; }
+    } else {
+      esconderMidiaAlerta();
+      showToast('Todas as mídias foram enviadas!', 'success');
+    }
+  }catch(e){
+    showToast('Falha ao reenviar: '+e.message, 'error');
+    if(btn){ btn.disabled=false; btn.textContent='Reenviar'; }
+  }
 }
 
 // ── Upload de arquivos de backup/configuração ────────────────
@@ -1299,12 +1370,13 @@ async function uploadArquivosBackup(nomeCliente, numeroOS) {
     if (statusEl) statusEl.textContent = 'Enviando...';
 
     try {
+      const ctype = file.type || 'application/octet-stream';
       const hdrs = await headersUploadProtegido();
-      const initRes = await fetch('/api/upload', {
+      const initRes = await _fetchComRetry('/api/upload', {
         method:  'POST',
         headers: hdrs,
-        body:    JSON.stringify({ path: folderPath, filename: file.name, contentType: file.type || 'application/octet-stream' }),
-      });
+        body:    JSON.stringify({ path: folderPath, filename: file.name, contentType: ctype }),
+      }, { tentativas: 4, timeout: 30000 });
       if (!initRes.ok) throw new Error(await initRes.text());
       const { uploadUrl, filePath } = await initRes.json();
 
@@ -1313,14 +1385,11 @@ async function uploadArquivosBackup(nomeCliente, numeroOS) {
       while (start < file.size) {
         const end   = Math.min(start + CHUNK, file.size);
         const chunk = file.slice(start, end);
-        const put   = await fetch(uploadUrl, {
+        const put   = await _fetchComRetry(uploadUrl, {
           method:  'PUT',
-          headers: {
-            'Content-Range': `bytes ${start}-${end - 1}/${file.size}`,
-            'Content-Type':  file.type || 'application/octet-stream',
-          },
+          headers: { 'Content-Range': `bytes ${start}-${end - 1}/${file.size}`, 'Content-Type': ctype },
           body: chunk,
-        });
+        }, { tentativas: 5, baseDelay: 1000, timeout: 120000 });
         if (!put.ok && put.status !== 202) throw new Error(`Chunk erro ${put.status}`);
         start = end;
       }
@@ -1714,14 +1783,19 @@ async function enviarOS() {
       const numParaFoto = document.getElementById('os-numero').textContent
                        || String(savedOsId).padStart(3, '0');
       try {
-        fotoUrls = await uploadFotoSharePoint(nomeCliente || 'Sem Cliente', numParaFoto, equipeNome);
+        const resUp = await uploadFotoSharePoint(nomeCliente || 'Sem Cliente', numParaFoto, equipeNome);
+        fotoUrls = resUp.urls;
         if (fotoUrls.length > 0) {
           await db.from('ordens_de_servico')
             .update({ fotos_urls: fotoUrls })
             .eq('id', savedOsId);
+        }
+        if (resUp.falhas.length > 0) {
+          // NÃO finaliza como se estivesse tudo ok: guarda contexto e avisa para reenviar.
+          _midiaCtx = { osId: savedOsId, nomeCliente: nomeCliente || 'Sem Cliente', numeroOS: numParaFoto, equipeNome };
+          avisarMidiaFalhou(resUp.falhas.length, fotoUrls.length);
+        } else if (fotoUrls.length > 0) {
           showToast(`${fotoUrls.length} foto(s) salvas no SharePoint.`, 'success');
-        } else {
-          showToast('Nenhuma foto foi salva no SharePoint. Verifique o console.', 'warning');
         }
       } catch (e) {
         showToast('Erro no upload de fotos: ' + e.message, 'error');

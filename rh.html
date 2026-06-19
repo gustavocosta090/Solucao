@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-18 — RH: aba Dashboard (aniversarios mes/semana/dia + vagas) + empresa nos colab + lembrete flutuante -->
+<!-- build: 2026-06-19 — RH: sem Smart, filtro por empresa em colab, aniversariantes so de hoje pra frente -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -206,8 +206,9 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
     <div class="stats-row" id="quant-empresas" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
       <div class="sk"><div class="sk-val" id="st-total">0</div><div class="sk-lbl">Total</div></div>
     </div>
-    <div class="busca-bar">
-      <input type="text" id="busca" placeholder="Buscar por nome ou cargo..." oninput="renderColabs()">
+    <div class="busca-bar" style="display:flex;gap:10px;flex-wrap:wrap">
+      <input type="text" id="busca" placeholder="Buscar por nome ou cargo..." oninput="renderColabs()" style="flex:1;min-width:180px">
+      <select id="colab-filtro-empresa" onchange="renderColabs()" style="min-width:150px"></select>
     </div>
     <div class="colab-grid" id="colab-grid"></div>
   </div>
@@ -334,7 +335,7 @@ let _cardTipo = 'aniversario';
 let _vagas = [];
 let _editVaga = null;
 let _periodo = 'mes';
-const GRUPO_EMPRESAS = ['Solução','Breton','Smart','Bontempo'];
+const GRUPO_EMPRESAS = ['Solução','Breton','Bontempo'];
 function _optsEmpresa(sel){ return '<option value="">—</option>' + GRUPO_EMPRESAS.map(e=>`<option${sel===e?' selected':''}>${e}</option>`).join(''); }
 
 function fotoSrc(url){ if(!url||!_authToken) return url; return url + (url.includes('?')?'&':'?') + 't=' + encodeURIComponent(_authToken); }
@@ -370,6 +371,8 @@ async function carregar() {
   // selects de empresa (modal colaborador e vaga) e de mês (aniversários)
   document.getElementById('f-empresa').innerHTML = _optsEmpresa();
   document.getElementById('v-empresa').innerHTML = _optsEmpresa('Solução');
+  const fe=document.getElementById('colab-filtro-empresa');
+  if(fe) fe.innerHTML = '<option value="">Todas as empresas</option>' + GRUPO_EMPRESAS.map(e=>`<option value="${e}">${e}</option>`).join('') + '<option value="__sem">Sem empresa</option>';
   const MM=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const mesSel=document.getElementById('aniv-mes-sel');
   if(mesSel) mesSel.innerHTML = MM.map((m,i)=>`<option value="${i+1}"${(i+1)===(new Date().getMonth()+1)?' selected':''}>${m}</option>`).join('');
@@ -407,6 +410,8 @@ function _popularDiaMes() {
 // ── Dashboard ────────────────────────────────────────────────
 function _diaMes(d){ if(!d) return null; const [,m,dia]=d.split('-'); return {m:+m,d:+dia}; }
 function _diasAte(d){ const dm=_diaMes(d); if(!dm) return null; const hoje=new Date(); hoje.setHours(0,0,0,0); let prox=new Date(hoje.getFullYear(),dm.m-1,dm.d); if(prox<hoje) prox=new Date(hoje.getFullYear()+1,dm.m-1,dm.d); return Math.round((prox-hoje)/86400000); }
+// True se o aniversário (dia/mês) ainda não passou neste ano (hoje conta como futuro)
+function _aniversarioFuturo(d){ const dm=_diaMes(d); if(!dm) return false; const h=new Date(); h.setHours(0,0,0,0); return new Date(h.getFullYear(),dm.m-1,dm.d) >= h; }
 function renderDashboardKPIs() {
   const ativos = _colabs.filter(c => c.ativo !== false);
   const mesAtual = new Date().getMonth()+1;
@@ -427,7 +432,7 @@ function renderAniversarios(){
   const mesSel=+(document.getElementById('aniv-mes-sel')?.value || (new Date().getMonth()+1));
   let lista=_colabs.filter(c=>c.ativo!==false && c.data_aniversario);
   if(termo) lista=lista.filter(c=>(c.nome||'').toLowerCase().includes(termo));
-  if(_periodo==='mes')         lista=lista.filter(c=>_diaMes(c.data_aniversario)?.m===mesSel);
+  if(_periodo==='mes')         lista=lista.filter(c=>_diaMes(c.data_aniversario)?.m===mesSel && _aniversarioFuturo(c.data_aniversario));
   else if(_periodo==='semana') lista=lista.filter(c=>{const d=_diasAte(c.data_aniversario); return d!=null && d<=7;});
   else                         lista=lista.filter(c=>_diasAte(c.data_aniversario)===0);
   lista.sort((a,b)=> _periodo==='mes'
@@ -553,7 +558,12 @@ function _fmtData(d){ if(!d) return '—'; const [y,m,dia]=d.split('-'); return 
 function _fmtAniv(d){ const dm=_diaMes(d); return dm ? String(dm.d).padStart(2,'0')+'/'+String(dm.m).padStart(2,'0') : '—'; }
 function renderColabs() {
   const termo = (document.getElementById('busca').value||'').toLowerCase().trim();
-  const lista = _colabs.filter(c => !termo || (c.nome||'').toLowerCase().includes(termo) || (c.cargo||'').toLowerCase().includes(termo));
+  const fEmp = document.getElementById('colab-filtro-empresa')?.value || '';
+  const lista = _colabs.filter(c => {
+    const okTermo = !termo || (c.nome||'').toLowerCase().includes(termo) || (c.cargo||'').toLowerCase().includes(termo);
+    const okEmp = !fEmp || (fEmp==='__sem' ? !c.empresa : (c.empresa===fEmp));
+    return okTermo && okEmp;
+  });
   const grid = document.getElementById('colab-grid');
   if (!lista.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Nenhum colaborador encontrado.</div>'; return; }
   grid.innerHTML = lista.map(c => {
