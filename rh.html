@@ -334,9 +334,8 @@ let _cardTipo = 'aniversario';
 let _vagas = [];
 let _editVaga = null;
 let _periodo = 'mes';
-const GRUPO_EMPRESAS = ['Solução','Breton','Bontempo']; // colaboradores
-const EMPRESAS_VAGA  = ['Solução','Breton'];            // vagas (Bontempo não tem vaga aqui)
-function _optsEmpresa(sel, lista){ return '<option value="">—</option>' + (lista||GRUPO_EMPRESAS).map(e=>`<option${sel===e?' selected':''}>${e}</option>`).join(''); }
+const GRUPO_EMPRESAS = ['Solução','Breton','Smart','Bontempo'];
+function _optsEmpresa(sel){ return '<option value="">—</option>' + GRUPO_EMPRESAS.map(e=>`<option${sel===e?' selected':''}>${e}</option>`).join(''); }
 
 function fotoSrc(url){ if(!url||!_authToken) return url; return url + (url.includes('?')?'&':'?') + 't=' + encodeURIComponent(_authToken); }
 function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -370,7 +369,7 @@ function trocarTab(t){
 async function carregar() {
   // selects de empresa (modal colaborador e vaga) e de mês (aniversários)
   document.getElementById('f-empresa').innerHTML = _optsEmpresa();
-  document.getElementById('v-empresa').innerHTML = _optsEmpresa('Solução', EMPRESAS_VAGA);
+  document.getElementById('v-empresa').innerHTML = _optsEmpresa('Solução');
   const MM=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const mesSel=document.getElementById('aniv-mes-sel');
   if(mesSel) mesSel.innerHTML = MM.map((m,i)=>`<option value="${i+1}"${(i+1)===(new Date().getMonth()+1)?' selected':''}>${m}</option>`).join('');
