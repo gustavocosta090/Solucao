@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-17b — cards: promocao/bem-vindo c/ arte (jornada/bemvindo.jpg) + contratacao campos personalizaveis -->
+<!-- build: 2026-06-18 — RH: aba Dashboard (aniversarios mes/semana/dia + vagas) + empresa nos colab + lembrete flutuante -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -105,6 +105,25 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .campo-del:hover{color:#f87171;border-color:rgba(239,68,68,.4)}
 .btn-add-campo{margin-top:4px;background:transparent;border:1px dashed var(--border-hover);color:var(--text-2);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
 .btn-add-campo:hover{color:var(--text-1);border-color:var(--primary)}
+/* Filtros de aniversário */
+.aniv-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.periodo-toggle{display:inline-flex;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px}
+.periodo-toggle .pt{background:transparent;border:none;color:var(--text-2);font-size:13px;font-weight:600;padding:7px 16px;border-radius:7px;cursor:pointer;font-family:inherit}
+.periodo-toggle .pt.active{background:var(--primary);color:#000}
+.aniv-filtros select,.aniv-filtros input{background:var(--bg);border:1px solid var(--border);color:var(--text-1);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none}
+.aniv-filtros input{flex:1;min-width:160px}
+/* Vagas */
+.vaga-item{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;margin-bottom:8px}
+.vaga-item.vaga-fechada{opacity:.55}
+.vaga-cargo{font-size:14px;font-weight:600;color:var(--text-1)}
+.vaga-emp{font-size:12px;color:var(--text-3);margin-top:2px}
+/* Lembrete flutuante */
+.aniv-flut{position:fixed;right:20px;bottom:20px;z-index:900;display:flex;align-items:center;gap:12px;max-width:320px;background:linear-gradient(135deg,#1c1c1c,#111);border:1px solid var(--primary);border-radius:14px;padding:14px 16px 14px 14px;box-shadow:0 10px 30px rgba(0,0,0,.5);cursor:pointer;animation:flutIn .35s ease}
+@keyframes flutIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.aniv-flut-ico{font-size:26px;line-height:1}
+.aniv-flut-txt{font-size:13px;color:var(--text-1);line-height:1.45}
+.aniv-flut-x{position:absolute;top:6px;right:8px;background:none;border:none;color:var(--text-3);font-size:18px;cursor:pointer;line-height:1}
+.aniv-flut-x:hover{color:var(--text-1)}
 .foto-edit{display:flex;align-items:center;gap:14px;margin-bottom:14px}
 .foto-edit img,.foto-edit .ph{width:72px;height:72px;border-radius:50%;object-fit:cover;background:var(--surface-3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-3)}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
@@ -142,24 +161,50 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
   </div>
 
   <div class="tabs">
-    <button class="tab active" id="tab-colab" onclick="trocarTab('colab')"><i data-lucide="users-round"></i> Colaboradores</button>
+    <button class="tab active" id="tab-dashboard" onclick="trocarTab('dashboard')"><i data-lucide="layout-dashboard"></i> Dashboard</button>
+    <button class="tab" id="tab-colab" onclick="trocarTab('colab')"><i data-lucide="users-round"></i> Colaboradores</button>
     <button class="tab" id="tab-cards" onclick="trocarTab('cards')"><i data-lucide="image"></i> Cards</button>
   </div>
 
+  <!-- ABA DASHBOARD -->
+  <div class="tab-pane active" id="pane-dashboard">
+    <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+      <div class="sk"><div class="sk-val" id="db-total">0</div><div class="sk-lbl">Colaboradores</div></div>
+      <div class="sk"><div class="sk-val" id="db-mes" style="color:var(--amber-text)">0</div><div class="sk-lbl">Aniversários no mês</div></div>
+      <div class="sk"><div class="sk-val" id="db-vagas" style="color:var(--primary)">0</div><div class="sk-lbl">Vagas em aberto</div></div>
+    </div>
+
+    <div class="card">
+      <h2><i data-lucide="cake"></i> Aniversariantes</h2>
+      <div class="aniv-filtros">
+        <div class="periodo-toggle">
+          <button class="pt active" data-per="mes" onclick="setPeriodo('mes')">Mês</button>
+          <button class="pt" data-per="semana" onclick="setPeriodo('semana')">Semana</button>
+          <button class="pt" data-per="dia" onclick="setPeriodo('dia')">Dia</button>
+        </div>
+        <select id="aniv-mes-sel" onchange="renderAniversarios()"></select>
+        <input type="text" id="aniv-busca" placeholder="Buscar por nome..." oninput="renderAniversarios()">
+      </div>
+      <div class="aniv-list" id="aniv-list"><div class="empty">Carregando...</div></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0"><i data-lucide="briefcase"></i> Vagas em aberto</h2>
+        <button class="btn-nova" onclick="abrirModalVaga()"><i data-lucide="plus"></i> Nova vaga</button>
+      </div>
+      <div id="vagas-list" style="margin-top:14px"><div class="empty">Carregando...</div></div>
+    </div>
+  </div>
+
   <!-- ABA COLABORADORES -->
-  <div class="tab-pane active" id="pane-colab">
+  <div class="tab-pane" id="pane-colab">
     <div class="page-header">
       <div style="flex:1"></div>
       <button class="btn-nova" onclick="abrirModal()"><i data-lucide="user-plus"></i> Novo colaborador</button>
     </div>
-    <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
-      <div class="sk"><div class="sk-val" id="st-total">0</div><div class="sk-lbl">Colaboradores</div></div>
-      <div class="sk"><div class="sk-val" id="st-mes" style="color:var(--amber-text)">0</div><div class="sk-lbl">Aniversários no mês</div></div>
-      <div class="sk"><div class="sk-val" id="st-hoje" style="color:var(--primary)">0</div><div class="sk-lbl">Aniversários hoje</div></div>
-    </div>
-    <div class="card">
-      <h2><i data-lucide="cake"></i> Próximos aniversários (30 dias)</h2>
-      <div class="aniv-list" id="aniv-list"><div class="empty">Carregando...</div></div>
+    <div class="stats-row" id="quant-empresas" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+      <div class="sk"><div class="sk-val" id="st-total">0</div><div class="sk-lbl">Total</div></div>
     </div>
     <div class="busca-bar">
       <input type="text" id="busca" placeholder="Buscar por nome ou cargo..." oninput="renderColabs()">
@@ -227,9 +272,10 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
       </datalist>
     </div>
     <div class="fg-row">
+      <div class="fg"><label>Empresa</label><select id="f-empresa"></select></div>
       <div class="fg"><label>Data de admissão</label><input type="date" id="f-admissao"></div>
-      <div class="fg"><label>Telefone</label><input type="text" id="f-telefone" placeholder="(00) 00000-0000"></div>
     </div>
+    <div class="fg"><label>Telefone</label><input type="text" id="f-telefone" placeholder="(00) 00000-0000"></div>
     <div class="fg">
       <label>Aniversário (dia / mês)</label>
       <div style="display:flex;gap:10px">
@@ -249,6 +295,35 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
   </div>
 </div>
 
+<!-- Modal cadastro/edição de vaga -->
+<div class="overlay" id="overlay-vaga" onclick="if(event.target===this)fecharModalVaga()">
+  <div class="modal">
+    <div class="modal-head"><i data-lucide="briefcase"></i><h2 id="vaga-titulo">Nova vaga</h2></div>
+    <div class="fg-row">
+      <div class="fg"><label>Empresa</label><select id="v-empresa"></select></div>
+      <div class="fg"><label>Status</label><select id="v-status"><option value="aberta">Aberta</option><option value="fechada">Fechada</option></select></div>
+    </div>
+    <div class="fg"><label>Cargo / Vaga *</label><input type="text" id="v-cargo" list="cargos-list" placeholder="Ex: Técnico de Automação"></div>
+    <div class="fg"><label>Campos do card <span style="color:var(--text-3);font-weight:400">(personalizável)</span></label>
+      <div id="vaga-campos"></div>
+      <button type="button" class="btn-add-campo" onclick="_vagaAddCampo()"><i data-lucide="plus" style="width:13px;height:13px"></i> Adicionar campo</button>
+    </div>
+    <div id="vaga-erro" style="display:none;color:var(--red-text);font-size:13px;margin-bottom:12px"></div>
+    <div class="modal-actions">
+      <button class="btn-del" id="vaga-del" style="display:none" onclick="excluirVaga()"><i data-lucide="trash-2" style="width:13px;height:13px"></i> Excluir</button>
+      <button class="btn-sec" onclick="fecharModalVaga()">Cancelar</button>
+      <button class="btn-pri" onclick="salvarVaga()"><i data-lucide="save" style="width:14px;height:14px"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lembrete flutuante de próximo aniversário (só no módulo RH) -->
+<div id="aniv-flut" class="aniv-flut" style="display:none" onclick="trocarTab('dashboard')">
+  <button class="aniv-flut-x" onclick="event.stopPropagation();_fecharFlutuante()" title="Dispensar">&times;</button>
+  <div class="aniv-flut-ico">🎂</div>
+  <div class="aniv-flut-txt" id="aniv-flut-txt"></div>
+</div>
+
 <script>
 let _authToken = '';
 let _colabs = [];
@@ -256,6 +331,12 @@ let _editColab = null;
 let _fotoFile = null;
 let _fotoRemovida = false;
 let _cardTipo = 'aniversario';
+let _vagas = [];
+let _editVaga = null;
+let _periodo = 'mes';
+const GRUPO_EMPRESAS = ['Solução','Breton','Bontempo']; // colaboradores
+const EMPRESAS_VAGA  = ['Solução','Breton'];            // vagas (Bontempo não tem vaga aqui)
+function _optsEmpresa(sel, lista){ return '<option value="">—</option>' + (lista||GRUPO_EMPRESAS).map(e=>`<option${sel===e?' selected':''}>${e}</option>`).join(''); }
 
 function fotoSrc(url){ if(!url||!_authToken) return url; return url + (url.includes('?')?'&':'?') + 't=' + encodeURIComponent(_authToken); }
 function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -279,20 +360,36 @@ function nomeCurto(n){ const p=(n||'').trim().split(/\s+/).filter(Boolean); if(p
 })();
 
 function trocarTab(t){
-  document.getElementById('tab-colab').classList.toggle('active', t==='colab');
-  document.getElementById('tab-cards').classList.toggle('active', t==='cards');
-  document.getElementById('pane-colab').classList.toggle('active', t==='colab');
-  document.getElementById('pane-cards').classList.toggle('active', t==='cards');
+  ['dashboard','colab','cards'].forEach(x=>{
+    document.getElementById('tab-'+x)?.classList.toggle('active', x===t);
+    document.getElementById('pane-'+x)?.classList.toggle('active', x===t);
+  });
   lucide.createIcons();
 }
 
 async function carregar() {
-  const colabRes = await db.from('colaboradores').select('*').order('nome');
+  // selects de empresa (modal colaborador e vaga) e de mês (aniversários)
+  document.getElementById('f-empresa').innerHTML = _optsEmpresa();
+  document.getElementById('v-empresa').innerHTML = _optsEmpresa('Solução', EMPRESAS_VAGA);
+  const MM=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const mesSel=document.getElementById('aniv-mes-sel');
+  if(mesSel) mesSel.innerHTML = MM.map((m,i)=>`<option value="${i+1}"${(i+1)===(new Date().getMonth()+1)?' selected':''}>${m}</option>`).join('');
+
+  const [colabRes, vagasRes] = await Promise.all([
+    db.from('colaboradores').select('*').order('nome'),
+    db.from('vagas_abertas').select('*').order('criado_em', { ascending:false }),
+  ]);
   if (colabRes.error) { document.getElementById('aniv-list').innerHTML = `<div class="empty">Erro: ${escH(colabRes.error.message)}</div>`; return; }
   _colabs = (colabRes.data || []).map(c => ({ ...c, _key: 'c' + c.id }))
     .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
-  renderDashboard();
+  _vagas = vagasRes.error ? [] : (vagasRes.data || []);
+
+  renderDashboardKPIs();
+  renderAniversarios();
+  renderVagas();
   renderColabs();
+  renderQuantEmpresas();
+  _renderFlutuante();
   _popularSelectColab();
 }
 
@@ -311,26 +408,145 @@ function _popularDiaMes() {
 // ── Dashboard ────────────────────────────────────────────────
 function _diaMes(d){ if(!d) return null; const [,m,dia]=d.split('-'); return {m:+m,d:+dia}; }
 function _diasAte(d){ const dm=_diaMes(d); if(!dm) return null; const hoje=new Date(); hoje.setHours(0,0,0,0); let prox=new Date(hoje.getFullYear(),dm.m-1,dm.d); if(prox<hoje) prox=new Date(hoje.getFullYear()+1,dm.m-1,dm.d); return Math.round((prox-hoje)/86400000); }
-function renderDashboard() {
+function renderDashboardKPIs() {
   const ativos = _colabs.filter(c => c.ativo !== false);
   const mesAtual = new Date().getMonth()+1;
-  document.getElementById('st-total').textContent  = ativos.length;
-  document.getElementById('st-mes').textContent    = ativos.filter(c=>_diaMes(c.data_aniversario)?.m===mesAtual).length;
-  document.getElementById('st-hoje').textContent   = ativos.filter(c=>_diasAte(c.data_aniversario)===0).length;
+  document.getElementById('db-total').textContent = ativos.length;
+  document.getElementById('db-mes').textContent   = ativos.filter(c=>_diaMes(c.data_aniversario)?.m===mesAtual).length;
+  document.getElementById('db-vagas').textContent = _vagas.filter(v=>v.status!=='fechada').length;
+}
 
-  const prox = ativos.map(c=>({c,dias:_diasAte(c.data_aniversario)})).filter(x=>x.dias!=null&&x.dias<=30).sort((a,b)=>a.dias-b.dias);
-  const el = document.getElementById('aniv-list');
-  if (!prox.length) { el.innerHTML = '<div class="empty">Nenhum aniversário nos próximos 30 dias.</div>'; return; }
-  el.innerHTML = prox.map(({c,dias}) => {
+function setPeriodo(p){
+  _periodo = p;
+  document.querySelectorAll('.periodo-toggle .pt').forEach(b=>b.classList.toggle('active', b.dataset.per===p));
+  document.getElementById('aniv-mes-sel').style.display = (p==='mes') ? '' : 'none';
+  renderAniversarios();
+}
+
+function renderAniversarios(){
+  const termo=(document.getElementById('aniv-busca')?.value||'').toLowerCase().trim();
+  const mesSel=+(document.getElementById('aniv-mes-sel')?.value || (new Date().getMonth()+1));
+  let lista=_colabs.filter(c=>c.ativo!==false && c.data_aniversario);
+  if(termo) lista=lista.filter(c=>(c.nome||'').toLowerCase().includes(termo));
+  if(_periodo==='mes')         lista=lista.filter(c=>_diaMes(c.data_aniversario)?.m===mesSel);
+  else if(_periodo==='semana') lista=lista.filter(c=>{const d=_diasAte(c.data_aniversario); return d!=null && d<=7;});
+  else                         lista=lista.filter(c=>_diasAte(c.data_aniversario)===0);
+  lista.sort((a,b)=> _periodo==='mes'
+    ? (_diaMes(a.data_aniversario).d - _diaMes(b.data_aniversario).d)
+    : (_diasAte(a.data_aniversario) - _diasAte(b.data_aniversario)));
+
+  const el=document.getElementById('aniv-list');
+  if(!lista.length){ el.innerHTML='<div class="empty">Nenhum aniversariante neste período.</div>'; return; }
+  el.innerHTML=lista.map(c=>{
     const dm=_diaMes(c.data_aniversario); const dataTxt=String(dm.d).padStart(2,'0')+'/'+String(dm.m).padStart(2,'0');
-    const quando = dias===0?'HOJE 🎉':dias===1?'amanhã':`em ${dias} dias`;
-    const foto = c.foto_url ? `<img class="av" src="${escH(fotoSrc(c.foto_url))}" alt="">`
-      : `<div class="av" style="display:flex;align-items:center;justify-content:center;color:var(--text-3);font-weight:700;font-size:13px">${iniciais(c.nome)}</div>`;
+    const dias=_diasAte(c.data_aniversario);
+    const quando=dias===0?'HOJE 🎉':dias===1?'amanhã':`em ${dias} dias`;
+    const foto=c.foto_url?`<img class="av" src="${escH(fotoSrc(c.foto_url))}" alt="">`:`<div class="av" style="display:flex;align-items:center;justify-content:center;color:var(--text-3);font-weight:700;font-size:13px">${iniciais(c.nome)}</div>`;
     return `<div class="aniv-item ${dias===0?'aniv-hoje':''}">${foto}
-      <div><div class="nm">${escH(nomeCurto(c.nome))}</div><div class="cg">${escH(c.cargo||'—')}</div></div>
+      <div><div class="nm">${escH(nomeCurto(c.nome))}</div><div class="cg">${escH(c.empresa?c.empresa+' · ':'')}${escH(c.cargo||'—')}</div></div>
       <div class="dt">${dataTxt}<br><span style="font-weight:500;color:var(--text-3);font-size:11px">${quando}</span></div></div>`;
   }).join('');
   lucide.createIcons();
+}
+
+function renderQuantEmpresas(){
+  const ativos=_colabs.filter(c=>c.ativo!==false);
+  const box=document.getElementById('quant-empresas'); if(!box) return;
+  let html=`<div class="sk"><div class="sk-val" id="st-total">${ativos.length}</div><div class="sk-lbl">Total</div></div>`;
+  GRUPO_EMPRESAS.forEach(e=>{
+    const n=ativos.filter(c=>(c.empresa||'')===e).length;
+    html+=`<div class="sk"><div class="sk-val">${n}</div><div class="sk-lbl">${escH(e)}</div></div>`;
+  });
+  const semEmp=ativos.filter(c=>!c.empresa).length;
+  if(semEmp) html+=`<div class="sk"><div class="sk-val" style="color:var(--text-3)">${semEmp}</div><div class="sk-lbl">Sem empresa</div></div>`;
+  box.innerHTML=html;
+}
+
+// ── Lembrete flutuante (só no RH) ──
+function _renderFlutuante(){
+  if(sessionStorage.getItem('rh_flut_dispensado')==='1') return;
+  const ativos=_colabs.filter(c=>c.ativo!==false && c.data_aniversario);
+  const prox=ativos.map(c=>({c,dias:_diasAte(c.data_aniversario)})).filter(x=>x.dias!=null&&x.dias<=7).sort((a,b)=>a.dias-b.dias);
+  if(!prox.length) return;
+  const {c,dias}=prox[0];
+  const quando=dias===0?'é HOJE! 🎉':dias===1?'é amanhã':`em ${dias} dias`;
+  document.getElementById('aniv-flut-txt').innerHTML=`<strong>Atenção: próximo aniversário</strong><br>${escH(nomeCurto(c.nome))} — ${quando}`;
+  document.getElementById('aniv-flut').style.display='flex';
+}
+function _fecharFlutuante(){ sessionStorage.setItem('rh_flut_dispensado','1'); document.getElementById('aniv-flut').style.display='none'; }
+
+// ── Vagas em aberto ──
+function _vagaCampoRow(label,valor){
+  return `<div class="campo-row">
+    <input type="text" class="campo-label" value="${escH(label||'')}" placeholder="Título">
+    <input type="text" class="campo-valor" value="${escH(valor||'')}" placeholder="Conteúdo">
+    <button type="button" class="campo-del" onclick="this.parentElement.remove()" title="Remover"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+  </div>`;
+}
+function _vagaSetCampos(campos){
+  const padrao=[{label:'Salário',valor:''},{label:'Benefícios',valor:''},{label:'Horário',valor:''},{label:'Requisitos',valor:''}];
+  const arr=(campos&&campos.length)?campos:padrao;
+  document.getElementById('vaga-campos').innerHTML=arr.map(c=>_vagaCampoRow(c.label,c.valor)).join(''); lucide.createIcons();
+}
+function _vagaAddCampo(){ document.getElementById('vaga-campos').insertAdjacentHTML('beforeend', _vagaCampoRow('','')); lucide.createIcons(); }
+function _vagaLerCampos(){ return [...document.querySelectorAll('#vaga-campos .campo-row')].map(r=>({label:r.querySelector('.campo-label')?.value.trim()||'',valor:r.querySelector('.campo-valor')?.value.trim()||''})).filter(c=>c.label||c.valor); }
+
+function abrirModalVaga(id){
+  const v=id?_vagas.find(x=>x.id===id):null; _editVaga=v||null;
+  document.getElementById('vaga-titulo').textContent=v?'Editar vaga':'Nova vaga';
+  document.getElementById('v-empresa').innerHTML=_optsEmpresa(v?.empresa||'Solução');
+  document.getElementById('v-cargo').value=v?.cargo||'';
+  document.getElementById('v-status').value=v?.status||'aberta';
+  _vagaSetCampos(v?.campos||null);
+  document.getElementById('vaga-erro').style.display='none';
+  document.getElementById('vaga-del').style.display=v?'inline-flex':'none';
+  document.getElementById('overlay-vaga').classList.add('aberto');
+  lucide.createIcons();
+}
+function fecharModalVaga(){ document.getElementById('overlay-vaga').classList.remove('aberto'); }
+async function salvarVaga(){
+  const cargo=document.getElementById('v-cargo').value.trim();
+  const erro=document.getElementById('vaga-erro');
+  if(!cargo){ erro.textContent='Informe o cargo/vaga.'; erro.style.display='block'; return; }
+  const payload={ empresa:document.getElementById('v-empresa').value||null, cargo, status:document.getElementById('v-status').value, campos:_vagaLerCampos(), atualizado_em:new Date().toISOString() };
+  try{
+    if(_editVaga){ const {error}=await db.from('vagas_abertas').update(payload).eq('id',_editVaga.id); if(error) throw error; }
+    else{ payload.criado_em=new Date().toISOString(); const {error}=await db.from('vagas_abertas').insert(payload); if(error) throw error; }
+    fecharModalVaga(); await carregar();
+  }catch(e){ erro.textContent='Erro: '+e.message; erro.style.display='block'; }
+}
+async function excluirVaga(){
+  if(!_editVaga) return; if(!confirm('Excluir esta vaga?')) return;
+  const {error}=await db.from('vagas_abertas').delete().eq('id',_editVaga.id);
+  if(error){ alert('Erro: '+error.message); return; }
+  fecharModalVaga(); await carregar();
+}
+function renderVagas(){
+  const el=document.getElementById('vagas-list'); if(!el) return;
+  if(!_vagas.length){ el.innerHTML='<div class="empty">Nenhuma vaga cadastrada.</div>'; return; }
+  el.innerHTML=_vagas.map(v=>{
+    const fechada=v.status==='fechada';
+    return `<div class="vaga-item ${fechada?'vaga-fechada':''}">
+      <div style="flex:1;min-width:0">
+        <div class="vaga-cargo">${escH(v.cargo)} ${fechada?'<span class="badge-inativo">fechada</span>':''}</div>
+        <div class="vaga-emp">${escH(v.empresa||'—')}</div>
+      </div>
+      <button class="btn-sec" onclick="baixarCardVaga(${v.id})" title="Gerar card desta vaga"><i data-lucide="image-down" style="width:13px;height:13px"></i> Card</button>
+      <button class="btn-sec" onclick="abrirModalVaga(${v.id})" title="Editar"><i data-lucide="pencil" style="width:13px;height:13px"></i></button>
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+function baixarCardVaga(id){
+  const v=_vagas.find(x=>x.id===id); if(!v) return;
+  trocarTab('cards');
+  selecionarTipo('contratacao');
+  const empKey = (v.empresa==='Breton') ? 'breton' : 'solucao';
+  const empSel=document.getElementById('card-empresa'); if(empSel) empSel.value=empKey;
+  const vagaSel=document.getElementById('card-vaga');
+  if(vagaSel){ if(![...vagaSel.options].some(o=>o.value===v.cargo)) vagaSel.add(new Option(v.cargo, v.cargo)); vagaSel.value=v.cargo; }
+  _setCampos(v.campos&&v.campos.length?v.campos:[]);
+  gerarCard();
 }
 
 // ── Lista ────────────────────────────────────────────────────
@@ -364,6 +580,7 @@ function abrirModal(key) {
   document.getElementById('foto-input').value = '';
   document.getElementById('modal-titulo').textContent = c ? 'Editar colaborador' : 'Novo colaborador';
   document.getElementById('f-nome').value = c?.nome||''; document.getElementById('f-cargo').value = c?.cargo||'';
+  document.getElementById('f-empresa').value = c?.empresa || '';
   document.getElementById('f-admissao').value = c?.data_admissao||'';
   const dm = _diaMes(c?.data_aniversario);
   document.getElementById('f-aniv-dia').value = dm ? dm.d : '';
@@ -414,6 +631,7 @@ async function salvarColab() {
   const aniv = (diaA && mesA) ? `2000-${String(mesA).padStart(2,'0')}-${String(diaA).padStart(2,'0')}` : null;
   const payload={
     nome, cargo:document.getElementById('f-cargo').value||null,
+    empresa:document.getElementById('f-empresa').value||null,
     data_admissao:document.getElementById('f-admissao').value||null,
     data_aniversario:aniv,
     telefone:document.getElementById('f-telefone').value.trim()||null,
@@ -723,9 +941,10 @@ async function _cardContratacao(ctx, cv){
 
 // Templates com FOTO no círculo central — fundo é arte pronta (título e logo embutidos).
 // AJUSTAR posições (cy/r/nomeY/cargoY) conforme a arte real.
+// fyR/fhR/nomeR/cargoR = posições em fração da altura (a foto NÃO pode cobrir o título da arte)
 const TEMPLATES = {
-  promocao: { bg:'jornada.jpg',  corNome:'#2B2B2B', corCargo:'#9A7B2E', cargoId:'card-novo-cargo' },
-  bemvindo: { bg:'bemvindo.jpg', corNome:'#FFFFFF', corCargo:'#CBD6E8', cargoId:'card-cargo' },
+  promocao: { bg:'jornada.jpg',  corNome:'#2B2B2B', corCargo:'#9A7B2E', cargoId:'card-novo-cargo', fyR:0.345, fhR:0.34, nomeR:0.745, cargoR:0.782 },
+  bemvindo: { bg:'bemvindo.jpg', corNome:'#FFFFFF', corCargo:'#CBD6E8', cargoId:'card-cargo',       fyR:0.305, fhR:0.34, nomeR:0.705, cargoR:0.742 },
 };
 
 async function _cardTemplateFoto(ctx, cv, cfg){
@@ -737,8 +956,8 @@ async function _cardTemplateFoto(ctx, cv, cfg){
 
   const key=document.getElementById('card-sel-colab')?.value; const c=_colabs.find(x=>x._key===key);
 
-  // Foto — MESMA moldura/tamanho do card de aniversário (retângulo arredondado + borda branca)
-  const fw=0.545*W, fh=0.392*H, fx=(W-fw)/2, fy=0.242*H, frad=0.010*W;
+  // Foto — moldura branca (retângulo arredondado), POSIÇÃO abaixo do título da arte
+  const fh=(cfg.fhR||0.34)*H, fw=fh*0.835, fx=(W-fw)/2, fy=(cfg.fyR||0.30)*H, frad=0.010*W;
   const borda=0.018*W;
   ctx.save();
   ctx.shadowColor='rgba(0,0,0,0.22)'; ctx.shadowBlur=0.035*W; ctx.shadowOffsetY=0.012*W;
@@ -751,12 +970,12 @@ async function _cardTemplateFoto(ctx, cv, cfg){
   else{ ctx.fillStyle='#2e4046'; ctx.fillRect(px,py,pw,ph); ctx.fillStyle='#7d9099'; ctx.font='800 120px Poppins, sans-serif'; ctx.textAlign='center'; ctx.fillText(iniciais(c?.nome||'?'),W/2,py+ph/2+42); }
   ctx.restore();
 
-  // Nome + cargo abaixo da moldura (mesmas posições do aniversário)
+  // Nome + cargo abaixo da moldura
   ctx.textAlign='center';
   ctx.fillStyle=cfg.corNome; ctx.font='700 '+Math.round(0.046*W)+'px Poppins, sans-serif';
-  ctx.fillText(nomeCurto(c?.nome) || 'Nome do colaborador', W/2, 0.695*H);
+  ctx.fillText(nomeCurto(c?.nome) || 'Nome do colaborador', W/2, (cfg.nomeR||0.70)*H);
   const cargo=document.getElementById(cfg.cargoId)?.value || '';
-  if(cargo){ ctx.fillStyle=cfg.corCargo; ctx.font='500 '+Math.round(0.030*W)+'px Poppins, sans-serif'; ctx.fillText(cargo, W/2, 0.726*H); }
+  if(cargo){ ctx.fillStyle=cfg.corCargo; ctx.font='500 '+Math.round(0.030*W)+'px Poppins, sans-serif'; ctx.fillText(cargo, W/2, (cfg.cargoR||0.74)*H); }
   ctx.textAlign='left';
 }
 
