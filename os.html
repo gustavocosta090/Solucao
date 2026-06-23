@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-19 — upload foto/video com retry + reenvio (corrige falhas em rede movel) -->
+<!-- build: 2026-06-19b — fix PDF 413: logo reduzida p/ 520px (era 4180px) + upload retry/reenvio -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1407,20 +1407,27 @@ async function uploadArquivosBackup(nomeCliente, numeroOS) {
 
 // ── SharePoint via proxy Vercel / PDF ────────────────────────
 
-// Logo da Solução (preto, fundo transparente) em dataURL, para embutir no PDF
+// Logo da Solução (preto, fundo transparente) em dataURL, para embutir no PDF.
+// IMPORTANTE: o arquivo original é 4180x1194px (~5MP). Embutir em alta resolução
+// estoura o PDF (>4.5MB) e a Vercel devolve 413. Por isso reduzimos para ~520px.
 let _logoPDF = null;
 async function _garantirLogoPDF() {
   if (_logoPDF !== null) return _logoPDF;
   try {
-    const resp = await fetch('logosolucao.png');
-    if (!resp.ok) { _logoPDF = ''; return _logoPDF; }
-    const blob = await resp.blob();
-    _logoPDF = await new Promise((ok, fail) => {
-      const fr = new FileReader();
-      fr.onloadend = () => ok(String(fr.result));
-      fr.onerror   = () => ok('');
-      fr.readAsDataURL(blob);
+    const img = await new Promise((ok) => {
+      const im = new Image();
+      im.onload  = () => ok(im);
+      im.onerror = () => ok(null);
+      im.src = 'logosolucao.png?v=2';
     });
+    if (!img || !img.naturalWidth) { _logoPDF = ''; return _logoPDF; }
+    const TARGET_W = 520;
+    const scale = Math.min(1, TARGET_W / img.naturalWidth);
+    const w = Math.round(img.naturalWidth * scale);
+    const h = Math.round(img.naturalHeight * scale);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(img, 0, 0, w, h);
+    _logoPDF = cv.toDataURL('image/png'); // pequeno, mantém transparência
   } catch (e) { _logoPDF = ''; }
   return _logoPDF;
 }
@@ -1562,6 +1569,11 @@ async function enviarParaOneDrive({ nomeCliente, dataServico, numeroOS, equipeNo
     let binary     = '';
     for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
     const base64   = btoa(binary);
+
+    // Trava: a Vercel rejeita corpo > ~4.5MB (413). Avisa claro em vez de erro críptico.
+    if (base64.length > 4_000_000) {
+      throw new Error(`PDF muito grande (${(base64.length/1048576).toFixed(1)}MB). Avise o suporte.`);
+    }
 
     const hdrs = await headersUploadProtegido();
     const res  = await fetch('/api/upload-pdf', {
