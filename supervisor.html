@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-17b — lista agrupada por N.OS + PDF leve redesenhado (logo) -->
+<!-- build: 2026-06-19 — botao Reenviar ao OneDrive (PDF replace + email) + logo reduzida no PDF -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1157,8 +1157,11 @@
   <span id="alerta-atrasadas-txt"></span>
 </div>
 
-<!-- Ação em lote: enviar por e-mail -->
-<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+<!-- Ações em lote -->
+<div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+  <button id="btn-reenviar-onedrive" class="btn-aprovar" style="background:rgba(62,207,142,.12);border-color:rgba(62,207,142,.35);color:#3ECF8E;" onclick="reenviarTodasOneDrive()">
+    <i data-lucide="cloud-upload"></i> Reenviar ao OneDrive
+  </button>
   <button id="btn-enviar-todas" class="btn-aprovar" style="background:rgba(79,70,229,.12);border-color:rgba(79,70,229,.35);color:#A5B4FC;" onclick="enviarTodasEmail()">
     <i data-lucide="mail"></i> Enviar todas por e-mail
   </button>
@@ -2006,6 +2009,7 @@ function renderTabela() {
         ${btnAcao}
         <button class="btn-ver" onclick="verOS(${o.id})">Ver</button>
         <button class="btn-ver" style="border-color:rgba(79,70,229,.35);color:#A5B4FC;" onclick="event.stopPropagation();enviarEmailOSRow(${o.id}, this)" title="Enviar esta OS por e-mail">E-mail</button>
+        <button class="btn-ver" style="border-color:rgba(62,207,142,.35);color:#3ECF8E;" onclick="event.stopPropagation();reenviarOneDriveRow(${o.id}, this)" title="Reenviar o PDF ao OneDrive (substitui, não duplica) + e-mail">OneDrive</button>
         ${!isCancelada ? `<button class="btn-reprovar" style="background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3);color:#f87171;" onclick="event.stopPropagation();deletarGrupo(${idsJson}, '${formatarNumeroOS(o)}')" title="Cancelar OS">Cancelar</button>` : ''}
       </td>
     </tr>`;
@@ -2691,16 +2695,16 @@ function _folderDasFotos(os){ const u=os.fotos_urls?.[0]; if(!u) return null; co
 let _logoSup = null;
 async function _garantirLogoSup() {
   if (_logoSup !== null) return _logoSup;
+  // logosolucao.png é 4180x1194px — reduzir antes de embutir, senão o PDF estoura 4.5MB (413).
   try {
-    const resp = await fetch('logosolucao.png');
-    if (!resp.ok) { _logoSup = ''; return _logoSup; }
-    const blob = await resp.blob();
-    _logoSup = await new Promise(ok => {
-      const fr = new FileReader();
-      fr.onloadend = () => ok(String(fr.result));
-      fr.onerror   = () => ok('');
-      fr.readAsDataURL(blob);
-    });
+    const img = await new Promise(ok => { const im=new Image(); im.onload=()=>ok(im); im.onerror=()=>ok(null); im.src='logosolucao.png?v=2'; });
+    if (!img || !img.naturalWidth) { _logoSup = ''; return _logoSup; }
+    const TARGET_W = 520;
+    const scale = Math.min(1, TARGET_W / img.naturalWidth);
+    const w = Math.round(img.naturalWidth*scale), h = Math.round(img.naturalHeight*scale);
+    const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    _logoSup = cv.toDataURL('image/png');
   } catch (e) { _logoSup = ''; }
   return _logoSup;
 }
@@ -2795,6 +2799,69 @@ async function enviarTodasEmail(){
   }
   if(btn){ btn.disabled=false; btn.innerHTML='<i data-lucide="mail"></i> Enviar todas por e-mail'; lucide.createIcons(); }
   showToast(`Concluído: ${ok} enviada(s)${erro?`, ${erro} falha(s)`:''}.`, erro?'warning':'success');
+}
+
+// ── Reenviar ao OneDrive (PDF pro SharePoint, substituindo — sem duplicar) ──
+const EQUIPE_NOME_COD = { '01':'Cabeamento','02':'Elétrica','03':'Áudio e Vídeo','04':'Automação','05':'Regional Norte','09':'Plantão' };
+function _nomePastaCliente(nome){ return (nome||'Sem Cliente').replace(/[\/\\:*?"<>|#%~]/g,'').replace(/\s+/g,' ').trim().substring(0,60) || 'Sem Cliente'; }
+// Destino do PDF: prioriza derivar da pasta das fotos (match exato → replace garante não-duplicar)
+function _pdfDestino(os){
+  const numeroOS = os.numero_os || formatarNumeroOS(os);
+  const ano = (numeroOS||'').split('-')[0] || new Date().getFullYear();
+  const fotosFolder = _folderDasFotos(os);
+  if(fotosFolder && fotosFolder.includes('/Fotos/')){
+    const pasta = fotosFolder.replace('/Fotos/','/Ordens de Serviço/');
+    const nomeBase = fotosFolder.split('/')[1] || 'Sem Cliente';
+    return { pasta, arquivo:`${nomeBase} ${numeroOS}.pdf` };
+  }
+  const cli = os.obras?.nome_cliente || os._cliente_outro || 'Sem Cliente';
+  const nomeBase = _nomePastaCliente(cli);
+  const cod = numeroOS.split('-')[2] || '00';
+  const eq = EQUIPE_NOME_COD[cod];
+  const equipe = eq ? `Equipe ${cod} - ${eq}` : `Equipe ${cod}`;
+  return { pasta:`Obras e Clientes ${ano}/${nomeBase}/Ordens de Serviço/${equipe}`, arquivo:`${nomeBase} ${numeroOS}.pdf` };
+}
+async function _uploadPdfSup(os){
+  await _garantirLogoSup();
+  const { data: full } = await db.from('ordens_de_servico').select('*').eq('id', os.id).maybeSingle();
+  const merged = { ...(full||{}), obras: os.obras, tecnicos: os.tecnicos, _cliente_outro: os._cliente_outro, numero_os: full?.numero_os || os.numero_os };
+  const base64 = await _blobBase64(_pdfLeveOS(merged));
+  if(base64.length > 4_000_000) throw new Error('PDF muito grande');
+  const { pasta, arquivo } = _pdfDestino(merged);
+  const { data:{ session } } = await db.auth.getSession();
+  const r = await fetch('/api/upload-pdf', {
+    method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
+    body: JSON.stringify({ path: pasta, filename: arquivo, contentBase64: base64 }),
+  });
+  if(!r.ok) throw new Error('PDF: '+(await r.text().catch(()=>r.status)));
+}
+async function reenviarOneDriveRow(id, btn){
+  const os = todasOSs.find(o=>o.id===id); if(!os) return;
+  if(btn){ btn.disabled=true; btn.textContent='Enviando...'; }
+  try{
+    await _uploadPdfSup(os);   // PDF → SharePoint (substitui, não duplica)
+    await _emailOS(os);        // e-mail
+    showToast('PDF reenviado ao OneDrive e e-mail enviado.', 'success');
+  }catch(e){ showToast('Erro ao reenviar: '+e.message, 'error'); }
+  finally{ if(btn){ btn.disabled=false; btn.textContent='OneDrive'; } }
+}
+async function reenviarTodasOneDrive(){
+  // Deduplica por N.OS (uma OS com vários técnicos compartilha o número → evita PDF/e-mail repetido)
+  const vistos = new Set();
+  const lista = filtradas.filter(o => { const k = o.numero_os || ('id'+o.id); if(vistos.has(k)) return false; vistos.add(k); return true; });
+  if(!lista.length){ showToast('Nenhuma OS na lista atual.', 'warning'); return; }
+  if(!confirm(`Reenviar ${lista.length} OS ao OneDrive (PDF + e-mail)?\n\nO PDF substitui o existente (não duplica). O e-mail é reenviado para ordens@ — use o filtro atual para mirar só as que falharam.`)) return;
+  let ok=0, erro=0;
+  const btn=document.getElementById('btn-reenviar-onedrive');
+  if(btn) btn.disabled=true;
+  for(let i=0;i<lista.length;i++){
+    if(btn) btn.textContent=`Reenviando ${i+1}/${lista.length}...`;
+    try{ await _uploadPdfSup(lista[i]); await _emailOS(lista[i]); ok++; }
+    catch(e){ erro++; console.warn('reenvio OneDrive falhou', lista[i].id, e.message); }
+    await new Promise(r=>setTimeout(r,400));
+  }
+  if(btn){ btn.disabled=false; btn.innerHTML='<i data-lucide="cloud-upload"></i> Reenviar ao OneDrive'; lucide.createIcons(); }
+  showToast(`Concluído: ${ok} reenviada(s)${erro?`, ${erro} falha(s)`:''}.`, erro?'warning':'success');
 }
 
 async function exportarPDFOS(osId) {
