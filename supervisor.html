@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-19 — botao Reenviar ao OneDrive (PDF replace + email) + logo reduzida no PDF -->
+<!-- build: 2026-06-19b — Reenviar OneDrive + relatorio agenda noturna (sem banco horas, detecta 2 noturnas/dia) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1185,9 +1185,9 @@
     <div class="stat-num" id="sFotos" style="color: var(--secondary);">—</div>
     <div class="stat-label">Com fotos</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" style="cursor:pointer;" onclick="modalRelatorioNoturna()" title="Relatório de pagamento por técnico">
     <div class="stat-num" id="sNoturna" style="color: var(--amber);">—</div>
-    <div class="stat-label">Agenda Noturna</div>
+    <div class="stat-label">Agenda Noturna ↗</div>
   </div>
   <div class="stat-card" style="cursor:pointer;" onclick="modalBancoHoras()" title="Ver detalhes por técnico">
     <div class="stat-num" id="sBancoHoras" style="color: #A5B4FC;">—</div>
@@ -1766,6 +1766,74 @@ function modalBancoHoras() {
   document.getElementById('modalBH').classList.add('open');
 }
 
+// Relatório de pagamento das agendas noturnas — por técnico, banco de horas EXCLUÍDO.
+// Sinaliza quando o mesmo técnico tem 2+ agendas noturnas no mesmo dia.
+function modalRelatorioNoturna() {
+  const fDi = document.getElementById('fDataInicio').value;
+  const fDf = document.getElementById('fDataFim').value;
+  const periodoLabel = (fDi || fDf)
+    ? `Período: ${fDi ? new Date(fDi+'T12:00').toLocaleDateString('pt-BR') : '—'} a ${fDf ? new Date(fDf+'T12:00').toLocaleDateString('pt-BR') : 'hoje'}`
+    : 'Todo o período registrado';
+
+  const noturnas   = filtradas.filter(o => isAgendaNoturna(o) && o.noturna_status !== 'banco_horas');
+  const aprovadas  = noturnas.filter(o => o.noturna_status === 'aprovada');
+  const aguardando = noturnas.filter(o => o.noturna_status !== 'aprovada');
+
+  // Agrupa por técnico (por ID — evita juntar homônimos, ex.: os 4 Lucas)
+  const porTec = {};
+  aprovadas.forEach(o => {
+    const info = agendaNoturnaInfo(o); if (!info) return;
+    const ids = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id].filter(Boolean);
+    (ids.length ? ids : [null]).forEach(id => {
+      const nome = id ? (_tecMapGlobal[id]?.nome || ('#' + id)) : 'Sem técnico';
+      const key = id || nome;
+      if (!porTec[key]) porTec[key] = { nome, itens: [], total: 0 };
+      porTec[key].itens.push({ data: o.data_servico, tipo: info.tipo, valor: info.valor });
+      porTec[key].total += info.valor;
+    });
+  });
+
+  const tecs = Object.values(porTec).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const totalGeral = tecs.reduce((s, t) => s + t.total, 0);
+  let totalDiasDuplos = 0;
+
+  const rows = tecs.map(t => {
+    const porData = {};
+    t.itens.forEach(i => { porData[i.data] = (porData[i.data] || 0) + 1; });
+    const diasDuplos = Object.entries(porData).filter(([, c]) => c >= 2).map(([d]) => d);
+    totalDiasDuplos += diasDuplos.length;
+    const det = t.itens.slice().sort((a, b) => (a.data||'').localeCompare(b.data||'')).map(i => {
+      const dataBR = i.data ? new Date(i.data+'T12:00').toLocaleDateString('pt-BR') : '—';
+      const dup = diasDuplos.includes(i.data);
+      return `<div style="display:flex;justify-content:space-between;gap:10px;${dup?'background:rgba(251,191,36,.14);border-radius:4px;padding:1px 6px;':''}">
+        <span>${dataBR} · ${i.tipo==='meia'?'Meia':'Completa'}${dup?' ⚠️':''}</span><span>${formatarMoeda(i.valor)}</span></div>`;
+    }).join('');
+    return `<tr>
+      <td style="vertical-align:top;">${escHtml(t.nome)}</td>
+      <td style="text-align:center;vertical-align:top;">${t.itens.length}</td>
+      <td style="font-size:12px;">${det}</td>
+      <td class="td-h" style="vertical-align:top;">${formatarMoeda(t.total)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('modalBHTitulo').textContent = 'Agenda Noturna — Relatório de pagamento';
+  document.getElementById('modalBHBody').innerHTML = `
+    <p style="color:var(--text-2);font-size:12px;margin-bottom:10px;">${periodoLabel} · banco de horas excluído</p>
+    ${aguardando.length ? `<p style="color:#FCD34D;font-size:12px;margin-bottom:12px;">⚠️ ${aguardando.length} agenda(s) noturna(s) <strong>aguardando decisão</strong> — defina "Pagar" ou "Banco de horas" (ao abrir a OS) antes de fechar o pagamento; elas não entram neste total.</p>` : ''}
+    ${aprovadas.length ? `
+    <table class="bh-table">
+      <thead><tr><th scope="col">Técnico</th><th scope="col" style="text-align:center;">Noturnas</th><th scope="col">Dias / tipo</th><th scope="col">Total</th></tr></thead>
+      <tbody>
+        ${rows}
+        <tr class="bh-total-row"><td>Total a pagar</td><td style="text-align:center;">${aprovadas.length}</td><td></td><td class="td-h">${formatarMoeda(totalGeral)}</td></tr>
+      </tbody>
+    </table>
+    ${totalDiasDuplos ? `<p style="color:#FCD34D;font-size:12px;margin-top:12px;">⚠️ ${totalDiasDuplos} caso(s) de técnico com <strong>2+ agendas noturnas no mesmo dia</strong> (linhas destacadas). Confirme se são serviços distintos antes de pagar em dobro.</p>` : ''}
+    <p style="color:var(--text-3);font-size:11px;margin-top:8px;">Meia = R$75 · Completa = R$150 (por técnico). Use o filtro de datas no topo para o período do pagamento.</p>`
+    : `<p style="color:var(--text-2);padding:16px 0;">Nenhuma agenda noturna <strong>aprovada para pagamento</strong> no período.${aguardando.length?' Há agendas aguardando decisão (acima).':''}</p>`}`;
+  document.getElementById('modalBH').classList.add('open');
+}
+
 // ===== TEMA =====
 function resumoAgendaNoturna(lista) {
   const porTecnico = {};
@@ -1896,7 +1964,7 @@ async function filtrar() {
     const matchTec   = !fTec  || String(o.tecnico_id) === fTec || String(o.auxiliar_id) === fTec || String(o.auxiliar2_id) === fTec || String(o.auxiliar3_id) === fTec;
     const stRaw      = o.status_aprovacao || 'pendente';
     const stOS       = (stRaw === 'aprovada' || stRaw === 'concluida') ? 'concluida' : 'pendente';
-    const matchSt    = !fSt   || (fSt === 'noturna' ? isAgendaNoturna(o) : fSt === 'aguardando' ? (isAgendaNoturna(o) && !o.noturna_status) : fSt === 'banco_horas' ? o.noturna_status === 'banco_horas' : stOS === fSt);
+    const matchSt    = !fSt   || (fSt === 'noturna' ? (isAgendaNoturna(o) && o.noturna_status !== 'banco_horas') : fSt === 'aguardando' ? (isAgendaNoturna(o) && !o.noturna_status) : fSt === 'banco_horas' ? o.noturna_status === 'banco_horas' : stOS === fSt);
     const matchTipo  = !fTipo || (o.tipo_servico || 'execucao') === fTipo;
     const matchDi    = !fDi   || !o.data_servico || o.data_servico >= fDi;
     const matchDf    = !fDf   || !o.data_servico || o.data_servico <= fDf;
