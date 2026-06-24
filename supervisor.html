@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-19b — Reenviar OneDrive + relatorio agenda noturna (sem banco horas, detecta 2 noturnas/dia) -->
+<!-- build: 2026-06-19c — noturna: relatorio + cliente nas OS importadas (servico_planejado) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1535,6 +1535,9 @@ async function carregarTecnicos() {
 // Mapeamento código de equipe para o número da OS
 const EQUIPE_COD = { 1:'01', 2:'02', 3:'03', 4:'04', 5:'05' };
 
+// Cliente de OS importadas (sem obra/agendamento): extraído de "Agenda noturna - <cliente>"
+function _clienteImportado(o){ const s = o.servico_planejado || ''; const p = 'Agenda noturna - '; return s.startsWith(p) ? s.slice(p.length) : null; }
+
 function formatarNumeroOS(os) {
   if (os.numero_os) return os.numero_os;
   // Fallback para OSs antigas sem número pré-atribuído
@@ -1604,7 +1607,7 @@ async function carregarOSs() {
     return {
       ...o,
       tecnicos:   o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null,
-      _cliente_outro: agClienteMap[o.agendamento_id] || null,
+      _cliente_outro: agClienteMap[o.agendamento_id] || _clienteImportado(o) || null,
       equipeNomes: equipe,
       equipeId,
     };
@@ -1788,7 +1791,7 @@ function modalRelatorioNoturna() {
       const nome = id ? (_tecMapGlobal[id]?.nome || ('#' + id)) : 'Sem técnico';
       const key = id || nome;
       if (!porTec[key]) porTec[key] = { nome, itens: [], total: 0 };
-      porTec[key].itens.push({ data: o.data_servico, tipo: info.tipo, valor: info.valor });
+      porTec[key].itens.push({ data: o.data_servico, tipo: info.tipo, valor: info.valor, cliente: o.obras?.nome_cliente || o._cliente_outro || '' });
       porTec[key].total += info.valor;
     });
   });
@@ -1806,7 +1809,7 @@ function modalRelatorioNoturna() {
       const dataBR = i.data ? new Date(i.data+'T12:00').toLocaleDateString('pt-BR') : '—';
       const dup = diasDuplos.includes(i.data);
       return `<div style="display:flex;justify-content:space-between;gap:10px;${dup?'background:rgba(251,191,36,.14);border-radius:4px;padding:1px 6px;':''}">
-        <span>${dataBR} · ${i.tipo==='meia'?'Meia':'Completa'}${dup?' ⚠️':''}</span><span>${formatarMoeda(i.valor)}</span></div>`;
+        <span>${dataBR} · ${i.tipo==='meia'?'Meia':'Completa'}${i.cliente?' · '+escHtml(i.cliente):''}${dup?' ⚠️':''}</span><span>${formatarMoeda(i.valor)}</span></div>`;
     }).join('');
     return `<tr>
       <td style="vertical-align:top;">${escHtml(t.nome)}</td>
@@ -1893,7 +1896,7 @@ async function filtrar() {
         const equipe = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id]
           .filter(Boolean).map(tid => _tecMapGlobal[tid]?.nome).filter(Boolean);
         return { ...o, tecnicos: o.tecnico_id ? (_tecMapGlobal[o.tecnico_id] || null) : null,
-                 _cliente_outro: agClienteMapC[o.agendamento_id] || null,
+                 _cliente_outro: agClienteMapC[o.agendamento_id] || _clienteImportado(o) || null,
                  equipeNomes: equipe, equipeId: _tecEquipeMapGlobal[o.tecnico_id] || null };
       });
       document.getElementById('loadingEl').style.display = 'none';
@@ -1951,7 +1954,7 @@ async function filtrar() {
       const equipe = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id]
         .filter(Boolean).map(tid => tecMap[tid]?.nome).filter(Boolean);
       return { ...o, tecnicos: o.tecnico_id ? (tecMap[o.tecnico_id] || null) : null,
-               _cliente_outro: agClienteMapR[o.agendamento_id] || null,
+               _cliente_outro: agClienteMapR[o.agendamento_id] || _clienteImportado(o) || null,
                equipeNomes: equipe, equipeId: tecEquipeMap[o.tecnico_id] || null };
     });
 
