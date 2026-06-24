@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-19c — noturna: relatorio + cliente nas OS importadas (servico_planejado) -->
+<!-- build: 2026-06-19d — noturna: nome COMPLETO + CPF no PDF de pagamento (tecnicos.nome_completo/cpf) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1564,7 +1564,7 @@ async function carregarOSs() {
       .lte('data_servico', hojeISO)
       .neq('status_aprovacao', 'cancelada')
       .order('criado_em', { ascending: false }),
-    db.from('tecnicos').select('id, nome'),
+    db.from('tecnicos').select('*'),
     db.from('tecnico_equipes').select('tecnico_id, equipe_id'),
   ]);
 
@@ -1851,11 +1851,15 @@ function resumoAgendaNoturna(lista) {
     if (info.tipo === 'meia') meia += 1;
     if (info.tipo === 'completa') completa += 1;
 
-    const nomes = o.equipeNomes?.length ? o.equipeNomes : ['Sem técnico'];
-    nomes.forEach(nome => {
-      if (!porTecnico[nome]) porTecnico[nome] = { tecnico: nome, meia: 0, completa: 0, total: 0 };
-      porTecnico[nome][info.tipo] += 1;
-      porTecnico[nome].total += info.valor;
+    // Agrupa por ID (evita juntar homônimos) e usa NOME COMPLETO p/ o DP (fallback no nome curto)
+    const ids = [o.tecnico_id, o.auxiliar_id, o.auxiliar2_id, o.auxiliar3_id].filter(Boolean);
+    (ids.length ? ids : [null]).forEach(id => {
+      const nome = id ? (_tecMapGlobal[id]?.nome_completo || _tecMapGlobal[id]?.nome || ('#' + id)) : 'Sem técnico';
+      const cpf  = id ? (_tecMapGlobal[id]?.cpf || '—') : '—';
+      const key = id || nome;
+      if (!porTecnico[key]) porTecnico[key] = { tecnico: nome, cpf, meia: 0, completa: 0, total: 0 };
+      porTecnico[key][info.tipo] += 1;
+      porTecnico[key].total += info.valor;
       total += info.valor;
     });
   });
@@ -1933,7 +1937,7 @@ async function filtrar() {
         .gte('data_servico', fDi)
         .neq('status_aprovacao', 'cancelada')
         .order('criado_em', { ascending: false }),
-      db.from('tecnicos').select('id, nome'),
+      db.from('tecnicos').select('*'),
       db.from('tecnico_equipes').select('tecnico_id, equipe_id'),
     ]);
 
@@ -2642,9 +2646,9 @@ function exportarPDF() {
       styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.5, lineColor: [228, 228, 231], lineWidth: 0.1 },
       headStyles: { fillColor: [62, 207, 142], textColor: [10, 10, 10], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [249, 250, 251] },
-      head: [['Técnico', 'Meia agenda', 'Completa', 'Valor a pagar']],
-      body: resumoNoturna.porTecnico.map(r => [r.tecnico, r.meia, r.completa, formatarMoeda(r.total)]),
-      foot: [['Total geral', totalMeiasTecnico, totalCompletasTecnico, formatarMoeda(resumoNoturna.total)]],
+      head: [['Técnico', 'CPF', 'Meia agenda', 'Completa', 'Valor a pagar']],
+      body: resumoNoturna.porTecnico.map(r => [r.tecnico, r.cpf || '—', r.meia, r.completa, formatarMoeda(r.total)]),
+      foot: [['Total geral', '', totalMeiasTecnico, totalCompletasTecnico, formatarMoeda(resumoNoturna.total)]],
       footStyles: { fillColor: [24, 24, 27], textColor: [255, 255, 255], fontStyle: 'bold' },
     });
   }
