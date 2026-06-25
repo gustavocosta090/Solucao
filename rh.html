@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-25a — RH: aba Fichas (uniforme/EPI) com link de assinatura online -->
+<!-- build: 2026-06-25c — RH: Fichas com checkbox devolvido, download do PDF arquivado, fichas no colaborador -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -155,6 +155,13 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .ficha-item-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
 .ficha-item-row input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);color:var(--text-1);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none}
 .ficha-item-row input:focus{border-color:var(--border-hover)}
+.ficha-itens-head{display:flex;gap:6px;margin-bottom:6px;align-items:flex-end}
+.ficha-itens-head span{min-width:0;font-size:10.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.3px;padding:0 2px;line-height:1.25}
+.ficha-head-spacer{width:36px;flex-shrink:0}
+.ficha-head-dev{flex:0 0 56px;text-align:center}
+.ficha-dev{flex:0 0 56px;display:flex;align-items:center;justify-content:center}
+.ficha-dev input{flex:0 0 auto;width:18px;height:18px;min-width:0;padding:0;background:none;border:none;border-radius:0;appearance:auto;-webkit-appearance:auto;accent-color:var(--primary);cursor:pointer}
+.colab-fichas-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
 </style>
 </head>
 <body>
@@ -377,6 +384,10 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
     <div class="fg"><label>E-mail</label><input type="email" id="f-email" placeholder="email@..."></div>
     <div class="fg"><label>Observações</label><textarea id="f-obs" rows="2" placeholder="Opcional"></textarea></div>
     <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="f-ativo" checked style="appearance:auto;-webkit-appearance:auto;width:auto;accent-color:var(--primary)"> Ativo</label></div>
+    <div class="fg" id="colab-fichas-wrap" style="display:none">
+      <label><i data-lucide="file-signature" style="width:13px;height:13px;vertical-align:-2px"></i> Fichas assinadas</label>
+      <div id="colab-fichas"></div>
+    </div>
     <div id="modal-erro" style="display:none;color:var(--red-text);font-size:13px;margin-bottom:12px"></div>
     <div class="modal-actions">
       <button class="btn-del" id="btn-del" style="display:none" onclick="excluirColab()"><i data-lucide="trash-2" style="width:13px;height:13px"></i> Excluir</button>
@@ -694,10 +705,37 @@ function abrirModal(key) {
   document.getElementById('f-ativo').checked = c ? c.ativo!==false : true;
   document.getElementById('btn-del').style.display = c ? 'inline-flex' : 'none';
   _renderFotoPreview(c?.foto_url ? fotoSrc(c.foto_url) : null);
+  _renderColabFichas(c);
   document.getElementById('overlay').classList.add('aberto');
   lucide.createIcons();
 }
 function fecharModal(){ document.getElementById('overlay').classList.remove('aberto'); }
+
+// Fichas assinadas do colaborador (acesso rápido a partir do cadastro)
+function _renderColabFichas(c){
+  const wrap = document.getElementById('colab-fichas-wrap');
+  const box  = document.getElementById('colab-fichas');
+  if(!wrap || !box) return;
+  if(!c || !c.id){ wrap.style.display='none'; box.innerHTML=''; return; }
+  const nomeC = (c.nome||'').trim().toLowerCase();
+  const ligadas = _fichas.filter(f => (f.colaborador_id && f.colaborador_id===c.id) || ((f.colaborador_nome||'').trim().toLowerCase()===nomeC));
+  const assinadas = ligadas.filter(f => f.status==='assinada');
+  wrap.style.display='block';
+  if(!assinadas.length){
+    const pend = ligadas.filter(f => _fichaStatus(f)==='pendente').length;
+    box.innerHTML = `<div style="font-size:12.5px;color:var(--text-3)">Nenhuma ficha assinada.${pend?` (${pend} pendente${pend>1?'s':''} — veja na aba Fichas)`:''}</div>`;
+    return;
+  }
+  box.innerHTML = assinadas.map(f=>{
+    const tipoTxt = f.tipo==='epi' ? 'EPI' : 'Uniforme';
+    return `<div class="colab-fichas-item">
+      <span class="fb fb-ok">${tipoTxt}</span>
+      <span style="font-size:12.5px;color:var(--text-2);flex:1;min-width:0">Assinada em ${_fmtDataHora(f.assinado_em)}</span>
+      <button type="button" class="btn-sec" onclick="baixarPDFFicha(${f.id})" title="Baixar PDF assinado"><i data-lucide="file-down" style="width:13px;height:13px"></i> PDF</button>
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
 function _renderFotoPreview(src){ const img=document.getElementById('foto-preview'),ph=document.getElementById('foto-ph'); if(src){img.src=src;img.style.display='';ph.style.display='none';}else{img.style.display='none';ph.style.display='flex';} }
 function _selecionarFoto(input){ const f=input.files?.[0]; if(!f) return; _fotoFile=f; _fotoRemovida=false; _renderFotoPreview(URL.createObjectURL(f)); }
 
@@ -1116,25 +1154,25 @@ function baixarCard(){
 const FICHA_TIPOS = {
   uniforme: {
     titulo: 'FICHA DE ENTREGA DE UNIFORMES',
-    hint: '(descrição, tamanho, quantidade e datas)',
+    hint: '(preencha uma linha por item)',
     cols: [
-      { k:'descricao',      l:'Descrição do uniforme', flex:'2.2' },
-      { k:'tamanho',        l:'Tam.',                  flex:'0.7' },
-      { k:'quantidade',     l:'Qtd',                   flex:'0.6' },
-      { k:'data_entrega',   l:'Entrega',   type:'date', flex:'1.3' },
-      { k:'data_devolucao', l:'Devolução', type:'date', flex:'1.3' },
+      { k:'descricao',      head:'Descrição',           l:'Descrição do uniforme', flex:'2.2' },
+      { k:'tamanho',        head:'Tamanho',             l:'Tam.',                  flex:'0.8' },
+      { k:'quantidade',     head:'Qtd',                 l:'Qtd',                   flex:'0.7' },
+      { k:'data_entrega',   head:'Data de entrega',     l:'Entrega',   type:'date', flex:'1.4' },
+      { k:'data_devolucao', head:'Devolução (opcional)', l:'Devolução', type:'date', flex:'1.4', opt:true },
     ],
     declaracao: 'Declaro ter recebido da empresa o uniforme abaixo discriminado. Comprometo-me a utilizá-lo somente para fins laborais durante toda a jornada de trabalho e a devolvê-lo no término do contrato de trabalho, sob pena de, não o fazendo, ser enquadrado em punições disciplinares.',
   },
   epi: {
     titulo: 'FICHA DE CONTROLE DE ENTREGA DE EQUIPAMENTO DE PROTEÇÃO INDIVIDUAL - EPI',
-    hint: '(descrição, quantidade, C.A, fabricante e data)',
+    hint: '(preencha uma linha por item)',
     cols: [
-      { k:'descricao',     l:'Descrição do equipamento', flex:'2.2' },
-      { k:'quant',         l:'Qtd',        flex:'0.6' },
-      { k:'ca',            l:'Nº C.A',     flex:'1' },
-      { k:'fabricante',    l:'Fabricante', flex:'1.4' },
-      { k:'data_retirada', l:'Retirada',   type:'date', flex:'1.3' },
+      { k:'descricao',     head:'Descrição',        l:'Descrição do equipamento', flex:'2.2' },
+      { k:'quant',         head:'Qtd',              l:'Qtd',        flex:'0.7' },
+      { k:'ca',            head:'Nº C.A',           l:'Nº C.A',     flex:'1' },
+      { k:'fabricante',    head:'Fabricante',       l:'Fabricante', flex:'1.4' },
+      { k:'data_retirada', head:'Data de retirada', l:'Retirada',   type:'date', flex:'1.4' },
     ],
     declaracao: 'Declaro ter recebido os equipamentos de proteção individual (EPI) abaixo discriminados e comprometo-me a: cumprir as determinações do empregador sobre o uso adequado; comunicar ao setor responsável qualquer dano ou extravio para a aquisição de outro; e responsabilizar-me pela guarda e conservação.',
   },
@@ -1171,7 +1209,8 @@ function renderFichas(){
     const quando = f.assinado_em ? ('Assinada em '+_fmtDataHora(f.assinado_em)) : ('Criada em '+_fmtDataHora(f.criado_em));
     let acoes;
     if(st==='assinada'){
-      acoes = `<button class="btn-sec" onclick="baixarPDFFicha(${f.id})" title="Baixar PDF assinado"><i data-lucide="file-down" style="width:13px;height:13px"></i> PDF</button>`;
+      acoes = `<button class="btn-sec" onclick="baixarPDFFicha(${f.id})" title="Baixar PDF assinado"><i data-lucide="file-down" style="width:13px;height:13px"></i> PDF</button>
+               <button class="btn-sec" onclick="abrirModalFicha(${f.id})" title="Marcar devolução de itens"><i data-lucide="undo-2" style="width:13px;height:13px"></i></button>`;
     } else if(st==='expirada'){
       acoes = `<button class="btn-sec" onclick="reabrirFicha(${f.id})" title="Renovar prazo"><i data-lucide="refresh-cw" style="width:13px;height:13px"></i> Renovar</button>
                <button class="btn-sec" onclick="abrirModalFicha(${f.id})" title="Editar"><i data-lucide="pencil" style="width:13px;height:13px"></i></button>`;
@@ -1194,13 +1233,19 @@ function _fichaItemRow(tipo, item){
   const cols = FICHA_TIPOS[tipo].cols;
   const inputs = cols.map(c=>`<input type="${c.type||'text'}" data-k="${c.k}" placeholder="${escH(c.l)}" value="${escH(item?.[c.k]||'')}" style="flex:${c.flex}">`).join('');
   return `<div class="ficha-item-row">${inputs}
+    <label class="ficha-dev" title="Marcar como devolvido"><input type="checkbox" class="item-dev"${item?.devolvido?' checked':''}></label>
     <button type="button" class="campo-del" onclick="this.parentElement.remove()" title="Remover"><i data-lucide="x" style="width:14px;height:14px"></i></button>
   </div>`;
+}
+function _fichaItensHeader(tipo){
+  const cols = FICHA_TIPOS[tipo].cols;
+  const labels = cols.map(c=>`<span style="flex:${c.flex}">${escH(c.head||c.l)}</span>`).join('');
+  return `<div class="ficha-itens-head">${labels}<span class="ficha-head-dev">Devolv.</span><span class="ficha-head-spacer"></span></div>`;
 }
 function _fichaSetItens(tipo, itens){
   const box = document.getElementById('fi-itens');
   const arr = (itens && itens.length) ? itens : [{}];
-  box.innerHTML = arr.map(it=>_fichaItemRow(tipo, it)).join('');
+  box.innerHTML = _fichaItensHeader(tipo) + arr.map(it=>_fichaItemRow(tipo, it)).join('');
   lucide.createIcons();
 }
 function _fichaAddItem(){
@@ -1211,8 +1256,9 @@ function _fichaAddItem(){
 function _fichaLerItens(){
   return [...document.querySelectorAll('#fi-itens .ficha-item-row')].map(r=>{
     const o = {}; r.querySelectorAll('input[data-k]').forEach(i=>{ const v=i.value.trim(); if(v) o[i.dataset.k]=v; });
+    const dev = r.querySelector('.item-dev'); if(dev && dev.checked) o.devolvido = true;
     return o;
-  }).filter(o=>Object.keys(o).length);
+  }).filter(o=>{ const ks=Object.keys(o); return ks.length && !(ks.length===1 && ks[0]==='devolvido'); });
 }
 
 function _fichaTipoChange(){
@@ -1273,6 +1319,7 @@ async function salvarFicha(){
     itens, declaracao: document.getElementById('fi-declaracao').value.trim() || null,
     atualizado_em: new Date().toISOString(),
   };
+  const eraAssinada = !!(_editFicha && _editFicha.status === 'assinada');
   const btn = document.getElementById('ficha-salvar'); btn.disabled=true; btn.textContent='Salvando...';
   try{
     let token;
@@ -1285,8 +1332,8 @@ async function salvarFicha(){
       if(error) throw error; token = data.token;
     }
     fecharModalFicha(); await carregarFichas();
-    _mostrarLink(token);
-    showToast('Ficha salva.','success');
+    if(eraAssinada) showToast('Ficha atualizada.','success');
+    else { _mostrarLink(token); showToast('Ficha salva.','success'); }
   }catch(e){ erro.textContent='Erro: '+e.message; erro.style.display='block'; }
   finally{ btn.disabled=false; btn.innerHTML='<i data-lucide="link" style="width:14px;height:14px"></i> Salvar e gerar link'; lucide.createIcons(); }
 }
@@ -1332,6 +1379,18 @@ async function _urlParaDataURL(url){
 }
 async function baixarPDFFicha(id){
   const f = _fichas.find(x=>x.id===id); if(!f) return;
+  // Caminho rápido: PDF já arquivado no SharePoint (gerado no ato da assinatura)
+  if(f.pdf_url){
+    try{
+      showToast('Baixando PDF...','info');
+      const r = await fetch(fotoSrc(f.pdf_url)); if(!r.ok) throw new Error('PDF '+r.status);
+      const b = await r.blob(); const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = `ficha-${f.tipo}-${(f.colaborador_nome||'').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`;
+      a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+      return;
+    }catch(e){ /* cai para regenerar (fichas antigas) */ }
+  }
   if(!window.jspdf){ showToast('Biblioteca de PDF indisponível.','error'); return; }
   showToast('Gerando PDF...','info');
   try{

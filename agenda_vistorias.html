@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-01g -->
+<!-- build: 2026-06-25b — admin_geral edita/dispara vistorias -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -807,7 +807,7 @@
 
 <script>
 
-const ROLES_EDITAR = ['coordenador','supervisor','agendamento','projetista','gerente_comercial','coordenador_projetos'];
+const ROLES_EDITAR = ['coordenador','supervisor','agendamento','projetista','gerente_comercial','coordenador_projetos','admin_geral'];
 
 let semanaOffset    = 0;
 let filtroTipo      = 'todas';
@@ -842,7 +842,7 @@ async function init() {
 
   renderTopbar(eu?.nome, roleAtual, 'agenda-vistorias');
 
-  const podeDisparar = ['agendamento','coordenador','supervisor'].includes(roleAtual);
+  const podeDisparar = ['agendamento','coordenador','supervisor','admin_geral'].includes(roleAtual);
 
   if (modoVisualizacao) {
     const btnNovo = document.getElementById('btn-novo');

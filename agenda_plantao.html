@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-01g -->
+<!-- build: 2026-06-25b — admin_geral edita/dispara plantao -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1109,8 +1109,8 @@ async function init() {
   renderTopbar(eu?.nome, eu?.role, 'agenda-plantao');
   roleAtual = eu?.role;
 
-  const podeEditar = ['agendamento', 'coordenador', 'supervisor'].includes(roleAtual);
-  const podeDisparar = ['agendamento', 'coordenador', 'supervisor'].includes(roleAtual);
+  const podeEditar = ['agendamento', 'coordenador', 'supervisor', 'admin_geral'].includes(roleAtual);
+  const podeDisparar = ['agendamento', 'coordenador', 'supervisor', 'admin_geral'].includes(roleAtual);
 
   if (!podeEditar) {
     modoVisualizacao = true;
@@ -1244,7 +1244,7 @@ function renderGrade(dias) {
     const dataStr  = fmtISO(dia);
     const ags      = visiveis.filter(ag => ag.data === dataStr);
     const feriado  = diasBloqueados[dataStr] || null;
-    const podeEditar = ['agendamento','coordenador','supervisor'].includes(roleAtual);
+    const podeEditar = ['agendamento','coordenador','supervisor','admin_geral'].includes(roleAtual);
 
     const cards = ags.length
       ? ags.map(cardHTML).join('')
