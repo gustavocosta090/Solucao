@@ -2,6 +2,9 @@
   "redirects": [
     { "source": "/", "destination": "/login.html", "permanent": false }
   ],
+  "crons": [
+    { "path": "/api/aniversarios-cron", "schedule": "0 9 * * *" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
