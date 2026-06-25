@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-17b — bloqueios ativos + disparo c/ nome da equipe + lider edita agenda -->
+<!-- build: 2026-06-25e — card mostra tecnico da equipe filtrada primeiro (ordem variavel pelo filtro) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1989,7 +1989,13 @@ function _abreviarCliente(nome) {
 function cardHTML(ag) {
   const status = ag.status || 'confirmado';
 
-  const ids   = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+  let ids     = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+  // Com filtro de equipe ativo, o(s) técnico(s) da equipe filtrada aparecem primeiro
+  // (ordenação estável preserva a ordem original entre os demais).
+  if (filtroEquipe !== 'todas') {
+    const idsEquipe = new Set(tecnicosDaEquipe(parseInt(filtroEquipe)));
+    ids = ids.slice().sort((a, b) => (idsEquipe.has(a) ? 0 : 1) - (idsEquipe.has(b) ? 0 : 1));
+  }
   const nomes = ids.map(id => {
     const t = tecnicos.find(t => t.id === id);
     return t ? t.nome : null;
@@ -2380,7 +2386,13 @@ function verDetalheAgendamento(id) {
   const arquiteto = ag.obras?.arquiteto_responsavel || '';
 
   // Nomes completos dos técnicos (sem abreviar)
-  const ids   = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+  let ids     = [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].filter(Boolean);
+  // Com filtro de equipe ativo, o(s) técnico(s) da equipe filtrada aparecem primeiro
+  // (ordenação estável preserva a ordem original entre os demais).
+  if (filtroEquipe !== 'todas') {
+    const idsEquipe = new Set(tecnicosDaEquipe(parseInt(filtroEquipe)));
+    ids = ids.slice().sort((a, b) => (idsEquipe.has(a) ? 0 : 1) - (idsEquipe.has(b) ? 0 : 1));
+  }
   const nomes = ids.map(id => {
     const t = tecnicos.find(t => t.id === id);
     return t ? t.nome : null;
