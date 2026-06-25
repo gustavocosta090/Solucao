@@ -57,6 +57,11 @@ function caminhoFotoSeguro(filePath) {
     return ['jpg', 'jpeg', 'png', 'webp', 'heic'].includes(ext);
   }
 
+  // Fichas (assinaturas/selfies/PDFs de uniformes e EPIs): imagens + PDF
+  if (path.startsWith('Fichas/')) {
+    return ['jpg', 'jpeg', 'png', 'webp', 'pdf'].includes(ext);
+  }
+
   // Todos os outros caminhos devem estar em Obras e Clientes AAAA/
   if (!path.startsWith('Obras e Clientes ')) return false;
   if (partes.length < 4) return false;

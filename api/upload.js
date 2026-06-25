@@ -75,6 +75,9 @@ function caminhoSeguro(folderPath, filename) {
   // Colaboradores (fotos do RH): apenas imagens
   if (path.startsWith('Colaboradores/')) return EXT_FOTOS.has(ext);
 
+  // Fichas (assinaturas/selfies/PDFs): imagens + PDF
+  if (path.startsWith('Fichas/')) return EXT_FOTOS.has(ext) || ext === 'pdf';
+
   // Obras e Clientes: tipo de arquivo depende da subpasta
   if (path.startsWith('Obras e Clientes ')) {
     const partes = path.split('/').filter(Boolean);

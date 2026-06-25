@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<!-- build: 2026-06-25a — pagina publica de assinatura de fichas (uniforme/EPI), sem login -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Assinatura de Ficha — Solução Técnica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#F1F5F9;--card:#FFFFFF;--ink:#0F172A;--ink-2:#475569;--ink-3:#94A3B8;
+  --primary:#0E9F6E;--primary-d:#0B7D57;--border:#E2E8F0;--red:#DC2626;--radius:12px}
+html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100vh}
+.wrap{max-width:680px;margin:0 auto;padding:20px 16px 60px}
+.brand{display:flex;align-items:center;gap:10px;justify-content:center;margin:8px 0 18px;font-weight:800;font-size:16px;letter-spacing:-.3px;color:var(--primary-d)}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--primary)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.title{font-size:18px;font-weight:800;line-height:1.25;margin-bottom:4px}
+.subtitle{font-size:13px;color:var(--ink-2);margin-bottom:16px}
+.bar{height:3px;background:var(--primary);border-radius:2px;width:54px;margin-bottom:16px}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-bottom:6px}
+@media(max-width:480px){.info{grid-template-columns:1fr}}
+.info .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-3)}
+.info .v{font-size:14px;font-weight:600;color:var(--ink);margin-top:1px;word-break:break-word}
+.decl{font-size:12.5px;color:var(--ink-2);line-height:1.55;background:#F8FAFC;border:1px solid var(--border);border-radius:10px;padding:13px 15px;margin-top:14px}
+table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12.5px}
+th{background:#0F172A;color:#fff;font-weight:600;text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--ink);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+.sec-h{font-size:13px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.sec-sub{font-size:12.5px;color:var(--ink-2);margin-bottom:12px}
+.req{color:var(--red);font-weight:700}
+#sig{width:100%;height:180px;background:#fff;border:2px dashed #CBD5E1;border-radius:10px;touch-action:none;display:block;cursor:crosshair}
+.sig-actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.link-clear{background:none;border:none;color:var(--ink-2);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:underline}
+.selfie-box{display:flex;align-items:center;gap:16px}
+.selfie-prev{width:90px;height:110px;border-radius:10px;object-fit:cover;background:#F1F5F9;border:1px solid var(--border);display:none}
+.selfie-ph{width:90px;height:110px;border-radius:10px;background:#F1F5F9;border:2px dashed #CBD5E1;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:30px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:10px;font-family:inherit;font-weight:700;cursor:pointer;font-size:14px}
+.btn-cam{background:#0F172A;color:#fff;padding:11px 18px}
+.btn-cam:active{opacity:.85}
+.btn-pri{background:var(--primary);color:#fff;width:100%;padding:15px;font-size:15px;margin-top:4px;box-shadow:0 2px 8px rgba(14,159,110,.3)}
+.btn-pri:disabled{background:#CBD5E1;color:#fff;box-shadow:none;cursor:not-allowed}
+.hint-ok{font-size:12px;color:var(--primary-d);font-weight:600;margin-top:8px;display:none}
+.state{text-align:center;padding:50px 24px}
+.state .ico{font-size:54px;margin-bottom:14px}
+.state h2{font-size:20px;font-weight:800;margin-bottom:8px}
+.state p{font-size:14px;color:var(--ink-2);line-height:1.5}
+.foot{text-align:center;font-size:11.5px;color:var(--ink-3);margin-top:8px;line-height:1.5}
+.spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:40px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><span class="dot"></span> Solução Técnica</div>
+  <div id="app"><div class="spinner"></div></div>
+</div>
+
+<script>
+const TIPOS = {
+  uniforme: {
+    titulo: 'Ficha de Entrega de Uniformes',
+    cols: [
+      { k:'descricao', l:'Descrição do uniforme' },
+      { k:'tamanho', l:'Tam.' },
+      { k:'quantidade', l:'Qtd' },
+      { k:'data_entrega', l:'Entrega', date:true },
+      { k:'data_devolucao', l:'Devolução', date:true },
+    ],
+  },
+  epi: {
+    titulo: 'Ficha de Entrega de EPI',
+    cols: [
+      { k:'descricao', l:'Descrição do equipamento' },
+      { k:'quant', l:'Qtd' },
+      { k:'ca', l:'Nº C.A' },
+      { k:'fabricante', l:'Fabricante' },
+      { k:'data_retirada', l:'Retirada', date:true },
+    ],
+  },
+};
+
+const token = new URLSearchParams(location.search).get('t') || '';
+let ficha = null, hasSig = false, selfieDataURL = null, cv, ctx;
+
+function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtData(d){ if(!d) return ''; const m=String(d).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?`${m[3]}/${m[2]}/${m[1]}`:d; }
+
+function estado(ico, titulo, msg){
+  document.getElementById('app').innerHTML =
+    `<div class="card"><div class="state"><div class="ico">${ico}</div><h2>${escH(titulo)}</h2><p>${msg}</p></div></div>`;
+}
+
+(async () => {
+  if (!token) return estado('🔗', 'Link inválido', 'O endereço de assinatura está incompleto. Solicite um novo link.');
+  try {
+    const r = await fetch('/api/ficha?t=' + encodeURIComponent(token));
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok) return estado('⚠️', 'Não encontrada', escH(j.error || 'Ficha não localizada.'));
+    if (j.status === 'assinada') return estado('✅', 'Já assinada', 'Esta ficha já foi assinada. Obrigado!');
+    if (j.status === 'expirada') return estado('⏳', 'Link expirado', 'O prazo para assinar este documento venceu. Solicite um novo link ao RH / Segurança do Trabalho.');
+    ficha = j.ficha;
+    renderForm();
+  } catch (e) {
+    estado('⚠️', 'Erro', 'Não foi possível carregar a ficha. Tente novamente em instantes.');
+  }
+})();
+
+function renderForm(){
+  const cfg = TIPOS[ficha.tipo] || TIPOS.uniforme;
+  const info = [
+    ['Colaborador', ficha.colaborador_nome],
+    ['Função', ficha.funcao],
+    ['Empresa', ficha.empresa],
+    ['Setor', ficha.setor],
+    ['Admissão', fmtData(ficha.data_admissao)],
+  ];
+  if (ficha.tipo === 'epi') info.push(['Nº registro', ficha.n_registro]);
+  const infoHtml = info.filter(([,v])=>v).map(([k,v])=>
+    `<div><div class="k">${escH(k)}</div><div class="v">${escH(v)}</div></div>`).join('');
+
+  const itens = Array.isArray(ficha.itens) ? ficha.itens : [];
+  const tabela = `<div class="tbl-wrap"><table>
+    <thead><tr>${cfg.cols.map(c=>`<th>${escH(c.l)}</th>`).join('')}</tr></thead>
+    <tbody>${itens.map(it=>`<tr>${cfg.cols.map(c=>{
+      let v = it[c.k]||''; if(c.date && v) v=fmtData(v); return `<td>${escH(v)||'—'}</td>`;
+    }).join('')}</tr>`).join('') || `<tr><td colspan="${cfg.cols.length}">—</td></tr>`}</tbody>
+  </table></div>`;
+
+  document.getElementById('app').innerHTML = `
+    <div class="card">
+      <div class="title">${escH(cfg.titulo)}</div>
+      <div class="subtitle">Confira os dados abaixo e assine ao final.</div>
+      <div class="bar"></div>
+      <div class="info">${infoHtml}</div>
+      ${tabela}
+      ${ficha.declaracao ? `<div class="decl">${escH(ficha.declaracao)}</div>` : ''}
+    </div>
+
+    <div class="card">
+      <div class="sec-h">✍️ Sua assinatura <span class="req">*</span></div>
+      <div class="sec-sub">Desenhe sua assinatura no quadro abaixo (use o dedo no celular).</div>
+      <canvas id="sig"></canvas>
+      <div class="sig-actions">
+        <span class="hint-ok" id="sig-ok">Assinatura registrada</span>
+        <button class="link-clear" onclick="limparSig()">Limpar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-h">📸 Selfie de confirmação <span class="req">*</span></div>
+      <div class="sec-sub">Tire uma foto sua segurando o documento ou apenas do seu rosto, para confirmar a entrega.</div>
+      <div class="selfie-box">
+        <img id="selfie-img" class="selfie-prev" alt="">
+        <div id="selfie-ph" class="selfie-ph">📷</div>
+        <div>
+          <input type="file" id="selfie-input" accept="image/*" capture="user" style="display:none" onchange="selecionarSelfie(this)">
+          <button class="btn btn-cam" onclick="document.getElementById('selfie-input').click()">📷 Tirar selfie</button>
+          <div class="hint-ok" id="selfie-ok" style="margin-top:8px">Selfie registrada</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-pri" id="btn-enviar" disabled onclick="enviar()">Confirmar assinatura</button>
+    <div class="foot">Ao confirmar, você declara que leu e concorda com o conteúdo acima.<br>
+      Assinatura eletrônica com registro de data, hora e dispositivo.</div>
+  `;
+  initSig();
+}
+
+// ── Assinatura (canvas) ──────────────────────────────────────
+function initSig(){
+  cv = document.getElementById('sig'); ctx = cv.getContext('2d');
+  cv.width = cv.clientWidth; cv.height = 180;
+  ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111827';
+  let drawing=false, last=null;
+  const pos = e => { const r=cv.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return {x:t.clientX-r.left, y:t.clientY-r.top}; };
+  const start = e => { e.preventDefault(); drawing=true; last=pos(e); };
+  const move  = e => { if(!drawing) return; e.preventDefault(); const p=pos(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p; if(!hasSig){ hasSig=true; document.getElementById('sig-ok').style.display='inline'; checar(); } };
+  const end   = () => { drawing=false; };
+  cv.addEventListener('mousedown', start);  cv.addEventListener('mousemove', move);  window.addEventListener('mouseup', end);
+  cv.addEventListener('touchstart', start, {passive:false}); cv.addEventListener('touchmove', move, {passive:false}); cv.addEventListener('touchend', end);
+}
+function limparSig(){ ctx.clearRect(0,0,cv.width,cv.height); hasSig=false; document.getElementById('sig-ok').style.display='none'; checar(); }
+
+// ── Selfie ───────────────────────────────────────────────────
+async function selecionarSelfie(input){
+  const f = input.files?.[0]; if(!f) return;
+  selfieDataURL = await comprimir(f, 1024, 0.8);
+  const img = document.getElementById('selfie-img');
+  img.src = selfieDataURL; img.style.display='block';
+  document.getElementById('selfie-ph').style.display='none';
+  document.getElementById('selfie-ok').style.display='inline';
+  checar();
+}
+async function comprimir(file, maxDim, q){
+  try{
+    let bmp = window.createImageBitmap ? await createImageBitmap(file,{imageOrientation:'from-image'}).catch(()=>null) : null;
+    if(!bmp) bmp = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file); });
+    const sc = Math.min(1, maxDim/Math.max(bmp.width,bmp.height));
+    const w = Math.round(bmp.width*sc), h = Math.round(bmp.height*sc);
+    const c = document.createElement('canvas'); c.width=w; c.height=h;
+    c.getContext('2d').drawImage(bmp,0,0,w,h); if(bmp.close) bmp.close();
+    return c.toDataURL('image/jpeg', q);
+  }catch(e){
+    return await new Promise((res)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(file); });
+  }
+}
+
+function checar(){ document.getElementById('btn-enviar').disabled = !(hasSig && selfieDataURL); }
+
+async function enviar(){
+  if(!(hasSig && selfieDataURL)) return;
+  const btn = document.getElementById('btn-enviar');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  try{
+    const r = await fetch('/api/assinar-ficha', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, assinatura: cv.toDataURL('image/png'), selfie: selfieDataURL }),
+    });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error || ('Erro ' + r.status));
+    estado('✅', 'Assinatura concluída!', 'Recebemos sua assinatura. Pode fechar esta página. Obrigado!');
+  }catch(e){
+    alert('Não foi possível enviar: ' + e.message);
+    btn.disabled = false; btn.textContent = 'Confirmar assinatura';
+  }
+}
+</script>
+</body>
+</html>
