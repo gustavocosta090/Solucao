@@ -1,5 +1,5 @@
 // api/aniversarios-cron.js — aviso automático de aniversariantes (Vercel Cron)
-// build: 2026-06-25a
+// build: 2026-06-25b — fontes Roboto embarcadas (fonts/*.ttf); antes o fetch de CDN dava 404 e o texto sumia
 // Roda 1x/dia às 5h de Cuiabá (schedule "0 9 * * *" UTC). Em cada execução:
 //   - HOJE: gera o CARD oficial (arte + foto + nome/função/mensagem) e anexa por e-mail.
 //           Sem foto => entra um AVISO no corpo (suba a foto no RH) em vez do card.
@@ -10,6 +10,8 @@
 
 import { getToken, getSiteId } from './_sharepoint.js';
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 export const maxDuration = 60;
 
@@ -41,18 +43,17 @@ function anivMD(dataAniversario){ // "2000-MM-DD" -> {m,d}
   return m ? { m:+m[1], d:+m[2] } : null;
 }
 
-// ── Fontes (Roboto) carregadas do CDN uma vez ─────────────────────
+// ── Fontes (Roboto) embarcadas no repo (fonts/*.ttf) ──────────────
+// Registradas com alias "Roboto"; o peso (400/500/700) vem do OS/2 de cada arquivo.
+// new URL(..., import.meta.url) faz a Vercel incluir os .ttf no bundle da função.
 let _fontsReady = false;
-async function ensureFonts(){
+function ensureFonts(){
   if (_fontsReady) return;
-  const fontes = [
-    'https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Regular.ttf',
-    'https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Medium.ttf',
-    'https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Bold.ttf',
-  ];
-  for (const url of fontes) {
-    try { const r = await fetch(url); if (r.ok) GlobalFonts.register(Buffer.from(await r.arrayBuffer()), 'Roboto'); }
-    catch (e) { console.error('[aniv-cron] fonte falhou:', url, e.message); }
+  for (const file of ['Roboto-Regular.ttf', 'Roboto-Medium.ttf', 'Roboto-Bold.ttf']) {
+    try {
+      const p = fileURLToPath(new URL('../fonts/' + file, import.meta.url));
+      GlobalFonts.register(readFileSync(p), 'Roboto');
+    } catch (e) { console.error('[aniv-cron] fonte', file, e.message); }
   }
   _fontsReady = true;
 }
@@ -176,7 +177,7 @@ export default async function handler(req, res){
 
     // 1) CARD DO DIA
     if (listaHoje.length) {
-      await ensureFonts();
+      ensureFonts();
       const bg = await carregarArte();
       const siteId = await getSiteId(tkn);
       const anexos = [];

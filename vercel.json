@@ -5,6 +5,9 @@
   "crons": [
     { "path": "/api/aniversarios-cron", "schedule": "0 9 * * *" }
   ],
+  "functions": {
+    "api/aniversarios-cron.js": { "includeFiles": "fonts/**" }
+  },
   "headers": [
     {
       "source": "/(.*)",
