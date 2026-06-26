@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-25e — card mostra tecnico da equipe filtrada primeiro (ordem variavel pelo filtro) -->
+<!-- build: 2026-06-25f — Prog. Estoque tambem envia o PDF por e-mail (5 destinatarios via env) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -4025,6 +4025,28 @@ async function exportarProgramacaoEstoque() {
     // Upload SharePoint
     await uploadPDFServidor(pdfBlob, pasta, arquivo);
     mostrarToast(`✅ Baixado e salvo no SharePoint: "${arquivo}"`, 'ok');
+
+    // Envio por e-mail (best-effort — não atrapalha o download/upload se falhar)
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload  = () => resolve(String(fr.result).split(',')[1]);
+        fr.onerror = reject;
+        fr.readAsDataURL(pdfBlob);
+      });
+      const fmtBR = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+      const periodoData = `${fmtBR(d0)} a ${fmtBR(d6)}`;
+      const mr = await fetch('/api/enviar-estoque-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jwtToken}` },
+        body: JSON.stringify({ contentBase64: base64, filename: arquivo, periodo: periodoData }),
+      });
+      const mj = await mr.json().catch(() => ({}));
+      if (mr.ok) mostrarToast(`📧 Enviado por e-mail (${mj.enviados} destinatário${mj.enviados !== 1 ? 's' : ''}).`, 'ok');
+      else       mostrarToast('PDF salvo, mas o e-mail falhou: ' + (mj.error || mr.status), 'err');
+    } catch (e) {
+      mostrarToast('PDF salvo, mas o e-mail falhou: ' + e.message, 'err');
+    }
 
   } catch(e) {
     console.error('[exportarProgramacaoEstoque]', e);
