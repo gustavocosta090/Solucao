@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-25f — Prog. Estoque tambem envia o PDF por e-mail (5 destinatarios via env) -->
+<!-- build: 2026-06-26a — Prog. Estoque: baixa sempre, depois PERGUNTA se envia (e-mail/Teams) via modal SIM/NAO -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1177,6 +1177,28 @@
       </button>
       <button class="btn-wpp" onclick="_wppAbrirGrupo()">
         <i data-lucide="external-link" style="width:14px;height:14px;"></i> Abrir grupo
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmação de envio (Prog. Estoque) -->
+<div class="overlay" id="overlay-confirma-env" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:430px">
+    <div class="modal-header">
+      <div class="modal-header-icon" style="background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.28);">
+        <i data-lucide="send" style="color:#A5B4FC;width:16px;height:16px;"></i>
+      </div>
+      <span class="modal-title">Enviar programação?</span>
+    </div>
+    <p style="font-size:14px;color:var(--text-2);line-height:1.55;margin:2px 0 6px;">
+      O PDF já foi <strong style="color:var(--text-1)">baixado</strong>. Deseja também <strong style="color:var(--text-1)">enviar por e-mail e Teams</strong> agora?
+    </p>
+    <p style="font-size:12.5px;color:var(--text-3);margin:0 0 4px;">Escolha “Não” se foi só para conferir.</p>
+    <div class="modal-footer" style="gap:8px">
+      <button class="btn-cancelar" onclick="_confirmaEnvResolver(false)">Não, só baixei</button>
+      <button class="btn-wpp" onclick="_confirmaEnvResolver(true)" style="background:#6366F1;">
+        <i data-lucide="send" style="width:14px;height:14px;"></i> Sim, enviar
       </button>
     </div>
   </div>
@@ -3857,6 +3879,21 @@ async function uploadPDFServidor(pdfBlob, pasta, arquivo) {
 }
 
 // ── PROGRAMAÇÃO ESTOQUE ───────────────────────────────────────
+// Confirmação "deseja enviar?" — Promise que resolve true/false ao clicar nos botões
+let _confirmaEnvResolve = null;
+function _confirmaEnvResolver(val){
+  document.getElementById('overlay-confirma-env').style.display = 'none';
+  const r = _confirmaEnvResolve; _confirmaEnvResolve = null;
+  if (r) r(val);
+}
+function confirmarEnvioEstoque(){
+  return new Promise((resolve) => {
+    _confirmaEnvResolve = resolve;
+    document.getElementById('overlay-confirma-env').style.display = 'flex';
+    lucide.createIcons();
+  });
+}
+
 async function exportarProgramacaoEstoque() {
   const btn = document.getElementById('btn-estoque');
   if (!jwtToken) { mostrarToast('Sessão expirada, recarregue a página.', 'err'); return; }
@@ -4026,26 +4063,48 @@ async function exportarProgramacaoEstoque() {
     await uploadPDFServidor(pdfBlob, pasta, arquivo);
     mostrarToast(`✅ Baixado e salvo no SharePoint: "${arquivo}"`, 'ok');
 
-    // Envio por e-mail (best-effort — não atrapalha o download/upload se falhar)
-    try {
-      const base64 = await new Promise((resolve, reject) => {
-        const fr = new FileReader();
-        fr.onload  = () => resolve(String(fr.result).split(',')[1]);
-        fr.onerror = reject;
-        fr.readAsDataURL(pdfBlob);
-      });
-      const fmtBR = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-      const periodoData = `${fmtBR(d0)} a ${fmtBR(d6)}`;
-      const mr = await fetch('/api/enviar-estoque-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jwtToken}` },
-        body: JSON.stringify({ contentBase64: base64, filename: arquivo, periodo: periodoData }),
-      });
-      const mj = await mr.json().catch(() => ({}));
-      if (mr.ok) mostrarToast(`📧 Enviado por e-mail (${mj.enviados} destinatário${mj.enviados !== 1 ? 's' : ''}).`, 'ok');
-      else       mostrarToast('PDF salvo, mas o e-mail falhou: ' + (mj.error || mr.status), 'err');
-    } catch (e) {
-      mostrarToast('PDF salvo, mas o e-mail falhou: ' + e.message, 'err');
+    const fmtBR = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    const periodoData = `${fmtBR(d0)} a ${fmtBR(d6)}`;
+
+    // Pergunta se quer enviar — às vezes é só para baixar e conferir
+    btn.innerHTML = '<i data-lucide="package"></i><span>Prog. Estoque</span>'; lucide.createIcons();
+    const querEnviar = await confirmarEnvioEstoque();
+    if (!querEnviar) {
+      mostrarToast('PDF baixado e salvo. Envio não realizado.', 'ok');
+    } else {
+      // Envio por e-mail (best-effort — não atrapalha o download/upload se falhar)
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload  = () => resolve(String(fr.result).split(',')[1]);
+          fr.onerror = reject;
+          fr.readAsDataURL(pdfBlob);
+        });
+        const mr = await fetch('/api/enviar-estoque-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jwtToken}` },
+          body: JSON.stringify({ contentBase64: base64, filename: arquivo, periodo: periodoData }),
+        });
+        const mj = await mr.json().catch(() => ({}));
+        if (mr.ok) mostrarToast(`📧 Enviado por e-mail (${mj.enviados} destinatário${mj.enviados !== 1 ? 's' : ''}).`, 'ok');
+        else       mostrarToast('PDF salvo, mas o e-mail falhou: ' + (mj.error || mr.status), 'err');
+      } catch (e) {
+        mostrarToast('PDF salvo, mas o e-mail falhou: ' + e.message, 'err');
+      }
+
+      // Aviso no Teams (best-effort — só posta se TEAMS_WEBHOOK_URL estiver configurada)
+      try {
+        const tr = await fetch('/api/enviar-estoque-teams', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jwtToken}` },
+          body: JSON.stringify({ path: `${pasta}/${arquivo}`, periodo: periodoData }),
+        });
+        const tj = await tr.json().catch(() => ({}));
+        if (tr.ok && !tj.skipped) mostrarToast('💬 Avisado no Teams.', 'ok');
+        else if (!tr.ok)          mostrarToast('Teams não enviado: ' + (tj.error || tr.status), 'err');
+      } catch (e) {
+        mostrarToast('Teams não enviado: ' + e.message, 'err');
+      }
     }
 
   } catch(e) {
