@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-26a — Prog. Estoque: baixa sempre, depois PERGUNTA se envia (e-mail/Teams) via modal SIM/NAO -->
+<!-- build: 2026-06-30a — + Frota: gestao de veiculos (modal na agenda) e campo Veiculo vira lista da frota (com opcao digitar) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -720,6 +720,8 @@
     }
 
     .equipe-dropdown.aberto { display: block; }
+    .equipe-grupo-label { font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-3);padding:9px 12px 4px;position:sticky; }
+    .campo-erro, .campo-erro:focus { border-color:#f87171 !important; box-shadow:0 0 0 2px rgba(239,68,68,.18) !important; }
 
     .equipe-item {
       display: flex;
@@ -1091,6 +1093,11 @@
       Bloqueios
     </button>
 
+    <button class="btn-bloqueio" id="btn-frota" onclick="abrirModalFrota()" title="Gerenciar veículos da frota" style="background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.3);color:#FCD34D">
+      <i data-lucide="truck"></i>
+      Frota
+    </button>
+
     <button class="btn-novo" id="btn-novo" onclick="abrirModal()">
       <i data-lucide="plus"></i>
       Novo agendamento
@@ -1326,6 +1333,48 @@
   </div>
 </div>
 
+<!-- Modal de Frota -->
+<div class="overlay" id="overlay-frota" style="display:none" onclick="if(event.target===this)fecharModalFrota()" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:560px" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-header-icon" style="background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.28);">
+        <i data-lucide="truck" style="color:#FCD34D;width:16px;height:16px;"></i>
+      </div>
+      <span class="modal-title">Frota de veículos</span>
+    </div>
+
+    <div id="frota-lista" style="margin-bottom:16px;max-height:34vh;overflow-y:auto"></div>
+
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div class="form-section-label" id="frota-form-titulo">Novo veículo</div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2"><label for="fr-nome">Nome *</label><input type="text" id="fr-nome" placeholder="Ex: Strada Branca"></div>
+        <div class="form-group" style="flex:1"><label for="fr-cap">Lugares</label><input type="number" id="fr-cap" min="1" max="20" placeholder="5"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1"><label for="fr-placa">Placa</label><input type="text" id="fr-placa" placeholder="ABC1D23"></div>
+        <div class="form-group" style="flex:1"><label for="fr-tipo">Tipo</label>
+          <select id="fr-tipo" onchange="_frotaTipoChange()">
+            <option value="frota">Própria (frota)</option>
+            <option value="temporario">Temporário (emprestado)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" id="fr-devolucao-wrap" style="display:none"><label for="fr-devolucao">Devolver até</label><input type="date" id="fr-devolucao"></div>
+      <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-2)"><input type="checkbox" id="fr-ativo" checked style="accent-color:var(--primary);width:15px;height:15px"> Ativo (disponível na agenda)</label></div>
+      <div id="frota-erro" style="display:none;color:#f87171;font-size:13px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn-cancelar" id="fr-cancelar-edit" onclick="_frotaLimparForm()" style="display:none">Cancelar edição</button>
+        <button class="btn-salvar" id="fr-salvar" onclick="salvarFrota()"><i data-lucide="save"></i> Salvar veículo</button>
+      </div>
+    </div>
+
+    <div class="modal-footer" style="margin-top:14px">
+      <button class="btn-cancelar" onclick="fecharModalFrota()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal -->
 <div class="overlay" id="overlay" onclick="fecharModalFora(event)" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
   <div class="modal">
@@ -1409,7 +1458,7 @@
       </div>
       <div class="form-group">
         <label for="f-status">Status</label>
-        <select id="f-status">
+        <select id="f-status" onchange="_statusManual = true">
           <option value="confirmado">Confirmado</option>
           <option value="nao_confirmado">Não confirmado</option>
           <option value="viagem">Viagem</option>
@@ -1459,8 +1508,9 @@
     <input type="hidden" id="f-fim"/>
 
     <div class="form-group">
-      <label for="f-veiculo">Veículo (placa)</label>
-      <input type="text" id="f-veiculo" placeholder="Ex: STRADA-TYR7C97"/>
+      <label for="f-veiculo-sel">Veículo <span class="label-hint">(<a href="#" onclick="abrirModalFrota();return false" style="color:var(--primary);text-decoration:none">gerenciar frota</a>)</span></label>
+      <select id="f-veiculo-sel" onchange="_onVeiculoSelChange()"></select>
+      <input type="text" id="f-veiculo" placeholder="Digite o veículo..." style="margin-top:8px;display:none"/>
     </div>
 
     <div class="form-group" id="motorista-wrap" style="display:none">
@@ -1480,7 +1530,7 @@
         <i data-lucide="trash-2" aria-hidden="true"></i>
         Excluir
       </button>
-      <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-cancelar" onclick="cancelarModal()">Cancelar</button>
       <button class="btn-salvar" id="btn-salvar" onclick="salvarAgendamento()">
         <i data-lucide="save" aria-hidden="true"></i>
         Salvar
@@ -1628,6 +1678,8 @@ async function init() {
     if (btnNovo) btnNovo.style.display = 'none';
     const btnBloqueio = document.getElementById('btn-bloqueio');
     if (btnBloqueio) btnBloqueio.style.display = 'none';
+    const btnFrota = document.getElementById('btn-frota');
+    if (btnFrota) btnFrota.style.display = 'none';
   }
 
   // Inicializa date picker com hoje
@@ -1658,7 +1710,7 @@ async function init() {
     if (btnEst) btnEst.style.display = 'inline-flex';
   }
 
-  await Promise.all([carregarObras(), carregarTecnicos(), carregarBloqueios(), carregarDiasBloqueados(), carregarAnotacoes()]);
+  await Promise.all([carregarObras(), carregarTecnicos(), carregarBloqueios(), carregarDiasBloqueados(), carregarAnotacoes(), carregarFrota()]);
   preencherSelects();
   await carregarAgenda();
 
@@ -1719,8 +1771,8 @@ function isHoje(d) {
 
 // ── Carregar dados ───────────────────────────────────────────
 async function carregarObras() {
-  obras = await cachedQuery('agenda-obras', 300, async () => {
-    const { data } = await db.from('obras').select('id, nome_cliente, endereco, situacao').order('nome_cliente');
+  obras = await cachedQuery('agenda-obras-v2', 300, async () => {
+    const { data } = await db.from('obras').select('id, nome_cliente, endereco, situacao, regional').order('nome_cliente');
     return data || [];
   });
 }
@@ -2103,6 +2155,8 @@ const A_DEFINIR_ID = 'a_definir';
 
 async function toggleTecnicoEquipe(idStr, evt) {
   if (evt) evt.stopPropagation();
+  _agFormDirty = true;
+  document.getElementById('equipe-select')?.classList.remove('campo-erro');
   if (idStr === A_DEFINIR_ID) {
     equipesSelecionadas = equipesSelecionadas.includes(A_DEFINIR_ID) ? [] : [A_DEFINIR_ID];
   } else {
@@ -2124,12 +2178,14 @@ async function toggleTecnicoEquipe(idStr, evt) {
   }
   renderEquipeChips();
   renderEquipeDropdownItems();
+  _autoViagemCheck();
 }
 
 function removerDaEquipe(idStr) {
   equipesSelecionadas = equipesSelecionadas.filter(x => x !== idStr);
   renderEquipeChips();
   renderEquipeDropdownItems();
+  _autoViagemCheck();
 }
 
 function renderEquipeChips() {
@@ -2196,9 +2252,10 @@ function renderEquipeDropdownItems() {
       <span class="equipe-item-nome" style="font-style:italic;color:var(--text-3)">A definir equipe</span>
     </div>` : '';
 
-  const filtrados = tecnicos.filter(t => !busca || t.nome.toLowerCase().includes(busca));
+  const filtrados = tecnicos.filter(t => !busca || t.nome.toLowerCase().includes(busca))
+    .slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
 
-  lista.innerHTML = aDefHtml + filtrados.map(t => {
+  const itemHtml = (t) => {
     const idStr      = String(t.id);
     const selecionado = equipesSelecionadas.includes(idStr);
     return `
@@ -2209,7 +2266,23 @@ function renderEquipeDropdownItems() {
         <span class="equipe-item-nome">${escHtml(t.nome)}</span>
         ${t.funcao ? `<span class="equipe-item-funcao">${escHtml(t.funcao)}</span>` : ''}
       </div>`;
-  }).join('');
+  };
+
+  let corpo;
+  // Com filtro de equipe ativo, lista os membros dessa equipe primeiro (com cabeçalho de grupo)
+  if (filtroEquipe !== 'todas') {
+    const idsEquipe = new Set(tecnicosDaEquipe(parseInt(filtroEquipe)));
+    const daEquipe  = filtrados.filter(t => idsEquipe.has(t.id));
+    const outros    = filtrados.filter(t => !idsEquipe.has(t.id));
+    const nomeEq    = equipesDisponiveis.find(e => String(e.id) === String(filtroEquipe))?.nome || 'Equipe';
+    corpo = '';
+    if (daEquipe.length) corpo += `<div class="equipe-grupo-label">${escHtml(nomeEq)}</div>` + daEquipe.map(itemHtml).join('');
+    if (outros.length)   corpo += `<div class="equipe-grupo-label">Outros</div>` + outros.map(itemHtml).join('');
+  } else {
+    corpo = filtrados.map(itemHtml).join('');
+  }
+
+  lista.innerHTML = aDefHtml + corpo;
 }
 
 // ── Obra select — auto-preenche endereço ─────────────────────
@@ -2235,6 +2308,170 @@ async function onObraChange() {
   } else if (!val) {
     endInput.value = '';
   }
+  _autoViagemCheck();
+}
+
+// ── Auto-viagem: equipes de Cuiabá (1-4) indo p/ obra de regional ≠ Cuiabá ──
+const EQUIPES_CUIABA = [1, 2, 3, 4]; // Cabeamento, Elétrica, Áudio e Vídeo, Automação
+let _statusManual = false;
+function _semAcento(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+function _obraEhRegionalViagem(){
+  const val = document.getElementById('f-obra').value;
+  if (!val || val === 'outro') return false;
+  const obra = obras.find(o => String(o.id) === val);
+  const reg = _semAcento(obra?.regional);
+  if (!reg) return false;               // sem regional definida → não força
+  return !reg.includes('cuiaba');       // regional diferente de Cuiabá → viagem
+}
+function _temTecnicoDeCuiaba(){
+  const ids = equipesSelecionadas.map(Number).filter(Boolean);
+  return ids.some(tid => tecnicoEquipes.some(te => te.tecnico_id === tid && EQUIPES_CUIABA.includes(te.equipe_id)));
+}
+function _autoViagemCheck(){
+  const sel = document.getElementById('f-status');
+  if (!sel || _statusManual) return;
+  if (_obraEhRegionalViagem() && _temTecnicoDeCuiaba() && sel.value !== 'viagem') {
+    sel.value = 'viagem';
+    mostrarToast('Definido como Viagem (obra em regional fora de Cuiabá).', 'ok');
+  }
+}
+
+// ── FROTA (veículos) ─────────────────────────────────────────
+let frotaLista = [];
+let _frotaEditId = null;
+function _frotaFmtData(d){ if(!d) return ''; const [y,m,dia] = String(d).split('-'); return `${dia}/${m}/${y}`; }
+function _valorVeiculo(v){ return v.nome + (v.placa ? ' - ' + v.placa : ''); }
+
+async function carregarFrota(){
+  const { data } = await db.from('frota').select('*').order('nome');
+  frotaLista = data || [];
+  _popularVeiculoSelect();
+  renderFrotaLista();
+}
+
+function _popularVeiculoSelect(){
+  const sel = document.getElementById('f-veiculo-sel'); if(!sel) return;
+  const atual = document.getElementById('f-veiculo')?.value || '';
+  const ativos = frotaLista.filter(v => v.ativo !== false);
+  sel.innerHTML = '<option value="">— Selecione o veículo —</option>'
+    + ativos.map(v => {
+        const cap = v.capacidade ? ` · ${v.capacidade} lug.` : '';
+        const tmp = v.tipo === 'temporario' ? ' · temp.' : '';
+        return `<option value="${escHtml(_valorVeiculo(v))}">${escHtml(v.nome)}${v.placa ? ' · ' + escHtml(v.placa) : ''}${cap}${tmp}</option>`;
+      }).join('')
+    + '<option value="__outro">— Outro / digitar —</option>';
+  _setVeiculo(atual);
+}
+
+function _setVeiculo(valor){
+  const sel = document.getElementById('f-veiculo-sel');
+  const inp = document.getElementById('f-veiculo');
+  if(!sel || !inp) return;
+  inp.value = valor || '';
+  const existe = [...sel.options].some(o => o.value === valor && o.value !== '' && o.value !== '__outro');
+  if(valor && existe){ sel.value = valor; inp.style.display = 'none'; }
+  else if(valor){ sel.value = '__outro'; inp.style.display = 'block'; }
+  else { sel.value = ''; inp.style.display = 'none'; }
+}
+
+function _onVeiculoSelChange(){
+  const sel = document.getElementById('f-veiculo-sel');
+  const inp = document.getElementById('f-veiculo');
+  if(sel.value === '__outro'){ inp.style.display = 'block'; inp.value = ''; inp.focus(); }
+  else { inp.style.display = 'none'; inp.value = sel.value; }
+  _agFormDirty = true;
+}
+
+async function abrirModalFrota(){
+  if(!frotaLista.length){ try { await carregarFrota(); } catch(e){} }
+  _frotaLimparForm();
+  renderFrotaLista();
+  document.getElementById('overlay-frota').style.display = 'flex';
+  lucide.createIcons();
+}
+function fecharModalFrota(){ document.getElementById('overlay-frota').style.display = 'none'; }
+
+function renderFrotaLista(){
+  const el = document.getElementById('frota-lista'); if(!el) return;
+  if(!frotaLista.length){ el.innerHTML = '<div style="color:var(--text-3);font-size:13px;text-align:center;padding:14px">Nenhum veículo cadastrado ainda.</div>'; return; }
+  el.innerHTML = frotaLista.map(v => {
+    const badgeTipo = v.tipo === 'temporario' ? '<span style="font-size:10px;font-weight:700;background:rgba(99,102,241,.15);color:#A5B4FC;padding:2px 7px;border-radius:5px">TEMP</span>' : '';
+    const inativo   = v.ativo === false ? '<span style="font-size:10px;font-weight:700;background:rgba(239,68,68,.14);color:#f87171;padding:2px 7px;border-radius:5px">inativo</span>' : '';
+    const dev       = (v.tipo === 'temporario' && v.devolucao_em) ? ` · devolver ${_frotaFmtData(v.devolucao_em)}` : '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13.5px;font-weight:600;color:var(--text-1)">${escHtml(v.nome)} ${badgeTipo} ${inativo}</div>
+        <div style="font-size:12px;color:var(--text-3)">${escHtml(v.placa || 'sem placa')} · ${v.capacidade || '?'} lugares${dev}</div>
+      </div>
+      <button class="btn-cancelar" style="padding:6px 10px" onclick="editarFrota(${v.id})" title="Editar"><i data-lucide="pencil" style="width:13px;height:13px"></i></button>
+      <button class="btn-cancelar" style="padding:6px 10px" onclick="excluirFrota(${v.id})" title="Excluir"><i data-lucide="trash-2" style="width:13px;height:13px"></i></button>
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+
+function _frotaTipoChange(){
+  document.getElementById('fr-devolucao-wrap').style.display = document.getElementById('fr-tipo').value === 'temporario' ? 'block' : 'none';
+}
+function _frotaLimparForm(){
+  _frotaEditId = null;
+  document.getElementById('frota-form-titulo').textContent = 'Novo veículo';
+  document.getElementById('fr-nome').value = '';
+  document.getElementById('fr-cap').value = '';
+  document.getElementById('fr-placa').value = '';
+  document.getElementById('fr-tipo').value = 'frota';
+  document.getElementById('fr-devolucao').value = '';
+  document.getElementById('fr-ativo').checked = true;
+  document.getElementById('frota-erro').style.display = 'none';
+  document.getElementById('fr-cancelar-edit').style.display = 'none';
+  document.getElementById('fr-devolucao-wrap').style.display = 'none';
+}
+function editarFrota(id){
+  const v = frotaLista.find(x => x.id === id); if(!v) return;
+  _frotaEditId = id;
+  document.getElementById('frota-form-titulo').textContent = 'Editar veículo';
+  document.getElementById('fr-nome').value = v.nome || '';
+  document.getElementById('fr-cap').value = v.capacidade || '';
+  document.getElementById('fr-placa').value = v.placa || '';
+  document.getElementById('fr-tipo').value = v.tipo || 'frota';
+  document.getElementById('fr-devolucao').value = v.devolucao_em || '';
+  document.getElementById('fr-ativo').checked = v.ativo !== false;
+  document.getElementById('fr-cancelar-edit').style.display = 'inline-flex';
+  _frotaTipoChange();
+}
+async function salvarFrota(){
+  const nome = document.getElementById('fr-nome').value.trim();
+  const erro = document.getElementById('frota-erro');
+  if(!nome){ erro.textContent = 'Informe o nome do veículo.'; erro.style.display = 'block'; return; }
+  const tipo = document.getElementById('fr-tipo').value;
+  const devol = document.getElementById('fr-devolucao').value;
+  const payload = {
+    nome,
+    placa: document.getElementById('fr-placa').value.trim() || null,
+    capacidade: parseInt(document.getElementById('fr-cap').value) || null,
+    tipo,
+    devolucao_em: (tipo === 'temporario' && devol) ? devol : null,
+    ativo: document.getElementById('fr-ativo').checked,
+    atualizado_em: new Date().toISOString(),
+  };
+  const btn = document.getElementById('fr-salvar'); btn.disabled = true;
+  try{
+    if(_frotaEditId){ const { error } = await db.from('frota').update(payload).eq('id', _frotaEditId); if(error) throw error; }
+    else { payload.criado_em = new Date().toISOString(); const { error } = await db.from('frota').insert(payload); if(error) throw error; }
+    await carregarFrota();
+    _frotaLimparForm();
+    mostrarToast('Veículo salvo.', 'ok');
+  }catch(e){ erro.textContent = 'Erro: ' + e.message; erro.style.display = 'block'; }
+  finally{ btn.disabled = false; lucide.createIcons(); }
+}
+async function excluirFrota(id){
+  const v = frotaLista.find(x => x.id === id);
+  const ok = await new Promise(res => confirmModal(`Excluir o veículo "${v?.nome || ''}"?`, () => res(true), () => res(false)));
+  if(!ok) return;
+  const { error } = await db.from('frota').delete().eq('id', id);
+  if(error){ mostrarToast('Erro: ' + error.message, 'err'); return; }
+  await carregarFrota();
+  mostrarToast('Veículo excluído.', 'ok');
 }
 
 // ── Preencher select de obras ────────────────────────────────
@@ -2272,10 +2509,11 @@ async function abrirModal(data = '') {
   document.getElementById('outro-fields').style.display = 'none';
   document.getElementById('f-nome-outro').value         = '';
   document.getElementById('f-status').value             = 'confirmado';
-  document.getElementById('f-inicio').value             = '';
+  document.getElementById('f-inicio').value             = localStorage.getItem('agenda_ultimo_inicio') || '';
   document.getElementById('f-fim').value                = '';
-  document.getElementById('f-veiculo').value            = '';
+  document.getElementById('f-veiculo').value            = localStorage.getItem('agenda_ultimo_veiculo') || '';
   document.getElementById('f-servico').value            = '';
+  _popularVeiculoSelect();
   const dataAgenda = data || fmtISO(new Date());
   document.getElementById('f-data').value               = dataAgenda;
   document.getElementById('btn-excluir').style.display  = 'none';
@@ -2307,6 +2545,8 @@ async function abrirModal(data = '') {
     agendarEmDiaBloqueado = false;
   }
 
+  _agFormDirty = false;
+  _statusManual = false;
   document.getElementById('overlay').classList.add('aberto');
   lucide.createIcons();
 }
@@ -2363,6 +2603,7 @@ async function editarAgendamento(id) {
   document.getElementById('f-fim').value     = '';
   document.getElementById('f-veiculo').value = ag.veiculo || '';
   document.getElementById('f-servico').value = ag.servico || '';
+  _popularVeiculoSelect();
   // Preenche motorista ao editar
   if (ag.motorista_id && equipesSelecionadas.length > 0) {
     const motSel = document.getElementById('f-motorista');
@@ -2378,6 +2619,8 @@ async function editarAgendamento(id) {
   if (relCbEdit) relCbEdit.checked = false;
 
   document.getElementById('btn-excluir').style.display = 'flex';
+  _agFormDirty = false;
+  _statusManual = true; // ao editar, preserva o status salvo (não auto-altera para viagem)
   document.getElementById('overlay').classList.add('aberto');
   lucide.createIcons();
 }
@@ -2387,11 +2630,42 @@ function fecharModal() {
   document.getElementById('overlay').classList.remove('aberto');
   agEditandoId = null;
   fecharEquipeDropdown();
+  _agFormDirty = false;
 }
 
 function fecharModalFora(e) {
-  if (e.target === document.getElementById('overlay')) fecharModal();
+  // Intencional: NÃO fecha ao clicar fora — evita perder o preenchimento por engano.
+  // O modal só fecha pelo botão "Cancelar" (cancelarModal).
 }
+
+// ── Cancelar com confirmação + atalhos de teclado (modal de agenda) ──
+let _agFormDirty = false;
+function _marcarAgDirty(e) {
+  _agFormDirty = true;
+  if (e && e.target && e.target.classList) e.target.classList.remove('campo-erro');
+}
+function cancelarModal() {
+  if (_agFormDirty) {
+    confirmModal('Descartar alterações? O que você preencheu será perdido.',
+      () => fecharModal(), () => {});
+  } else {
+    fecharModal();
+  }
+}
+(function _initAgendaModalUX() {
+  const modal = document.querySelector('#overlay .modal');
+  if (modal) {
+    modal.addEventListener('input', _marcarAgDirty);
+    modal.addEventListener('change', _marcarAgDirty);
+  }
+  // Esc = cancelar · Ctrl/Cmd+Enter = salvar — só quando o modal de agenda está aberto
+  document.addEventListener('keydown', (e) => {
+    const ov = document.getElementById('overlay');
+    if (!ov || !ov.classList.contains('aberto')) return;
+    if (e.key === 'Escape') { e.preventDefault(); cancelarModal(); }
+    else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); salvarAgendamento(); }
+  });
+})();
 
 // ── Modal de detalhe (somente leitura) ───────────────────────
 function verDetalheAgendamento(id) {
@@ -2478,26 +2752,51 @@ async function salvarAgendamento() {
   const tipoServico = agendarEmDiaBloqueado ? 'diaria'
     : (document.querySelector('input[name="tipo-servico"]:checked')?.value || 'execucao');
 
-  // Validações
-  if (!obraVal) {
-    mostrarErroModal('Selecione a obra ou escolha "Outro".'); return;
-  }
-  if (obraVal === 'outro' && !nomeOutro) {
-    mostrarErroModal('Informe o nome do cliente.'); return;
-  }
-  if (equipesSelecionadas.length === 0 && status !== 'viagem') {
-    mostrarErroModal('Selecione pelo menos uma pessoa ou "A definir equipe".'); return;
-  }
-  if (!data) {
-    mostrarErroModal('Selecione a data.'); return;
-  }
-
-  function mostrarErroModal(msg) {
+  function mostrarErroModal(msg, campoId) {
     erroEl.textContent      = msg;
     erroEl.style.display    = 'block';
     btn.disabled            = false;
     btn.innerHTML           = '<i data-lucide="save"></i> Salvar';
     lucide.createIcons();
+    if (campoId) {
+      const c = document.getElementById(campoId);
+      if (c) { c.classList.add('campo-erro'); try { c.focus({ preventScroll: false }); } catch (e) {} c.scrollIntoView?.({ block: 'center', behavior: 'smooth' }); }
+    }
+  }
+
+  // Validações (destacam o campo em vermelho)
+  if (!obraVal) {
+    mostrarErroModal('Selecione a obra ou escolha "Outro".', 'f-obra'); return;
+  }
+  if (obraVal === 'outro' && !nomeOutro) {
+    mostrarErroModal('Informe o nome do cliente.', 'f-nome-outro'); return;
+  }
+  if (equipesSelecionadas.length === 0 && status !== 'viagem') {
+    mostrarErroModal('Selecione pelo menos uma pessoa ou "A definir equipe".', 'equipe-select'); return;
+  }
+  if (!data) {
+    mostrarErroModal('Selecione a data.', 'f-data'); return;
+  }
+
+  // Lembrar último horário/veículo para agilizar os próximos cadastros
+  try {
+    localStorage.setItem('agenda_ultimo_inicio', inicio || '');
+    localStorage.setItem('agenda_ultimo_veiculo', veiculo || '');
+  } catch (e) {}
+
+  // Resumo antes de replicar em vários dias
+  if (document.getElementById('f-replicar')?.checked) {
+    const diasRep = diasParaReplicar();
+    if (!diasRep.length) { mostrarErroModal('Defina a data final da replicação.', 'f-data-fim-rep'); return; }
+    const fmtDia = iso => new Date(iso + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    const okRep = await new Promise(resolve => confirmModal(
+      `Vai criar ${diasRep.length} serviço(s) nos dias:\n${diasRep.map(fmtDia).join('  ·  ')}\n\nConfirma?`,
+      () => resolve(true), () => resolve(false)
+    ));
+    if (!okRep) {
+      btn.disabled = false; btn.innerHTML = '<i data-lucide="save"></i> Salvar'; lucide.createIcons();
+      return;
+    }
   }
 
   // Verificar conflito de agendamento: técnico já alocado neste dia?
