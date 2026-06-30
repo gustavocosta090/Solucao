@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-30a — + Frota: gestao de veiculos (modal na agenda) e campo Veiculo vira lista da frota (com opcao digitar) -->
+<!-- build: 2026-06-30b — Frota + campo Veiculo lista; botao Novo agendamento virou "+" compacto (barra nao quebra) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1098,9 +1098,8 @@
       Frota
     </button>
 
-    <button class="btn-novo" id="btn-novo" onclick="abrirModal()">
+    <button class="btn-novo" id="btn-novo" onclick="abrirModal()" title="Novo agendamento" aria-label="Novo agendamento" style="padding:9px 13px">
       <i data-lucide="plus"></i>
-      Novo agendamento
     </button>
   </div>
 </div>
