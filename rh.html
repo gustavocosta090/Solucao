@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-30a — RH: colaborador ganha Razao Social + CNPJ + CPF (autopreenche CNPJ pela razao) -->
+<!-- build: 2026-06-30b — Fichas: botoes Cancelar/Reenviar/Devolver; modal devolucao gera comprovante PDF; colaborador com Razao/CNPJ/CPF -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -277,6 +277,7 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
         <option value="pendente">Pendentes</option>
         <option value="assinada">Assinadas</option>
         <option value="expirada">Expiradas</option>
+        <option value="cancelado">Canceladas</option>
       </select>
     </div>
     <div id="fichas-list"><div class="empty">Carregando...</div></div>
@@ -340,6 +341,24 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
       <button class="btn-pri" onclick="_copiarLink()"><i data-lucide="copy" style="width:14px;height:14px"></i> Copiar</button>
       <button class="btn-sec" onclick="_whatsLink()"><i data-lucide="message-circle" style="width:14px;height:14px"></i> WhatsApp</button>
       <button class="btn-sec" onclick="document.getElementById('overlay-link').classList.remove('aberto')" style="margin-left:auto">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de devolução de itens -->
+<div class="overlay" id="overlay-devolucao" onclick="if(event.target===this)fecharModalDevolucao()">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head"><i data-lucide="undo-2"></i><h2>Registrar devolução</h2></div>
+    <p id="dev-colab" style="font-size:13px;color:var(--text-2);margin-bottom:12px"></p>
+    <div class="fg" style="max-width:220px"><label>Data da devolução</label><input type="date" id="dev-data"></div>
+    <div class="fg"><label>Itens devolvidos <span style="color:var(--text-3);font-weight:400">(marque os que voltaram)</span></label>
+      <div id="dev-itens"></div>
+    </div>
+    <div class="fg"><label>Observações</label><textarea id="dev-obs" rows="2" placeholder="Ex: item danificado, troca, desligamento..."></textarea></div>
+    <div id="dev-erro" style="display:none;color:var(--red-text);font-size:13px;margin-bottom:12px"></div>
+    <div class="modal-actions">
+      <button class="btn-sec" onclick="fecharModalDevolucao()">Cancelar</button>
+      <button class="btn-pri" id="dev-salvar" onclick="salvarDevolucao()"><i data-lucide="file-check" style="width:14px;height:14px"></i> Registrar e gerar comprovante</button>
     </div>
   </div>
 </div>
@@ -1215,6 +1234,7 @@ const FICHA_TIPOS = {
 };
 
 function _fichaStatus(f){
+  if(f.status==='cancelado') return 'cancelado';
   if(f.status==='assinada') return 'assinada';
   if(f.expira_em && new Date(f.expira_em) < new Date()) return 'expirada';
   return 'pendente';
@@ -1240,24 +1260,30 @@ function renderFichas(){
     const st = _fichaStatus(f);
     const badge = st==='assinada' ? '<span class="fb fb-ok">Assinada</span>'
                 : st==='expirada' ? '<span class="fb fb-exp">Expirada</span>'
+                : st==='cancelado' ? '<span class="fb" style="background:rgba(148,163,184,.18);color:#94A3B8">Cancelada</span>'
                 : '<span class="fb fb-pend">Pendente</span>';
+    const devBadge = f.devolucao_em ? ' <span class="fb" style="background:rgba(99,102,241,.16);color:#A5B4FC">Devolvida</span>' : '';
     const tipoTxt = f.tipo==='epi' ? 'EPI' : 'Uniforme';
     const quando = f.assinado_em ? ('Assinada em '+_fmtDataHora(f.assinado_em)) : ('Criada em '+_fmtDataHora(f.criado_em));
+    const btnCancelar = `<button class="btn-sec" onclick="cancelarFicha(${f.id})" title="Cancelar ficha"><i data-lucide="ban" style="width:13px;height:13px"></i></button>`;
+    const btnEditar = `<button class="btn-sec" onclick="abrirModalFicha(${f.id})" title="Editar"><i data-lucide="pencil" style="width:13px;height:13px"></i></button>`;
     let acoes;
     if(st==='assinada'){
       acoes = `<button class="btn-sec" onclick="baixarPDFFicha(${f.id})" title="Baixar PDF assinado"><i data-lucide="file-down" style="width:13px;height:13px"></i> PDF</button>
-               <button class="btn-sec" onclick="abrirModalFicha(${f.id})" title="Marcar devolução de itens"><i data-lucide="undo-2" style="width:13px;height:13px"></i></button>`;
+               <button class="btn-sec" onclick="abrirModalDevolucao(${f.id})" title="Registrar devolução"><i data-lucide="undo-2" style="width:13px;height:13px"></i> Devolver</button>
+               ${f.devolucao_pdf_url?`<button class="btn-sec" onclick="baixarComprovanteDevolucao(${f.id})" title="Comprovante de devolução"><i data-lucide="receipt" style="width:13px;height:13px"></i></button>`:''}
+               ${btnCancelar}`;
     } else if(st==='expirada'){
-      acoes = `<button class="btn-sec" onclick="reabrirFicha(${f.id})" title="Renovar prazo"><i data-lucide="refresh-cw" style="width:13px;height:13px"></i> Renovar</button>
-               <button class="btn-sec" onclick="abrirModalFicha(${f.id})" title="Editar"><i data-lucide="pencil" style="width:13px;height:13px"></i></button>`;
+      acoes = `<button class="btn-sec" onclick="reabrirFicha(${f.id})" title="Renovar prazo"><i data-lucide="refresh-cw" style="width:13px;height:13px"></i> Renovar</button>${btnEditar}${btnCancelar}`;
+    } else if(st==='cancelado'){
+      acoes = f.pdf_url ? `<button class="btn-sec" onclick="baixarPDFFicha(${f.id})" title="Baixar PDF"><i data-lucide="file-down" style="width:13px;height:13px"></i> PDF</button>` : '<span style="font-size:12px;color:var(--text-3)">—</span>';
     } else {
-      acoes = `<button class="btn-sec" onclick="_mostrarLink('${f.token}')" title="Ver link"><i data-lucide="link" style="width:13px;height:13px"></i> Link</button>
-               <button class="btn-sec" onclick="abrirModalFicha(${f.id})" title="Editar"><i data-lucide="pencil" style="width:13px;height:13px"></i></button>`;
+      acoes = `<button class="btn-sec" onclick="_mostrarLink('${f.token}')" title="Reenviar link de assinatura"><i data-lucide="send" style="width:13px;height:13px"></i> Reenviar</button>${btnEditar}${btnCancelar}`;
     }
     return `<div class="vaga-item">
       <div style="flex:1;min-width:0">
-        <div class="vaga-cargo">${escH(nomeCurto(f.colaborador_nome))} ${badge}</div>
-        <div class="vaga-emp">${tipoTxt} · ${escH(f.empresa||'—')} · ${quando}</div>
+        <div class="vaga-cargo">${escH(nomeCurto(f.colaborador_nome))} ${badge}${devBadge}</div>
+        <div class="vaga-emp">${tipoTxt} · ${escH(f.empresa||'—')} · ${quando}${f.devolucao_em?(' · devolvida '+_fmtData(f.devolucao_em)):''}</div>
       </div>${acoes}
     </div>`;
   }).join('');
@@ -1390,6 +1416,110 @@ async function reabrirFicha(id){
   await carregarFichas(); showToast('Prazo renovado por 7 dias.','success'); _mostrarLink(f.token);
 }
 
+async function cancelarFicha(id){
+  const f = _fichas.find(x=>x.id===id); if(!f) return;
+  if(!confirm(`Cancelar a ficha de ${f.colaborador_nome}?\n\nEla ficará marcada como "Cancelada".`)) return;
+  const { error } = await db.from('fichas_assinatura').update({ status:'cancelado', atualizado_em:new Date().toISOString() }).eq('id', id);
+  if(error){ showToast('Erro: '+error.message,'error'); return; }
+  await carregarFichas(); showToast('Ficha cancelada.','success');
+}
+
+// ── Devolução ──
+let _devFichaId = null;
+function abrirModalDevolucao(id){
+  const f = _fichas.find(x=>x.id===id); if(!f) return; _devFichaId = id;
+  const cfg = FICHA_TIPOS[f.tipo] || FICHA_TIPOS.uniforme;
+  document.getElementById('dev-colab').textContent = `${f.colaborador_nome} · ${f.tipo==='epi'?'EPI':'Uniforme'}`;
+  document.getElementById('dev-data').value = f.devolucao_em || new Date().toISOString().slice(0,10);
+  document.getElementById('dev-obs').value = f.devolucao_obs || '';
+  const itens = Array.isArray(f.itens) ? f.itens : [];
+  document.getElementById('dev-itens').innerHTML = itens.length ? itens.map((it,idx)=>{
+    const desc = it.descricao || cfg.cols.map(c=>it[c.k]).filter(Boolean).join(' · ') || `Item ${idx+1}`;
+    const qtd = it.quantidade || it.quant;
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:13px;cursor:pointer">
+      <input type="checkbox" class="dev-item-cb" data-idx="${idx}" ${it.devolvido?'checked':''} style="accent-color:var(--primary);width:16px;height:16px">
+      ${escH(desc)}${qtd?` <span style="color:var(--text-3)">(qtd ${escH(qtd)})</span>`:''}</label>`;
+  }).join('') : '<div style="color:var(--text-3);font-size:12.5px">Sem itens na ficha.</div>';
+  document.getElementById('dev-erro').style.display = 'none';
+  document.getElementById('overlay-devolucao').classList.add('aberto');
+  lucide.createIcons();
+}
+function fecharModalDevolucao(){ document.getElementById('overlay-devolucao').classList.remove('aberto'); }
+
+async function salvarDevolucao(){
+  const f = _fichas.find(x=>x.id===_devFichaId); if(!f) return;
+  const dataDev = document.getElementById('dev-data').value;
+  const erro = document.getElementById('dev-erro');
+  if(!dataDev){ erro.textContent='Informe a data da devolução.'; erro.style.display='block'; return; }
+  const checked = new Set([...document.querySelectorAll('#dev-itens .dev-item-cb:checked')].map(cb=>parseInt(cb.dataset.idx)));
+  const itensNovos = (f.itens||[]).map((it,idx)=>({ ...it, devolvido: checked.has(idx) }));
+  const obs = document.getElementById('dev-obs').value.trim() || null;
+  const btn = document.getElementById('dev-salvar'); btn.disabled=true; btn.textContent='Gerando...';
+  try{
+    const info = _gerarComprovanteDevolucao(f, itensNovos, dataDev, obs); // { doc, base64 }
+    // Arquiva no SharePoint (Fichas/<Nome>/<EPIs|Uniformes>)
+    let pdfUrl = f.devolucao_pdf_url || null;
+    try{
+      const { data:{session} } = await db.auth.getSession();
+      const nome = (f.colaborador_nome||'colaborador').replace(/[\/\\:*?"<>|#%~]/g,' ').replace(/\s+/g,' ').trim().slice(0,60) || 'colaborador';
+      const sub = f.tipo==='epi' ? 'EPIs' : 'Uniformes';
+      const filename = `Comprovante Devolucao ${_fmtData(dataDev).replace(/\//g,'-')} ficha ${f.id}.pdf`;
+      const r = await fetch('/api/upload-pdf', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` }, body: JSON.stringify({ path:`Fichas/${nome}/${sub}`, filename, contentBase64: info.base64 }) });
+      if(r.ok){ const { filePath } = await r.json(); pdfUrl = `/api/foto?path=${encodeURIComponent(filePath)}`; }
+    }catch(e){ console.warn('upload comprovante:', e.message); }
+    const { error } = await db.from('fichas_assinatura').update({
+      itens: itensNovos, devolucao_em: dataDev, devolucao_obs: obs, devolucao_pdf_url: pdfUrl, atualizado_em: new Date().toISOString(),
+    }).eq('id', f.id);
+    if(error) throw error;
+    info.doc.save(`Comprovante Devolucao ${(f.colaborador_nome||'').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+    fecharModalDevolucao(); await carregarFichas();
+    showToast('Devolução registrada. Comprovante baixado.','success');
+  }catch(e){ erro.textContent='Erro: '+e.message; erro.style.display='block'; }
+  finally{ btn.disabled=false; btn.innerHTML='<i data-lucide="file-check" style="width:14px;height:14px"></i> Registrar e gerar comprovante'; lucide.createIcons(); }
+}
+
+function _gerarComprovanteDevolucao(f, itensNovos, dataDev, obs){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'pt', format:'a4' });
+  const W = doc.internal.pageSize.getWidth(); const M = 40; let y = 50;
+  const cfg = FICHA_TIPOS[f.tipo] || FICHA_TIPOS.uniforme;
+  const tipoLabel = f.tipo==='epi' ? 'EPI' : 'UNIFORME';
+  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(20);
+  doc.text(`COMPROVANTE DE DEVOLUÇÃO DE ${tipoLabel}`, W/2, y, { align:'center', maxWidth:W-2*M }); y += 24;
+  doc.setDrawColor(62,207,142); doc.setLineWidth(2); doc.line(M,y,W-M,y); y += 18;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40);
+  const info = [['Colaborador', f.colaborador_nome||'—'], ['Empresa', f.empresa||'—'], ['Data da devolução', _fmtData(dataDev)]];
+  info.forEach(([k,v])=>{ doc.setFont('helvetica','bold'); doc.text(k+':', M, y); doc.setFont('helvetica','normal'); doc.text(String(v), M+120, y, {maxWidth:W-2*M-120}); y += 16; });
+  y += 8;
+  doc.setFontSize(10); doc.text('Declaro a devolução dos itens abaixo relacionados:', M, y); y += 12;
+  const devolvidos = (itensNovos||[]).filter(it=>it.devolvido);
+  const head = [ f.tipo==='epi' ? ['Item','Qtd','Nº C.A'] : ['Item','Tam.','Qtd'] ];
+  const body = devolvidos.map(it => f.tipo==='epi' ? [it.descricao||'—', it.quant||'', it.ca||''] : [it.descricao||'—', it.tamanho||'', it.quantidade||'']);
+  if(body.length){
+    doc.autoTable({ startY:y, head, body, margin:{left:M,right:M}, styles:{fontSize:9,cellPadding:4}, headStyles:{fillColor:[15,23,42],textColor:[255,255,255]} });
+    y = doc.lastAutoTable.finalY + 18;
+  } else { doc.setTextColor(120); doc.text('(nenhum item marcado como devolvido)', M, y+14); doc.setTextColor(40); y += 34; }
+  if(obs){ doc.setFont('helvetica','bold'); doc.text('Observações:', M, y); y += 14; doc.setFont('helvetica','normal'); const lines=doc.splitTextToSize(obs, W-2*M); doc.text(lines, M, y); y += lines.length*12 + 10; }
+  y += 34;
+  doc.setDrawColor(120); doc.setLineWidth(0.7); doc.line(M, y, M+250, y);
+  doc.setFontSize(9); doc.setTextColor(90); doc.text('Assinatura do colaborador', M, y+14);
+  doc.setFontSize(8); doc.setTextColor(120);
+  doc.text(`Gerado pelo SAOS em ${new Date().toLocaleString('pt-BR')} · Ref. ficha #${f.id}`, M, doc.internal.pageSize.getHeight()-30);
+  const base64 = doc.output('datauristring').split(',')[1];
+  return { doc, base64 };
+}
+
+async function baixarComprovanteDevolucao(id){
+  const f = _fichas.find(x=>x.id===id); if(!f || !f.devolucao_pdf_url) return;
+  try{
+    showToast('Baixando comprovante...','info');
+    const r = await fetch(fotoSrc(f.devolucao_pdf_url)); if(!r.ok) throw new Error('PDF '+r.status);
+    const b = await r.blob(); const a = document.createElement('a');
+    a.href = URL.createObjectURL(b); a.download = `comprovante-devolucao-${(f.colaborador_nome||'').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`;
+    a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+  }catch(e){ showToast('Erro ao baixar: '+e.message,'error'); }
+}
+
 // ── Link ──
 function _mostrarLink(token){
   document.getElementById('link-url').value = _linkFicha(token);
@@ -1479,11 +1609,13 @@ async function _arquivarPDFFicha(f, doc){
   try{
     const base64 = doc.output('datauristring').split(',')[1];
     const { data:{session} } = await db.auth.getSession();
+    const nome = (f.colaborador_nome||'colaborador').replace(/[\/\\:*?"<>|#%~]/g,' ').replace(/\s+/g,' ').trim().slice(0,60) || 'colaborador';
+    const sub = f.tipo==='epi' ? 'EPIs' : 'Uniformes';
     const filename = `ficha-${f.id}-${f.tipo}.pdf`;
     const r = await fetch('/api/upload-pdf', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
-      body: JSON.stringify({ path:'Fichas/PDFs', filename, contentBase64:base64 }),
+      body: JSON.stringify({ path:`Fichas/${nome}/${sub}`, filename, contentBase64:base64 }),
     });
     if(!r.ok) return;
     const { filePath } = await r.json();

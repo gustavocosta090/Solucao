@@ -57,8 +57,9 @@ export default async function handler(req, res) {
 
     const tipoLabel = f.tipo === 'epi' ? 'EPI' : 'Uniforme';
     const dataStr   = dataBR();
-    const pasta     = `Fichas/${limparNome(f.colaborador_nome) || 'colaborador'}`;
-    const baseNome  = `Ficha ${tipoLabel} ${dataStr}`;
+    const pastaColab = `Fichas/${limparNome(f.colaborador_nome) || 'colaborador'}`;
+    const subTipo    = tipoLabel === 'EPI' ? 'EPIs' : 'Uniformes';
+    const baseNome   = `Ficha ${tipoLabel} ${dataStr}`;
 
     // 2) Sobe os arquivos ao SharePoint (PUT por caminho cria as pastas automaticamente)
     const tkn    = await getToken();
@@ -72,10 +73,11 @@ export default async function handler(req, res) {
       if (!r.ok) throw new Error('SharePoint ' + r.status + ': ' + await r.text());
       return `/api/foto?path=${encodeURIComponent(path)}`;
     }
-    const assUrl = await put(`${pasta}/${baseNome} Assinatura.png`, assBuf, 'image/png');
-    const selUrl = await put(`${pasta}/${baseNome} Foto.jpg`, selBuf, 'image/jpeg');
+    // Imagens em "Fotos e Assinaturas"; PDF na subpasta do tipo (EPIs / Uniformes)
+    const assUrl = await put(`${pastaColab}/Fotos e Assinaturas/${baseNome} Assinatura.png`, assBuf, 'image/png');
+    const selUrl = await put(`${pastaColab}/Fotos e Assinaturas/${baseNome} Foto.jpg`, selBuf, 'image/jpeg');
     let pdfUrl = null;
-    if (pdfBuf) pdfUrl = await put(`${pasta}/${baseNome}.pdf`, pdfBuf, 'application/pdf');
+    if (pdfBuf) pdfUrl = await put(`${pastaColab}/${subTipo}/${baseNome}.pdf`, pdfBuf, 'application/pdf');
 
     // 3) Envia o PDF por e-mail (best-effort — não derruba a assinatura se o e-mail falhar)
     try {
