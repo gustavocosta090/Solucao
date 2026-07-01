@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-30c — barra de acoes virou menu suspenso (emoji+nome): Exportar/Disponib./Prog.semanal/Disparar/Estoque/Bloqueios/Frota/Novo -->
+<!-- build: 2026-06-30e — jwtToken atualizado no refresh (onAuthStateChange) p/ nao expirar nas APIs (Prog.Estoque etc.) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -733,6 +733,7 @@
     .menu-acao-item .ma-emoji { font-size:16px;width:22px;text-align:center;flex-shrink:0; }
     .menu-acao-sep { height:1px;background:var(--border);margin:5px 4px; }
     .menu-acao-novo { color:var(--primary); }
+    .bloqueio-tec-aviso { background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.38);color:#f87171;font-size:11px;font-weight:600;border-radius:6px;padding:5px 8px;margin-bottom:6px;line-height:1.35; }
 
     .equipe-item {
       display: flex;
@@ -1646,6 +1647,8 @@ async function init() {
   if (!session) { window.location.href = 'login.html'; return; }
   jwtToken    = session.access_token;
   _authUserId = session.user.id;
+  // Mantém o token fresco quando o Supabase renova (senão APIs recebem token expirado após ~1h)
+  db.auth.onAuthStateChange((_e, s) => { if (s?.access_token) jwtToken = s.access_token; });
 
   const { data: eu } = await db.from('tecnicos').select('id, role, nome').eq('auth_user_id', session.user.id).single();
   renderTopbar(eu?.nome, eu?.role, 'agenda');
@@ -1788,12 +1791,19 @@ async function carregarTecnicos() {
 // Equipes internas sem agenda própria — não aparecem como filtro na grade
 const EQUIPES_SEM_AGENDA = new Set(['comercial', 'gestão', 'gestao', 'projetos', 'vistoria']);
 
+// Ordem fixa de exibição das equipes (independe do id no banco): Cabeamento > Elétrica > Áudio e Vídeo > Automação > Regional
+function _ordemEquipeNome(nome){
+  const n = (nome || '').toLowerCase();
+  const chaves = ['cabea', 'elétr', 'eletr', 'áudio', 'audio', 'automa', 'regional', 'norte'];
+  const idx = chaves.findIndex(k => n.includes(k));
+  return idx === -1 ? 99 : idx;
+}
 function renderFiltrosEquipe() {
   const container = document.getElementById('filtros-equipe');
   if (!container) return;
   const comAgenda = equipesDisponiveis.filter(
     eq => !EQUIPES_SEM_AGENDA.has((eq.nome || '').toLowerCase())
-  );
+  ).slice().sort((a, b) => _ordemEquipeNome(a.nome) - _ordemEquipeNome(b.nome));
   container.innerHTML = '<button class="filtro-btn" data-equipe="todas">Todas equipes</button>'
     + comAgenda.map(eq =>
         `<button class="filtro-btn" data-equipe="${eq.id}">${escHtml(eq.nome)}</button>`
@@ -1968,9 +1978,15 @@ function renderGrade(dias) {
         const dataStr  = fmtISO(dias[di]);
         const bloqueio = diasBloqueados[dataStr] || null;
         const ags      = agMapPorDia[di][chave]; // array ou undefined
+        const tecId    = chave.startsWith('tec_') ? parseInt(chave.replace('tec_','')) : null;
+        const bloqTec  = tecId ? tecnicoBloqueadoNaData(tecId, dataStr) : null;
+        const avisoBloq = bloqTec
+          ? `<div class="bloqueio-tec-aviso">🔒 Bloqueado · ${escHtml(descricaoPeriodoBloqueio(bloqTec))}${bloqTec.motivo ? ' — ' + escHtml(bloqTec.motivo) : ''}</div>`
+          : '';
+        const temConteudo = (ags && ags.length) || avisoBloq;
         linesHTML += `<div class="sc${bloqueio?' bloqueada-col':''}">
-          ${ags && ags.length
-            ? `<div class="tec-label">${escHtml(nomeTec(chave))}</div>${ags.map(a => cardHTML(a)).join('')}`
+          ${temConteudo
+            ? `<div class="tec-label">${escHtml(nomeTec(chave))}</div>${avisoBloq}${ags && ags.length ? ags.map(a => cardHTML(a)).join('') : ''}`
             : ''}
         </div>`;
       });
@@ -4198,6 +4214,7 @@ function confirmarEnvioEstoque(){
 
 async function exportarProgramacaoEstoque() {
   const btn = document.getElementById('btn-estoque');
+  try { const { data: { session } } = await db.auth.getSession(); if (session?.access_token) jwtToken = session.access_token; } catch(e){}
   if (!jwtToken) { mostrarToast('Sessão expirada, recarregue a página.', 'err'); return; }
   btn.disabled = true;
   btn.innerHTML = '<i data-lucide="loader-2"></i><span>Gerando...</span>';
