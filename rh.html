@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-25d — RH: + app-shell.css (sidebar esquerda igual demais paginas); Fichas/devolvido/colaborador -->
+<!-- build: 2026-06-30a — RH: colaborador ganha Razao Social + CNPJ + CPF (autopreenche CNPJ pela razao) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -374,6 +374,21 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
       <div class="fg"><label>Empresa</label><select id="f-empresa"></select></div>
       <div class="fg"><label>Data de admissão</label><input type="date" id="f-admissao"></div>
     </div>
+    <div class="fg"><label>Razão Social <span style="color:var(--text-3);font-weight:400">(empresa de registro do colaborador)</span></label>
+      <input type="text" id="f-razao" list="razoes-list" placeholder="Razão social do vínculo" onchange="_preencherCnpjPorRazao()">
+      <datalist id="razoes-list">
+        <option>SOLUÇÃO TÉCNICA COM. E SERV. DE EQUIPAMENTOS ELETRÔNICOS LTDA</option>
+        <option>HOMEFLEX CUIABÁ COMÉRCIO DE MOVEIS LTDA</option>
+        <option>A R ALVES MÓVEIS E DECORAÇÕES LTDA</option>
+        <option>VIA MOTOR TRANSPORTES LTDA</option>
+        <option>J.V MÓVEIS E DECORAÇÕES LTDA</option>
+        <option>Casa do Alisson</option>
+      </datalist>
+    </div>
+    <div class="fg-row">
+      <div class="fg"><label>CNPJ</label><input type="text" id="f-cnpj" placeholder="00.000.000/0000-00"></div>
+      <div class="fg"><label>CPF</label><input type="text" id="f-cpf" placeholder="000.000.000-00"></div>
+    </div>
     <div class="fg"><label>Telefone</label><input type="text" id="f-telefone" placeholder="(00) 00000-0000"></div>
     <div class="fg">
       <label>Aniversário (dia / mês)</label>
@@ -688,6 +703,20 @@ function renderColabs() {
 }
 
 // ── Modal colaborador ────────────────────────────────────────
+const CNPJ_POR_RAZAO = {
+  'SOLUÇÃO TÉCNICA COM. E SERV. DE EQUIPAMENTOS ELETRÔNICOS LTDA':'04.164.120/0001-85',
+  'HOMEFLEX CUIABÁ COMÉRCIO DE MOVEIS LTDA':'41.080.568/0001-47',
+  'A R ALVES MÓVEIS E DECORAÇÕES LTDA':'27.331.152/0001-23',
+  'VIA MOTOR TRANSPORTES LTDA':'40.657.623/0001-56',
+  'J.V MÓVEIS E DECORAÇÕES LTDA':'34.364.541/0001-10',
+  'Casa do Alisson':'',
+};
+function _preencherCnpjPorRazao(){
+  const r = document.getElementById('f-razao').value.trim();
+  const cnpjEl = document.getElementById('f-cnpj');
+  if(CNPJ_POR_RAZAO[r] !== undefined && !cnpjEl.value.trim()) cnpjEl.value = CNPJ_POR_RAZAO[r];
+}
+
 function abrirModal(key) {
   const c = key ? _colabs.find(x => x._key === key) : null;
   _editColab = c || null; _fotoFile = null; _fotoRemovida = false;
@@ -698,6 +727,9 @@ function abrirModal(key) {
   document.getElementById('f-nome').value = c?.nome||''; document.getElementById('f-cargo').value = c?.cargo||'';
   document.getElementById('f-empresa').value = c?.empresa || '';
   document.getElementById('f-admissao').value = c?.data_admissao||'';
+  document.getElementById('f-razao').value = c?.razao_social || '';
+  document.getElementById('f-cnpj').value = c?.cnpj || '';
+  document.getElementById('f-cpf').value = c?.cpf || '';
   const dm = _diaMes(c?.data_aniversario);
   document.getElementById('f-aniv-dia').value = dm ? dm.d : '';
   document.getElementById('f-aniv-mes').value = dm ? dm.m : '';
@@ -775,6 +807,9 @@ async function salvarColab() {
   const payload={
     nome, cargo:document.getElementById('f-cargo').value||null,
     empresa:document.getElementById('f-empresa').value||null,
+    razao_social:document.getElementById('f-razao').value.trim()||null,
+    cnpj:document.getElementById('f-cnpj').value.trim()||null,
+    cpf:document.getElementById('f-cpf').value.trim()||null,
     data_admissao:document.getElementById('f-admissao').value||null,
     data_aniversario:aniv,
     telefone:document.getElementById('f-telefone').value.trim()||null,
