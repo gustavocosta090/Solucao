@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-30b — Frota + campo Veiculo lista; botao Novo agendamento virou "+" compacto (barra nao quebra) -->
+<!-- build: 2026-06-30c — barra de acoes virou menu suspenso (emoji+nome): Exportar/Disponib./Prog.semanal/Disparar/Estoque/Bloqueios/Frota/Novo -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -722,6 +722,17 @@
     .equipe-dropdown.aberto { display: block; }
     .equipe-grupo-label { font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-3);padding:9px 12px 4px;position:sticky; }
     .campo-erro, .campo-erro:focus { border-color:#f87171 !important; box-shadow:0 0 0 2px rgba(239,68,68,.18) !important; }
+    .menu-acoes-wrap { position:relative; display:inline-block; }
+    .btn-menu-acoes { display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:border-color .15s; }
+    .btn-menu-acoes:hover { border-color:var(--border-hover); }
+    .btn-menu-acoes i { width:16px;height:16px; }
+    .menu-acoes { position:absolute;top:calc(100% + 6px);right:0;z-index:300;min-width:240px;background:var(--surface-1);border:1px solid var(--border);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.45);padding:6px;display:none;flex-direction:column;gap:2px; }
+    .menu-acoes.aberto { display:flex; }
+    .menu-acao-item { display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;background:none;border:none;border-radius:7px;color:var(--text-1);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer; }
+    .menu-acao-item:hover { background:rgba(255,255,255,.06); }
+    .menu-acao-item .ma-emoji { font-size:16px;width:22px;text-align:center;flex-shrink:0; }
+    .menu-acao-sep { height:1px;background:var(--border);margin:5px 4px; }
+    .menu-acao-novo { color:var(--primary); }
 
     .equipe-item {
       display: flex;
@@ -1054,53 +1065,26 @@
   </div>
 
   <div class="controles-acoes">
-    <!-- Botão exportar agenda da semana para SharePoint -->
-    <button class="btn-exportar-sp" id="btn-exportar-sp" onclick="exportarAgendaSharePoint()" title="Salvar PDF da semana no SharePoint">
-      <i data-lucide="cloud-upload"></i>
-      <span>Exportar → SharePoint</span>
-    </button>
-
-    <!-- Disponibilidades -->
-    <button class="btn-disp" onclick="abrirDispPanel()" title="Ver disponibilidades dos técnicos na semana">
-      <i data-lucide="user-check"></i>
-      <span>Disponibilidades</span>
-    </button>
-
-    <!-- Botão programação semanal de técnico (substitui o antigo disparar-dia fixo) -->
-    <button class="btn-semana-tec" id="btn-semana-tec" onclick="abrirModalSemana()" title="Gerar e disparar programação semanal de um técnico">
-      <i data-lucide="calendar-range"></i>
-      <span>Prog. semanal</span>
-    </button>
-
     <!-- Date picker: seleciona o dia a disparar -->
     <input type="date" id="data-dispatch" class="input-data-dispatch" title="Selecionar data para disparar agenda">
 
-    <!-- Disparar agenda do dia selecionado -->
-    <button class="btn-whatsapp" id="btn-whatsapp" onclick="dispararAgendaWhatsapp()" title="Gerar imagem da agenda do dia selecionado e copiar pro clipboard">
-      <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-      </svg>
-      <span>Disparar dia</span>
-    </button>
-
-    <button class="btn-exportar-sp" id="btn-estoque" onclick="exportarProgramacaoEstoque()" title="Gerar PDF semanal para o estoque com motoristas" style="background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.3);color:#A5B4FC">
-      <i data-lucide="package"></i>
-      <span>Prog. Estoque</span>
-    </button>
-
-    <button class="btn-bloqueio" id="btn-bloqueio" onclick="abrirModalBloqueio()" title="Gerenciar bloqueios de técnicos">
-      <i data-lucide="user-x"></i>
-      Bloqueios
-    </button>
-
-    <button class="btn-bloqueio" id="btn-frota" onclick="abrirModalFrota()" title="Gerenciar veículos da frota" style="background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.3);color:#FCD34D">
-      <i data-lucide="truck"></i>
-      Frota
-    </button>
-
-    <button class="btn-novo" id="btn-novo" onclick="abrirModal()" title="Novo agendamento" aria-label="Novo agendamento" style="padding:9px 13px">
-      <i data-lucide="plus"></i>
-    </button>
+    <!-- Menu de ações -->
+    <div class="menu-acoes-wrap">
+      <button id="btn-menu-acoes" class="btn-menu-acoes" onclick="toggleMenuAcoes(event)" aria-haspopup="true" aria-expanded="false" title="Ações da agenda">
+        <i data-lucide="menu"></i> <span>Menu</span>
+      </button>
+      <div class="menu-acoes" id="menu-acoes" role="menu">
+        <button class="menu-acao-item" id="btn-exportar-sp" onclick="exportarAgendaSharePoint();fecharMenuAcoes()"><span class="ma-emoji">📤</span> Exportar → SharePoint</button>
+        <button class="menu-acao-item" id="btn-disp" onclick="abrirDispPanel();fecharMenuAcoes()"><span class="ma-emoji">👥</span> Disponibilidades</button>
+        <button class="menu-acao-item" id="btn-semana-tec" onclick="abrirModalSemana();fecharMenuAcoes()"><span class="ma-emoji">🗓️</span> Prog. semanal</button>
+        <button class="menu-acao-item" id="btn-whatsapp" onclick="dispararAgendaWhatsapp();fecharMenuAcoes()"><span class="ma-emoji">📲</span> Disparar dia</button>
+        <button class="menu-acao-item" id="btn-estoque" onclick="exportarProgramacaoEstoque();fecharMenuAcoes()"><span class="ma-emoji">📦</span> Prog. Estoque</button>
+        <button class="menu-acao-item" id="btn-bloqueio" onclick="abrirModalBloqueio();fecharMenuAcoes()"><span class="ma-emoji">🚫</span> Bloqueios</button>
+        <button class="menu-acao-item" id="btn-frota" onclick="abrirModalFrota();fecharMenuAcoes()"><span class="ma-emoji">🚚</span> Frota</button>
+        <div class="menu-acao-sep"></div>
+        <button class="menu-acao-item menu-acao-novo" id="btn-novo" onclick="abrirModal();fecharMenuAcoes()"><span class="ma-emoji">➕</span> Novo agendamento</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1687,15 +1671,15 @@ async function init() {
 
   if (podeDisparar) {
     const btnWa = document.getElementById('btn-whatsapp');
-    if (btnWa) btnWa.style.display = 'inline-flex';
+    if (btnWa) btnWa.style.display = '';
     const dpWrap = document.getElementById('data-dispatch');
     if (dpWrap) dpWrap.style.display = 'inline-block';
     const btnSem = document.getElementById('btn-semana-tec');
-    if (btnSem) btnSem.style.display = 'inline-flex';
+    if (btnSem) btnSem.style.display = '';
     const btnSp = document.getElementById('btn-exportar-sp');
-    if (btnSp) btnSp.style.display = 'inline-flex';
+    if (btnSp) btnSp.style.display = '';
     const btnEst = document.getElementById('btn-estoque');
-    if (btnEst) btnEst.style.display = 'inline-flex';
+    if (btnEst) btnEst.style.display = '';
   } else {
     const dpWrap = document.getElementById('data-dispatch');
     if (dpWrap) dpWrap.style.display = 'none';
@@ -1706,7 +1690,7 @@ async function init() {
   // Role 'estoque': não edita/dispara, mas pode gerar a Programação de Estoque
   if (roleAtual === 'estoque') {
     const btnEst = document.getElementById('btn-estoque');
-    if (btnEst) btnEst.style.display = 'inline-flex';
+    if (btnEst) btnEst.style.display = '';
   }
 
   await Promise.all([carregarObras(), carregarTecnicos(), carregarBloqueios(), carregarDiasBloqueados(), carregarAnotacoes(), carregarFrota()]);
@@ -2472,6 +2456,26 @@ async function excluirFrota(id){
   await carregarFrota();
   mostrarToast('Veículo excluído.', 'ok');
 }
+
+// ── Menu de ações da agenda ──────────────────────────────────
+function toggleMenuAcoes(e){
+  if (e) e.stopPropagation();
+  const m = document.getElementById('menu-acoes');
+  const b = document.getElementById('btn-menu-acoes');
+  const aberto = m.classList.toggle('aberto');
+  if (b) b.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  if (aberto && typeof lucide !== 'undefined') lucide.createIcons();
+}
+function fecharMenuAcoes(){
+  const m = document.getElementById('menu-acoes');
+  if (m) m.classList.remove('aberto');
+  const b = document.getElementById('btn-menu-acoes');
+  if (b) b.setAttribute('aria-expanded', 'false');
+}
+document.addEventListener('click', (e) => {
+  const wrap = document.querySelector('.menu-acoes-wrap');
+  if (wrap && !wrap.contains(e.target)) fecharMenuAcoes();
+});
 
 // ── Preencher select de obras ────────────────────────────────
 function preencherSelects() {
