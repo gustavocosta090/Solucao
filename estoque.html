@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<!-- build: 2026-06-30a — Modulo Estoque: termos de Devolucao/Assistencia (criar) + recebimento assinado pelo estoquista -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estoque — Solução Técnica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>document.documentElement.dataset.theme = localStorage.getItem('tema') || 'dark';</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0A0A0A;--surface-1:#111;--surface-2:#161616;--surface-3:#1B1B1B;--primary:#3ECF8E;--text-1:#fff;--text-2:#A1A1AA;--text-3:#52525B;--border:rgba(255,255,255,.08);--border-hover:rgba(255,255,255,.16);--amber-text:#FCD34D;--red-text:#F87171;--radius:8px}
+html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh;-webkit-font-smoothing:antialiased}
+.topbar{background:var(--surface-1);border-bottom:1px solid var(--border);height:56px;padding:0 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.topbar-logo{font-size:15px;font-weight:700;flex:1;color:var(--text-1);text-decoration:none}
+.topbar-greeting{font-size:13px;color:var(--text-2)}
+.topbar-links{display:flex;align-items:center;gap:4px}
+.topbar-links a{color:var(--text-2);text-decoration:none;font-size:13px;font-weight:500;padding:6px 12px;border-radius:6px}
+.topbar-links a:hover{color:var(--text-1);background:rgba(255,255,255,.06)}
+.topbar-links a.active{color:var(--primary)}
+.topbar-links a.nav-sair{border:1px solid rgba(255,255,255,.12);margin-left:8px}
+.page{max-width:1100px;margin:0 auto;padding:28px 24px 80px}
+.page-title{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px;line-height:1;margin-bottom:18px}
+.page-title i{width:22px;height:22px;color:var(--primary)}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin-bottom:22px}
+.tab{background:none;border:none;color:var(--text-2);font-family:inherit;font-size:14px;font-weight:600;padding:11px 18px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:inline-flex;align-items:center;gap:7px}
+.tab i{width:15px;height:15px}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab-pane{display:none}.tab-pane.active{display:block}
+.btn-nova{padding:10px 20px;background:var(--primary);color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px}
+.btn-nova:hover{opacity:.88}.btn-nova i{width:15px;height:15px}
+.busca-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.busca-bar input,.busca-bar select{background:var(--bg);border:1px solid var(--border);color:var(--text-1);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none}
+.busca-bar input{flex:1;min-width:180px}
+.t-item{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface-1);border:1px solid var(--border);border-radius:9px;margin-bottom:8px}
+.t-nome{font-size:14px;font-weight:700}
+.t-sub{font-size:12px;color:var(--text-3);margin-top:2px}
+.fb{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:5px;vertical-align:middle}
+.fb-pend{background:rgba(245,158,11,.14);color:var(--amber-text)}
+.fb-ok{background:rgba(62,207,142,.14);color:var(--primary)}
+.fb-canc{background:rgba(148,163,184,.18);color:#94A3B8}
+.fb-dev{background:rgba(99,102,241,.16);color:#A5B4FC}
+.fb-ass{background:rgba(245,158,11,.14);color:var(--amber-text)}
+.btn-sec{background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);border-radius:8px;padding:8px 12px;font-size:12.5px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn-sec:hover{border-color:var(--border-hover);color:var(--text-1)}
+.empty{text-align:center;color:var(--text-3);padding:40px 20px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.overlay.aberto{display:flex}
+.modal{background:var(--surface-1);border:1px solid var(--border);border-radius:14px;max-width:680px;width:100%;max-height:90vh;overflow-y:auto;padding:24px}
+.modal-head{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.modal-head i{width:20px;height:20px;color:var(--primary)}.modal-head h2{font-size:17px;font-weight:700}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text-1);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--border-hover)}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.item-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.item-row input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);color:var(--text-1);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none}
+.itens-head{display:flex;gap:6px;margin-bottom:6px}
+.itens-head span{min-width:0;font-size:10.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.3px;padding:0 2px}
+.head-spacer{width:36px;flex-shrink:0}
+.campo-del{background:var(--bg);border:1px solid var(--border);color:var(--text-3);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.campo-del:hover{color:#f87171;border-color:rgba(239,68,68,.4)}
+.btn-add-campo{margin-top:4px;background:transparent;border:1px dashed var(--border-hover);color:var(--text-2);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.fotos-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.foto-thumb{width:74px;height:74px;border-radius:8px;object-fit:cover;border:1px solid var(--border);background:var(--surface-3)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+.btn-pri{background:var(--primary);border:none;color:#000;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn-pri:disabled{opacity:.5;cursor:not-allowed}
+.btn-del{background:none;border:1px solid rgba(239,68,68,.4);color:var(--red-text);border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;font-family:inherit;margin-right:auto}
+#sig{width:100%;height:170px;background:#fff;border:2px dashed #CBD5E1;border-radius:10px;touch-action:none;display:block;cursor:crosshair}
+.det-linha{font-size:13px;color:var(--text-2);margin-bottom:4px}
+.det-linha b{color:var(--text-1)}
+</style>
+<link rel="stylesheet" href="app-shell.css">
+</head>
+<body>
+
+<header class="topbar">
+  <span class="topbar-logo">Solução Técnica</span>
+  <span id="topbar-greeting" class="topbar-greeting"></span>
+  <nav class="topbar-links" id="topbar-nav"></nav>
+</header>
+
+<div class="page">
+  <div class="page-title"><i data-lucide="package"></i> Estoque</div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-devolucao" onclick="trocarTab('devolucao')"><i data-lucide="file-text"></i> Devolução / Assistência</button>
+    <button class="tab" id="tab-estoque" onclick="trocarTab('estoque')"><i data-lucide="inbox"></i> Recebimentos</button>
+  </div>
+
+  <!-- ABA DEVOLUÇÃO (criar/listar) -->
+  <div class="tab-pane active" id="pane-devolucao">
+    <div class="busca-bar">
+      <input type="text" id="d-busca" placeholder="Buscar por cliente..." oninput="renderTermos()">
+      <select id="d-tipo" onchange="renderTermos()">
+        <option value="">Todos os tipos</option>
+        <option value="devolucao">Devolução</option>
+        <option value="assistencia">Assistência</option>
+      </select>
+      <select id="d-status" onchange="renderTermos()">
+        <option value="">Todos os status</option>
+        <option value="pendente">Pendentes</option>
+        <option value="recebido">Recebidos</option>
+        <option value="cancelado">Cancelados</option>
+      </select>
+      <button class="btn-nova" id="btn-novo-termo" onclick="abrirModalTermo()" style="display:none"><i data-lucide="plus"></i> Novo termo</button>
+    </div>
+    <div id="termos-list"><div class="empty">Carregando...</div></div>
+  </div>
+
+  <!-- ABA RECEBIMENTOS (estoque assina) -->
+  <div class="tab-pane" id="pane-estoque">
+    <div class="busca-bar">
+      <input type="text" id="e-busca" placeholder="Buscar por cliente..." oninput="renderReceb()">
+      <select id="e-status" onchange="renderReceb()">
+        <option value="pendente">Pendentes de recebimento</option>
+        <option value="recebido">Já recebidos</option>
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div id="receb-list"><div class="empty">Carregando...</div></div>
+  </div>
+</div>
+
+<!-- Modal novo/editar termo -->
+<div class="overlay" id="overlay-termo" onclick="if(event.target===this)fecharModalTermo()">
+  <div class="modal">
+    <div class="modal-head"><i data-lucide="file-text"></i><h2 id="termo-titulo">Novo termo</h2></div>
+    <div class="fg-row">
+      <div class="fg"><label>Tipo *</label>
+        <select id="t-tipo" onchange="_tipoChange()">
+          <option value="devolucao">Devolução de equipamentos (estoque)</option>
+          <option value="assistencia">Equipamento para assistência</option>
+        </select>
+      </div>
+      <div class="fg"><label>Data de preenchimento</label><input type="date" id="t-data"></div>
+    </div>
+    <div class="fg"><label>Cliente *</label>
+      <select id="t-obra" onchange="_obraChange()"></select>
+      <input type="text" id="t-cliente-outro" placeholder="Nome do cliente (avulso)" style="margin-top:8px;display:none">
+    </div>
+    <div class="fg-row">
+      <div class="fg"><label>Técnico responsável *</label><select id="t-tecnico"></select></div>
+      <div class="fg"><label>Auxiliar</label><select id="t-auxiliar"></select></div>
+    </div>
+    <div class="fg" id="t-autorizou-wrap" style="display:none"><label>Cliente autorizou o envio em</label><input type="date" id="t-autorizou"></div>
+    <div class="fg">
+      <label>Relação de equipamentos <span id="t-itens-hint" style="color:var(--text-3);font-weight:400"></span></label>
+      <div id="t-itens"></div>
+      <button type="button" class="btn-add-campo" onclick="_addItem()"><i data-lucide="plus" style="width:13px;height:13px"></i> Adicionar item</button>
+    </div>
+    <div class="fg"><label id="t-obs-label">Observações / Avarias</label><textarea id="t-obs" rows="2"></textarea></div>
+    <div class="fg">
+      <label>Fotos do equipamento <span style="color:var(--text-3);font-weight:400">(conferência)</span></label>
+      <input type="file" id="t-fotos" accept="image/*" multiple style="display:none" onchange="_selecFotos(this)">
+      <button type="button" class="btn-sec" onclick="document.getElementById('t-fotos').click()"><i data-lucide="camera" style="width:13px;height:13px"></i> Adicionar fotos</button>
+      <div class="fotos-grid" id="t-fotos-grid"></div>
+    </div>
+    <div id="termo-erro" style="display:none;color:var(--red-text);font-size:13px;margin-bottom:12px"></div>
+    <div class="modal-actions">
+      <button class="btn-del" id="termo-del" style="display:none" onclick="excluirTermo()"><i data-lucide="trash-2" style="width:13px;height:13px"></i> Excluir</button>
+      <button class="btn-sec" onclick="fecharModalTermo()">Cancelar</button>
+      <button class="btn-pri" id="termo-salvar" onclick="salvarTermo()"><i data-lucide="save" style="width:14px;height:14px"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal receber (estoque assina) -->
+<div class="overlay" id="overlay-receber" onclick="if(event.target===this)fecharReceber()">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-head"><i data-lucide="check-circle"></i><h2>Receber no estoque</h2></div>
+    <div id="receber-resumo" style="margin-bottom:14px"></div>
+    <div class="fg"><label>Assinatura do recebimento *</label>
+      <canvas id="sig"></canvas>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <span style="font-size:12.5px;color:var(--text-2)">Recebido por <b id="receb-por" style="color:var(--text-1)"></b></span>
+        <button type="button" class="btn-sec" onclick="_limparSig()">Limpar</button>
+      </div>
+    </div>
+    <div id="receber-erro" style="display:none;color:var(--red-text);font-size:13px;margin-bottom:12px"></div>
+    <div class="modal-actions">
+      <button class="btn-sec" onclick="fecharReceber()">Cancelar</button>
+      <button class="btn-pri" id="receber-salvar" onclick="confirmarRecebimento()"><i data-lucide="check" style="width:14px;height:14px"></i> Confirmar recebimento</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let _role='', _meuNome='', _meuTecId=null, _authToken='';
+let _termos=[], _obras=[], _tecs=[];
+let _editTermo=null, _fotosNovas=[], _fotosExist=[], _recTermo=null;
+let _podeCriar=false, _podeReceber=false;
+
+const TIPO_COLS = {
+  devolucao:  { titulo:'TERMO DE DEVOLUÇÃO DE EQUIPAMENTOS - ESTOQUE', hint:'(marca/modelo, quantidade, andar)', obs:'Observações / Avarias',
+    cols:[{k:'descricao',l:'Marca / Modelo / Descrição',flex:'2.4'},{k:'quant',l:'Quant.',flex:'0.7'},{k:'andar',l:'Andar',flex:'0.9'}] },
+  assistencia:{ titulo:'TERMO DE EQUIPAMENTO PARA ASSISTÊNCIA', hint:'(descrição e nº de série)', obs:'Defeito apresentado',
+    cols:[{k:'descricao',l:'Descrição',flex:'2.4'},{k:'serie',l:'Nº de série',flex:'1.4'}] },
+};
+
+function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function nomeCurto(n){ const p=(n||'').trim().split(/\s+/).filter(Boolean); return p.length<=1?p.join(' '):p[0]+' '+p[p.length-1]; }
+function _fmtData(d){ if(!d) return '—'; const m=String(d).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?`${m[3]}/${m[2]}/${m[1]}`:d; }
+function _fmtDataHora(s){ if(!s) return '—'; const d=new Date(s); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function fotoSrc(url){ if(!url||!_authToken) return url; return url + (url.includes('?')?'&':'?') + 't=' + encodeURIComponent(_authToken); }
+
+(async () => {
+  const { data:{session} } = await db.auth.getSession();
+  if(!session){ location.href='login.html'; return; }
+  _authToken = session.access_token || '';
+  db.auth.onAuthStateChange((_e,s)=>{ if(s?.access_token) _authToken=s.access_token; });
+
+  const { data:eu } = await db.from('tecnicos').select('id, role, nome').eq('auth_user_id', session.user.id).single();
+  if(!eu || !['estoque','agendamento','coordenador','supervisor','admin_geral'].includes(eu.role)){ location.href='obras.html'; return; }
+  _role=eu.role; _meuNome=eu.nome||''; _meuTecId=eu.id||null;
+  _podeCriar   = ['agendamento','coordenador','supervisor','admin_geral'].includes(_role);
+  _podeReceber = ['estoque','admin_geral'].includes(_role);
+
+  renderTopbar(eu.nome, eu.role, 'estoque');
+  lucide.createIcons();
+  if(_podeCriar) document.getElementById('btn-novo-termo').style.display='inline-flex';
+  // Estoquista começa na aba de recebimentos
+  if(_role==='estoque') trocarTab('estoque');
+
+  await carregar();
+})();
+
+function trocarTab(t){
+  ['devolucao','estoque'].forEach(x=>{
+    document.getElementById('tab-'+x)?.classList.toggle('active', x===t);
+    document.getElementById('pane-'+x)?.classList.toggle('active', x===t);
+  });
+  lucide.createIcons();
+}
+
+async function carregar(){
+  const [obR, tcR, tmR] = await Promise.all([
+    db.from('obras').select('id, nome_cliente').is('excluida_em', null).order('nome_cliente'),
+    db.from('tecnicos').select('id, nome').order('nome'),
+    db.from('termos_estoque').select('*').order('criado_em', { ascending:false }),
+  ]);
+  _obras = obR.data || [];
+  _tecs  = tcR.data || [];
+  _termos = tmR.error ? [] : (tmR.data || []);
+  renderTermos();
+  renderReceb();
+}
+
+// ── Lista (aba Devolução) ──
+function _statusBadge(t){
+  if(t.status==='cancelado') return '<span class="fb fb-canc">Cancelado</span>';
+  if(t.status==='recebido')  return '<span class="fb fb-ok">Recebido</span>';
+  return '<span class="fb fb-pend">Pendente</span>';
+}
+function _tipoBadge(t){ return t.tipo==='assistencia' ? '<span class="fb fb-ass">Assistência</span>' : '<span class="fb fb-dev">Devolução</span>'; }
+
+function _cardTermo(t, contexto){
+  const quando = t.status==='recebido' ? ('Recebido em '+_fmtDataHora(t.data_recebido_estoque)) : ('Criado em '+_fmtDataHora(t.criado_em));
+  const tec = t.tecnico_nome ? (' · Téc: '+nomeCurto(t.tecnico_nome)) : '';
+  let acoes = '';
+  if(t.pdf_url) acoes += `<button class="btn-sec" onclick="baixarPDFTermo(${t.id})"><i data-lucide="file-down" style="width:13px;height:13px"></i> PDF</button>`;
+  if(_podeReceber && t.status==='pendente') acoes += `<button class="btn-sec" onclick="abrirReceber(${t.id})"><i data-lucide="check-circle" style="width:13px;height:13px"></i> Receber</button>`;
+  if(contexto==='devolucao' && _podeCriar && t.status==='pendente') acoes += `<button class="btn-sec" onclick="abrirModalTermo(${t.id})"><i data-lucide="pencil" style="width:13px;height:13px"></i></button>`;
+  if(contexto==='devolucao' && _podeCriar && t.status!=='cancelado' && t.status!=='recebido') acoes += `<button class="btn-sec" onclick="cancelarTermo(${t.id})" title="Cancelar"><i data-lucide="ban" style="width:13px;height:13px"></i></button>`;
+  return `<div class="t-item">
+    <div style="flex:1;min-width:0">
+      <div class="t-nome">${escH(t.cliente_nome||'—')} ${_tipoBadge(t)} ${_statusBadge(t)}</div>
+      <div class="t-sub">${quando}${tec}${t.recebido_por?(' · Recebido por '+escH(nomeCurto(t.recebido_por))):''}</div>
+    </div>${acoes}
+  </div>`;
+}
+
+function renderTermos(){
+  const el=document.getElementById('termos-list'); if(!el) return;
+  const termo=(document.getElementById('d-busca')?.value||'').toLowerCase().trim();
+  const ftipo=document.getElementById('d-tipo')?.value||'';
+  const fst=document.getElementById('d-status')?.value||'';
+  let lista=_termos.filter(t=>{
+    if(termo && !(t.cliente_nome||'').toLowerCase().includes(termo)) return false;
+    if(ftipo && t.tipo!==ftipo) return false;
+    if(fst && (t.status||'pendente')!==fst) return false;
+    return true;
+  });
+  el.innerHTML = lista.length ? lista.map(t=>_cardTermo(t,'devolucao')).join('') : '<div class="empty">Nenhum termo.</div>';
+  lucide.createIcons();
+}
+function renderReceb(){
+  const el=document.getElementById('receb-list'); if(!el) return;
+  const termo=(document.getElementById('e-busca')?.value||'').toLowerCase().trim();
+  const fst=document.getElementById('e-status')?.value; // '' | pendente | recebido
+  let lista=_termos.filter(t=>{
+    if((t.status||'pendente')==='cancelado') return false;
+    if(termo && !(t.cliente_nome||'').toLowerCase().includes(termo)) return false;
+    if(fst && (t.status||'pendente')!==fst) return false;
+    return true;
+  });
+  el.innerHTML = lista.length ? lista.map(t=>_cardTermo(t,'estoque')).join('') : '<div class="empty">Nada aqui.</div>';
+  lucide.createIcons();
+}
+
+// ── Itens dinâmicos ──
+function _itemRow(tipo, item){
+  const cols=TIPO_COLS[tipo].cols;
+  const inputs=cols.map(c=>`<input type="text" data-k="${c.k}" placeholder="${escH(c.l)}" value="${escH(item?.[c.k]||'')}" style="flex:${c.flex}">`).join('');
+  return `<div class="item-row">${inputs}<button type="button" class="campo-del" onclick="this.parentElement.remove()" title="Remover"><i data-lucide="x" style="width:14px;height:14px"></i></button></div>`;
+}
+function _itensHeader(tipo){
+  const cols=TIPO_COLS[tipo].cols;
+  return `<div class="itens-head">${cols.map(c=>`<span style="flex:${c.flex}">${escH(c.l)}</span>`).join('')}<span class="head-spacer"></span></div>`;
+}
+function _setItens(tipo, itens){
+  const box=document.getElementById('t-itens');
+  const arr=(itens&&itens.length)?itens:[{}];
+  box.innerHTML=_itensHeader(tipo)+arr.map(it=>_itemRow(tipo,it)).join('');
+  lucide.createIcons();
+}
+function _addItem(){ const tipo=document.getElementById('t-tipo').value; document.getElementById('t-itens').insertAdjacentHTML('beforeend', _itemRow(tipo,{})); lucide.createIcons(); }
+function _lerItens(){
+  return [...document.querySelectorAll('#t-itens .item-row')].map(r=>{
+    const o={}; r.querySelectorAll('input[data-k]').forEach(i=>{ const v=i.value.trim(); if(v) o[i.dataset.k]=v; });
+    return o;
+  }).filter(o=>Object.keys(o).length);
+}
+function _tipoChange(){
+  const tipo=document.getElementById('t-tipo').value;
+  document.getElementById('t-itens-hint').textContent=TIPO_COLS[tipo].hint;
+  document.getElementById('t-obs-label').textContent=TIPO_COLS[tipo].obs;
+  document.getElementById('t-autorizou-wrap').style.display = tipo==='assistencia' ? 'block' : 'none';
+  _setItens(tipo, null);
+}
+function _obraChange(){
+  const v=document.getElementById('t-obra').value;
+  document.getElementById('t-cliente-outro').style.display = v==='outro' ? 'block' : 'none';
+}
+
+// ── Modal termo ──
+function _optsTec(sel, incluiVazio){
+  return (incluiVazio?'<option value="">— nenhum —</option>':'<option value="">— selecione —</option>')
+    + _tecs.map(t=>`<option value="${t.id}"${String(sel)===String(t.id)?' selected':''}>${escH(t.nome)}</option>`).join('');
+}
+function abrirModalTermo(id){
+  const t=id?_termos.find(x=>x.id===id):null; _editTermo=t||null;
+  _fotosNovas=[]; _fotosExist = t?.fotos_urls ? [...t.fotos_urls] : [];
+  const tipo=t?.tipo||'devolucao';
+  document.getElementById('termo-titulo').textContent=t?'Editar termo':'Novo termo';
+  document.getElementById('t-tipo').value=tipo;
+  document.getElementById('t-itens-hint').textContent=TIPO_COLS[tipo].hint;
+  document.getElementById('t-obs-label').textContent=TIPO_COLS[tipo].obs;
+  document.getElementById('t-autorizou-wrap').style.display=tipo==='assistencia'?'block':'none';
+  document.getElementById('t-data').value = t?.data_preenchimento || new Date().toISOString().slice(0,10);
+  document.getElementById('t-obra').innerHTML = '<option value="">— selecione a obra —</option>'
+    + _obras.map(o=>`<option value="${o.id}"${t&&String(t.obra_id)===String(o.id)?' selected':''}>${escH(o.nome_cliente)}</option>`).join('')
+    + '<option value="outro">— Outro / avulso —</option>';
+  // se cliente avulso (sem obra)
+  if(t && !t.obra_id && t.cliente_nome){ document.getElementById('t-obra').value='outro'; document.getElementById('t-cliente-outro').value=t.cliente_nome; document.getElementById('t-cliente-outro').style.display='block'; }
+  else { document.getElementById('t-cliente-outro').value=''; document.getElementById('t-cliente-outro').style.display='none'; }
+  document.getElementById('t-tecnico').innerHTML=_optsTec(t?.tecnico_id,false);
+  document.getElementById('t-auxiliar').innerHTML=_optsTec(t?.auxiliar_id,true);
+  document.getElementById('t-autorizou').value=t?.cliente_autorizou_em||'';
+  document.getElementById('t-obs').value=t?.observacoes||'';
+  _setItens(tipo, t?.itens||null);
+  _renderFotosGrid();
+  document.getElementById('termo-erro').style.display='none';
+  document.getElementById('termo-del').style.display = (t && _podeCriar) ? 'inline-flex' : 'none';
+  document.getElementById('overlay-termo').classList.add('aberto');
+  lucide.createIcons();
+}
+function fecharModalTermo(){ document.getElementById('overlay-termo').classList.remove('aberto'); }
+
+async function _comprimir(file, maxDim=1600, q=0.82){
+  try{ let bmp = window.createImageBitmap ? await createImageBitmap(file,{imageOrientation:'from-image'}).catch(()=>null) : null;
+    if(!bmp) bmp=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(file);});
+    const sc=Math.min(1,maxDim/Math.max(bmp.width,bmp.height)); const w=Math.round(bmp.width*sc),h=Math.round(bmp.height*sc);
+    const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(bmp,0,0,w,h);if(bmp.close)bmp.close();
+    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',q)); return (blob&&blob.size<file.size)?blob:file;
+  }catch(e){ return file; }
+}
+function _selecFotos(input){ [...(input.files||[])].forEach(f=>_fotosNovas.push(f)); input.value=''; _renderFotosGrid(); }
+function _renderFotosGrid(){
+  const g=document.getElementById('t-fotos-grid');
+  const exist=_fotosExist.map((u,i)=>`<img class="foto-thumb" src="${escH(fotoSrc(u))}" title="foto salva" alt="">`).join('');
+  const novas=_fotosNovas.map((f,i)=>`<img class="foto-thumb" src="${URL.createObjectURL(f)}" title="nova foto" alt="">`).join('');
+  g.innerHTML=exist+novas || '<span style="font-size:12px;color:var(--text-3)">Nenhuma foto.</span>';
+}
+
+async function _uploadArquivo(pasta, filename, blob, contentType){
+  const { data:{session} } = await db.auth.getSession();
+  const hdrs={'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`};
+  const initRes=await fetch('/api/upload',{method:'POST',headers:hdrs,body:JSON.stringify({path:pasta,filename,contentType})});
+  if(!initRes.ok) throw new Error('upload init: '+await initRes.text());
+  const {uploadUrl,filePath}=await initRes.json();
+  const CHUNK=10*1024*1024; let start=0;
+  while(start<blob.size){ const end=Math.min(start+CHUNK,blob.size);
+    const put=await fetch(uploadUrl,{method:'PUT',headers:{'Content-Range':`bytes ${start}-${end-1}/${blob.size}`,'Content-Type':contentType},body:blob.slice(start,end)});
+    if(!put.ok&&put.status!==202) throw new Error('upload chunk: '+put.status); start=end; }
+  return `/api/foto?path=${encodeURIComponent(filePath)}`;
+}
+function _pastaTermo(t){
+  const ano=new Date().getFullYear();
+  const cli=(t.cliente_nome||'cliente').replace(/[\/\\:*?"<>|#%~]/g,' ').replace(/\s+/g,' ').trim().slice(0,60)||'cliente';
+  const area=t.tipo==='assistencia'?'Termo de Assistência':'Termo de Devolução';
+  return `Obras e Clientes ${ano}/${cli}/${area}`;
+}
+
+async function salvarTermo(){
+  const erro=document.getElementById('termo-erro');
+  const obraV=document.getElementById('t-obra').value;
+  const clienteOutro=document.getElementById('t-cliente-outro').value.trim();
+  const obra=_obras.find(o=>String(o.id)===obraV);
+  const cliente_nome = obraV==='outro' ? clienteOutro : (obra?.nome_cliente||'');
+  const tecId=document.getElementById('t-tecnico').value;
+  if(!cliente_nome){ erro.textContent='Selecione o cliente (ou informe o avulso).'; erro.style.display='block'; return; }
+  if(!tecId){ erro.textContent='Selecione o técnico responsável.'; erro.style.display='block'; return; }
+  const itens=_lerItens();
+  if(!itens.length){ erro.textContent='Adicione ao menos um equipamento.'; erro.style.display='block'; return; }
+  const auxId=document.getElementById('t-auxiliar').value;
+  const tipo=document.getElementById('t-tipo').value;
+  const payload={
+    tipo, obra_id: obraV==='outro'?null:(obra?obra.id:null), cliente_nome,
+    tecnico_id: tecId?parseInt(tecId):null, tecnico_nome: _tecs.find(t=>String(t.id)===tecId)?.nome||null,
+    auxiliar_id: auxId?parseInt(auxId):null, auxiliar_nome: auxId?(_tecs.find(t=>String(t.id)===auxId)?.nome||null):null,
+    data_preenchimento: document.getElementById('t-data').value||null,
+    cliente_autorizou_em: tipo==='assistencia' ? (document.getElementById('t-autorizou').value||null) : null,
+    itens, observacoes: document.getElementById('t-obs').value.trim()||null,
+    atualizado_em:new Date().toISOString(),
+  };
+  const btn=document.getElementById('termo-salvar'); btn.disabled=true; btn.textContent='Salvando...';
+  try{
+    let id=_editTermo?_editTermo.id:null;
+    if(id){ const {error}=await db.from('termos_estoque').update(payload).eq('id',id); if(error) throw error; }
+    else{ payload.status='pendente'; payload.criado_por=_meuNome||null; payload.criado_em=new Date().toISOString();
+      const {data,error}=await db.from('termos_estoque').insert(payload).select('id').single(); if(error) throw error; id=data.id; }
+    // Upload fotos novas
+    if(_fotosNovas.length){
+      btn.textContent='Enviando fotos...';
+      const pasta=_pastaTermo({...payload, cliente_nome, tipo});
+      const urls=[..._fotosExist];
+      for(let i=0;i<_fotosNovas.length;i++){
+        try{ const blob=await _comprimir(_fotosNovas[i]); const url=await _uploadArquivo(pasta, `Termo ${id} Foto ${Date.now()}_${i}.jpg`, blob, 'image/jpeg'); urls.push(url); }
+        catch(e){ console.warn('foto falhou',e.message); }
+      }
+      await db.from('termos_estoque').update({ fotos_urls:urls }).eq('id',id);
+    } else if(_editTermo){
+      await db.from('termos_estoque').update({ fotos_urls:_fotosExist }).eq('id',id);
+    }
+    fecharModalTermo(); await carregar(); showToast('Termo salvo.','success');
+  }catch(e){ erro.textContent='Erro: '+e.message; erro.style.display='block'; }
+  finally{ btn.disabled=false; btn.innerHTML='<i data-lucide="save" style="width:14px;height:14px"></i> Salvar'; lucide.createIcons(); }
+}
+
+async function excluirTermo(){
+  if(!_editTermo) return; if(!confirm('Excluir este termo?')) return;
+  const {error}=await db.from('termos_estoque').delete().eq('id',_editTermo.id);
+  if(error){ showToast('Erro: '+error.message,'error'); return; }
+  fecharModalTermo(); await carregar(); showToast('Termo excluído.','success');
+}
+async function cancelarTermo(id){
+  if(!confirm('Cancelar este termo?')) return;
+  const {error}=await db.from('termos_estoque').update({status:'cancelado',atualizado_em:new Date().toISOString()}).eq('id',id);
+  if(error){ showToast('Erro: '+error.message,'error'); return; }
+  await carregar(); showToast('Termo cancelado.','success');
+}
+
+// ── Receber (assinatura do estoque) ──
+let _sigCtx=null,_sigHas=false,_sigCv=null;
+function abrirReceber(id){
+  const t=_termos.find(x=>x.id===id); if(!t) return; _recTermo=t;
+  const cfg=TIPO_COLS[t.tipo]||TIPO_COLS.devolucao;
+  const itensTxt=(t.itens||[]).map(it=>cfg.cols.map(c=>it[c.k]).filter(Boolean).join(' · ')).map(x=>'• '+escH(x)).join('<br>')||'—';
+  const fotos=(t.fotos_urls||[]).map(u=>`<img class="foto-thumb" src="${escH(fotoSrc(u))}" alt="">`).join('');
+  document.getElementById('receber-resumo').innerHTML=
+    `<div class="det-linha"><b>${escH(t.cliente_nome)}</b> · ${t.tipo==='assistencia'?'Assistência':'Devolução'}</div>`+
+    `<div class="det-linha">Técnico: <b>${escH(t.tecnico_nome||'—')}</b>${t.auxiliar_nome?(' · Aux: '+escH(t.auxiliar_nome)):''}</div>`+
+    `<div class="det-linha">${escH(cfg.obs)}: ${escH(t.observacoes||'—')}</div>`+
+    `<div class="det-linha" style="margin-top:8px">Equipamentos:<br>${itensTxt}</div>`+
+    (fotos?`<div class="fotos-grid" style="margin-top:10px">${fotos}</div>`:'');
+  document.getElementById('receb-por').textContent=_meuNome;
+  document.getElementById('receber-erro').style.display='none';
+  document.getElementById('overlay-receber').classList.add('aberto');
+  lucide.createIcons();
+  setTimeout(_initSig,50);
+}
+function fecharReceber(){ document.getElementById('overlay-receber').classList.remove('aberto'); }
+function _initSig(){
+  _sigCv=document.getElementById('sig'); if(!_sigCv) return; _sigCtx=_sigCv.getContext('2d');
+  _sigCv.width=_sigCv.clientWidth; _sigCv.height=170; _sigHas=false;
+  _sigCtx.lineWidth=2.4; _sigCtx.lineCap='round'; _sigCtx.lineJoin='round'; _sigCtx.strokeStyle='#111827';
+  let draw=false,last=null;
+  const pos=e=>{const r=_sigCv.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};};
+  const st=e=>{e.preventDefault();draw=true;last=pos(e);};
+  const mv=e=>{if(!draw)return;e.preventDefault();const p=pos(e);_sigCtx.beginPath();_sigCtx.moveTo(last.x,last.y);_sigCtx.lineTo(p.x,p.y);_sigCtx.stroke();last=p;_sigHas=true;};
+  const en=()=>{draw=false;};
+  _sigCv.onmousedown=st;_sigCv.onmousemove=mv;window.onmouseup=en;
+  _sigCv.ontouchstart=st;_sigCv.ontouchmove=mv;_sigCv.ontouchend=en;
+}
+function _limparSig(){ if(_sigCtx){_sigCtx.clearRect(0,0,_sigCv.width,_sigCv.height);_sigHas=false;} }
+
+async function confirmarRecebimento(){
+  const t=_recTermo; if(!t) return;
+  const erro=document.getElementById('receber-erro');
+  if(!_sigHas){ erro.textContent='Desenhe a assinatura do recebimento.'; erro.style.display='block'; return; }
+  const btn=document.getElementById('receber-salvar'); btn.disabled=true; btn.textContent='Salvando...';
+  try{
+    const agora=new Date().toISOString();
+    const pasta=_pastaTermo(t);
+    // assinatura
+    let assUrl=null;
+    try{ const blob=await new Promise(r=>_sigCv.toBlob(r,'image/png')); assUrl=await _uploadArquivo(pasta, `Termo ${t.id} Assinatura.png`, blob, 'image/png'); }
+    catch(e){ console.warn('assinatura upload',e.message); }
+    // atualiza termo
+    const upd={ status:'recebido', data_recebido_estoque:agora, recebido_por:_meuNome, recebido_por_id:_meuTecId, assinatura_url:assUrl, atualizado_em:agora };
+    const {error}=await db.from('termos_estoque').update(upd).eq('id',t.id); if(error) throw error;
+    Object.assign(t, upd);
+    // gera PDF + arquiva
+    try{
+      const info=await _gerarPDFTermo(t);
+      const pdfUrl=await _uploadArquivo(pasta, `Termo ${t.id}.pdf`, info.blob, 'application/pdf').catch(()=>null);
+      if(pdfUrl){ await db.from('termos_estoque').update({pdf_url:pdfUrl}).eq('id',t.id); t.pdf_url=pdfUrl; }
+      info.doc.save(`Termo ${t.tipo==='assistencia'?'Assistencia':'Devolucao'} ${(t.cliente_nome||'').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+    }catch(e){ console.warn('pdf',e.message); }
+    fecharReceber(); await carregar(); showToast('Recebimento confirmado.','success');
+  }catch(e){ erro.textContent='Erro: '+e.message; erro.style.display='block'; }
+  finally{ btn.disabled=false; btn.innerHTML='<i data-lucide="check" style="width:14px;height:14px"></i> Confirmar recebimento'; lucide.createIcons(); }
+}
+
+// ── PDF do termo ──
+async function _urlDataURL(url){ const r=await fetch(url); if(!r.ok) throw new Error('img'); const b=await r.blob(); return await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}); }
+async function _gerarPDFTermo(t){
+  const { jsPDF }=window.jspdf; const doc=new jsPDF({unit:'pt',format:'a4'});
+  const W=doc.internal.pageSize.getWidth(); const M=40; let y=50;
+  const cfg=TIPO_COLS[t.tipo]||TIPO_COLS.devolucao;
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20);
+  doc.text(cfg.titulo, W/2, y, {align:'center',maxWidth:W-2*M}); y+=(cfg.titulo.length>45?40:24);
+  doc.setDrawColor(62,207,142); doc.setLineWidth(2); doc.line(M,y,W-M,y); y+=18;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40);
+  const info=[['Cliente',t.cliente_nome||'—'],['Técnico responsável',t.tecnico_nome||'—'],['Auxiliar',t.auxiliar_nome||'—'],
+    ['Data de preenchimento',_fmtData(t.data_preenchimento)],['Data recebido pelo estoque', t.data_recebido_estoque?_fmtDataHora(t.data_recebido_estoque):'—']];
+  if(t.tipo==='assistencia') info.push(['Cliente autorizou o envio em',_fmtData(t.cliente_autorizou_em)]);
+  info.forEach(([k,v])=>{ doc.setFont('helvetica','bold'); doc.text(k+':',M,y); doc.setFont('helvetica','normal'); doc.text(String(v),M+150,y,{maxWidth:W-2*M-150}); y+=16; });
+  y+=6;
+  const head=[cfg.cols.map(c=>c.l)];
+  const body=(t.itens||[]).map(it=>cfg.cols.map(c=>it[c.k]||''));
+  doc.autoTable({startY:y,head,body,margin:{left:M,right:M},styles:{fontSize:9,cellPadding:4},headStyles:{fillColor:[15,23,42],textColor:[255,255,255]}});
+  y=doc.lastAutoTable.finalY+16;
+  if(t.observacoes){ doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text(cfg.obs+':',M,y); y+=14; doc.setFont('helvetica','normal'); doc.setFontSize(9); const lines=doc.splitTextToSize(t.observacoes,W-2*M); doc.text(lines,M,y); y+=lines.length*12+10; }
+  if(y>doc.internal.pageSize.getHeight()-150){ doc.addPage(); y=50; }
+  y+=20;
+  if(t.assinatura_url){ try{ const du=await _urlDataURL(fotoSrc(t.assinatura_url)); doc.addImage(du,'PNG',M,y,180,70); }catch(e){} }
+  doc.setDrawColor(120); doc.setLineWidth(0.7); doc.line(M,y+78,M+220,y+78);
+  doc.setFontSize(9); doc.setTextColor(90);
+  doc.text('Recebido por: '+(t.recebido_por||'—'), M, y+92);
+  if(t.data_recebido_estoque) doc.text('Em '+_fmtDataHora(t.data_recebido_estoque), M, y+106);
+  doc.setFontSize(8); doc.setTextColor(120); doc.text('Gerado pelo SAOS · Termo #'+t.id, M, doc.internal.pageSize.getHeight()-28);
+  const blob=doc.output('blob');
+  return { doc, blob };
+}
+async function baixarPDFTermo(id){
+  const t=_termos.find(x=>x.id===id); if(!t) return;
+  if(t.pdf_url){ try{ const r=await fetch(fotoSrc(t.pdf_url)); const b=await r.blob(); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`termo-${t.id}.pdf`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),5000); return; }catch(e){} }
+  try{ const info=await _gerarPDFTermo(t); info.doc.save(`termo-${t.id}.pdf`); }catch(e){ showToast('Erro no PDF: '+e.message,'error'); }
+}
+</script>
+</body>
+</html>

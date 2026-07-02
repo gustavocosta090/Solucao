@@ -71,7 +71,7 @@ function caminhoFotoSeguro(filePath) {
 
   // Caminhos de cliente: Obras e Clientes AAAA/[Cliente]/[area]/...
   const area = partes[2];
-  if (!['Fotos', 'Ordens de Serviço', 'Relatórios de Vistoria', 'Arquivos de Backups'].includes(area)) return false;
+  if (!['Fotos', 'Ordens de Serviço', 'Relatórios de Vistoria', 'Arquivos de Backups', 'Termo de Devolução', 'Termo de Assistência'].includes(area)) return false;
   if (area === 'Arquivos de Backups') return [...nomeArquivoExts, ...backupExts].includes(ext);
   return nomeArquivoExts.includes(ext);
 }

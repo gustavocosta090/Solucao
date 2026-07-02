@@ -548,7 +548,7 @@ function _fecharMobNav() {
 // A tabela `perfis` no Supabase (role → paginas[]) SOBRESCREVE estes padrões quando existir.
 var SAOS_NAV_LINKS = [
   { href: 'obras.html',                label: 'Obras',                  id: 'obras',                roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador','lider','estoque'] },
-  { href: 'agenda.html',               label: 'Agenda Técnica',         id: 'agenda',               roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos','lider','estoque'] },
+  { href: 'agenda.html',               label: 'Agenda Técnica',         id: 'agenda',               roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos','lider'] },
   { href: 'agenda_plantao.html',       label: 'Agenda de Plantão',      id: 'agenda-plantao',       roles: ['supervisor','coordenador','agendamento','tecnico','auxiliar','gerente_comercial','projetista','coordenador_projetos','lider'] },
   { href: 'agenda_vistorias.html',     label: 'Agenda de Vistorias',    id: 'agenda-vistorias',     roles: ['tecnico','auxiliar','supervisor','coordenador','agendamento','gerente_comercial','projetista','coordenador_projetos','vistoriador','lider'] },
   { href: 'assistencia.html',          label: 'Assistências',           id: 'assistencia',          roles: ['agendamento','supervisor','coordenador','lider'] },
@@ -563,7 +563,8 @@ var SAOS_NAV_LINKS = [
   { href: 'gerente_comercial.html',    label: 'Comercial',              id: 'comercial',            roles: ['gerente_comercial'] },
   { href: 'projetista.html',           label: 'Meu Painel',             id: 'projetista',           roles: ['projetista'] },
   { href: 'coordenador_projetos.html', label: 'Projetos',               id: 'coordenador-projetos', roles: ['coordenador_projetos'] },
-  { href: 'dashboard.html',            label: 'Painel Executivo',       id: 'dashboard',            roles: ['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador','lider','estoque','rh'] },
+  { href: 'dashboard.html',            label: 'Painel Executivo',       id: 'dashboard',            roles: ['supervisor','coordenador','agendamento','gerente_comercial','coordenador_projetos','projetista','vistoriador','lider','rh'] },
+  { href: 'estoque.html',              label: 'Estoque',                id: 'estoque',              roles: ['estoque','agendamento','coordenador','supervisor','admin_geral'] },
   { href: 'rh.html',                   label: 'RH',                     id: 'rh',                   roles: ['rh'] },
 ];
 
