@@ -1,5 +1,5 @@
 <!-- SAOS: viagens.html -->
-<!-- build: 2026-06-11 — guard aceita admin_geral -->
+<!-- build: 2026-06-30a — abre na semana atual; viagens antigas destacadas/ao fim; agrupa por serie+equipe (troca de tecnico = viagem separada) -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -50,6 +50,8 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .btn-limpar-f{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-3);font-size:12px;padding:8px 12px;cursor:pointer;font-family:inherit}
 .btn-limpar-f:hover{border-color:var(--border-hover);color:var(--text-2)}
 .vcard{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}
+.vcard-antiga{opacity:.62}
+.vcard-antiga:hover{opacity:1}
 .vcard:hover{border-color:var(--border-hover)}
 .vtop{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;background:var(--surface-2);border-bottom:1px solid var(--border)}
 .vdata{font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
@@ -155,17 +157,7 @@ function _semana(off){
   const {data:tList} = await _db.from('tecnicos').select('id,nome,nome_completo,cpf');
   _tecs = tList||[];
 
-  // Descobre semana com viagem mais próxima: -2 semanas a +8 semanas
-  let encontrou = false;
-  for(let off=-2; off<=8; off++){
-    const dias = _semana(off);
-    const {data:check, error:ce} = await _db.from('agendamentos')
-      .select('id').eq('status','viagem')
-      .gte('data',_iso(dias[0])).lte('data',_iso(dias[6])).limit(1);
-    if(ce) { console.warn('[viagens] detecção semana off='+off+':', ce.message); continue; }
-    if(check && check.length){ _off=off; encontrou=true; break; }
-  }
-  if(!encontrou) _off = 0; // sem viagens: mostra semana atual
+  _off = 0; // abre sempre na semana atual
 
   await _carregar();
   iniciarAutoRefresh(_carregar, 30000);
@@ -230,16 +222,19 @@ async function _carregar(){
 }
 
 // Agrupa agendamentos por série (serie_id) ou por agendamento individual
+// Chave da equipe (técnicos ordenados) — se um dia da série tiver equipe diferente, vira viagem separada
+function _tkey(a){ return [a.tecnico_id,a.auxiliar_id,a.auxiliar2_id,a.auxiliar3_id].filter(Boolean).map(Number).sort((x,y)=>x-y).join('-'); }
 function _agruparViagens(){
   const base = _agsFiltrados.length ? _agsFiltrados : _ags;
   const grupos = [];
   const visto  = new Set();
   base.forEach(ag => {
-    const chave = ag.serie_id || ('solo_'+ag.id);
+    const chave = (ag.serie_id ? 's'+ag.serie_id : 'solo_'+ag.id) + '|' + _tkey(ag);
     if(visto.has(chave)) return;
     visto.add(chave);
+    // Agrupa só os dias da MESMA série QUE TÊM A MESMA equipe (troca de técnico separa a viagem)
     const membros = ag.serie_id
-      ? _ags.filter(a => a.serie_id === ag.serie_id)
+      ? _ags.filter(a => a.serie_id === ag.serie_id && _tkey(a) === _tkey(ag))
       : [ag];
     membros.sort((a,b)=>a.data.localeCompare(b.data));
     grupos.push({ chave, membros, serie_id: ag.serie_id||null });
@@ -255,10 +250,18 @@ function _renderLista(dias){
   }
 
   const grupos = _agruparViagens();
+  const hojeISO = _iso(new Date());
+  grupos.sort((a,b)=>{
+    const aA = a.membros[a.membros.length-1].data < hojeISO ? 1 : 0;
+    const bA = b.membros[b.membros.length-1].data < hojeISO ? 1 : 0;
+    if(aA!==bA) return aA-bA;               // viagens antigas por último
+    return a.membros[0].data.localeCompare(b.membros[0].data);
+  });
 
   el.innerHTML = grupos.map(g=>{
     const ag0  = g.membros[0];
     const agN  = g.membros[g.membros.length-1];
+    const ehAntiga = agN.data < hojeISO;
     const cli  = (ag0._ob&&ag0._ob.nome_cliente)||ag0.cliente_outro||'(sem obra)';
     const tIds = [ag0.tecnico_id,ag0.auxiliar_id,ag0.auxiliar2_id,ag0.auxiliar3_id].filter(Boolean);
     const tNm  = tIds.map(id=>{const t=_tecs.find(t=>t.id===id);return t?t.nome:'';}).filter(Boolean).join(' · ')||'A definir';
@@ -277,11 +280,12 @@ function _renderLista(dias){
     const det = _dets[ag0.id]||{};
     const gid = 'g'+ag0.id; // id único para este grupo
 
-    return '<div class="vcard">'+
+    return '<div class="vcard'+(ehAntiga?' vcard-antiga':'')+'">'+
       '<div class="vtop">'+
         '<div style="flex:1;min-width:0">'+
           '<div class="vdata">'+(diaNome?diaNome+' — ':'')+periodo+
             '<span style="margin-left:8px;font-size:10px;background:rgba(62,207,142,.12);color:var(--primary);border:1px solid rgba(62,207,142,.25);border-radius:4px;padding:1px 6px;">'+nDias+' dia'+(nDias>1?'s':'')+'</span>'+
+            (ehAntiga?'<span style="margin-left:6px;font-size:10px;background:rgba(148,163,184,.15);color:#94A3B8;border:1px solid rgba(148,163,184,.3);border-radius:4px;padding:1px 6px;">Viagem antiga</span>':'')+
           '</div>'+
           '<div class="vcliente">'+escHtml(cli)+'</div>'+
           '<div class="vtec">'+escHtml(tNm)+'</div>'+
