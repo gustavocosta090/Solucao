@@ -78,6 +78,15 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 #sig{width:100%;height:170px;background:#fff;border:2px dashed #CBD5E1;border-radius:10px;touch-action:none;display:block;cursor:crosshair}
 .det-linha{font-size:13px;color:var(--text-2);margin-bottom:4px}
 .det-linha b{color:var(--text-1)}
+.prog-sec{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;padding:6px 10px;border-radius:7px}
+.prog-sec.viagem{background:rgba(62,207,142,.12);color:var(--primary)}
+.prog-sec.confirmado{background:rgba(37,99,235,.14);color:#93C5FD}
+.prog-sec.nao_confirmado{background:rgba(245,158,11,.14);color:var(--amber-text)}
+.prog-tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:9px}
+.prog-tbl{width:100%;border-collapse:collapse;font-size:12.5px;min-width:720px}
+.prog-tbl th{background:var(--surface-2);color:var(--text-2);text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;white-space:nowrap}
+.prog-tbl td{padding:8px 10px;border-top:1px solid var(--border);color:var(--text-1);vertical-align:top}
+.prog-tbl tr:hover td{background:var(--surface-2)}
 </style>
 <link rel="stylesheet" href="app-shell.css">
 </head>
@@ -129,6 +138,17 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
       </select>
     </div>
     <div id="receb-list"><div class="empty">Carregando...</div></div>
+  </div>
+
+  <!-- ABA PROGRAMAÇÃO DA SEMANA -->
+  <div class="tab-pane" id="pane-prog">
+    <div class="busca-bar" style="align-items:center">
+      <button class="btn-sec" onclick="mudarSemanaProg(-1)"><i data-lucide="chevron-left" style="width:15px;height:15px"></i></button>
+      <span id="prog-label" style="font-weight:700;min-width:220px;text-align:center">—</span>
+      <button class="btn-sec" onclick="mudarSemanaProg(1)"><i data-lucide="chevron-right" style="width:15px;height:15px"></i></button>
+      <button class="btn-sec" onclick="mudarSemanaProg(0,true)" style="margin-left:8px">Hoje</button>
+    </div>
+    <div id="prog-list"><div class="empty">Carregando...</div></div>
   </div>
 </div>
 
@@ -200,6 +220,7 @@ let _role='', _meuNome='', _meuTecId=null, _authToken='';
 let _termos=[], _obras=[], _tecs=[];
 let _editTermo=null, _fotosNovas=[], _fotosExist=[], _recTermo=null;
 let _podeCriar=false, _podeReceber=false;
+let _progOff=0, _progCarregou=false, _progAgs=[];
 
 const TIPO_COLS = {
   devolucao:  { titulo:'TERMO DE DEVOLUÇÃO DE EQUIPAMENTOS - ESTOQUE', hint:'(marca/modelo, quantidade, andar)', obs:'Observações / Avarias',
@@ -236,10 +257,11 @@ function fotoSrc(url){ if(!url||!_authToken) return url; return url + (url.inclu
 })();
 
 function trocarTab(t){
-  ['devolucao','estoque'].forEach(x=>{
+  ['devolucao','estoque','prog'].forEach(x=>{
     document.getElementById('tab-'+x)?.classList.toggle('active', x===t);
     document.getElementById('pane-'+x)?.classList.toggle('active', x===t);
   });
+  if(t==='prog' && !_progCarregou){ _progCarregou=true; carregarProg(); }
   lucide.createIcons();
 }
 
@@ -564,6 +586,58 @@ async function _gerarPDFTermo(t){
   const blob=doc.output('blob');
   return { doc, blob };
 }
+// ── Programação da semana (visão do estoque) ──
+const _DIAS_PROG=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+const _MESES_PROG=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function _isoP(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _semanaProg(off){ const h=new Date(),dow=h.getDay()||7,s=new Date(h); s.setDate(h.getDate()-dow+1+off*7); return Array.from({length:7},(_,i)=>{const d=new Date(s);d.setDate(s.getDate()+i);return d;}); }
+function mudarSemanaProg(d,hoje){ _progOff = hoje ? 0 : _progOff+d; carregarProg(); }
+
+async function carregarProg(){
+  const dias=_semanaProg(_progOff), d0=dias[0], d6=dias[6];
+  document.getElementById('prog-label').textContent = d0.getDate()+' '+_MESES_PROG[d0.getMonth()]+' — '+d6.getDate()+' '+_MESES_PROG[d6.getMonth()]+' '+d6.getFullYear();
+  document.getElementById('prog-list').innerHTML='<div class="empty">Carregando...</div>';
+  const { data, error } = await db.from('agendamentos')
+    .select('id,data,hora_inicio,tecnico_id,auxiliar_id,auxiliar2_id,auxiliar3_id,servico,veiculo,motorista_id,obra_id,cliente_outro,status')
+    .gte('data',_isoP(d0)).lte('data',_isoP(d6)).in('status',['viagem','confirmado','nao_confirmado'])
+    .order('data').order('hora_inicio');
+  _progAgs = error ? [] : (data||[]);
+  renderProg(dias);
+}
+
+function _nomeTec(id){ const t=_tecs.find(t=>t.id===id); return t?t.nome:''; }
+function _clienteAg(a){ if(a.obra_id){ const o=_obras.find(o=>String(o.id)===String(a.obra_id)); if(o) return o.nome_cliente; } return a.cliente_outro||'—'; }
+
+function renderProg(dias){
+  const el=document.getElementById('prog-list'); if(!el) return;
+  if(!_progAgs.length){ el.innerHTML='<div class="empty">Nenhum agendamento nesta semana.</div>'; return; }
+  const secoes=[
+    {key:'viagem', label:'Viagens'},
+    {key:'confirmado', label:'Confirmados'},
+    {key:'nao_confirmado', label:'Não confirmados'},
+  ];
+  let html='';
+  for(const s of secoes){
+    const ags=_progAgs.filter(a=>(a.status||'confirmado')===s.key)
+      .sort((a,b)=>(a.data+(a.hora_inicio||'')).localeCompare(b.data+(b.hora_inicio||'')));
+    if(!ags.length) continue;
+    html+=`<div class="prog-sec ${s.key}">${s.label} · ${ags.length}</div>`;
+    html+='<div class="prog-tbl-wrap"><table class="prog-tbl"><thead><tr>'+
+      '<th>Dia</th><th>Hora</th><th>Cliente / Obra</th><th>Técnicos</th><th>Serviço</th><th>Veículo</th><th>Motorista</th></tr></thead><tbody>';
+    html+=ags.map(a=>{
+      const di=dias.findIndex(x=>_isoP(x)===a.data);
+      const diaLabel=(di>=0?_DIAS_PROG[di]:'')+' '+a.data.slice(8,10)+'/'+a.data.slice(5,7);
+      const tecs=[a.tecnico_id,a.auxiliar_id,a.auxiliar2_id,a.auxiliar3_id].filter(Boolean).map(_nomeTec).filter(Boolean).join(' · ')||'A definir';
+      const mot=a.motorista_id?_nomeTec(a.motorista_id):'—';
+      return `<tr><td style="white-space:nowrap">${escH(diaLabel)}</td><td>${escH((a.hora_inicio||'').slice(0,5)||'—')}</td>`+
+        `<td>${escH(_clienteAg(a))}</td><td>${escH(tecs)}</td><td>${escH(a.servico||'—')}</td>`+
+        `<td>${escH(a.veiculo||'—')}</td><td>${escH(mot)}</td></tr>`;
+    }).join('');
+    html+='</tbody></table></div>';
+  }
+  el.innerHTML=html || '<div class="empty">Nenhum agendamento nesta semana.</div>';
+}
+
 async function baixarPDFTermo(id){
   const t=_termos.find(x=>x.id===id); if(!t) return;
   if(t.pdf_url){ try{ const r=await fetch(fotoSrc(t.pdf_url)); const b=await r.blob(); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`termo-${t.id}.pdf`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),5000); return; }catch(e){} }
