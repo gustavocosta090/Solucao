@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-30e — jwtToken atualizado no refresh (onAuthStateChange) p/ nao expirar nas APIs (Prog.Estoque etc.) -->
+<!-- build: 2026-06-30f — grade cria lane p/ tecnico bloqueado sem agendamento (bloqueio aparece em todas as semanas) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1918,6 +1918,20 @@ function renderGrade(dias) {
         const c = chaveCliente(ag);
         if (!tecSet.has(c)) { tecSet.add(c); ordemTecs.push(c); }
       });
+  });
+
+  // 1b. Também cria lane para técnicos BLOQUEADOS na semana (mesmo sem agendamento),
+  //     senão o bloqueio não aparece. Respeita o filtro de equipe.
+  const _idsEquipeFiltro = (filtroEquipe !== 'todas') ? new Set(tecnicosDaEquipe(parseInt(filtroEquipe))) : null;
+  dias.forEach(dia => {
+    const dataStr = fmtISO(dia);
+    (bloqueios || []).forEach(b => {
+      if (!b.tecnico_id) return;
+      if (dataStr < b.data_inicio || dataStr > b.data_fim) return;
+      if (_idsEquipeFiltro && !_idsEquipeFiltro.has(b.tecnico_id)) return;
+      const c = 'tec_' + b.tecnico_id;
+      if (!tecSet.has(c)) { tecSet.add(c); ordemTecs.push(c); }
+    });
   });
 
   // 2. Mapa agMapPorDia[diaIndex][chave] → agendamento
