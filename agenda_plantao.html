@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-30a — relatorio de plantao virou tabela resumo p/ financeiro (Nome/CPF/qtd FDS+valor/qtd feriado+valor/total) + baixa PDF -->
+<!-- build: 2026-06-30b — relatorio plantao por PERIODO (data inicio/fim) em vez de mes; botao relatorio visivel (id corrigido) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -894,20 +894,15 @@
 <div class="overlay" id="overlay-relatorio-mes" style="display:none" onclick="if(event.target===this)fecharModalRelatorioMes()" role="dialog" aria-modal="true">
   <div class="modal" style="max-width:380px" onclick="event.stopPropagation()">
     <h2 style="margin-bottom:16px;display:flex;align-items:center;gap:8px"><i data-lucide="file-text"></i> Relatório Mensal de Plantão</h2>
-    <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;line-height:1.5">Selecione o mês e ano para gerar o relatório com os valores de plantão de cada técnico.</p>
+    <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;line-height:1.5">Selecione o período (data início e fim) do pagamento. Conta os plantões dentro do intervalo.</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
       <div class="form-group" style="margin:0">
-        <label>Mês</label>
-        <select id="rel-mes">
-          <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-          <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
-          <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
-          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-        </select>
+        <label>Data início</label>
+        <input type="date" id="rel-ini" style="color-scheme:dark">
       </div>
       <div class="form-group" style="margin:0">
-        <label>Ano</label>
-        <input type="number" id="rel-ano" value="${new Date().getFullYear()}" min="2024" max="2030">
+        <label>Data fim</label>
+        <input type="date" id="rel-fim" style="color-scheme:dark">
       </div>
     </div>
     <div id="rel-erro" style="color:#f87171;font-size:12px;margin-bottom:8px;display:none"></div>
@@ -2314,8 +2309,12 @@ const MESES_PT_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Ju
 
 function abrirModalRelatorioMes() {
   const now = new Date();
-  document.getElementById('rel-mes').value = now.getMonth() + 1;
-  document.getElementById('rel-ano').value = now.getFullYear();
+  // Padrão: 01 do mês anterior até 01 do mês atual (ciclo de pagamento)
+  const iniD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const fimD = new Date(now.getFullYear(), now.getMonth(), 1);
+  const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  document.getElementById('rel-ini').value = iso(iniD);
+  document.getElementById('rel-fim').value = iso(fimD);
   document.getElementById('rel-erro').style.display = 'none';
   document.getElementById('overlay-relatorio-mes').style.display = 'flex';
   lucide.createIcons();
@@ -2332,23 +2331,22 @@ function valorPlantao(dataStr) {
 }
 
 async function gerarRelatorioMes() {
-  const mes  = parseInt(document.getElementById('rel-mes').value);
-  const ano  = parseInt(document.getElementById('rel-ano').value);
+  const ini  = document.getElementById('rel-ini').value;
+  const fim  = document.getElementById('rel-fim').value;
   const btn  = document.getElementById('btn-gerar-rel');
   const erro = document.getElementById('rel-erro');
   erro.style.display = 'none';
+  if (!ini || !fim || fim < ini) { erro.textContent = 'Informe um período válido (início e fim).'; erro.style.display = 'block'; return; }
   btn.disabled = true;
   btn.textContent = 'Gerando...';
 
   try {
-    // 1. Busca agendamentos do mês
-    const ini = `${ano}-${String(mes).padStart(2,'0')}-01`;
-    const fim = new Date(ano, mes, 0).toISOString().slice(0,10);
+    // 1. Busca agendamentos do período
     const { data: ags, error: agErr } = await db.from('agendamentos')
       .select('data, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, obras(nome_cliente), cliente_outro')
       .gte('data', ini).lte('data', fim).neq('status','cancelado');
     if (agErr) throw new Error(agErr.message);
-    if (!ags?.length) { erro.textContent = 'Sem plantões neste mês.'; erro.style.display = 'block'; btn.disabled = false; btn.textContent = 'Gerar e Enviar'; return; }
+    if (!ags?.length) { erro.textContent = 'Sem plantões no período.'; erro.style.display = 'block'; btn.disabled = false; btn.textContent = 'Gerar e Enviar'; return; }
 
     // 2. Garante que diasBloqueados está carregado
     if (!Object.keys(diasBloqueados).length) await carregarDiasBloqueados();
@@ -2381,8 +2379,8 @@ async function gerarRelatorioMes() {
     // 4. Gera PDF
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const mesNome = MESES_PT_FULL[mes - 1];
     const fmtData = iso => new Date(iso+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const periodoLabel = `${fmtData(ini)} a ${fmtData(fim)}`;
     const brl = v => `R$ ${v.toFixed(2).replace('.',',')}`;
 
     // Cabeçalho
@@ -2393,7 +2391,7 @@ async function gerarRelatorioMes() {
     doc.text('Solução Técnica', 14, 12);
     doc.setFontSize(11); doc.setFont('helvetica','normal');
     doc.setTextColor(161,161,170);
-    doc.text(`Relatório de Plantão — ${mesNome} ${ano}`, 14, 20);
+    doc.text(`Relatório de Plantão — ${periodoLabel}`, 14, 20);
     doc.setTextColor(62,207,142);
     doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 27);
 
@@ -2419,10 +2417,10 @@ async function gerarRelatorioMes() {
     const pdfBlob = doc.output('blob');
 
     // 5. Baixa (p/ enviar ao financeiro) e sobe ao SharePoint
-    const arquivo = `Relatorio Plantao ${mesNome} ${ano}.pdf`;
+    const arquivo = `Relatorio Plantao ${ini} a ${fim}.pdf`;
     doc.save(arquivo);
     btn.textContent = 'Enviando...';
-    const pasta   = `Agenda Tecnica/${ano}/Plantão`;
+    const pasta   = `Agenda Tecnica/${ini.slice(0,4)}/Plantão`;
     await uploadPDFServidor(pdfBlob, pasta, arquivo);
 
     fecharModalRelatorioMes();
