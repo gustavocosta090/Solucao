@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-19d — noturna: nome COMPLETO + CPF no PDF de pagamento (tecnicos.nome_completo/cpf) -->
+<!-- build: 2026-06-30a — PDF noturna: colunas Meia/Valor meia/Completa/Valor completa/Total por tecnico p/ financeiro -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -2638,6 +2638,7 @@ function exportarPDF() {
   });
 
   if (resumoNoturna.porTecnico.length) {
+    const VAL_MEIA = 75, VAL_COMP = 150;
     const totalMeiasTecnico = resumoNoturna.porTecnico.reduce((acc, r) => acc + r.meia, 0);
     const totalCompletasTecnico = resumoNoturna.porTecnico.reduce((acc, r) => acc + r.completa, 0);
     doc.autoTable({
@@ -2646,9 +2647,17 @@ function exportarPDF() {
       styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.5, lineColor: [228, 228, 231], lineWidth: 0.1 },
       headStyles: { fillColor: [62, 207, 142], textColor: [10, 10, 10], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [249, 250, 251] },
-      head: [['Técnico', 'CPF', 'Meia agenda', 'Completa', 'Valor a pagar']],
-      body: resumoNoturna.porTecnico.map(r => [r.tecnico, r.cpf || '—', r.meia, r.completa, formatarMoeda(r.total)]),
-      foot: [['Total geral', '', totalMeiasTecnico, totalCompletasTecnico, formatarMoeda(resumoNoturna.total)]],
+      head: [['Nome completo', 'CPF', 'Meia agenda', 'Valor meia', 'Agenda completa', 'Valor completa', 'Valor total']],
+      body: resumoNoturna.porTecnico.map(r => [
+        r.tecnico, r.cpf || '—',
+        r.meia, formatarMoeda(r.meia * VAL_MEIA),
+        r.completa, formatarMoeda(r.completa * VAL_COMP),
+        formatarMoeda(r.total),
+      ]),
+      foot: [['Total geral', '',
+        totalMeiasTecnico, formatarMoeda(totalMeiasTecnico * VAL_MEIA),
+        totalCompletasTecnico, formatarMoeda(totalCompletasTecnico * VAL_COMP),
+        formatarMoeda(resumoNoturna.total)]],
       footStyles: { fillColor: [24, 24, 27], textColor: [255, 255, 255], fontStyle: 'bold' },
     });
   }
