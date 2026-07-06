@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-30f — grade cria lane p/ tecnico bloqueado sem agendamento (bloqueio aparece em todas as semanas) -->
+<!-- build: 2026-06-30h — tecnico bloqueado: avisa e PERGUNTA se agenda mesmo assim (antes bloqueava) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1954,6 +1954,17 @@ function renderGrade(dias) {
     const t = tecnicos.find(t => t.id === parseInt(c.replace('tec_','')));
     return t ? t.nome : '?';
   };
+  // Todos os técnicos dos agendamentos da célula (equipe filtrada primeiro) — mostra "Fulano · Ciclano"
+  const nomesTecsCell = (ags, chave) => {
+    if (!ags || !ags.length) return nomeTec(chave);
+    let ids = [...new Set(ags.flatMap(a => [a.tecnico_id, a.auxiliar_id, a.auxiliar2_id, a.auxiliar3_id].filter(Boolean)))];
+    if (filtroEquipe !== 'todas') {
+      const eq = new Set(tecnicosDaEquipe(parseInt(filtroEquipe)));
+      ids = ids.slice().sort((a, b) => (eq.has(a) ? 0 : 1) - (eq.has(b) ? 0 : 1));
+    }
+    const nomes = ids.map(id => tecnicos.find(t => t.id === id)?.nome).filter(Boolean);
+    return nomes.length ? nomes.join(' · ') : nomeTec(chave);
+  };
 
   // 3. Headers (7 células)
   const headersHTML = dias.map((dia, i) => {
@@ -2000,7 +2011,7 @@ function renderGrade(dias) {
         const temConteudo = (ags && ags.length) || avisoBloq;
         linesHTML += `<div class="sc${bloqueio?' bloqueada-col':''}">
           ${temConteudo
-            ? `<div class="tec-label">${escHtml(nomeTec(chave))}</div>${avisoBloq}${ags && ags.length ? ags.map(a => cardHTML(a)).join('') : ''}`
+            ? `<div class="tec-label">${escHtml(nomesTecsCell(ags, chave))}</div>${avisoBloq}${ags && ags.length ? ags.map(a => cardHTML(a)).join('') : ''}`
             : ''}
         </div>`;
       });
@@ -2036,7 +2047,7 @@ function renderGrade(dias) {
         ? '<div class="mob-vazio">Sem agendamentos</div>'
         : grupos.map(({ chave, ags }) =>
             `<div class="mob-tec-group">
-               <div class="tec-label">${escHtml(nomeTec(chave))}</div>
+               <div class="tec-label">${escHtml(nomesTecsCell(ags, chave))}</div>
                ${ags.map(a => cardHTML(a)).join('')}
              </div>`
           ).join('');
@@ -2180,8 +2191,11 @@ async function toggleTecnicoEquipe(idStr, evt) {
       const bloqueio = tecnicoBloqueadoNaData(idStr, dataAgendamento, horaAgendamento);
       if (bloqueio) {
         const periodo = descricaoPeriodoBloqueio(bloqueio);
-        await alertModal('Técnico bloqueado', `O técnico não pode ser selecionado pois está bloqueado.\nPeríodo: ${periodo}\nMotivo: ${bloqueio.motivo}`, 'aviso');
-        return;
+        const prosseguir = await new Promise(resolve => confirmModal(
+          `Este técnico está BLOQUEADO nesta data.\nPeríodo: ${periodo}\nMotivo: ${bloqueio.motivo || '—'}\n\nDeseja agendá-lo mesmo assim?`,
+          () => resolve(true), () => resolve(false)
+        ));
+        if (!prosseguir) return;
       }
     }
     equipesSelecionadas = equipesSelecionadas.filter(x => x !== A_DEFINIR_ID);
@@ -2265,7 +2279,9 @@ function renderEquipeDropdownItems() {
       <span class="equipe-item-nome" style="font-style:italic;color:var(--text-3)">A definir equipe</span>
     </div>` : '';
 
-  const filtrados = tecnicos.filter(t => !busca || t.nome.toLowerCase().includes(busca))
+  // Só aparece para seleção quem está vinculado a alguma equipe (exclui gestão/administrativo sem equipe)
+  const _idsComEquipe = new Set((tecnicoEquipes || []).map(te => te.tecnico_id));
+  const filtrados = tecnicos.filter(t => _idsComEquipe.has(t.id) && (!busca || t.nome.toLowerCase().includes(busca)))
     .slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
 
   const itemHtml = (t) => {
