@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-25b — admin_geral edita/dispara plantao -->
+<!-- build: 2026-06-30a — relatorio de plantao virou tabela resumo p/ financeiro (Nome/CPF/qtd FDS+valor/qtd feriado+valor/total) + baixa PDF -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -2353,27 +2353,29 @@ async function gerarRelatorioMes() {
     // 2. Garante que diasBloqueados está carregado
     if (!Object.keys(diasBloqueados).length) await carregarDiasBloqueados();
 
-    // 3. Agrupa por técnico
-    const tecMap = {}; // tecId → { nome, dias: [{data, tipo, valor}] }
+    // 3. Agrupa por técnico (conta plantões de fim de semana × feriado)
+    const VAL_FDS = 75, VAL_FER = 100;
+    const tecMap = {}; // tecId → { id, nome, fds, feriado, total, _dias }
     const addTec = (id, data) => {
       if (!id) return;
       const tec = tecnicos.find(t => t.id === id);
       if (!tec) return;
-      if (!tecMap[id]) tecMap[id] = { nome: tec.nome, total: 0, dias: [] };
-      const valor = valorPlantao(data);
-      const dow   = new Date(data + 'T12:00').getDay();
-      const tipo  = diasBloqueados[data] ? `Feriado (${diasBloqueados[data].motivo.replace('Feriado Nacional: ','')})` : dow === 0 ? 'Domingo' : 'Sábado';
-      // evita duplicata do mesmo técnico no mesmo dia
-      if (!tecMap[id].dias.find(d => d.data === data)) {
-        tecMap[id].dias.push({ data, tipo, valor });
-        tecMap[id].total += valor;
-      }
+      if (!tecMap[id]) tecMap[id] = { id, nome: tec.nome, fds: 0, feriado: 0, total: 0, _dias: new Set() };
+      if (tecMap[id]._dias.has(data)) return; // evita duplicata do mesmo técnico no mesmo dia
+      tecMap[id]._dias.add(data);
+      if (diasBloqueados[data]) { tecMap[id].feriado += 1; tecMap[id].total += VAL_FER; }   // feriado
+      else { tecMap[id].fds += 1; tecMap[id].total += VAL_FDS; }                              // sáb/dom
     };
     ags.forEach(ag => {
       [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].forEach(id => addTec(id, ag.data));
     });
 
-    const tecs = Object.values(tecMap).sort((a,b) => a.nome.localeCompare(b.nome));
+    // Nome completo + CPF (p/ o financeiro)
+    const _relIds = Object.keys(tecMap).map(Number);
+    const { data: _tecInfo } = _relIds.length ? await db.from('tecnicos').select('id, nome_completo, cpf').in('id', _relIds) : { data: [] };
+    const _infoMap = {}; (_tecInfo || []).forEach(t => _infoMap[t.id] = t);
+
+    const tecs = Object.values(tecMap).sort((a,b) => (_infoMap[a.id]?.nome_completo || a.nome).localeCompare(_infoMap[b.id]?.nome_completo || b.nome, 'pt-BR'));
     if (!tecs.length) { erro.textContent = 'Nenhum técnico encontrado.'; erro.style.display = 'block'; btn.disabled = false; btn.textContent = 'Gerar e Enviar'; return; }
 
     // 4. Gera PDF
@@ -2395,63 +2397,36 @@ async function gerarRelatorioMes() {
     doc.setTextColor(62,207,142);
     doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 27);
 
-    let y = 38;
-
-    tecs.forEach((tec, idx) => {
-      if (y > 250) { doc.addPage(); y = 20; }
-
-      // Nome técnico
-      doc.setFillColor(30, 30, 30);
-      doc.roundedRect(10, y, 190, 8, 2, 2, 'F');
-      doc.setTextColor(255,255,255);
-      doc.setFontSize(11); doc.setFont('helvetica','bold');
-      doc.text(tec.nome, 14, y + 5.5);
-      doc.setTextColor(62,207,142);
-      doc.text(brl(tec.total), 196, y + 5.5, { align: 'right' });
-      y += 11;
-
-      // Tabela de dias
-      const rows = tec.dias.sort((a,b) => a.data.localeCompare(b.data)).map(d => [
-        fmtData(d.data),
-        d.tipo,
-        brl(d.valor),
-      ]);
-
-      doc.autoTable({
-        startY: y,
-        head: [['Data', 'Tipo', 'Valor']],
-        body: rows,
-        margin: { left: 14, right: 14 },
-        styles: { fontSize: 9, cellPadding: 2.5, textColor: [220,220,220], fillColor: [20,20,20], lineColor: [50,50,50], lineWidth: 0.1 },
-        headStyles: { fillColor: [35,35,35], textColor: [150,150,150], fontStyle: 'bold', fontSize: 8 },
-        alternateRowStyles: { fillColor: [25,25,25] },
-        columnStyles: { 2: { halign: 'right', textColor: [62,207,142] } },
-      });
-      y = doc.lastAutoTable.finalY + 8;
-
-      if (idx < tecs.length - 1 && y > 240) { doc.addPage(); y = 20; }
+    // Tabela resumo por técnico (formato p/ o financeiro — igual ao noturno)
+    const totFds = tecs.reduce((s,t)=>s+t.fds,0);
+    const totFer = tecs.reduce((s,t)=>s+t.feriado,0);
+    const totalGeral = tecs.reduce((s,t)=>s+t.total,0);
+    doc.autoTable({
+      startY: 38,
+      theme: 'grid',
+      styles: { font:'helvetica', fontSize: 8, cellPadding: 2.5, lineColor:[228,228,231], lineWidth:0.1 },
+      headStyles: { fillColor:[62,207,142], textColor:[10,10,10], fontStyle:'bold' },
+      alternateRowStyles: { fillColor:[249,250,251] },
+      head: [['Nome completo', 'CPF', 'Plantão fim de semana', 'Valor fim de semana', 'Plantão feriado', 'Valor feriado', 'Valor total']],
+      body: tecs.map(t => {
+        const info = _infoMap[t.id] || {};
+        return [ info.nome_completo || t.nome, info.cpf || '—', t.fds, brl(t.fds*VAL_FDS), t.feriado, brl(t.feriado*VAL_FER), brl(t.total) ];
+      }),
+      foot: [['Total geral', '', totFds, brl(totFds*VAL_FDS), totFer, brl(totFer*VAL_FER), brl(totalGeral)]],
+      footStyles: { fillColor:[24,24,27], textColor:[255,255,255], fontStyle:'bold' },
     });
-
-    // Resumo total geral
-    const totalGeral = tecs.reduce((s, t) => s + t.total, 0);
-    if (y > 260) { doc.addPage(); y = 20; }
-    doc.setFillColor(15, 40, 25);
-    doc.rect(10, y, 190, 10, 'F');
-    doc.setTextColor(62,207,142);
-    doc.setFontSize(12); doc.setFont('helvetica','bold');
-    doc.text('TOTAL GERAL', 14, y + 7);
-    doc.text(brl(totalGeral), 196, y + 7, { align: 'right' });
 
     const pdfBlob = doc.output('blob');
 
-    // 5. Upload para SharePoint (server-side para evitar CORS)
+    // 5. Baixa (p/ enviar ao financeiro) e sobe ao SharePoint
+    const arquivo = `Relatorio Plantao ${mesNome} ${ano}.pdf`;
+    doc.save(arquivo);
     btn.textContent = 'Enviando...';
     const pasta   = `Agenda Tecnica/${ano}/Plantão`;
-    const arquivo = `Relatorio Plantao ${mesNome} ${ano}.pdf`;
     await uploadPDFServidor(pdfBlob, pasta, arquivo);
 
     fecharModalRelatorioMes();
-    mostrarToast(`✅ Relatório "${arquivo}" enviado ao SharePoint!`, 'ok');
+    mostrarToast(`✅ Relatório "${arquivo}" baixado e salvo no SharePoint!`, 'ok');
 
   } catch(e) {
     console.error('[relatorioMes]', e);
