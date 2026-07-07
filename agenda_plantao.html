@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-30b — relatorio plantao por PERIODO (data inicio/fim) em vez de mes; botao relatorio visivel (id corrigido) -->
+<!-- build: 2026-06-30c — relatorio plantao filtra SO plantoes (cliente_outro); por periodo (data inicio/fim); botao visivel -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -2341,9 +2341,10 @@ async function gerarRelatorioMes() {
   btn.textContent = 'Gerando...';
 
   try {
-    // 1. Busca agendamentos do período
+    // 1. Busca SÓ os agendamentos de plantão do período (marcados por cliente_outro)
     const { data: ags, error: agErr } = await db.from('agendamentos')
       .select('data, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, obras(nome_cliente), cliente_outro')
+      .eq('cliente_outro', 'Plantão de automação e rede')
       .gte('data', ini).lte('data', fim).neq('status','cancelado');
     if (agErr) throw new Error(agErr.message);
     if (!ags?.length) { erro.textContent = 'Sem plantões no período.'; erro.style.display = 'block'; btn.disabled = false; btn.textContent = 'Gerar e Enviar'; return; }
