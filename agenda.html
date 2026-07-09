@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-30h — tecnico bloqueado: avisa e PERGUNTA se agenda mesmo assim (antes bloqueava) -->
+<!-- build: 2026-07-09a — propagação de série pergunta separado sobre dias passados + Ctrl+Z desfaz última ação -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1568,6 +1568,7 @@ let equipeDropdownAberto = false;
 let modoVisualizacao  = false;
 let roleAtual         = null;
 let _meuTecId         = null;
+let _undoAcao         = null; // { descricao, executar() } — última ação desfazível (Ctrl+Z), só sessão atual
 // numero_os agora vem direto do agendamento (campo ag.numero_os)
 const DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -2968,6 +2969,18 @@ async function salvarAgendamento() {
     serie_id:      serieId,
   };
 
+  // ── Snapshot para desfazer (Ctrl+Z) — captura o estado ANTES de mutar ──
+  const _undoAgAntes = agEditandoId ? { ...(agendamentos.find(a => a.id === agEditandoId) || {}) } : null;
+  let _undoOSAntes = [];
+  if (agEditandoId) {
+    const { data: osAntes } = await db.from('ordens_de_servico')
+      .select('id, data_servico, servico_planejado, endereco_servico, obra_id, tipo_servico, tecnico_id')
+      .eq('agendamento_id', agEditandoId)
+      .neq('status_aprovacao', 'cancelada');
+    _undoOSAntes = osAntes || [];
+  }
+  const _undoIdsCriados = []; // agendamentos novos inseridos nesta gravação (criar, ou dias extras ao replicar editando)
+
   // Salva cada dia (se replicando, salva em paralelo sequencial para OS numbers únicos)
   let error     = null;
   let savedAgId = null;
@@ -3034,6 +3047,7 @@ async function salvarAgendamento() {
 
     if (result.error) { error = result.error; break; }
     if (!savedAgId) savedAgId = result.id;
+    if (!(agEditandoId && diaStr === data) && result.id) _undoIdsCriados.push(result.id);
 
     // Cria OS pendentes:
     // - Sem mesmaOS: uma por dia (comportamento padrão)
@@ -3081,6 +3095,9 @@ async function salvarAgendamento() {
     invalidateCache('agenda-obras');
     invalidateCache('agenda-tecnicos');
 
+    // Snapshot dos dias da série que forem propagados (só preenchido se houver propagação) — usado pelo undo
+    let _undoSerieAntes = [];
+
     // Se editando um agendamento de uma série, pergunta se propaga para os demais
     if (agEditandoId) {
       const agAtual = agendamentos.find(a => a.id === agEditandoId);
@@ -3124,20 +3141,107 @@ async function salvarAgendamento() {
               endereco_outro: basePayload.endereco_outro,
             };
 
-            const { error: serieErr } = await db.from('agendamentos')
-              .update(updatePayload)
+            // Busca os demais dias da série p/ separar os que já passaram
+            const { data: outrosDias } = await db.from('agendamentos')
+              .select('id, data')
               .eq('serie_id', agAtual.serie_id)
               .neq('id', agEditandoId);
 
-            if (serieErr) {
-              mostrarToast('⚠ Série parcialmente atualizada: ' + serieErr.message, 'err');
-            } else {
-              mostrarToast('✅ Alterações aplicadas em toda a série.', 'ok');
+            const hoje       = hojeLocalISO();
+            const fmtDiaCurto = iso => new Date(iso + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+            const diasPassados = (outrosDias || []).filter(d => d.data < hoje);
+            const diasFuturos  = (outrosDias || []).filter(d => d.data >= hoje);
+
+            let idsAlvo = (outrosDias || []).map(d => d.id);
+            if (diasPassados.length > 0) {
+              const aplicarPassados = await new Promise(resolve => {
+                confirmModal(
+                  `Deseja aplicar também para os dias que já passaram?\n${diasPassados.map(d => fmtDiaCurto(d.data)).join('  ·  ')}`,
+                  () => resolve(true),
+                  () => resolve(false)
+                );
+              });
+              idsAlvo = aplicarPassados ? idsAlvo : diasFuturos.map(d => d.id);
+            }
+
+            if (idsAlvo.length > 0) {
+              // Snapshot antes de propagar, p/ permitir desfazer (Ctrl+Z)
+              const { data: antesSerie } = await db.from('agendamentos').select('*').in('id', idsAlvo);
+              _undoSerieAntes = antesSerie || [];
+
+              const { error: serieErr } = await db.from('agendamentos')
+                .update(updatePayload)
+                .in('id', idsAlvo);
+
+              if (serieErr) {
+                mostrarToast('⚠ Série parcialmente atualizada: ' + serieErr.message, 'err');
+              } else {
+                mostrarToast(`✅ Alterações aplicadas em ${idsAlvo.length} dia(s) da série.`, 'ok');
+              }
             }
           }
         }
       }
     }
+
+    // ── Registra a ação para desfazer (Ctrl+Z) ──────────────────
+    _registrarUndo(
+      (agEditandoId ? 'Editar' : 'Criar') + ' agendamento de ' + new Date(data + 'T12:00').toLocaleDateString('pt-BR'),
+      async () => {
+        // Remove os dias novos criados nesta gravação (criação, ou dias extras replicados ao editar)
+        if (_undoIdsCriados.length) {
+          await db.from('ordens_de_servico').delete().in('agendamento_id', _undoIdsCriados);
+          await db.from('agendamentos').delete().in('id', _undoIdsCriados);
+        }
+        // Restaura o dia editado e as OS ligadas a ele
+        if (agEditandoId && _undoAgAntes && Object.keys(_undoAgAntes).length) {
+          await db.from('agendamentos').update({
+            obra_id:        _undoAgAntes.obra_id,
+            cliente_outro:  _undoAgAntes.cliente_outro,
+            endereco_outro: _undoAgAntes.endereco_outro,
+            tecnico_id:     _undoAgAntes.tecnico_id,
+            auxiliar_id:    _undoAgAntes.auxiliar_id,
+            auxiliar2_id:   _undoAgAntes.auxiliar2_id,
+            auxiliar3_id:   _undoAgAntes.auxiliar3_id,
+            status:         _undoAgAntes.status,
+            hora_inicio:    _undoAgAntes.hora_inicio,
+            veiculo:        _undoAgAntes.veiculo,
+            servico:        _undoAgAntes.servico,
+            motorista_id:   _undoAgAntes.motorista_id,
+            data:           _undoAgAntes.data,
+            numero_os:      _undoAgAntes.numero_os,
+          }).eq('id', agEditandoId);
+
+          for (const os of _undoOSAntes) {
+            await db.from('ordens_de_servico').update({
+              data_servico:      os.data_servico,
+              servico_planejado: os.servico_planejado,
+              endereco_servico:  os.endereco_servico,
+              obra_id:           os.obra_id,
+              tipo_servico:      os.tipo_servico,
+              tecnico_id:        os.tecnico_id,
+            }).eq('id', os.id);
+          }
+        }
+        // Restaura os demais dias da série que foram propagados
+        for (const ag of _undoSerieAntes) {
+          await db.from('agendamentos').update({
+            obra_id:        ag.obra_id,
+            cliente_outro:  ag.cliente_outro,
+            endereco_outro: ag.endereco_outro,
+            tecnico_id:     ag.tecnico_id,
+            auxiliar_id:    ag.auxiliar_id,
+            auxiliar2_id:   ag.auxiliar2_id,
+            auxiliar3_id:   ag.auxiliar3_id,
+            status:         ag.status,
+            veiculo:        ag.veiculo,
+            servico:        ag.servico,
+            hora_inicio:    ag.hora_inicio,
+            motorista_id:   ag.motorista_id,
+          }).eq('id', ag.id);
+        }
+      }
+    );
 
     if (!agEditandoId && pendenciaOrigemId && savedAgId) {
       _salvarVinculoPendenciaAgenda(savedAgId, pendenciaOrigemId);
@@ -3553,26 +3657,41 @@ async function excluirAgendamento() {
 
   const ag = agendamentos.find(a => a.id === agEditandoId);
 
+  // Snapshot p/ desfazer (Ctrl+Z) — captura ANTES de mutar
+  const _undoAgParaExcluir = ag ? { ...ag } : null;
+  let _undoOSIdsCancelados = [];
+  let _undoPendenciaAntes  = null;
+  let _undoPendenciaCriadaId = null;
+
   // Cancela OSs pendentes vinculadas (preserva número para histórico)
   if (ag) {
-    const porAgendamento = await db
+    const { data: osParaCancelar } = await db
       .from('ordens_de_servico')
-      .update({ status_aprovacao: 'cancelada' })
+      .select('id')
       .eq('agendamento_id', agEditandoId)
       .eq('status_aprovacao', 'pendente');
 
-    if (porAgendamento.error && ag.obra_id && ag.data) {
-      await db
+    let idsCancelar = (osParaCancelar || []).map(o => o.id);
+
+    if (!idsCancelar.length && ag.obra_id && ag.data) {
+      const { data: osPorObraData } = await db
         .from('ordens_de_servico')
-        .update({ status_aprovacao: 'cancelada' })
+        .select('id')
         .eq('obra_id', ag.obra_id)
         .eq('data_servico', ag.data)
         .eq('status_aprovacao', 'pendente');
+      idsCancelar = (osPorObraData || []).map(o => o.id);
+    }
+
+    if (idsCancelar.length) {
+      await db.from('ordens_de_servico').update({ status_aprovacao: 'cancelada' }).in('id', idsCancelar);
+      _undoOSIdsCancelados = idsCancelar;
     }
   }
 
   // ── Verifica se havia uma pendência vinculada ─────────────────
   const pendenciaVinculada = await _buscarPendenciaVinculadaAoAgendamento(ag);
+  if (pendenciaVinculada) _undoPendenciaAntes = { ...pendenciaVinculada };
 
   const agParaDeletar = agendamentos.find(a => a.id === agEditandoId);
 
@@ -3612,11 +3731,13 @@ async function excluirAgendamento() {
         };
         if (_meuTecId) payloadPendencia.criado_por = _meuTecId;
 
-        const { error: pErr } = await db.from('pendencias').insert({
-          ...payloadPendencia
-        });
+        const { data: pendCriada, error: pErr } = await db.from('pendencias')
+          .insert({ ...payloadPendencia }).select('id').single();
         if (pErr) showToast('Pendência não criada: ' + pErr.message, 'warning');
-        else       showToast('Pendência criada.', 'success');
+        else {
+          showToast('Pendência criada.', 'success');
+          _undoPendenciaCriadaId = pendCriada?.id ?? null;
+        }
       }
     }
   }
@@ -3636,6 +3757,29 @@ async function excluirAgendamento() {
     dados_depois: null,
     criado_em:    new Date().toISOString(),
   });
+
+  // ── Registra a ação para desfazer (Ctrl+Z) ──────────────────
+  if (_undoAgParaExcluir) {
+    _registrarUndo(
+      'Excluir agendamento de ' + new Date(_undoAgParaExcluir.data + 'T12:00').toLocaleDateString('pt-BR'),
+      async () => {
+        const { id: _idOriginal, obras, ...campos } = _undoAgParaExcluir;
+        await db.from('agendamentos').insert({ id: _idOriginal, ...campos });
+        if (_undoOSIdsCancelados.length) {
+          await db.from('ordens_de_servico').update({ status_aprovacao: 'pendente' }).in('id', _undoOSIdsCancelados);
+        }
+        if (_undoPendenciaAntes) {
+          await db.from('pendencias').update({
+            data_marcada: _undoPendenciaAntes.data_marcada,
+            status:       _undoPendenciaAntes.status,
+          }).eq('id', _undoPendenciaAntes.id);
+        }
+        if (_undoPendenciaCriadaId) {
+          await db.from('pendencias').delete().eq('id', _undoPendenciaCriadaId);
+        }
+      }
+    );
+  }
 
   fecharModal();
   await carregarAgenda();
@@ -4190,6 +4334,31 @@ document.addEventListener('keydown', function(e) {
       ov.classList.remove('aberto');
     }
   }
+});
+
+// ── Undo (Ctrl+Z) — desfaz a última ação de agenda (só sessão atual, só a última) ──
+function _registrarUndo(descricao, executar) {
+  _undoAcao = { descricao, executar };
+}
+document.addEventListener('keydown', function(e) {
+  if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+  const ovModal = document.getElementById('overlay');
+  if (ovModal && ovModal.classList.contains('aberto')) return; // modal de agenda aberto: não interfere no undo nativo de texto
+  const tag = (document.activeElement?.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || document.activeElement?.isContentEditable) return;
+  if (!_undoAcao) return;
+  e.preventDefault();
+  const acao = _undoAcao;
+  confirmModal(`Desfazer última ação?\n${acao.descricao}`, async () => {
+    _undoAcao = null;
+    try {
+      await acao.executar();
+      mostrarToast('Ação desfeita.', 'ok');
+      await carregarAgenda();
+    } catch (err) {
+      mostrarToast('Erro ao desfazer: ' + err.message, 'err');
+    }
+  }, () => {});
 });
 
 // ── HELPER: Equipe de um agendamento (global) ────────────────
