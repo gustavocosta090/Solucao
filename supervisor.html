@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-30a — PDF noturna: colunas Meia/Valor meia/Completa/Valor completa/Total por tecnico p/ financeiro -->
+<!-- build: 2026-07-09a — marcação manual de agenda noturna (mesmo sem horário bater) + "jogar pro próximo relatório" -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1559,7 +1559,7 @@ async function carregarOSs() {
 
   const [{ data: osData, error: osError }, { data: tecList }, { data: teData }] = await Promise.all([
     db.from('ordens_de_servico')
-      .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
+      .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, noturna_manual, noturna_incluir_prox_relatorio, obras(nome_cliente, endereco)')
       .gte('data_servico', dataCorteISO)
       .lte('data_servico', hojeISO)
       .neq('status_aprovacao', 'cancelada')
@@ -1630,6 +1630,10 @@ function minutosDoHorario(horario) {
 }
 
 function agendaNoturnaInfo(o) {
+  // Marcação manual (supervisor forçou, mesmo sem o horário bater) sobrepõe a detecção automática
+  if (o.noturna_manual === 'meia')     return { tipo: 'meia',     label: 'Meia agenda noturna (manual)',     valor: 75  };
+  if (o.noturna_manual === 'completa') return { tipo: 'completa', label: 'Agenda noturna completa (manual)', valor: 150 };
+
   const fim = minutosDoHorario(o.horario_fim);
   if (fim === null) return null;
 
@@ -1659,6 +1663,74 @@ async function aprovarNoturna(osId, status) {
   if (os) os.noturna_status = status;
   fecharModal();
   filtrar();
+}
+
+// Marca manualmente uma OS como agenda noturna mesmo quando o horário não bateu com a
+// detecção automática (ex.: esqueceu de registrar o horário certo, sábado que não contou etc.)
+// Já aprova direto pra pagamento (o usuário escolhe o tipo/valor e confirma).
+async function marcarNoturnaManual(osId) {
+  const os = todasOSs.find(o => o.id === osId);
+  if (!os) return;
+
+  const tipo = await new Promise(resolve => {
+    confirmModal(
+      'Marcar esta OS como agenda noturna manualmente.\n\nÉ MEIA agenda noturna (R$75, 18h–21h)?\nClique "Não" para escolher COMPLETA (R$150).',
+      () => resolve('meia'),
+      () => {
+        confirmModal(
+          'É agenda noturna COMPLETA (R$150, após 21h ou até 05h)?',
+          () => resolve('completa'),
+          () => resolve(null)
+        );
+      }
+    );
+  });
+  if (!tipo) return;
+
+  let incluirProx = false;
+  if (os.data_servico) {
+    const dia = new Date(os.data_servico + 'T12:00').getDate();
+    if (dia < 25) {
+      incluirProx = await new Promise(resolve => {
+        confirmModal(
+          `Esta OS é do dia ${new Date(os.data_servico + 'T12:00').toLocaleDateString('pt-BR')} (antes do dia 25) — o relatório desse período provavelmente já foi enviado.\n\nJogar para o pagamento no próximo relatório?`,
+          () => resolve(true),
+          () => resolve(false)
+        );
+      });
+    }
+  }
+
+  const { error } = await db.from('ordens_de_servico').update({
+    noturna_manual: tipo,
+    noturna_status: 'aprovada',
+    noturna_incluir_prox_relatorio: incluirProx,
+  }).eq('id', osId);
+  if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+
+  os.noturna_manual = tipo;
+  os.noturna_status = 'aprovada';
+  os.noturna_incluir_prox_relatorio = incluirProx;
+
+  showToast(
+    `Marcada como agenda noturna (${tipo === 'meia' ? 'meia' : 'completa'})${incluirProx ? ' — incluída no próximo relatório' : ''}.`,
+    'success'
+  );
+  fecharModal();
+  filtrar();
+}
+
+async function removerNoturnaManual(osId) {
+  confirmModal('Remover a marcação manual de agenda noturna desta OS?', async () => {
+    const { error } = await db.from('ordens_de_servico').update({
+      noturna_manual: null, noturna_status: null, noturna_incluir_prox_relatorio: false,
+    }).eq('id', osId);
+    if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+    const os = todasOSs.find(o => o.id === osId);
+    if (os) { os.noturna_manual = null; os.noturna_status = null; os.noturna_incluir_prox_relatorio = false; }
+    fecharModal();
+    filtrar();
+  });
 }
 
 function calcularMinutosBH(o) {
@@ -1778,9 +1850,15 @@ function modalRelatorioNoturna() {
     ? `Período: ${fDi ? new Date(fDi+'T12:00').toLocaleDateString('pt-BR') : '—'} a ${fDf ? new Date(fDf+'T12:00').toLocaleDateString('pt-BR') : 'hoje'}`
     : 'Todo o período registrado';
 
-  const noturnas   = filtradas.filter(o => isAgendaNoturna(o) && o.noturna_status !== 'banco_horas');
+  // Une as OSs do período filtrado com as marcadas manualmente p/ "jogar pro próximo relatório"
+  // (essas entram MESMO fora do período/filtro selecionado — foi essa a intenção ao marcar).
+  const _mapNoturnas = new Map();
+  filtradas.forEach(o => { if (isAgendaNoturna(o) && o.noturna_status !== 'banco_horas') _mapNoturnas.set(o.id, o); });
+  todasOSs.forEach(o => { if (o.noturna_incluir_prox_relatorio && isAgendaNoturna(o) && o.noturna_status !== 'banco_horas') _mapNoturnas.set(o.id, o); });
+  const noturnas   = [..._mapNoturnas.values()];
   const aprovadas  = noturnas.filter(o => o.noturna_status === 'aprovada');
   const aguardando = noturnas.filter(o => o.noturna_status !== 'aprovada');
+  const incluidasProxRelatorio = aprovadas.filter(o => o.noturna_incluir_prox_relatorio);
 
   // Agrupa por técnico (por ID — evita juntar homônimos, ex.: os 4 Lucas)
   const porTec = {};
@@ -1822,6 +1900,7 @@ function modalRelatorioNoturna() {
   document.getElementById('modalBHTitulo').textContent = 'Agenda Noturna — Relatório de pagamento';
   document.getElementById('modalBHBody').innerHTML = `
     <p style="color:var(--text-2);font-size:12px;margin-bottom:10px;">${periodoLabel} · banco de horas excluído</p>
+    ${incluidasProxRelatorio.length ? `<p style="color:var(--amber);font-size:12px;margin-bottom:12px;">📋 ${incluidasProxRelatorio.length} agenda(s) noturna(s) de período(s) anterior(es), marcada(s) manualmente para entrar neste relatório.</p>` : ''}
     ${aguardando.length ? `<p style="color:#FCD34D;font-size:12px;margin-bottom:12px;">⚠️ ${aguardando.length} agenda(s) noturna(s) <strong>aguardando decisão</strong> — defina "Pagar" ou "Banco de horas" (ao abrir a OS) antes de fechar o pagamento; elas não entram neste total.</p>` : ''}
     ${aprovadas.length ? `
     <table class="bh-table">
@@ -1887,7 +1966,7 @@ async function filtrar() {
       document.getElementById('tabelaEl').style.display  = 'none';
       const { data: osData } = await db
         .from('ordens_de_servico')
-        .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
+        .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, noturna_manual, noturna_incluir_prox_relatorio, obras(nome_cliente, endereco)')
         .eq('status_aprovacao', 'cancelada')
         .order('criado_em', { ascending: false });
       const semObraC = (osData || []).filter(o => !o.obra_id && o.agendamento_id).map(o => o.agendamento_id);
@@ -1933,7 +2012,7 @@ async function filtrar() {
 
     const [{ data: osData }, { data: tecList }, { data: teData }] = await Promise.all([
       db.from('ordens_de_servico')
-        .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, obras(nome_cliente, endereco)')
+        .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, noturna_manual, noturna_incluir_prox_relatorio, obras(nome_cliente, endereco)')
         .gte('data_servico', fDi)
         .neq('status_aprovacao', 'cancelada')
         .order('criado_em', { ascending: false }),
@@ -2145,13 +2224,19 @@ function verOS(id) {
     ${alertaNoturna ? `
     <div class="detail-item full">
       <label>Agenda noturna</label>
-      <div style="margin-bottom:10px;color:var(--text-2);font-size:13px;">${escHtml(alertaNoturna.label)} · ${formatarMoeda(alertaNoturna.valor)} por técnico${os.noturna_status === 'aprovada' ? ' · <strong style="color:var(--primary)">✅ Aprovada</strong>' : os.noturna_status === 'banco_horas' ? ' · <strong style="color:#A5B4FC">⏱ Banco de horas</strong>' : ' · <em style="color:var(--amber)">Aguardando decisão</em>'}</div>
+      <div style="margin-bottom:10px;color:var(--text-2);font-size:13px;">${escHtml(alertaNoturna.label)} · ${formatarMoeda(alertaNoturna.valor)} por técnico${os.noturna_status === 'aprovada' ? ' · <strong style="color:var(--primary)">✅ Aprovada</strong>' : os.noturna_status === 'banco_horas' ? ' · <strong style="color:#A5B4FC">⏱ Banco de horas</strong>' : ' · <em style="color:var(--amber)">Aguardando decisão</em>'}${os.noturna_incluir_prox_relatorio ? ' · <strong style="color:var(--amber)">📋 Incluída no próximo relatório</strong>' : ''}</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <button class="btn-aprovar" style="${os.noturna_status === 'aprovada' ? 'box-shadow:0 0 0 2px var(--primary);' : 'opacity:.7;'}" onclick="aprovarNoturna(${os.id},'aprovada')"><i data-lucide="check-circle"></i> Pagar ${formatarMoeda(alertaNoturna.valor)}/técnico</button>
         <button class="btn-reprovar" style="${os.noturna_status === 'banco_horas' ? 'box-shadow:0 0 0 2px #A5B4FC;' : 'opacity:.7;'}" onclick="aprovarNoturna(${os.id},'banco_horas')"><i data-lucide="clock"></i> Banco de horas</button>
         ${os.noturna_status ? `<button class="btn-ver" onclick="aprovarNoturna(${os.id},null)"><i data-lucide="x"></i> Desfazer</button>` : ''}
+        ${os.noturna_manual ? `<button class="btn-ver" onclick="removerNoturnaManual(${os.id})"><i data-lucide="undo-2"></i> Remover marcação manual</button>` : ''}
       </div>
-    </div>` : ''}
+    </div>` : `
+    <div class="detail-item full">
+      <label>Agenda noturna</label>
+      <div style="margin-bottom:10px;color:var(--text-2);font-size:13px;">O sistema não identificou esta OS como noturna pelo horário registrado.</div>
+      <button class="btn-ver" onclick="marcarNoturnaManual(${os.id})"><i data-lucide="moon"></i> Marcar como agenda noturna (manual)</button>
+    </div>`}
     <div class="detail-item full">
       <label>Obra</label>
       <span><strong>${escHtml(os.obras?.nome_cliente || os._cliente_outro || '—')}</strong>${os.obras?.endereco ? `<span class="detail-address"><i data-lucide="map-pin"></i>${escHtml(os.obras.endereco)}</span>` : ''}</span>
@@ -2618,8 +2703,29 @@ function exportarPDF() {
 
   const concluidas = filtradas.filter(o => statusOSLabel(o) === 'Concluída').length;
   const pendentes = filtradas.length - concluidas;
-  const resumoNoturna = resumoAgendaNoturna(filtradas);
+
+  // Inclui na tabela de noturnas as OSs marcadas manualmente p/ "próximo relatório",
+  // mesmo que fiquem fora do período/filtro selecionado nesta exportação.
+  const _idsFiltradas = new Set(filtradas.map(o => o.id));
+  const _noturnasExtra = todasOSs.filter(o => o.noturna_incluir_prox_relatorio && !_idsFiltradas.has(o.id));
+  const listaParaNoturna = _noturnasExtra.length ? [...filtradas, ..._noturnasExtra] : filtradas;
+  const resumoNoturna = resumoAgendaNoturna(listaParaNoturna);
   const noturnas = resumoNoturna.meia + resumoNoturna.completa;
+
+  // "Consome" a marcação: já entrou neste relatório, não deve aparecer forçada no próximo
+  const _idsConsumirFlag = listaParaNoturna
+    .filter(o => o.noturna_incluir_prox_relatorio && o.noturna_status === 'aprovada')
+    .map(o => o.id);
+  if (_idsConsumirFlag.length) {
+    db.from('ordens_de_servico').update({ noturna_incluir_prox_relatorio: false }).in('id', _idsConsumirFlag)
+      .then(({ error }) => {
+        if (error) return;
+        _idsConsumirFlag.forEach(id => {
+          const o = todasOSs.find(x => x.id === id);
+          if (o) o.noturna_incluir_prox_relatorio = false;
+        });
+      });
+  }
   const comFotos = filtradas.filter(o => o.fotos_urls?.length > 0).length;
   const resumoHead = ['Total', 'Concluídas', 'Meia noturna', 'Noturna completa', 'Total a pagar'];
   const resumoBody = [filtradas.length, concluidas, resumoNoturna.meia, resumoNoturna.completa, formatarMoeda(resumoNoturna.total)];

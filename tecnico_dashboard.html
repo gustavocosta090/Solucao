@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-12 — banner de OS atrasadas do técnico -->
+<!-- build: 2026-07-09a — card "Agenda noturna p/ pagamento" (quantidade + valor) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -54,7 +54,7 @@
   /* ── Stats ── */
   .stats {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 12px;
     margin-bottom: 28px;
   }
@@ -77,6 +77,14 @@
 
   .stat-num.verde { color: #3ECF8E; }
   .stat-num.amarelo { color: #F59E0B; }
+  .stat-num.roxo { color: #A78BFA; }
+
+  .stat-sub {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-top: 2px;
+  }
 
   .stat-label {
     font-size: 0.75rem;
@@ -559,7 +567,7 @@
   /* ── Responsive ── */
   @media (max-width: 700px) {
     main { padding: 16px 12px; }
-    .stats { gap: 8px; }
+    .stats { gap: 8px; grid-template-columns: repeat(2, 1fr); }
     .stat-card { padding: 14px; }
     .stat-num { font-size: 1.5rem; }
     .tabela-wrap { display: none; }
@@ -647,6 +655,11 @@
     <div class="stat-card">
       <div class="stat-num amarelo" id="statPendentes">—</div>
       <div class="stat-label">Pendentes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num roxo" id="statNoturnas">—</div>
+      <div class="stat-label">Agenda noturna p/ pagamento</div>
+      <div class="stat-sub" id="statNoturnasValor"></div>
     </div>
   </div>
 
@@ -770,6 +783,23 @@ function fotoSrc(url) {
   await carregarOSs();
 })();
 
+// ── Agenda noturna (mesma lógica de supervisor.html) ──────────
+function _minutosDoHorario(horario) {
+  const valor = String(horario || '').slice(0, 5);
+  const [h, m] = valor.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
+}
+function _agendaNoturnaInfo(o) {
+  if (o.noturna_manual === 'meia')     return { tipo: 'meia',     valor: 75  };
+  if (o.noturna_manual === 'completa') return { tipo: 'completa', valor: 150 };
+  const fim = _minutosDoHorario(o.horario_fim);
+  if (fim === null) return null;
+  if (fim >= (18 * 60) && fim <= (21 * 60)) return { tipo: 'meia', valor: 75 };
+  if (fim >= (21 * 60 + 1) || fim <= (5 * 60)) return { tipo: 'completa', valor: 150 };
+  return null;
+}
+
 async function carregarOSs() {
   const id = tecnicoAtual.id;
   let data = null;
@@ -825,6 +855,15 @@ async function carregarOSs() {
   document.getElementById('statTotal').textContent     = todasOSs.length;
   document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
   document.getElementById('statPendentes').textContent = todasOSs.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
+
+  // Agendas noturnas já aprovadas pra pagamento (conta e soma o valor)
+  const noturnasAprovadas = todasOSs.filter(o =>
+    o.status_aprovacao !== 'cancelada' && o.noturna_status === 'aprovada' && _agendaNoturnaInfo(o));
+  const valorNoturnas = noturnasAprovadas.reduce((s, o) => s + (_agendaNoturnaInfo(o)?.valor || 0), 0);
+  document.getElementById('statNoturnas').textContent = noturnasAprovadas.length;
+  document.getElementById('statNoturnasValor').textContent = noturnasAprovadas.length
+    ? valorNoturnas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    : '';
 
   // Alerta de OS atrasadas (pendente + data_servico < hoje)
   const atrasadas = todasOSs.filter(o =>
