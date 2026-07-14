@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09a — propagação de série pergunta separado sobre dias passados + Ctrl+Z desfaz última ação -->
+<!-- build: 2026-07-09h — fix: botão Menu (ações da agenda) vazava pra técnico/auxiliar; agora só coordenador/admin_geral/supervisor/agendamento/lider/estoque -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1659,6 +1659,12 @@ async function init() {
   const podeEditar = ['agendamento', 'coordenador', 'supervisor', 'lider', 'admin_geral'].includes(roleAtual);
   const podeDisparar = ['agendamento', 'coordenador', 'supervisor', 'lider', 'admin_geral'].includes(roleAtual);
 
+  // Menu de ações (botão "Menu"): só pra quem edita/dispara agenda, ou estoque (só enxerga
+  // "Prog. Estoque" lá dentro). Técnico/auxiliar e qualquer outro role de visualização não veem
+  // o botão do menu de jeito nenhum — antes ele aparecia pra todo mundo com itens vazando.
+  const btnMenuAcoes = document.getElementById('btn-menu-acoes');
+  if (btnMenuAcoes) btnMenuAcoes.style.display = (podeEditar || roleAtual === 'estoque') ? '' : 'none';
+
   if (!podeEditar) {
     modoVisualizacao = true;
     const btnNovo = document.getElementById('btn-novo');
@@ -1667,6 +1673,8 @@ async function init() {
     if (btnBloqueio) btnBloqueio.style.display = 'none';
     const btnFrota = document.getElementById('btn-frota');
     if (btnFrota) btnFrota.style.display = 'none';
+    const btnDisp = document.getElementById('btn-disp');
+    if (btnDisp) btnDisp.style.display = 'none';
   }
 
   // Inicializa date picker com hoje
@@ -1689,6 +1697,12 @@ async function init() {
     if (dpWrap) dpWrap.style.display = 'none';
     const btnSem = document.getElementById('btn-semana-tec');
     if (btnSem) btnSem.style.display = 'none';
+    const btnWa = document.getElementById('btn-whatsapp');
+    if (btnWa) btnWa.style.display = 'none';
+    const btnSp = document.getElementById('btn-exportar-sp');
+    if (btnSp) btnSp.style.display = 'none';
+    const btnEst = document.getElementById('btn-estoque');
+    if (btnEst) btnEst.style.display = 'none';
   }
 
   // Role 'estoque': não edita/dispara, mas pode gerar a Programação de Estoque
