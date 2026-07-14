@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09f — Agenda Noturna: sábado/domingo/feriado sempre completa R$150 (mesma regra do supervisor.html) -->
+<!-- build: 2026-07-09g — fix: filtro de data não atualizava os cards Total/Concluídas/Pendentes; Agenda Noturna agora usa ciclo fixo 25-24 automático, mostra período no card -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -660,6 +660,7 @@
       <div class="stat-num roxo" id="statNoturnas">—</div>
       <div class="stat-label">Agenda noturna p/ pagamento</div>
       <div class="stat-sub" id="statNoturnasValor"></div>
+      <div class="stat-sub" id="statNoturnasPeriodo" style="font-weight:400;color:var(--text-3);margin-top:1px;"></div>
     </div>
   </div>
 
@@ -813,6 +814,32 @@ function _agendaNoturnaInfo(o) {
   return null;
 }
 
+// Ciclo de pagamento da Agenda Noturna: dia 25 do mês anterior até dia 24 do mês atual.
+// Calculado sempre a partir de hoje — não depende do filtro de data da tela, atualiza sozinho.
+function _periodoPagamentoNoturno() {
+  const hoje = new Date();
+  const mesFim = hoje.getDate() >= 25 ? hoje.getMonth() + 1 : hoje.getMonth();
+  const fim    = new Date(hoje.getFullYear(), mesFim, 24);
+  const inicio = new Date(hoje.getFullYear(), mesFim - 1, 25);
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const br  = d => d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+  return { inicio: iso(inicio), fim: iso(fim), label: `${br(inicio)} a ${br(fim)}` };
+}
+
+function _atualizarStatNoturna() {
+  const periodo = _periodoPagamentoNoturno();
+  const noturnasAprovadas = todasOSs.filter(o =>
+    o.status_aprovacao !== 'cancelada' && o.noturna_status === 'aprovada' &&
+    o.data_servico && o.data_servico >= periodo.inicio && o.data_servico <= periodo.fim &&
+    _agendaNoturnaInfo(o));
+  const valorNoturnas = noturnasAprovadas.reduce((s, o) => s + (_agendaNoturnaInfo(o)?.valor || 0), 0);
+  document.getElementById('statNoturnas').textContent = noturnasAprovadas.length;
+  document.getElementById('statNoturnasValor').textContent = noturnasAprovadas.length
+    ? valorNoturnas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    : 'R$ 0,00';
+  document.getElementById('statNoturnasPeriodo').textContent = `Período: ${periodo.label}`;
+}
+
 async function carregarOSs() {
   const id = tecnicoAtual.id;
   let data = null;
@@ -867,18 +894,9 @@ async function carregarOSs() {
     todasOSs.forEach(o => { o._cliente_outro = agMap[o.agendamento_id] || null; });
   }
 
-  document.getElementById('statTotal').textContent     = todasOSs.length;
-  document.getElementById('statAprovadas').textContent = todasOSs.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
-  document.getElementById('statPendentes').textContent = todasOSs.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
-
-  // Agendas noturnas já aprovadas pra pagamento (conta e soma o valor)
-  const noturnasAprovadas = todasOSs.filter(o =>
-    o.status_aprovacao !== 'cancelada' && o.noturna_status === 'aprovada' && _agendaNoturnaInfo(o));
-  const valorNoturnas = noturnasAprovadas.reduce((s, o) => s + (_agendaNoturnaInfo(o)?.valor || 0), 0);
-  document.getElementById('statNoturnas').textContent = noturnasAprovadas.length;
-  document.getElementById('statNoturnasValor').textContent = noturnasAprovadas.length
-    ? valorNoturnas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-    : '';
+  // Total/Concluídas/Pendentes são recalculados em filtrar() (respeitam o filtro de data).
+  // Agenda Noturna tem período próprio (ciclo de pagamento), independente do filtro de data — ver _atualizarStatNoturna().
+  _atualizarStatNoturna();
 
   // Alerta de OS atrasadas (pendente + data_servico < hoje)
   const atrasadas = todasOSs.filter(o =>
@@ -909,17 +927,26 @@ function filtrar() {
   const dataFim    = document.getElementById('dataFim').value;
   const busca      = (document.getElementById('busca').value || '').toLowerCase().trim();
 
-  const filtradas = todasOSs.filter(o => {
-    const dataOS   = (o.data_servico || o.criado_em || '').slice(0, 10);
-    const stOS = o.status_aprovacao || 'pendente';
-    // Normalizar: aprovada antiga = concluida, reprovada = pendente
-    const stNorm = stOS === 'aprovada' ? 'concluida' : stOS === 'reprovada' ? 'pendente' : stOS;
-    const matchStatus = filtroStatus === 'todos' || stNorm === filtroStatus;
+  // Respeita data + busca (mas não o chip de status) — é a base dos cards Total/Concluídas/Pendentes,
+  // que antes ficavam fixos e não reagiam ao filtro de data.
+  const noPeriodo = todasOSs.filter(o => {
+    const dataOS = (o.data_servico || o.criado_em || '').slice(0, 10);
     const matchInicio = !dataInicio || dataOS >= dataInicio;
     const matchFim    = !dataFim    || dataOS <= dataFim;
     const matchBusca  = !busca || (o.obras?.nome_cliente || o._cliente_outro || '').toLowerCase().includes(busca)
                                || (o.obras?.endereco || '').toLowerCase().includes(busca);
-    return matchStatus && matchInicio && matchFim && matchBusca;
+    return matchInicio && matchFim && matchBusca;
+  });
+
+  document.getElementById('statTotal').textContent     = noPeriodo.length;
+  document.getElementById('statAprovadas').textContent = noPeriodo.filter(o => o.status_aprovacao === 'concluida' || o.status_aprovacao === 'aprovada').length;
+  document.getElementById('statPendentes').textContent = noPeriodo.filter(o => !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada').length;
+
+  const filtradas = noPeriodo.filter(o => {
+    const stOS = o.status_aprovacao || 'pendente';
+    // Normalizar: aprovada antiga = concluida, reprovada = pendente
+    const stNorm = stOS === 'aprovada' ? 'concluida' : stOS === 'reprovada' ? 'pendente' : stOS;
+    return filtroStatus === 'todos' || stNorm === filtroStatus;
   });
 
   renderTabela(filtradas);
