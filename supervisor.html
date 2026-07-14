@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09a — marcação manual de agenda noturna (mesmo sem horário bater) + "jogar pro próximo relatório" -->
+<!-- build: 2026-07-09f — Agenda Noturna: sábado/domingo/feriado sempre completa R$150 + corte de horário em 17:31 (era 18:00) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1489,6 +1489,7 @@ let lbIdx = 0;
 let osSendoVisualizada = null;
 let _authUserId = null;
 let authToken = '';  // JWT da sessão, anexado às URLs de /api/foto (tags <img>/<video>)
+let diasBloqueados = {}; // { 'YYYY-MM-DD': {...} } — feriados/dias bloqueados, usado pra Agenda Noturna (sáb/dom/feriado)
 // Anexa o token de sessão à URL do /api/foto para que tags <img>/<video> autentiquem
 function fotoSrc(url) {
   if (!url || !authToken) return url;
@@ -1517,9 +1518,18 @@ function fotoSrc(url) {
 
   renderTopbar(eu.nome, eu.role, 'supervisor');
 
+  // Feriados carregados ANTES da lista de OS — a classificação de Agenda Noturna (sáb/dom/feriado)
+  // depende de diasBloqueados já estar populado na primeira renderização.
+  await carregarDiasBloqueados();
   await Promise.all([carregarOSs(), carregarTecnicos()]);
   iniciarAutoRefresh(carregarOSs, 30000);
 })();
+
+async function carregarDiasBloqueados() {
+  const { data } = await db.from('dias_bloqueados').select('*');
+  diasBloqueados = {};
+  (data || []).forEach(d => { diasBloqueados[d.data] = d; });
+}
 
 async function carregarTecnicos() {
   const data = await cachedQuery('tecnicos-lista', 600, async () => {
@@ -1629,15 +1639,33 @@ function minutosDoHorario(horario) {
   return h * 60 + m;
 }
 
+// Dia bloqueado (feriado) cadastrado no admin/agenda — mesma tabela `dias_bloqueados` usada lá
+function _ehDiaBloqueado(dataStr) {
+  return !!(dataStr && diasBloqueados[dataStr]);
+}
+
 function agendaNoturnaInfo(o) {
   // Marcação manual (supervisor forçou, mesmo sem o horário bater) sobrepõe a detecção automática
   if (o.noturna_manual === 'meia')     return { tipo: 'meia',     label: 'Meia agenda noturna (manual)',     valor: 75  };
   if (o.noturna_manual === 'completa') return { tipo: 'completa', label: 'Agenda noturna completa (manual)', valor: 150 };
 
+  // Sábado / domingo / feriado — SEMPRE completa (R$150), qualquer horário. Não vale pra Plantão
+  // (tipo_servico='plantao'), que já tem o próprio pagamento de fim de semana/feriado separado
+  // (agenda_plantao.html) — senão duplicaria o pagamento do mesmo dia nos dois relatórios.
+  if (o.tipo_servico !== 'plantao' && o.data_servico) {
+    const dow = new Date(o.data_servico + 'T12:00').getDay();
+    const isFimDeSemana = dow === 0 || dow === 6;
+    if (isFimDeSemana || _ehDiaBloqueado(o.data_servico)) {
+      return { tipo: 'completa', label: 'Sábado/domingo/feriado', valor: 150 };
+    }
+  }
+
   const fim = minutosDoHorario(o.horario_fim);
   if (fim === null) return null;
 
-  if (fim >= (18 * 60) && fim <= (21 * 60)) {
+  // Corte 17:31 (mesmo horário já usado pro banco de horas, calcularMinutosBH) — antes disso não conta.
+  const CORTE = 17 * 60 + 31;
+  if (fim >= CORTE && fim <= (21 * 60)) {
     return { tipo: 'meia', label: 'Meia agenda noturna', valor: 75 };
   }
 

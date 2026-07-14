@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09b — fix: não mostrava mais OS canceladas (agenda excluída) como "Pendente" -->
+<!-- build: 2026-07-09f — Agenda Noturna: sábado/domingo/feriado sempre completa R$150 (mesma regra do supervisor.html) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -749,6 +749,7 @@ let filtroStatus = 'todos';
 let tecnicoAtual = null;
 let tdTecMap = {};  // id → { nome } para exibir equipe completa
 let authToken = '';  // JWT da sessão, anexado às URLs de /api/foto (tags <img>/<video>)
+let diasBloqueados = {}; // { 'YYYY-MM-DD': {...} } — feriados, usado pra Agenda Noturna (sáb/dom/feriado)
 // Anexa o token de sessão à URL do /api/foto para que tags <img>/<video> autentiquem
 function fotoSrc(url) {
   if (!url || !authToken) return url;
@@ -775,6 +776,9 @@ function fotoSrc(url) {
   const { data: todosT } = await db.from('tecnicos').select('id, nome');
   (todosT || []).forEach(t => { tdTecMap[t.id] = t; });
 
+  const { data: diasBloqData } = await db.from('dias_bloqueados').select('*');
+  (diasBloqData || []).forEach(d => { diasBloqueados[d.data] = d; });
+
   const hoje = new Date();
   const inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 90);
   document.getElementById('dataInicio').value = inicio.toISOString().split('T')[0];
@@ -793,9 +797,18 @@ function _minutosDoHorario(horario) {
 function _agendaNoturnaInfo(o) {
   if (o.noturna_manual === 'meia')     return { tipo: 'meia',     valor: 75  };
   if (o.noturna_manual === 'completa') return { tipo: 'completa', valor: 150 };
+
+  // Sábado/domingo/feriado sempre completa (R$150), qualquer horário — exceto Plantão, que tem
+  // pagamento de fim de semana/feriado próprio (agenda_plantao.html), pra não contar em dobro.
+  if (o.tipo_servico !== 'plantao' && o.data_servico) {
+    const dow = new Date(o.data_servico + 'T12:00').getDay();
+    if (dow === 0 || dow === 6 || diasBloqueados[o.data_servico]) return { tipo: 'completa', valor: 150 };
+  }
+
   const fim = _minutosDoHorario(o.horario_fim);
   if (fim === null) return null;
-  if (fim >= (18 * 60) && fim <= (21 * 60)) return { tipo: 'meia', valor: 75 };
+  const CORTE = 17 * 60 + 31; // 17:31 — mesmo corte do supervisor.html/banco de horas
+  if (fim >= CORTE && fim <= (21 * 60)) return { tipo: 'meia', valor: 75 };
   if (fim >= (21 * 60 + 1) || fim <= (5 * 60)) return { tipo: 'completa', valor: 150 };
   return null;
 }
