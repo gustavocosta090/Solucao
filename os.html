@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09c — fix: OS cancelada (agenda excluída) não sumia da lista do técnico, ficava clicável -->
+<!-- build: 2026-07-09d — fix: dias de série "Mesma N.OS" sem OS própria não mostram mais PENDENTE fantasma / não criam OS duplicada -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -736,6 +736,30 @@ async function _carregarAgendamentosHoje() {
       const k = `o_${os.obra_id}|${dataRef}`;
       if (!map[k] || prioridade[stNorm] > prioridade[map[k].status]) map[k] = entry;
     }
+  });
+
+  // ── Séries "Mesma N.OS" (Replicar dias) ────────────────────────
+  // Só o primeiro dia da série tem OS de verdade (uma só cobre todos os dias). Sem isso, os
+  // demais dias apareciam como "PENDENTE" com um formulário em branco — que ao ser enviado
+  // criava uma OS DUPLICADA, sem relação com a OS compartilhada real. Aqui, todo dia da série
+  // sem OS própria "pega emprestado" o status/osId de um dia irmão que já tenha OS, então o
+  // card abre a mesma OS compartilhada (e não convida a criar uma nova).
+  const porSerie = {};
+  agsRaw.forEach(ag => {
+    if (!ag.serie_id) return;
+    (porSerie[ag.serie_id] = porSerie[ag.serie_id] || []).push(ag);
+  });
+  Object.values(porSerie).forEach(dias => {
+    let compartilhada = null;
+    for (const ag of dias) {
+      compartilhada = minhaPropria[`ag_${ag.id}`] || minhaIncluida[`ag_${ag.id}`];
+      if (compartilhada) break;
+    }
+    if (!compartilhada) return;
+    dias.forEach(ag => {
+      const k = `ag_${ag.id}`;
+      if (!minhaPropria[k] && !minhaIncluida[k]) minhaIncluida[k] = compartilhada;
+    });
   });
 
   // Função para pegar status/osId de um agendamento.
