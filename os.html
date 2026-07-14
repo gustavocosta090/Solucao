@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-19b — fix PDF 413: logo reduzida p/ 520px (era 4180px) + upload retry/reenvio -->
+<!-- build: 2026-07-09c — fix: OS cancelada (agenda excluída) não sumia da lista do técnico, ficava clicável -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -692,10 +692,12 @@ async function _carregarAgendamentosHoje() {
   const agsRaw = agR1.data || [];
 
   // OSs: janela de 60 dias dos agendamentos para evitar crescimento ilimitado
+  // Exclui canceladas (ex.: agenda excluída pelo supervisor) — mesmo critério do supervisor.html/tecnico_dashboard.html
   const osR1 = await db.from('ordens_de_servico')
     .select('id, agendamento_id, obra_id, status_aprovacao, data_servico, criado_em, tecnico_id')
     .gte('data_servico', dataInicio)
     .lte('data_servico', hoje)
+    .neq('status_aprovacao', 'cancelada')
     .or(`tecnico_id.eq.${id},auxiliar_id.eq.${id},auxiliar2_id.eq.${id},auxiliar3_id.eq.${id}`);
   const osRaw = osR1.data || [];
 
