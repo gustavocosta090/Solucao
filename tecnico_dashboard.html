@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09a — card "Agenda noturna p/ pagamento" (quantidade + valor) -->
+<!-- build: 2026-07-09b — fix: não mostrava mais OS canceladas (agenda excluída) como "Pendente" -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -841,7 +841,9 @@ async function carregarOSs() {
 
   const hojeISO = new Date().toISOString().split('T')[0];
   // Técnico só vê OS do dia atual ou anteriores (agendas futuras não contam como pendente)
-  todasOSs = (data || []).filter(o => !o.data_servico || o.data_servico <= hojeISO);
+  // e nunca vê OS canceladas (ex.: agenda excluída pelo supervisor) — mesmo critério do supervisor.html
+  todasOSs = (data || []).filter(o =>
+    (!o.data_servico || o.data_servico <= hojeISO) && o.status_aprovacao !== 'cancelada');
 
   // Assistências têm obra_id null — cliente vem de agendamentos.cliente_outro
   const semObra = todasOSs.filter(o => !o.obra_id && o.agendamento_id).map(o => o.agendamento_id);
@@ -923,6 +925,7 @@ function badgeHTML(status) {
     // retrocompatibilidade com status antigos
     aprovada:  '<span class="badge badge-aprovada"><i data-lucide="check"></i>Concluída</span>',
     reprovada: '<span class="badge badge-pendente"><i data-lucide="clock"></i>Pendente</span>',
+    cancelada: '<span class="badge badge-reprovada"><i data-lucide="x"></i>Cancelada</span>',
   };
   return map[status] || '<span class="badge badge-pendente"><i data-lucide="clock"></i>Pendente</span>';
 }
