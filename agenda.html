@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09h — fix: botão Menu (ações da agenda) vazava pra técnico/auxiliar; agora só coordenador/admin_geral/supervisor/agendamento/lider/estoque -->
+<!-- build: 2026-07-09i — fix: card de Disparar dia / Prog. semanal não mostrava Arquiteto (_buildAgCard) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1590,6 +1590,7 @@ function _buildAgCard(ag, dataStr, {
   const end      = escHtml(ag.endereco_outro || ag.obras?.endereco || '');
   const osNum    = ag.numero_os ? '#' + escHtml(String(ag.numero_os)) : '';
   const consultor = escHtml(ag.obras?.consultores?.nome || '');
+  const arquiteto = escHtml(ag.obras?.arquiteto_responsavel || '');
   const tipoServ = ag.tipo_servico === 'assistencia' ? 'Assistência' : 'Execução';
   const servDesc = escHtml(ag.servico || '');
   const veic     = escHtml(ag.veiculo || '');
@@ -1632,7 +1633,7 @@ function _buildAgCard(ag, dataStr, {
     </div>
     ${SEP}
     <div style="padding:8px 14px 4px;">
-      ${det('Endereço', end)}${det('OS', osNum)}${det('Consultor', consultor)}${det('Tipo', tipoServ)}${det('Serviço', servDesc)}${det('Veículo', veic)}
+      ${det('Endereço', end)}${det('OS', osNum)}${det('Consultor', consultor)}${det('Arquiteto', arquiteto)}${det('Tipo', tipoServ)}${det('Serviço', servDesc)}${det('Veículo', veic)}
     </div>
     <div style="padding:6px 14px 10px;display:flex;justify-content:flex-end;">
       <span style="display:inline-block;padding:3px 10px;background:${badge.bg};color:${badge.txt};border-radius:5px;font-size:${detailSize-1}px;font-weight:700;letter-spacing:0.02em;">${badgeLabel}</span>
