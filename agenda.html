@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-15a — técnico demitido (ativo=false) some do seletor de agenda -->
+<!-- build: 2026-07-15b — Prog. semanal não abre mais o WhatsApp sozinho (mesmo fluxo copiar/colar do Disparar dia); tira aspas do nome da equipe na mensagem -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -3957,7 +3957,7 @@ async function dispararAgendaWhatsapp() {
     // Tenta copiar pro clipboard (requer permissão / HTTPS)
     try {
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      _wppMostrarOverlay(hoje, true);
+      _wppMostrarOverlay(_wppMensagem(hoje), true);
     } catch (clipErr) {
       // Fallback: download da imagem
       const url = URL.createObjectURL(blob);
@@ -3966,7 +3966,7 @@ async function dispararAgendaWhatsapp() {
       a.download = `agenda-${hoje}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      _wppMostrarOverlay(hoje, false);
+      _wppMostrarOverlay(_wppMensagem(hoje), false);
     }
   } catch (err) {
     mostrarToast('Erro ao gerar imagem: ' + err.message, 'err');
@@ -3984,12 +3984,19 @@ function _wppMensagem(dataISO) {
   const [y, m, d] = dataISO.split('-');
   const nomeEquipe = filtroEquipe === 'todas' ? ''
     : (equipesDisponiveis.find(e => String(e.id) === String(filtroEquipe))?.nome || '');
-  const deEquipe = nomeEquipe ? ` de "${nomeEquipe}"` : '';
+  const deEquipe = nomeEquipe ? ` de ${nomeEquipe}` : '';
   return `Boa tarde, equipe!\n\nSegue agenda${deEquipe} para o dia ${d}/${m}/${y}\n\nAtt, Office Equipe Técnica.`;
 }
 
-function _wppMostrarOverlay(dataISO, imagemCopiada) {
-  document.getElementById('wpp-msg-texto').textContent = _wppMensagem(dataISO);
+function _wppMensagemSemanal(datasISO) {
+  const fmt = iso => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
+  const ini = fmt(datasISO[0]);
+  const fim = fmt(datasISO[datasISO.length - 1]);
+  return `Boa tarde.\n\nSegue programação de viagem para a semana ${ini} a ${fim}\n\nAtt, Office Equipe Técnica.`;
+}
+
+function _wppMostrarOverlay(mensagem, imagemCopiada) {
+  document.getElementById('wpp-msg-texto').textContent = mensagem;
   document.getElementById('wpp-img-status').textContent = imagemCopiada
     ? '✅ Imagem copiada para o clipboard — cole com Ctrl+V no WhatsApp.'
     : '📥 Imagem baixada — anexe manualmente no grupo.';
@@ -4198,8 +4205,7 @@ async function gerarProgramacaoSemanal() {
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
     try {
       await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
-      mostrarToast('✅ Imagem copiada! Abra o WhatsApp e cole (Ctrl+V).', 'ok');
-      setTimeout(() => window.open('https://web.whatsapp.com', '_blank'), 800);
+      _wppMostrarOverlay(_wppMensagemSemanal(datasISO), true);
     } catch {
       const url = URL.createObjectURL(blob);
       const a   = document.createElement('a');
@@ -4207,7 +4213,7 @@ async function gerarProgramacaoSemanal() {
       a.download = `prog-semanal-${tec.nome.replace(/\s+/g,'-')}-${datasISO[0]}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      mostrarToast('📥 Imagem baixada! Anexe no WhatsApp.', 'ok');
+      _wppMostrarOverlay(_wppMensagemSemanal(datasISO), false);
     }
   } catch(err) {
     mostrarToast('Erro ao gerar imagem: ' + err.message, 'err');
