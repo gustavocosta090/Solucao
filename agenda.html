@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-15f — remove "Disparar dia" e "Novo agendamento" do menu (continuam nos botões por dia da grade) -->
+<!-- build: 2026-07-15g — Disponibilidades (filtro Todas equipes) só lista quem está lotado em alguma equipe operacional -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -4812,10 +4812,13 @@ function renderDisponibilidades() {
   document.getElementById('disp-semana-label').textContent =
     `Técnicos livres — semana ${fmtD(d0)} a ${fmtD(d6)}`;
 
-  let tecsVisiveis = tecnicos;
+  // Só entra quem está lotado em alguma equipe operacional (Cabeamento/Elétrica/Áudio e Vídeo/
+  // Automação/Regional Norte) e ativo — usuários só de acesso (estoque, admin_geral etc.) não aparecem.
+  const _idsComEquipe = new Set((tecnicoEquipes || []).map(te => te.tecnico_id));
+  let tecsVisiveis = tecnicos.filter(t => _idsComEquipe.has(t.id) && t.ativo !== false);
   if (filtroEquipe !== 'todas') {
     const ids = tecnicosDaEquipe(parseInt(filtroEquipe));
-    tecsVisiveis = tecnicos.filter(t => ids.includes(t.id));
+    tecsVisiveis = tecsVisiveis.filter(t => ids.includes(t.id));
   }
 
   const diasUteis = dias.filter(d => d.getDay() >= 1 && d.getDay() <= 5);
