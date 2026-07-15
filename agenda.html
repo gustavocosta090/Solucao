@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-15b — Prog. semanal não abre mais o WhatsApp sozinho (mesmo fluxo copiar/colar do Disparar dia); tira aspas do nome da equipe na mensagem -->
+<!-- build: 2026-07-15c — "Prog. semanal" virou "Prog Viagem": só gera card com os dias marcados como Viagem do técnico; mensagem usa nome dos dias (ex.: "de segunda a quarta") -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1077,7 +1077,7 @@
       <div class="menu-acoes" id="menu-acoes" role="menu">
         <button class="menu-acao-item" id="btn-exportar-sp" onclick="exportarAgendaSharePoint();fecharMenuAcoes()"><span class="ma-emoji">📤</span> Exportar → SharePoint</button>
         <button class="menu-acao-item" id="btn-disp" onclick="abrirDispPanel();fecharMenuAcoes()"><span class="ma-emoji">👥</span> Disponibilidades</button>
-        <button class="menu-acao-item" id="btn-semana-tec" onclick="abrirModalSemana();fecharMenuAcoes()"><span class="ma-emoji">🗓️</span> Prog. semanal</button>
+        <button class="menu-acao-item" id="btn-semana-tec" onclick="abrirModalSemana();fecharMenuAcoes()"><span class="ma-emoji">🗓️</span> Prog Viagem</button>
         <button class="menu-acao-item" id="btn-whatsapp" onclick="dispararAgendaWhatsapp();fecharMenuAcoes()"><span class="ma-emoji">📲</span> Disparar dia</button>
         <button class="menu-acao-item" id="btn-estoque" onclick="exportarProgramacaoEstoque();fecharMenuAcoes()"><span class="ma-emoji">📦</span> Prog. Estoque</button>
         <button class="menu-acao-item" id="btn-bloqueio" onclick="abrirModalBloqueio();fecharMenuAcoes()"><span class="ma-emoji">🚫</span> Bloqueios</button>
@@ -1287,13 +1287,13 @@
 </div>
 
 <!-- Modal programação semanal técnico -->
-<div class="overlay" id="overlay-semana" onclick="fecharModalSemana(event)" style="display:none" role="dialog" aria-modal="true" aria-label="Programação semanal do técnico">
+<div class="overlay" id="overlay-semana" onclick="fecharModalSemana(event)" style="display:none" role="dialog" aria-modal="true" aria-label="Prog Viagem do técnico">
   <div class="modal" style="max-width:460px">
     <div class="modal-header">
       <div class="modal-header-icon" style="background:rgba(139,92,246,0.12);border-color:rgba(139,92,246,0.25);color:#A78BFA">
         <i data-lucide="calendar-range" aria-hidden="true"></i>
       </div>
-      <div class="modal-title" id="modal-semana-titulo">Programação semanal do técnico</div>
+      <div class="modal-title" id="modal-semana-titulo">Prog Viagem do técnico</div>
     </div>
     <div id="modal-semana-erro" role="alert" aria-live="assertive" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:10px 14px;font-size:0.8rem;color:#f87171;margin-bottom:14px;"></div>
     <div class="form-group">
@@ -1305,7 +1305,7 @@
     <div class="form-group">
       <label for="semana-data-ref">Semana referência</label>
       <input type="date" id="semana-data-ref" style="width:100%;padding:9px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:inherit;font-size:0.85rem;outline:none;">
-      <small style="color:var(--text-3);font-size:11px;margin-top:5px;display:block">Qualquer dia da semana desejada</small>
+      <small style="color:var(--text-3);font-size:11px;margin-top:5px;display:block">Qualquer dia da semana desejada — só os dias marcados como Viagem entram no card</small>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px">
       <button class="btn-semana-tec" style="flex:1;justify-content:center;padding:10px" onclick="gerarProgramacaoSemanal()">
@@ -3988,11 +3988,15 @@ function _wppMensagem(dataISO) {
   return `Boa tarde, equipe!\n\nSegue agenda${deEquipe} para o dia ${d}/${m}/${y}\n\nAtt, Office Equipe Técnica.`;
 }
 
-function _wppMensagemSemanal(datasISO) {
-  const fmt = iso => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
-  const ini = fmt(datasISO[0]);
-  const fim = fmt(datasISO[datasISO.length - 1]);
-  return `Boa tarde.\n\nSegue programação de viagem para a semana ${ini} a ${fim}\n\nAtt, Office Equipe Técnica.`;
+function _wppMensagemViagem(diasISO) {
+  const DIAS_NOME = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+  const nomeDia = iso => DIAS_NOME[new Date(iso + 'T12:00').getDay()];
+  if (diasISO.length === 1) {
+    return `Boa tarde.\n\nSegue programação de viagem para o dia ${nomeDia(diasISO[0])}\n\nAtt, Office Equipe Técnica.`;
+  }
+  const ini = nomeDia(diasISO[0]);
+  const fim = nomeDia(diasISO[diasISO.length - 1]);
+  return `Boa tarde.\n\nSegue programação de viagem de ${ini} a ${fim}\n\nAtt, Office Equipe Técnica.`;
 }
 
 function _wppMostrarOverlay(mensagem, imagemCopiada) {
@@ -4095,13 +4099,9 @@ async function gerarProgramacaoSemanal() {
 
   if (!tecId)   { erroEl.textContent = 'Selecione um técnico.'; erroEl.style.display='block'; return; }
   if (!refDate) { erroEl.textContent = 'Informe a data de referência.'; erroEl.style.display='block'; return; }
-  erroEl.style.display = 'none';
 
   const tec = tecnicos.find(t => t.id === tecId);
   if (!tec) return;
-
-  fecharModalSemanaBtn();
-  mostrarToast('⏳ Gerando imagem horizontal...', 'ok');
 
   // Calcula seg–sex da semana da data de referência
   const base = new Date(refDate + 'T12:00');
@@ -4110,19 +4110,32 @@ async function gerarProgramacaoSemanal() {
   const diasSemana = Array.from({length:5}, (_, i) => { const d = new Date(seg); d.setDate(seg.getDate()+i); return d; });
   const datasISO = diasSemana.map(fmtISO);
 
-  // Filtra agendamentos dessa semana onde o técnico participa
+  // Só os dias marcados como Viagem pra esse técnico (não é mais a semana inteira)
   const agSemana = agendamentos.filter(ag =>
     datasISO.includes(ag.data) &&
+    ag.status === 'viagem' &&
     [ag.tecnico_id, ag.auxiliar_id, ag.auxiliar2_id, ag.auxiliar3_id].includes(tecId)
   );
+  const diasViagemISO = datasISO.filter(iso => agSemana.some(ag => ag.data === iso));
+
+  if (diasViagemISO.length === 0) {
+    erroEl.textContent = `${tec.nome} não tem nenhum agendamento marcado como Viagem nessa semana.`;
+    erroEl.style.display = 'block';
+    return;
+  }
+  erroEl.style.display = 'none';
+
+  fecharModalSemanaBtn();
+  mostrarToast('⏳ Gerando imagem horizontal...', 'ok');
 
   const DIAS_PT  = ['Dom','Segunda','Terça','Quarta','Quinta','Sexta','Sáb'];
-  const DIAS_ABR = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
-  const [yy, mm, dd] = datasISO[0].split('-');
-  const [ye, me, de] = datasISO[4].split('-');
-  const periodoFmt = `${dd}/${mm}/${yy.slice(2)} – ${de}/${me}/${ye.slice(2)}`;
+  const [yy, mm, dd] = diasViagemISO[0].split('-');
+  const [ye, me, de] = diasViagemISO[diasViagemISO.length - 1].split('-');
+  const periodoFmt = diasViagemISO.length > 1
+    ? `${dd}/${mm}/${yy.slice(2)} – ${de}/${me}/${ye.slice(2)}`
+    : `${dd}/${mm}/${yy.slice(2)}`;
   const geradoEm   = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
 
   // Carregar logo pré-processado como branco (sem depender de CSS filter)
@@ -4130,15 +4143,13 @@ async function gerarProgramacaoSemanal() {
 
   // Tema claro — igual ao Plantão Semanal
   const S_BG   = '#F1F5F9';
-  const S_SURF = '#FFFFFF';
   const S_HDR  = '#1E293B';
-  const S_T1   = '#0F172A';
-  const S_T2   = '#334155';
   const S_T3   = '#64748B';
   const S_BRDR = '#CBD5E1';
   const S_ACNT = '#4F46E5';
 
-  function colunaHTML(iso, idx) {
+  function colunaHTML(iso) {
+    const idx    = datasISO.indexOf(iso);
     const d      = diasSemana[idx];
     const ags    = agSemana.filter(ag => ag.data === iso);
     const diaN   = DIAS_PT[d.getDay()];
@@ -4164,16 +4175,17 @@ async function gerarProgramacaoSemanal() {
     </div>`;
   }
 
-  const colunasHTML = datasISO.map((iso, i) => colunaHTML(iso, i)).join('');
+  const colunasHTML = diasViagemISO.map(iso => colunaHTML(iso)).join('');
+  const cardWidth = Math.max(500, diasViagemISO.length * 280);
 
   const card = document.getElementById('agenda-card');
-  card.style.width = '1400px';
-  card.innerHTML = `<div style="width:1400px;background:${S_BG};font-family:'Segoe UI',system-ui,Arial,sans-serif;border-radius:14px;overflow:hidden;border:1px solid ${S_BRDR};">
+  card.style.width = cardWidth + 'px';
+  card.innerHTML = `<div style="width:${cardWidth}px;background:${S_BG};font-family:'Segoe UI',system-ui,Arial,sans-serif;border-radius:14px;overflow:hidden;border:1px solid ${S_BRDR};">
     <div style="background:${S_HDR};padding:22px 28px;display:flex;align-items:center;gap:20px;">
       ${logoB64 ? `<img src="${logoB64}" style="height:28px;opacity:0.95;">` : `<span style="font-size:15px;font-weight:800;color:#FFFFFF;">SOLUÇÃO TÉCNICA</span>`}
       <div style="width:1px;height:36px;background:rgba(255,255,255,0.15);"></div>
       <div style="flex:1;">
-        <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.08em;text-transform:uppercase;">Programação Semanal</div>
+        <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.08em;text-transform:uppercase;">Prog Viagem</div>
         <div style="font-size:20px;font-weight:800;color:#FFFFFF;margin-top:3px;">${escHtml(tec.nome)}</div>
       </div>
       <div style="text-align:right;">
@@ -4200,20 +4212,20 @@ async function gerarProgramacaoSemanal() {
       useCORS: true,
       backgroundColor: '#F1F5F9',
       logging: false,
-      width: 1400,
+      width: cardWidth,
     });
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
     try {
       await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
-      _wppMostrarOverlay(_wppMensagemSemanal(datasISO), true);
+      _wppMostrarOverlay(_wppMensagemViagem(diasViagemISO), true);
     } catch {
       const url = URL.createObjectURL(blob);
       const a   = document.createElement('a');
       a.href = url;
-      a.download = `prog-semanal-${tec.nome.replace(/\s+/g,'-')}-${datasISO[0]}.png`;
+      a.download = `prog-viagem-${tec.nome.replace(/\s+/g,'-')}-${diasViagemISO[0]}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      _wppMostrarOverlay(_wppMensagemSemanal(datasISO), false);
+      _wppMostrarOverlay(_wppMensagemViagem(diasViagemISO), false);
     }
   } catch(err) {
     mostrarToast('Erro ao gerar imagem: ' + err.message, 'err');
