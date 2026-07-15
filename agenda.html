@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-15c — "Prog. semanal" virou "Prog Viagem": só gera card com os dias marcados como Viagem do técnico; mensagem usa nome dos dias (ex.: "de segunda a quarta") -->
+<!-- build: 2026-07-15d — mensagem de Prog Viagem inclui a data entre parênteses: "Segunda-feira(20/07/2026) a Sexta-feira(24/07/2026)" -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -3989,13 +3989,17 @@ function _wppMensagem(dataISO) {
 }
 
 function _wppMensagemViagem(diasISO) {
-  const DIAS_NOME = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
-  const nomeDia = iso => DIAS_NOME[new Date(iso + 'T12:00').getDay()];
+  const DIAS_NOME = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const diaComData = iso => {
+    const [y, m, d] = iso.split('-');
+    const nome = DIAS_NOME[new Date(iso + 'T12:00').getDay()];
+    return `${nome}(${d}/${m}/${y})`;
+  };
   if (diasISO.length === 1) {
-    return `Boa tarde.\n\nSegue programação de viagem para o dia ${nomeDia(diasISO[0])}\n\nAtt, Office Equipe Técnica.`;
+    return `Boa tarde.\n\nSegue programação de viagem para o dia ${diaComData(diasISO[0])}\n\nAtt, Office Equipe Técnica.`;
   }
-  const ini = nomeDia(diasISO[0]);
-  const fim = nomeDia(diasISO[diasISO.length - 1]);
+  const ini = diaComData(diasISO[0]);
+  const fim = diaComData(diasISO[diasISO.length - 1]);
   return `Boa tarde.\n\nSegue programação de viagem de ${ini} a ${fim}\n\nAtt, Office Equipe Técnica.`;
 }
 
