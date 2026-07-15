@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-11 — guard aceita admin_geral -->
+<!-- build: 2026-06-25b — guard aceita admin_geral; admin_geral tambem pode apagar -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -490,7 +490,7 @@ function _cardHtml(s) {
   const cliLabel   = _clienteLabel(s);
   const tecsLabel  = s.tecnicos_nomes || '—';
   const vtFmt      = _brl(s.valor_total);
-  const podeApagar = _meuRole === 'coordenador';
+  const podeApagar = ['coordenador','admin_geral'].includes(_meuRole);
   const outroVis   = !s.obra_id && s.cliente_outro ? 'block' : 'none';
   const vpFmt      = (parseFloat(s.valor_pessoa) || 0).toFixed(2);
 

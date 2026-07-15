@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-30c — relatorio plantao filtra SO plantoes (cliente_outro); por periodo (data inicio/fim); botao visivel -->
+<!-- build: 2026-07-09e — tecnico bloqueado: avisa e PERGUNTA se agenda mesmo assim (antes bloqueava de vez) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1328,13 +1328,19 @@ function fecharEquipeDropdown() {
 
 async function toggleTecnicoEquipe(idStr, evt) {
   if (evt) evt.stopPropagation();
-  // Verifica bloqueio de técnico na data selecionada
+  // Verifica bloqueio de técnico na data selecionada — avisa mas permite agendar mesmo assim
+  // (ex.: técnico de férias que topa fazer uma diária pontual), mesmo padrão do agenda.html.
   const dataAg = document.getElementById('f-data')?.value;
   if (dataAg && !equipesSelecionadas.includes(idStr)) {
     const bloq = tecnicoBloqueadoNaData(idStr, dataAg);
     if (bloq) {
-      await alertModal('Técnico bloqueado', `O técnico não pode ser selecionado pois está bloqueado.\nMotivo: ${bloq.motivo}`, 'aviso');
-      return;
+      const fmtData = iso => new Date(iso + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+      const periodo = `${fmtData(bloq.data_inicio)} a ${fmtData(bloq.data_fim)}`;
+      const prosseguir = await new Promise(resolve => confirmModal(
+        `Este técnico está BLOQUEADO nesta data.\nPeríodo: ${periodo}\nMotivo: ${bloq.motivo || '—'}\n\nDeseja agendá-lo mesmo assim?`,
+        () => resolve(true), () => resolve(false)
+      ));
+      if (!prosseguir) return;
     }
   }
   equipesSelecionadas = equipesSelecionadas.includes(idStr) ? [] : [idStr];

@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-25b — admin_geral edita/dispara vistorias -->
+<!-- build: 2026-07-09e — vistoriador bloqueado: avisa e PERGUNTA se mantém mesmo assim (antes bloqueava de vez) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1553,8 +1553,15 @@ async function verificarBloqueioVistoriador(idStr) {
   if (!idStr || !dataAg) return;
   const bloq = tecnicoBloqueadoNaData(idStr, dataAg);
   if (bloq) {
-    await alertModal('Vistoriador bloqueado', `Este vistoriador não está disponível nesta data.\nMotivo: ${bloq.motivo}`, 'aviso');
-    document.getElementById('f-vistoriador').value = '';
+    // Avisa mas permite manter mesmo bloqueado (ex.: vistoriador de férias que topa um atendimento
+    // pontual) — mesmo padrão do agenda.html/agenda_plantao.html.
+    const fmtData = iso => new Date(iso + 'T12:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const periodo = `${fmtData(bloq.data_inicio)} a ${fmtData(bloq.data_fim)}`;
+    const manter = await new Promise(resolve => confirmModal(
+      `Este vistoriador está BLOQUEADO nesta data.\nPeríodo: ${periodo}\nMotivo: ${bloq.motivo || '—'}\n\nDeseja mantê-lo mesmo assim?`,
+      () => resolve(true), () => resolve(false)
+    ));
+    if (!manter) document.getElementById('f-vistoriador').value = '';
   }
 }
 
