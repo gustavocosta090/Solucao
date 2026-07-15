@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09j — Cidade da obra: aparece no card (Disparar dia/Prog. semanal) e no PDF de Prog. Estoque -->
+<!-- build: 2026-07-15a — técnico demitido (ativo=false) some do seletor de agenda -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1783,7 +1783,7 @@ async function carregarObras() {
 async function carregarTecnicos() {
   const [t, te, eq] = await Promise.all([
     cachedQuery('agenda-tecnicos', 600, async () => {
-      let { data: d, error: e1 } = await db.from('tecnicos').select('id, nome, funcao, role').order('nome');
+      let { data: d, error: e1 } = await db.from('tecnicos').select('id, nome, funcao, role, ativo').order('nome');
       if (e1 || !d) {
         const { data: d2 } = await db.from('tecnicos').select('id, nome').order('nome');
         d = (d2 || []).map(x => ({ ...x, funcao: '', role: '' }));
@@ -2297,8 +2297,9 @@ function renderEquipeDropdownItems() {
     </div>` : '';
 
   // Só aparece para seleção quem está vinculado a alguma equipe (exclui gestão/administrativo sem equipe)
+  // e está ativo (demitidos não podem ser escalados para novos serviços)
   const _idsComEquipe = new Set((tecnicoEquipes || []).map(te => te.tecnico_id));
-  const filtrados = tecnicos.filter(t => _idsComEquipe.has(t.id) && (!busca || t.nome.toLowerCase().includes(busca)))
+  const filtrados = tecnicos.filter(t => _idsComEquipe.has(t.id) && t.ativo !== false && (!busca || t.nome.toLowerCase().includes(busca)))
     .slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
 
   const itemHtml = (t) => {

@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
   if (action === "list_users") {
     const { data: tecnicos, error: tecnicosError } = await adminClient
       .from("tecnicos")
-      .select("id, nome, role, email, auth_user_id, tecnico_equipes(equipes(nome))")
+      .select("id, nome, role, email, auth_user_id, ativo, tecnico_equipes(equipes(nome))")
       .order("nome");
 
     if (tecnicosError) return json({ error: tecnicosError.message }, 400);
@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
 
     return json({
       ok: true,
-      users: (tecnicos || []).map((tecnico) => {
+      users: (tecnicos || []).filter((tecnico) => tecnico.ativo !== false).map((tecnico) => {
         const authEmail = tecnico.auth_user_id ? authUsersById.get(tecnico.auth_user_id) || "" : "";
         return {
           ...tecnico,

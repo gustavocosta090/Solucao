@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09a — Atribuir N.OS agora também numera OS sem agendamento vinculado (órfãs/importadas) -->
+<!-- build: 2026-07-15a — Demitir agora inativa (ativo=false) quando ha FK de OS, some da lista de fato -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1459,12 +1459,10 @@ async function apagarUsuario(tecnicoId) {
         const { error: delErr } = await db.from('tecnicos').delete().eq('id', tecnicoId);
 
         if (delErr) {
-          // FK constraint (pessoa tem OS vinculadas): garante sem acesso e avisa
-          await db.from('tecnicos').update({ auth_user_id: null }).eq('id', tecnicoId);
-          mostrarErro(
-            `Acesso de ${usuario.nome} revogado, mas o registro não pôde ser removido pois existem OS vinculadas. ` +
-            'Execute o SQL de migration (FK SET NULL) no Supabase para remoção completa.'
-          );
+          // FK constraint (pessoa tem OS vinculadas): não dá pra apagar sem perder o histórico.
+          // Inativa em vez de apagar: revoga acesso + ativo=false, some da lista mesmo assim.
+          await db.from('tecnicos').update({ auth_user_id: null, ativo: false }).eq('id', tecnicoId);
+          mostrarSucesso(`${usuario.nome} demitido. Histórico de OS preservado.`);
         } else {
           mostrarSucesso(`${usuario.nome} removido com sucesso.`);
         }
@@ -1486,9 +1484,14 @@ async function removerTecnico(tecnicoId, nome) {
       const { error } = await db.from('tecnicos').delete().eq('id', tecnicoId);
       if (error) {
         const fk = /foreign key|violates|referenced|still referenced/i.test(error.message || '');
-        mostrarErro(fk
-          ? `${nome} não pode ser apagado porque já tem agendamentos/OS no histórico. Nesses casos o correto é INATIVAR (não excluir) para preservar o histórico — me avise para habilitar a inativação.`
-          : `Não foi possível remover: ${error.message}`);
+        if (fk) {
+          // Tem agendamentos/OS no histórico: inativa em vez de apagar, preserva o histórico.
+          await db.from('tecnicos').update({ ativo: false }).eq('id', tecnicoId);
+          mostrarSucesso(`${nome} removido (inativado — histórico de OS preservado).`);
+          await carregarDados();
+          return;
+        }
+        mostrarErro(`Não foi possível remover: ${error.message}`);
       } else {
         mostrarSucesso(`${nome} removido com sucesso.`);
         await carregarDados();

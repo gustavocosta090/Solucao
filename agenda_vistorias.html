@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09e — vistoriador bloqueado: avisa e PERGUNTA se mantém mesmo assim (antes bloqueava de vez) -->
+<!-- build: 2026-07-15a — vistoriador demitido (ativo=false) some do seletor de novo agendamento -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -903,7 +903,7 @@ async function carregarObras() {
 
 async function carregarVistoriadores() {
   vistoriadores = await cachedQuery('av-vistoriadores', 600, async () => {
-    const { data } = await db.from('tecnicos').select('id, nome').eq('role', 'vistoriador').order('nome');
+    const { data } = await db.from('tecnicos').select('id, nome, ativo').eq('role', 'vistoriador').order('nome');
     return data || [];
   });
 }
@@ -1023,7 +1023,9 @@ function preencherSelects() {
 
   const selVist = document.getElementById('f-vistoriador');
   selVist.innerHTML = '<option value="">Selecione...</option>';
-  vistoriadores.forEach(v => {
+  // Demitidos (ativo=false) não aparecem para seleção em novo agendamento,
+  // mas seguem no array `vistoriadores` para vistoriadorNome() exibir o histórico.
+  vistoriadores.filter(v => v.ativo !== false).forEach(v => {
     const opt = document.createElement('option');
     opt.value       = String(v.id);
     opt.textContent = v.nome;

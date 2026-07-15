@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09e — tecnico bloqueado: avisa e PERGUNTA se agenda mesmo assim (antes bloqueava de vez) -->
+<!-- build: 2026-07-15a — técnico demitido (ativo=false) some do seletor de agenda -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1175,7 +1175,7 @@ async function carregarObras() {
 async function carregarTecnicos() {
   const [t, te] = await Promise.all([
     cachedQuery('agenda-tecnicos', 600, async () => {
-      let { data: d, error: e1 } = await db.from('tecnicos').select('id, nome, funcao').order('nome');
+      let { data: d, error: e1 } = await db.from('tecnicos').select('id, nome, funcao, ativo').order('nome');
       if (e1 || !d) {
         const { data: d2 } = await db.from('tecnicos').select('id, nome').order('nome');
         d = (d2 || []).map(x => ({ ...x, funcao: '' }));
@@ -1392,7 +1392,8 @@ function renderEquipeDropdownItems() {
   const lista = document.getElementById('equipe-lista');
   if (!lista) return;
   const busca = (document.getElementById('equipe-busca')?.value || '').toLowerCase();
-  const filtrados = tecnicos.filter(t => !busca || t.nome.toLowerCase().includes(busca));
+  // Demitidos (ativo=false) não podem ser escalados para novos serviços
+  const filtrados = tecnicos.filter(t => t.ativo !== false && (!busca || t.nome.toLowerCase().includes(busca)));
   lista.innerHTML = filtrados.map(t => {
     const idStr      = String(t.id);
     const selecionado = equipesSelecionadas.includes(idStr);
