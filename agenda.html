@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-15d — mensagem de Prog Viagem inclui a data entre parênteses: "Segunda-feira(20/07/2026) a Sexta-feira(24/07/2026)" -->
+<!-- build: 2026-07-15e — linha "Segue programação de viagem..." da mensagem de Prog Viagem em negrito (WhatsApp) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -3995,12 +3995,13 @@ function _wppMensagemViagem(diasISO) {
     const nome = DIAS_NOME[new Date(iso + 'T12:00').getDay()];
     return `${nome}(${d}/${m}/${y})`;
   };
+  // Asteriscos = negrito no WhatsApp
   if (diasISO.length === 1) {
-    return `Boa tarde.\n\nSegue programação de viagem para o dia ${diaComData(diasISO[0])}\n\nAtt, Office Equipe Técnica.`;
+    return `Boa tarde.\n\n*Segue programação de viagem para o dia ${diaComData(diasISO[0])}*\n\nAtt, Office Equipe Técnica.`;
   }
   const ini = diaComData(diasISO[0]);
   const fim = diaComData(diasISO[diasISO.length - 1]);
-  return `Boa tarde.\n\nSegue programação de viagem de ${ini} a ${fim}\n\nAtt, Office Equipe Técnica.`;
+  return `Boa tarde.\n\n*Segue programação de viagem de ${ini} a ${fim}*\n\nAtt, Office Equipe Técnica.`;
 }
 
 function _wppMostrarOverlay(mensagem, imagemCopiada) {
