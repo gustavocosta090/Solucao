@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09i — fix: card de Disparar dia / Prog. semanal não mostrava Arquiteto (_buildAgCard) -->
+<!-- build: 2026-07-09j — Cidade da obra: aparece no card (Disparar dia/Prog. semanal) e no PDF de Prog. Estoque -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1591,6 +1591,7 @@ function _buildAgCard(ag, dataStr, {
   const osNum    = ag.numero_os ? '#' + escHtml(String(ag.numero_os)) : '';
   const consultor = escHtml(ag.obras?.consultores?.nome || '');
   const arquiteto = escHtml(ag.obras?.arquiteto_responsavel || '');
+  const cidade   = escHtml(ag.obras?.cidade || '');
   const tipoServ = ag.tipo_servico === 'assistencia' ? 'Assistência' : 'Execução';
   const servDesc = escHtml(ag.servico || '');
   const veic     = escHtml(ag.veiculo || '');
@@ -1633,7 +1634,7 @@ function _buildAgCard(ag, dataStr, {
     </div>
     ${SEP}
     <div style="padding:8px 14px 4px;">
-      ${det('Endereço', end)}${det('OS', osNum)}${det('Consultor', consultor)}${det('Arquiteto', arquiteto)}${det('Tipo', tipoServ)}${det('Serviço', servDesc)}${det('Veículo', veic)}
+      ${det('Endereço', end)}${det('Cidade', cidade)}${det('OS', osNum)}${det('Consultor', consultor)}${det('Arquiteto', arquiteto)}${det('Tipo', tipoServ)}${det('Serviço', servDesc)}${det('Veículo', veic)}
     </div>
     <div style="padding:6px 14px 10px;display:flex;justify-content:flex-end;">
       <span style="display:inline-block;padding:3px 10px;background:${badge.bg};color:${badge.txt};border-radius:5px;font-size:${detailSize-1}px;font-weight:700;letter-spacing:0.02em;">${badgeLabel}</span>
@@ -1774,7 +1775,7 @@ function isHoje(d) {
 // ── Carregar dados ───────────────────────────────────────────
 async function carregarObras() {
   obras = await cachedQuery('agenda-obras-v2', 300, async () => {
-    const { data } = await db.from('obras').select('id, nome_cliente, endereco, situacao, regional').order('nome_cliente');
+    const { data } = await db.from('obras').select('id, nome_cliente, endereco, situacao, regional, cidade').order('nome_cliente');
     return data || [];
   });
 }
@@ -1867,7 +1868,7 @@ async function carregarAgenda() {
     `${DIAS[0]}, ${fmtBR(dias[0])} — ${DIAS[6]}, ${fmtBR(dias[6])}`;
 
   const agResult = await db.from('agendamentos')
-    .select('*, numero_os, motorista_id, serie_id, obras(nome_cliente, endereco, arquiteto_responsavel, consultores(nome))')
+    .select('*, numero_os, motorista_id, serie_id, obras(nome_cliente, endereco, arquiteto_responsavel, cidade, consultores(nome))')
     .gte('data', ini).lte('data', fim).order('hora_inicio');
 
   if (agResult.error) {
@@ -4480,6 +4481,7 @@ async function exportarProgramacaoEstoque() {
         diaFmt,
         ag.hora_inicio?.slice(0,5) || '—',
         ag.obras?.nome_cliente || ag.cliente_outro || '—',
+        ag.obras?.cidade || '—',
         equipeDoAgGlobal(ag),
         equipeStr,
         ag.obras?.consultores?.nome || '—',
@@ -4490,11 +4492,11 @@ async function exportarProgramacaoEstoque() {
     };
 
     const COL_STYLES = {
-      0: { cellWidth: 20 }, 1: { cellWidth: 12 }, 2: { cellWidth: 48 },
-      3: { cellWidth: 26 }, 4: { cellWidth: 42 }, 5: { cellWidth: 24 },
-      6: { cellWidth: 52 }, 7: { cellWidth: 20 }, 8: { cellWidth: 33, fontStyle: 'bold' },
+      0: { cellWidth: 18 }, 1: { cellWidth: 11 }, 2: { cellWidth: 40 }, 3: { cellWidth: 22 },
+      4: { cellWidth: 24 }, 5: { cellWidth: 38 }, 6: { cellWidth: 22 },
+      7: { cellWidth: 46 }, 8: { cellWidth: 18 }, 9: { cellWidth: 31, fontStyle: 'bold' },
     };
-    const HEAD = [['Dia', 'Hora', 'Cliente / Obra', 'Equipe', 'Técnicos', 'Consultor', 'Serviço', 'Veículo', 'Motorista / CPF']];
+    const HEAD = [['Dia', 'Hora', 'Cliente / Obra', 'Cidade', 'Equipe', 'Técnicos', 'Consultor', 'Serviço', 'Veículo', 'Motorista / CPF']];
 
     // Agrupa todas as agendas da semana por status
     const todasAgs = agendamentos.filter(ag => {

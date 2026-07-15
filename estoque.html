@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 2026-06-30a — Modulo Estoque: termos de Devolucao/Assistencia (criar) + recebimento assinado pelo estoquista -->
+<!-- build: 2026-07-09j — coluna Cidade na Programação da semana -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -267,7 +267,7 @@ function trocarTab(t){
 
 async function carregar(){
   const [obR, tcR, tmR] = await Promise.all([
-    db.from('obras').select('id, nome_cliente').is('excluida_em', null).order('nome_cliente'),
+    db.from('obras').select('id, nome_cliente, cidade').is('excluida_em', null).order('nome_cliente'),
     db.from('tecnicos').select('id, nome').order('nome'),
     db.from('termos_estoque').select('*').order('criado_em', { ascending:false }),
   ]);
@@ -607,6 +607,7 @@ async function carregarProg(){
 
 function _nomeTec(id){ const t=_tecs.find(t=>t.id===id); return t?t.nome:''; }
 function _clienteAg(a){ if(a.obra_id){ const o=_obras.find(o=>String(o.id)===String(a.obra_id)); if(o) return o.nome_cliente; } return a.cliente_outro||'—'; }
+function _cidadeAg(a){ if(a.obra_id){ const o=_obras.find(o=>String(o.id)===String(a.obra_id)); if(o) return o.cidade||'—'; } return '—'; }
 
 function renderProg(dias){
   const el=document.getElementById('prog-list'); if(!el) return;
@@ -623,14 +624,14 @@ function renderProg(dias){
     if(!ags.length) continue;
     html+=`<div class="prog-sec ${s.key}">${s.label} · ${ags.length}</div>`;
     html+='<div class="prog-tbl-wrap"><table class="prog-tbl"><thead><tr>'+
-      '<th>Dia</th><th>Hora</th><th>Cliente / Obra</th><th>Técnicos</th><th>Serviço</th><th>Veículo</th><th>Motorista</th></tr></thead><tbody>';
+      '<th>Dia</th><th>Hora</th><th>Cliente / Obra</th><th>Cidade</th><th>Técnicos</th><th>Serviço</th><th>Veículo</th><th>Motorista</th></tr></thead><tbody>';
     html+=ags.map(a=>{
       const di=dias.findIndex(x=>_isoP(x)===a.data);
       const diaLabel=(di>=0?_DIAS_PROG[di]:'')+' '+a.data.slice(8,10)+'/'+a.data.slice(5,7);
       const tecs=[a.tecnico_id,a.auxiliar_id,a.auxiliar2_id,a.auxiliar3_id].filter(Boolean).map(_nomeTec).filter(Boolean).join(' · ')||'A definir';
       const mot=a.motorista_id?_nomeTec(a.motorista_id):'—';
       return `<tr><td style="white-space:nowrap">${escH(diaLabel)}</td><td>${escH((a.hora_inicio||'').slice(0,5)||'—')}</td>`+
-        `<td>${escH(_clienteAg(a))}</td><td>${escH(tecs)}</td><td>${escH(a.servico||'—')}</td>`+
+        `<td>${escH(_clienteAg(a))}</td><td>${escH(_cidadeAg(a))}</td><td>${escH(tecs)}</td><td>${escH(a.servico||'—')}</td>`+
         `<td>${escH(a.veiculo||'—')}</td><td>${escH(mot)}</td></tr>`;
     }).join('');
     html+='</tbody></table></div>';

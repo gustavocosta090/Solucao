@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-11 — guard aceita admin_geral -->
+<!-- build: 2026-07-09j — novo campo Cidade editável (inline, junto de Regional) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -667,8 +667,8 @@ async function salvarCampo(campo, valor) {
     return false;
   }
   mostrarSalvo('save-indicator-' + campo);
-  // Invalida cache de obras da agenda quando nome ou endereço mudam
-  if (['nome_cliente','endereco'].includes(campo)) invalidateCache('agenda-obras');
+  // Invalida cache de obras da agenda quando nome, endereço ou cidade mudam
+  if (['nome_cliente','endereco','cidade'].includes(campo)) invalidateCache('agenda-obras');
 
   // Atualizar badge da fase no header dinamicamente
   if (campo === 'fase_atual') {
@@ -882,6 +882,14 @@ function renderPagina(obra) {
        </div>`
     : `<div class="obra-info-value"><i data-lucide="map"></i>${obra.regional || '—'}</div>`;
 
+  const campoCidade = podeEditar
+    ? `<div class="obra-info-value edit-field">
+        <i data-lucide="building-2"></i>
+        <input class="inline-input" value="${escHtml(obra.cidade || '')}" placeholder="Cidade..." onblur="salvarTexto('cidade', this.value)">
+        <span id="save-indicator-cidade" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓</span>
+       </div>`
+    : `<div class="obra-info-value"><i data-lucide="building-2"></i>${obra.cidade || '—'}</div>`;
+
   // ── Edit row (privilegiados) ──
   const situacaoAtual = obra.situacao || 'liberado';
   const editRow = podeEditar ? `
@@ -946,6 +954,10 @@ function renderPagina(obra) {
         <div class="obra-info-item">
           <div class="obra-info-label">Regional</div>
           ${campoRegional}
+        </div>
+        <div class="obra-info-item">
+          <div class="obra-info-label">Cidade</div>
+          ${campoCidade}
         </div>
         ${!podeEditar ? `<div class="obra-info-item">
           <div class="obra-info-label">Status Compra</div>

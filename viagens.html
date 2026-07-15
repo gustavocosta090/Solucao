@@ -1,5 +1,5 @@
 <!-- SAOS: viagens.html -->
-<!-- build: 2026-06-30a — abre na semana atual; viagens antigas destacadas/ao fim; agrupa por serie+equipe (troca de tecnico = viagem separada) -->
+<!-- build: 2026-07-09j — "Cidade de destino" pré-preenche com a cidade cadastrada na obra (continua editável) -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -50,6 +50,7 @@ html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:va
 .btn-limpar-f{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-3);font-size:12px;padding:8px 12px;cursor:pointer;font-family:inherit}
 .btn-limpar-f:hover{border-color:var(--border-hover);color:var(--text-2)}
 .vcard{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}
+.vcard-antiga{opacity:.6}
 .vcard-antiga{opacity:.62}
 .vcard-antiga:hover{opacity:1}
 .vcard:hover{border-color:var(--border-hover)}
@@ -191,7 +192,7 @@ async function _carregar(){
   // Obras (sem join para evitar erro de schema cache)
   const obraIds = [...new Set(_ags.map(a=>a.obra_id).filter(Boolean))];
   if(obraIds.length){
-    const {data:obList} = await _db.from('obras').select('id,nome_cliente,endereco').in('id',obraIds);
+    const {data:obList} = await _db.from('obras').select('id,nome_cliente,endereco,cidade').in('id',obraIds);
     const obMap = {};
     (obList||[]).forEach(o=>{obMap[o.id]=o;});
     _ags.forEach(a=>{a._ob=obMap[a.obra_id]||null;});
@@ -295,7 +296,7 @@ function _renderLista(dias){
       '</div>'+
       '<div class="vbody">'+
         '<div class="vf"><label>Cidade de destino</label>'+
-          '<input type="text" id="c'+gid+'" value="'+escHtml(det.cidade||'')+'" placeholder="Ex: Cuiabá, MT"></div>'+
+          '<input type="text" id="c'+gid+'" value="'+escHtml(det.cidade||(ag0._ob&&ag0._ob.cidade)||'')+'" placeholder="Ex: Cuiabá, MT"></div>'+
         '<div class="vf"><label>Horário de saída</label>'+
           '<input type="time" id="hs'+gid+'" value="'+escHtml((det.hora_saida||'').slice(0,5))+'"></div>'+
         '<div class="vf"><label>Saldo refeição / pessoa (R$)</label>'+

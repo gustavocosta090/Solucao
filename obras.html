@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-06-11 — guard aceita admin_geral -->
+<!-- build: 2026-07-09j — novo campo Cidade no cadastro de obra -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -844,6 +844,10 @@
           <option value="">Selecione...</option>
         </select>
       </div>
+      <div class="form-group">
+        <label for="f-cidade">Cidade</label>
+        <input type="text" id="f-cidade" placeholder="Ex: Cuiabá" autocomplete="off">
+      </div>
     </div>
 
     <div class="form-row">
@@ -1373,6 +1377,7 @@
     document.getElementById('f-arquiteto').value      = '';
     document.getElementById('f-consultor').value      = '';
     document.getElementById('f-regional').value       = '';
+    document.getElementById('f-cidade').value         = '';
     document.getElementById('modal-fase').value        = 'nao_iniciado';
     document.getElementById('f-status-compra').value  = '';
     document.getElementById('f-shankya').value        = '';
@@ -1410,6 +1415,7 @@
       arquiteto_responsavel: document.getElementById('f-arquiteto').value.trim()    || null,
       consultor_id:          document.getElementById('f-consultor').value            || null,
       regional:              document.getElementById('f-regional').value             || null,
+      cidade:                document.getElementById('f-cidade').value.trim()        || null,
       fase_atual:            document.getElementById('modal-fase').value,
       status_compra:         document.getElementById('f-status-compra').value.trim()|| null,
       cod_shankya:           document.getElementById('f-shankya').value.trim()      || null,
@@ -1429,6 +1435,13 @@
       const res2 = await db.from('obras').insert(payloadSemValor).select('*, consultores(nome)').single();
       data  = res2.data;
       error = res2.error;
+    }
+    // Fallback: se a coluna cidade ainda não existe no banco (SQL não rodado), tenta sem ela
+    if (error && /cidade/i.test(error.message)) {
+      const { cidade, ...payloadSemCidade } = payload;
+      const res3 = await db.from('obras').insert(payloadSemCidade).select('*, consultores(nome)').single();
+      data  = res3.data;
+      error = res3.error;
     }
 
     btn.disabled = false; btn.innerHTML = '<i data-lucide="save"></i> Salvar'; lucide.createIcons();
