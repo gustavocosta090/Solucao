@@ -159,7 +159,8 @@ Deno.serve(async (req) => {
     .eq("auth_user_id", authData.user.id)
     .single();
 
-  if (requesterError || requester?.role !== "coordenador") {
+  const ROLES_PERMITIDOS = ["coordenador", "agendamento", "admin_geral"];
+  if (requesterError || !ROLES_PERMITIDOS.includes(requester?.role || "")) {
     return json({ error: "Acesso restrito ao coordenador." }, 403);
   }
 
