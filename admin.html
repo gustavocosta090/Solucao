@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-22d — Remover/Demitir limpa cache de tecnicos usado pela agenda (evitava pessoa demitida continuar aparecendo em Disponibilidades/seletor) -->
+<!-- build: 2026-07-22e — Coluna "Ultimo login" na tabela de pessoas (via Edge Function admin-users) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -714,6 +714,7 @@
               <th scope="col">Perfil</th>
               <th scope="col">E-mail</th>
               <th scope="col">Usuário</th>
+              <th scope="col">Último login</th>
               <th scope="col">Status</th>
               <th scope="col">Ações</th>
             </tr>
@@ -1197,6 +1198,20 @@ async function _executarCriarPastas(token) {
   }
 }
 
+function formatarUltimoLogin(iso) {
+  if (!iso) return '<span style="color:var(--text-3)">Nunca</span>';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1)       return 'agora';
+  if (min < 60)      return `há ${min} min`;
+  const horas = Math.floor(min / 60);
+  if (horas < 24)    return `há ${horas}h`;
+  const dias = Math.floor(horas / 24);
+  if (dias === 1)    return 'ontem';
+  if (dias < 30)     return `há ${dias} dias`;
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
+
 async function chamarAdminFunction(payload) {
   const { data: { session } } = await db.auth.getSession();
   if (!session?.access_token) throw new Error('Sessão expirada. Faça login novamente.');
@@ -1274,6 +1289,7 @@ async function carregarDados() {
         <td>${badgeRole}</td>
         <td style="font-size:12px;">${escHtml(t.email || '—')}</td>
         <td style="font-size:12px;">${escHtml(t.username || emailParaUsuario(t.email) || '—')}</td>
+        <td style="font-size:12px;" title="${t.ultimo_login ? escHtml(new Date(t.ultimo_login).toLocaleString('pt-BR')) : ''}">${formatarUltimoLogin(t.ultimo_login)}</td>
         <td>${status}</td>
         <td>${acoes}</td>
       </tr>`;

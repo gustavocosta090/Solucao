@@ -175,12 +175,14 @@ Deno.serve(async (req) => {
 
     if (tecnicosError) return json({ error: tecnicosError.message }, 400);
 
-    const authUsersById = new Map<string, string>();
+    const authUsersById = new Map<string, { email: string; lastSignInAt: string | null }>();
     for (let page = 1; page <= 20; page++) {
       const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage: 1000 });
       if (error) return json({ error: error.message }, 400);
       data.users.forEach((user) => {
-        if (user.id && user.email) authUsersById.set(user.id, user.email);
+        if (user.id && user.email) {
+          authUsersById.set(user.id, { email: user.email, lastSignInAt: user.last_sign_in_at || null });
+        }
       });
       if (data.users.length < 1000) break;
     }
@@ -188,11 +190,12 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       users: (tecnicos || []).filter((tecnico) => tecnico.ativo !== false).map((tecnico) => {
-        const authEmail = tecnico.auth_user_id ? authUsersById.get(tecnico.auth_user_id) || "" : "";
+        const authUser = tecnico.auth_user_id ? authUsersById.get(tecnico.auth_user_id) : undefined;
         return {
           ...tecnico,
           email: contactEmail(tecnico.email),
-          username: authEmail ? authEmailToUsername(authEmail) : "",
+          username: authUser?.email ? authEmailToUsername(authUser.email) : "",
+          ultimo_login: authUser?.lastSignInAt || null,
         };
       }),
     });
