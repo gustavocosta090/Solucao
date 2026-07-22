@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-15a — técnico demitido (ativo=false) some do seletor de agenda -->
+<!-- build: 2026-07-22a — Exclusão de agendamento agora cancela também OS reprovada, não só pendente -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -1609,22 +1609,33 @@ async function excluirAgendamento() {
   if (!agEditandoId) return;
   confirmModal('Excluir este agendamento? As OSs pendentes vinculadas serão canceladas.', async () => {
 
-  // Cancela OSs pendentes vinculadas (preserva número para histórico)
+  // Cancela OSs ainda abertas vinculadas (pendente, reprovada ou sem status —
+  // preserva número para histórico). "reprovada" também conta como aberta: se o
+  // supervisor rejeitou o relatório antes de a agenda ser excluída, a OS não pode
+  // ficar "viva".
+  const STATUS_OS_ABERTA = 'status_aprovacao.is.null,status_aprovacao.eq.pendente,status_aprovacao.eq.reprovada';
   const ag = agendamentos.find(a => a.id === agEditandoId);
   if (ag) {
-    const porAgendamento = await db
+    const { data: osParaCancelar } = await db
       .from('ordens_de_servico')
-      .update({ status_aprovacao: 'cancelada' })
+      .select('id')
       .eq('agendamento_id', agEditandoId)
-      .eq('status_aprovacao', 'pendente');
+      .or(STATUS_OS_ABERTA);
 
-    if (porAgendamento.error && ag.obra_id && ag.data) {
-      await db
+    let idsCancelar = (osParaCancelar || []).map(o => o.id);
+
+    if (!idsCancelar.length && ag.obra_id && ag.data) {
+      const { data: osPorObraData } = await db
         .from('ordens_de_servico')
-        .update({ status_aprovacao: 'cancelada' })
+        .select('id')
         .eq('obra_id', ag.obra_id)
         .eq('data_servico', ag.data)
-        .eq('status_aprovacao', 'pendente');
+        .or(STATUS_OS_ABERTA);
+      idsCancelar = (osPorObraData || []).map(o => o.id);
+    }
+
+    if (idsCancelar.length) {
+      await db.from('ordens_de_servico').update({ status_aprovacao: 'cancelada' }).in('id', idsCancelar);
     }
   }
 

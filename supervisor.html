@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09f — Agenda Noturna: sábado/domingo/feriado sempre completa R$150 + corte de horário em 17:31 (era 18:00) -->
+<!-- build: 2026-07-22b — Corrige select incompleto de OS (faltavam serviços realizados, ocorrências, observações etc. no PDF e no modal Ver) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1569,7 +1569,7 @@ async function carregarOSs() {
 
   const [{ data: osData, error: osError }, { data: tecList }, { data: teData }] = await Promise.all([
     db.from('ordens_de_servico')
-      .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, noturna_manual, noturna_incluir_prox_relatorio, obras(nome_cliente, endereco)')
+      .select('*, obras(nome_cliente, endereco)')
       .gte('data_servico', dataCorteISO)
       .lte('data_servico', hojeISO)
       .neq('status_aprovacao', 'cancelada')
@@ -1994,7 +1994,7 @@ async function filtrar() {
       document.getElementById('tabelaEl').style.display  = 'none';
       const { data: osData } = await db
         .from('ordens_de_servico')
-        .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, noturna_manual, noturna_incluir_prox_relatorio, obras(nome_cliente, endereco)')
+        .select('*, obras(nome_cliente, endereco)')
         .eq('status_aprovacao', 'cancelada')
         .order('criado_em', { ascending: false });
       const semObraC = (osData || []).filter(o => !o.obra_id && o.agendamento_id).map(o => o.agendamento_id);
@@ -2040,7 +2040,7 @@ async function filtrar() {
 
     const [{ data: osData }, { data: tecList }, { data: teData }] = await Promise.all([
       db.from('ordens_de_servico')
-        .select('id, numero_os, agendamento_id, obra_id, tecnico_id, auxiliar_id, auxiliar2_id, auxiliar3_id, data_servico, criado_em, status_aprovacao, tipo_servico, fotos_urls, servico_planejado, horario_inicio, horario_fim, noturna_status, noturna_manual, noturna_incluir_prox_relatorio, obras(nome_cliente, endereco)')
+        .select('*, obras(nome_cliente, endereco)')
         .gte('data_servico', fDi)
         .neq('status_aprovacao', 'cancelada')
         .order('criado_em', { ascending: false }),

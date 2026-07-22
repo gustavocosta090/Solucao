@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-15g — Disponibilidades (filtro Todas equipes) só lista quem está lotado em alguma equipe operacional -->
+<!-- build: 2026-07-22a — Corrige OS duplicada ao reatribuir técnico e exclusão que não cancelava OS reprovada -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -3030,16 +3030,45 @@ async function salvarAgendamento() {
             .eq('agendamento_id', agEditandoId)
             .neq('status_aprovacao', 'cancelada');
 
-          // Se houve mudança de técnico, atualiza o técnico na OS principal
-          const novosTecs = [payload.tecnico_id, payload.auxiliar_id,
-                             payload.auxiliar2_id, payload.auxiliar3_id].filter(Boolean);
-          if (novosTecs.length > 0 && payload.tecnico_id) {
-            // OS do técnico principal recebe o novo tecnico_id
-            await db.from('ordens_de_servico')
-              .update({ tecnico_id: payload.tecnico_id })
-              .eq('agendamento_id', agEditandoId)
-              .neq('status_aprovacao', 'cancelada')
-              .limit(1); // só a primeira (a do líder)
+          // Reconcilia as OS com a equipe atual do agendamento:
+          // cancela a OS de quem saiu da equipe e cria OS nova para quem entrou.
+          // (Antes: sobrescrevia o tecnico_id de UMA linha qualquer — causava OS duplicada
+          // quando a linha "renomeada" já pertencia a outro integrante da equipe.)
+          const equipeNova = [payload.tecnico_id, payload.auxiliar_id,
+                              payload.auxiliar2_id, payload.auxiliar3_id]
+            .filter(Boolean).filter((id, idx, arr) => arr.indexOf(id) === idx);
+
+          const { data: osVinculadas } = await db.from('ordens_de_servico')
+            .select('id, tecnico_id, status_aprovacao')
+            .eq('agendamento_id', agEditandoId)
+            .neq('status_aprovacao', 'cancelada');
+
+          const osAbertas = (osVinculadas || []).filter(o =>
+            !o.status_aprovacao || o.status_aprovacao === 'pendente' || o.status_aprovacao === 'reprovada');
+
+          const idsCancelar = osAbertas.filter(o => !equipeNova.includes(o.tecnico_id)).map(o => o.id);
+          if (idsCancelar.length) {
+            await db.from('ordens_de_servico').update({ status_aprovacao: 'cancelada' }).in('id', idsCancelar);
+          }
+
+          const tecsComOS = new Set((osVinculadas || []).map(o => o.tecnico_id));
+          const tecsNovos = equipeNova.filter(tid => !tecsComOS.has(tid));
+          if (tecsNovos.length) {
+            const agora = new Date().toISOString();
+            const osNovasPayloads = tecsNovos.map(tecId => ({
+              agendamento_id:    agEditandoId,
+              obra_id:           payload.obra_id || null,
+              endereco_servico:  endereco || null,
+              tecnico_id:        tecId,
+              data_servico:      diaStr,
+              servico_planejado: servico || null,
+              status_aprovacao:  'pendente',
+              tipo_servico:      tipoServico,
+              numero_os:         numeroOSGerado,
+              criado_em:         agora,
+            }));
+            const { error: osCriarErr } = await db.from('ordens_de_servico').insert(osNovasPayloads);
+            if (osCriarErr) console.warn('[agenda] criar OS p/ novo integrante:', osCriarErr.message);
           }
 
           if (osErr) console.warn('[agenda] atualizar OS:', osErr.message);
@@ -3671,13 +3700,16 @@ async function excluirAgendamento() {
   let _undoPendenciaAntes  = null;
   let _undoPendenciaCriadaId = null;
 
-  // Cancela OSs pendentes vinculadas (preserva número para histórico)
+  // Cancela OSs ainda abertas vinculadas (pendente, reprovada ou sem status — preserva
+  // número para histórico). "reprovada" também conta como aberta: se o supervisor
+  // rejeitou o relatório antes de a agenda ser excluída, a OS não pode ficar "viva".
+  const STATUS_OS_ABERTA = 'status_aprovacao.is.null,status_aprovacao.eq.pendente,status_aprovacao.eq.reprovada';
   if (ag) {
     const { data: osParaCancelar } = await db
       .from('ordens_de_servico')
       .select('id')
       .eq('agendamento_id', agEditandoId)
-      .eq('status_aprovacao', 'pendente');
+      .or(STATUS_OS_ABERTA);
 
     let idsCancelar = (osParaCancelar || []).map(o => o.id);
 
@@ -3687,7 +3719,7 @@ async function excluirAgendamento() {
         .select('id')
         .eq('obra_id', ag.obra_id)
         .eq('data_servico', ag.data)
-        .eq('status_aprovacao', 'pendente');
+        .or(STATUS_OS_ABERTA);
       idsCancelar = (osPorObraData || []).map(o => o.id);
     }
 
