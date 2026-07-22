@@ -1,4 +1,5 @@
 // api/aniversarios-cron.js — aviso automático de aniversariantes (Vercel Cron)
+// build: 2026-07-22c — MS_ANIV_MAIL_TO agora aceita múltiplos e-mails separados por vírgula/;
 // build: 2026-06-25b — fontes Roboto embarcadas (fonts/*.ttf); antes o fetch de CDN dava 404 e o texto sumia
 // Roda 1x/dia às 5h de Cuiabá (schedule "0 9 * * *" UTC). Em cada execução:
 //   - HOJE: gera o CARD oficial (arte + foto + nome/função/mensagem) e anexa por e-mail.
@@ -124,7 +125,8 @@ async function enviarEmail(tkn, subject, html, attachments){
     message: {
       subject,
       body: { contentType:'HTML', content: html },
-      toRecipients: [{ emailAddress: { address: ANIV_MAIL_TO } }],
+      toRecipients: ANIV_MAIL_TO.split(/[,;]/).map(e => e.trim()).filter(Boolean)
+        .map(address => ({ emailAddress: { address } })),
       attachments: (attachments||[]).map(a => ({
         '@odata.type':'#microsoft.graph.fileAttachment',
         name: a.name, contentType: a.contentType, contentBytes: a.buffer.toString('base64'),
