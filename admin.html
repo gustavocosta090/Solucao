@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-15a — Demitir agora inativa (ativo=false) quando ha FK de OS, some da lista de fato -->
+<!-- build: 2026-07-22d — Remover/Demitir limpa cache de tecnicos usado pela agenda (evitava pessoa demitida continuar aparecendo em Disponibilidades/seletor) -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1467,6 +1467,13 @@ async function apagarUsuario(tecnicoId) {
           mostrarSucesso(`${usuario.nome} removido com sucesso.`);
         }
 
+        // Limpa cache de técnicos usado em agenda.html/agenda_plantao.html/supervisor.html
+        // (sessionStorage é por aba — evita que a pessoa demitida continue aparecendo
+        // em Disponibilidades/seletor de agenda se o usuário navegar na mesma aba).
+        invalidateCache('agenda-tecnicos');
+        invalidateCache('agenda-tecnico-equipes');
+        invalidateCache('tecnicos-lista');
+
         await carregarDados();
       } catch (err) {
         mostrarErro(err.message || 'Erro ao remover funcionário.');
@@ -1488,12 +1495,18 @@ async function removerTecnico(tecnicoId, nome) {
           // Tem agendamentos/OS no histórico: inativa em vez de apagar, preserva o histórico.
           await db.from('tecnicos').update({ ativo: false }).eq('id', tecnicoId);
           mostrarSucesso(`${nome} removido (inativado — histórico de OS preservado).`);
+          invalidateCache('agenda-tecnicos');
+          invalidateCache('agenda-tecnico-equipes');
+          invalidateCache('tecnicos-lista');
           await carregarDados();
           return;
         }
         mostrarErro(`Não foi possível remover: ${error.message}`);
       } else {
         mostrarSucesso(`${nome} removido com sucesso.`);
+        invalidateCache('agenda-tecnicos');
+        invalidateCache('agenda-tecnico-equipes');
+        invalidateCache('tecnicos-lista');
         await carregarDados();
       }
     }
