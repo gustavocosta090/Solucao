@@ -170,32 +170,34 @@ Deno.serve(async (req) => {
   if (action === "list_users") {
     const { data: tecnicos, error: tecnicosError } = await adminClient
       .from("tecnicos")
-      .select("id, nome, role, email, auth_user_id, ativo, tecnico_equipes(equipes(nome))")
+      .select("id, nome, role, email, auth_user_id, ativo, ultima_atividade, tecnico_equipes(equipes(nome))")
       .order("nome");
 
     if (tecnicosError) return json({ error: tecnicosError.message }, 400);
 
-    const authUsersById = new Map<string, { email: string; lastSignInAt: string | null }>();
+    const authUsersById = new Map<string, string>();
     for (let page = 1; page <= 20; page++) {
       const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage: 1000 });
       if (error) return json({ error: error.message }, 400);
       data.users.forEach((user) => {
-        if (user.id && user.email) {
-          authUsersById.set(user.id, { email: user.email, lastSignInAt: user.last_sign_in_at || null });
-        }
+        if (user.id && user.email) authUsersById.set(user.id, user.email);
       });
       if (data.users.length < 1000) break;
     }
 
+    // "ultimo_login" aqui é atividade real (tecnicos.ultima_atividade, atualizada a
+    // cada página aberta — ver _registrarAtividade em utils.js), não o
+    // last_sign_in_at do Supabase Auth (esse só muda ao reautenticar de verdade;
+    // sessão fica viva por semanas via refresh token, não reflete uso atual).
     return json({
       ok: true,
       users: (tecnicos || []).filter((tecnico) => tecnico.ativo !== false).map((tecnico) => {
-        const authUser = tecnico.auth_user_id ? authUsersById.get(tecnico.auth_user_id) : undefined;
+        const authEmail = tecnico.auth_user_id ? authUsersById.get(tecnico.auth_user_id) || "" : "";
         return {
           ...tecnico,
           email: contactEmail(tecnico.email),
-          username: authUser?.email ? authEmailToUsername(authUser.email) : "",
-          ultimo_login: authUser?.lastSignInAt || null,
+          username: authEmail ? authEmailToUsername(authEmail) : "",
+          ultimo_login: tecnico.ultima_atividade || null,
         };
       }),
     });

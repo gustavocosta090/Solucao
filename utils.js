@@ -678,6 +678,28 @@ function renderTopbar(nome, role, paginaAtiva) {
       }, function() { /* tabela perfis pode não existir ainda — mantém padrão */ });
     }
   } catch (e) { /* mantém padrão */ }
+
+  // 3. Heartbeat de atividade real (não confundir com last_sign_in_at do
+  // Supabase Auth — sessão fica viva por semanas sem reautenticar).
+  // Throttle de 3 min por aba pra não gravar a cada navegação.
+  _registrarAtividade();
+}
+
+function _registrarAtividade() {
+  try {
+    if (typeof db === 'undefined' || !db || !db.from) return;
+    var TTL = 3 * 60 * 1000;
+    var marca = Number(sessionStorage.getItem('saos_atividade_marca') || 0);
+    if (Date.now() - marca < TTL) return;
+    sessionStorage.setItem('saos_atividade_marca', String(Date.now()));
+
+    db.auth.getSession().then(function(res) {
+      var uid = res && res.data && res.data.session && res.data.session.user && res.data.session.user.id;
+      if (!uid) return;
+      db.from('tecnicos').update({ ultima_atividade: new Date().toISOString() }).eq('auth_user_id', uid)
+        .then(function() {}, function() {});
+    }, function() {});
+  } catch (e) { /* não bloqueia a página por causa disso */ }
 }
 
 // ─── Query Cache ────────────────────────────────────────────────
