@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-22a — Corrige OS duplicada ao reatribuir técnico e exclusão que não cancelava OS reprovada -->
+<!-- build: 2026-07-22g — Regional Norte com status Viagem volta a gerar N.OS/OS (equipe viaja como parte do trabalho) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -2913,10 +2913,18 @@ async function salvarAgendamento() {
   // Números já gerados nesta gravação — evita repetir entre os dias replicados
   const _numerosUsados = new Set();
 
+  // Regional Norte (equipe_id 5): "Viagem" é dia de atendimento de verdade (a equipe
+  // viaja como parte do trabalho), não um dia parado sem serviço — por isso, só pra
+  // essa equipe, "Viagem" continua gerando N.OS e OS normalmente.
+  const REGIONAL_NORTE_ID = 5;
+  const _teIdPrincipal = id0 ? parseInt(id0) : null;
+  const _teRecPrincipal = _teIdPrincipal ? tecnicoEquipes.find(e => e.tecnico_id === _teIdPrincipal) : null;
+  const viagemSemOS = status === 'viagem' && _teRecPrincipal?.equipe_id !== REGIONAL_NORTE_ID;
+
   // Helper: gera número de OS para uma data (resiliente — tenta de novo se a RPC
   // falhar, devolver nulo ou repetir um número já usado nesta replicação)
   async function gerarNumeroOS(dataStr) {
-    if (status === 'viagem') return null;
+    if (viagemSemOS) return null;
     const [y, m] = dataStr.split('-');
     const teId  = id0 ? parseInt(id0) : null;
     const teRec = teId ? tecnicoEquipes.find(e => e.tecnico_id === teId) : null;
@@ -3094,7 +3102,7 @@ async function salvarAgendamento() {
     //   editado já cobre todos, então não cria OS extra.
     const ehDiaEditado = agEditandoId && diaStr === data;
     const devecriarOS = !ehDiaEditado && !(agEditandoId && mesmaOS)
-      && result.id && status !== 'viagem'
+      && result.id && !viagemSemOS
       && (!mesmaOS || !osCriadaNoFirstDay);
 
     if (devecriarOS) {
