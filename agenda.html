@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-22g — Regional Norte com status Viagem volta a gerar N.OS/OS (equipe viaja como parte do trabalho) -->
+<!-- build: 2026-07-22h — Veiculo nao pre-preenche mais sozinho; propagacao de serie replicada fica granular (so campo mudado + so este dia/em diante/toda serie) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -2569,7 +2569,7 @@ async function abrirModal(data = '') {
   document.getElementById('f-status').value             = 'confirmado';
   document.getElementById('f-inicio').value             = localStorage.getItem('agenda_ultimo_inicio') || '';
   document.getElementById('f-fim').value                = '';
-  document.getElementById('f-veiculo').value            = localStorage.getItem('agenda_ultimo_veiculo') || '';
+  document.getElementById('f-veiculo').value            = '';
   document.getElementById('f-servico').value            = '';
   _popularVeiculoSelect();
   const dataAgenda = data || fmtISO(new Date());
@@ -2836,10 +2836,9 @@ async function salvarAgendamento() {
     mostrarErroModal('Selecione a data.', 'f-data'); return;
   }
 
-  // Lembrar último horário/veículo para agilizar os próximos cadastros
+  // Lembrar último horário para agilizar os próximos cadastros
   try {
     localStorage.setItem('agenda_ultimo_inicio', inicio || '');
-    localStorage.setItem('agenda_ultimo_veiculo', veiculo || '');
   } catch (e) {}
 
   // Resumo antes de replicar em vários dias
@@ -3143,71 +3142,47 @@ async function salvarAgendamento() {
     // Snapshot dos dias da série que forem propagados (só preenchido se houver propagação) — usado pelo undo
     let _undoSerieAntes = [];
 
-    // Se editando um agendamento de uma série, pergunta se propaga para os demais
+    // Se editando um agendamento de uma série, pergunta se propaga para os demais.
+    // Propaga só os campos que de fato mudaram (nunca os demais) e deixa escolher
+    // se aplica em toda a série ou só deste dia em diante (comparado à data do dia
+    // editado, não à data de hoje — evita alterar dias anteriores da série sem querer).
     if (agEditandoId) {
       const agAtual = agendamentos.find(a => a.id === agEditandoId);
       if (agAtual?.serie_id) {
-        // Detecta qualquer alteração relevante na série
-        const algumCampoMudou =
-          agAtual.tecnico_id    !== basePayload.tecnico_id   ||
-          agAtual.auxiliar_id   !== basePayload.auxiliar_id  ||
-          agAtual.auxiliar2_id  !== basePayload.auxiliar2_id ||
-          agAtual.auxiliar3_id  !== basePayload.auxiliar3_id ||
-          agAtual.motorista_id  !== basePayload.motorista_id ||
-          agAtual.status        !== basePayload.status        ||
-          agAtual.veiculo       !== basePayload.veiculo       ||
-          agAtual.servico       !== basePayload.servico       ||
-          agAtual.hora_inicio   !== basePayload.hora_inicio   ||
-          String(agAtual.obra_id || '') !== String(basePayload.obra_id || '') ||
-          (agAtual.endereco_outro || '') !== (basePayload.endereco_outro || '');
+        const updatePayload = {};
+        const camposMudadosLabels = [];
 
-        if (algumCampoMudou) {
-          const propagar = await new Promise(resolve => {
-            confirmModal(
-              'Esta agenda faz parte de uma série replicada.\nDeseja aplicar as mesmas alterações a todos os outros dias da série?',
-              () => resolve(true),
-              () => resolve(false)
-            );
-          });
+        if (agAtual.tecnico_id   !== basePayload.tecnico_id)   { updatePayload.tecnico_id   = basePayload.tecnico_id;   camposMudadosLabels.push('técnico principal'); }
+        if (agAtual.auxiliar_id  !== basePayload.auxiliar_id)  { updatePayload.auxiliar_id  = basePayload.auxiliar_id;  camposMudadosLabels.push('auxiliar 1'); }
+        if (agAtual.auxiliar2_id !== basePayload.auxiliar2_id) { updatePayload.auxiliar2_id = basePayload.auxiliar2_id; camposMudadosLabels.push('auxiliar 2'); }
+        if (agAtual.auxiliar3_id !== basePayload.auxiliar3_id) { updatePayload.auxiliar3_id = basePayload.auxiliar3_id; camposMudadosLabels.push('auxiliar 3'); }
+        if (agAtual.motorista_id !== basePayload.motorista_id) { updatePayload.motorista_id = basePayload.motorista_id; camposMudadosLabels.push('motorista'); }
+        if (agAtual.status       !== basePayload.status)       { updatePayload.status       = basePayload.status;       camposMudadosLabels.push('status'); }
+        if (agAtual.veiculo      !== basePayload.veiculo)      { updatePayload.veiculo      = basePayload.veiculo;      camposMudadosLabels.push('veículo'); }
+        if (agAtual.servico      !== basePayload.servico)      { updatePayload.servico      = basePayload.servico;      camposMudadosLabels.push('descrição do serviço'); }
+        if (agAtual.hora_inicio  !== basePayload.hora_inicio)  { updatePayload.hora_inicio  = basePayload.hora_inicio;  camposMudadosLabels.push('horário'); }
+        if (String(agAtual.obra_id || '') !== String(basePayload.obra_id || '') || (agAtual.cliente_outro || '') !== (basePayload.cliente_outro || '')) {
+          updatePayload.obra_id       = basePayload.obra_id;
+          updatePayload.cliente_outro = basePayload.cliente_outro;
+          camposMudadosLabels.push('obra/cliente');
+        }
+        if ((agAtual.endereco_outro || '') !== (basePayload.endereco_outro || '')) {
+          updatePayload.endereco_outro = basePayload.endereco_outro;
+          camposMudadosLabels.push('endereço');
+        }
 
-          if (propagar) {
-            const updatePayload = {
-              tecnico_id:     basePayload.tecnico_id,
-              auxiliar_id:    basePayload.auxiliar_id,
-              auxiliar2_id:   basePayload.auxiliar2_id,
-              auxiliar3_id:   basePayload.auxiliar3_id,
-              motorista_id:   basePayload.motorista_id,
-              status:         basePayload.status,
-              veiculo:        basePayload.veiculo,
-              servico:        basePayload.servico,
-              hora_inicio:    basePayload.hora_inicio,
-              obra_id:        basePayload.obra_id,
-              cliente_outro:  basePayload.cliente_outro,
-              endereco_outro: basePayload.endereco_outro,
-            };
+        if (camposMudadosLabels.length > 0) {
+          const escolha = await _modalPropagarSerie(camposMudadosLabels.join(', '));
 
-            // Busca os demais dias da série p/ separar os que já passaram
+          if (escolha !== 'nenhum') {
             const { data: outrosDias } = await db.from('agendamentos')
               .select('id, data')
               .eq('serie_id', agAtual.serie_id)
               .neq('id', agEditandoId);
 
-            const hoje       = hojeLocalISO();
-            const fmtDiaCurto = iso => new Date(iso + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
-            const diasPassados = (outrosDias || []).filter(d => d.data < hoje);
-            const diasFuturos  = (outrosDias || []).filter(d => d.data >= hoje);
-
-            let idsAlvo = (outrosDias || []).map(d => d.id);
-            if (diasPassados.length > 0) {
-              const aplicarPassados = await new Promise(resolve => {
-                confirmModal(
-                  `Deseja aplicar também para os dias que já passaram?\n${diasPassados.map(d => fmtDiaCurto(d.data)).join('  ·  ')}`,
-                  () => resolve(true),
-                  () => resolve(false)
-                );
-              });
-              idsAlvo = aplicarPassados ? idsAlvo : diasFuturos.map(d => d.id);
-            }
+            const idsAlvo = (escolha === 'futuro')
+              ? (outrosDias || []).filter(d => d.data >= agAtual.data).map(d => d.id)
+              : (outrosDias || []).map(d => d.id);
 
             if (idsAlvo.length > 0) {
               // Snapshot antes de propagar, p/ permitir desfazer (Ctrl+Z)
@@ -3637,6 +3612,48 @@ async function _buscarPendenciaVinculadaAoAgendamento(ag) {
   const lista = data || [];
   const servico = String(ag.servico || '').trim();
   return lista.find(p => String(p.descricao || '').trim() === servico) || lista[0] || null;
+}
+
+// Modal de propagação de edição em série replicada — usa CSS variables para respeitar o tema
+function _modalPropagarSerie(camposTexto) {
+  return new Promise(resolve => {
+    const existing = document.getElementById('prop-serie-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'prop-serie-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('style', [
+      'position:fixed','inset:0',
+      'background:rgba(0,0,0,0.6)',
+      'display:flex','align-items:center','justify-content:center',
+      'z-index:9999','padding:20px',
+      'backdrop-filter:blur(4px)',
+    ].join(';'));
+
+    const btnStyle = 'padding:11px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;'
+      + 'color:var(--text-1);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;text-align:left;';
+
+    overlay.innerHTML = `
+      <div style="background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+        <p style="font-size:14px;color:var(--text-1);margin-bottom:6px;font-weight:600;line-height:1.5;">Esta agenda faz parte de uma série replicada.</p>
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:18px;line-height:1.5;">Você alterou: <strong style="color:var(--text-1)">${escHtml(camposTexto)}</strong>. Aplicar essa mudança em quais dias?</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button id="prop-so-este" style="${btnStyle}">Só este dia</button>
+          <button id="prop-futuro" style="${btnStyle}">Deste dia em diante</button>
+          <button id="prop-todos" style="${btnStyle}">Toda a série (inclusive dias anteriores)</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    const fechar = (val) => { overlay.remove(); resolve(val); };
+    overlay.querySelector('#prop-so-este').addEventListener('click', () => fechar('nenhum'));
+    overlay.querySelector('#prop-futuro').addEventListener('click', () => fechar('futuro'));
+    overlay.querySelector('#prop-todos').addEventListener('click', () => fechar('todos'));
+    overlay.addEventListener('click', e => { if (e.target === overlay) fechar('nenhum'); });
+    overlay.addEventListener('keydown', e => { if (e.key === 'Escape') fechar('nenhum'); });
+  });
 }
 
 // Modal de seleção de equipe — usa CSS variables para respeitar o tema
