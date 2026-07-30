@@ -1,6 +1,6 @@
 <!-- SAOS-AUDIT: build 2026-06-01 pós-auditoria -->
 <!DOCTYPE html>
-<!-- build: 2026-07-09j — novo campo Cidade editável (inline, junto de Regional) -->
+<!-- build: 2026-07-23a — nome da obra editavel inline no titulo (reflete em obras/agenda/OS via obra_id) -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -77,6 +77,17 @@
     }
 
     .obra-title { font-size: 1.3rem; font-weight: 700; color: var(--text-1); letter-spacing: -0.02em; margin-bottom: 4px; }
+
+    /* Título editável — parece texto até receber foco/hover */
+    .obra-title-input {
+      font-size: 1.3rem; font-weight: 700; color: var(--text-1); letter-spacing: -0.02em;
+      margin-bottom: 4px; font-family: inherit;
+      background: transparent; border: 1px solid transparent; border-radius: 6px;
+      padding: 2px 6px; margin-left: -6px; width: 100%; outline: none;
+      transition: border-color .15s, background .15s;
+    }
+    .obra-title-input:hover { border-color: var(--border); }
+    .obra-title-input:focus { border-color: var(--border-focus); background: var(--bg); }
 
     .obra-meta {
       font-size: 0.75rem; color: var(--text-3); font-weight: 500;
@@ -716,6 +727,28 @@ function salvarTexto(campo, valor) {
   salvarCampo(campo, valor.trim());
 }
 
+// ── Salvar nome da obra ──
+// Nome vazio quebraria a identificação da obra em toda a operação (agenda, OS,
+// pastas do SharePoint) — por isso reverte em vez de gravar em branco.
+async function salvarNomeObra(input) {
+  const novo = input.value.trim();
+  const atual = (obraAtual?.nome_cliente || obraAtual?.nome || '').trim();
+  if (novo === atual) return;
+
+  if (!novo) {
+    input.value = atual;
+    showToast('O nome da obra não pode ficar vazio.', 'warning');
+    return;
+  }
+
+  const ok = await salvarCampo('nome_cliente', novo);
+  if (!ok) { input.value = atual; return; }
+
+  if (obraAtual) obraAtual.nome_cliente = novo;
+  document.title = novo + ' — Solução Técnica';
+  showToast('Nome da obra atualizado.', 'success');
+}
+
 // ── Salvar valor financeiro (número) ──
 async function salvarValorFinanceiro(campo, rawValue) {
   const raw = String(rawValue).trim().replace(',', '.');
@@ -842,6 +875,15 @@ function renderPagina(obra) {
   const nFotos     = todasFotos.length;
 
   // ── Campos editáveis ──
+  // Nome da obra: só o texto exibido muda (obras, agenda, OS etc. referenciam obra_id,
+  // então o novo nome aparece em tudo na hora, sem migração de dados).
+  const nomeAtual = obra.nome_cliente || obra.nome || '';
+  const campoTitulo = podeEditar
+    ? `<input class="obra-title-input" value="${escHtml(nomeAtual)}" placeholder="Nome da obra/cliente..."
+              title="Clique para editar o nome" onblur="salvarNomeObra(this)"
+              onkeydown="if(event.key==='Enter'){this.blur();}">`
+    : `<div class="obra-title">${escHtml(nomeAtual) || '—'}</div>`;
+
   const campoEndereco = podeEditar
     ? `<div class="obra-info-value edit-field">
         <i data-lucide="map-pin"></i>
@@ -932,10 +974,11 @@ function renderPagina(obra) {
 
   document.getElementById('conteudo').innerHTML = `
     <div class="obra-card">
-      <div class="obra-title">${obra.nome_cliente || obra.nome || '—'}</div>
+      ${campoTitulo}
       <div class="obra-meta">
         #${String(obra.id).padStart(3,'0')}
         <span class="badge badge-${faseClass} badge-fase-principal">${faseLabel}</span>
+        <span id="save-indicator-nome_cliente" class="obs-saved-msg" style="font-size:11px;color:var(--primary);">✓</span>
       </div>
 
       <div class="obra-infos">
